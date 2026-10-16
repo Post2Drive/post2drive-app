@@ -13,7 +13,7 @@ export default function SignupPage() {
   const [form, setForm] = useState({
     name: "", email: "", phone: "", password: "", companyName: "",
     planType: "individual", fleetVehicleCount: "1", isSoleTrader: false,
-    country: "GB", currency: "GBP", referralCode: "", testerCode: "",
+    country: "", currency: "", referralCode: "", testerCode: "",
     termsAccepted: false, marketResearch: {
       role: "", currentDiscovery: "", biggestChallenge: "", preferredAccess: "",
     } as ResearchAnswers,
@@ -47,6 +47,7 @@ export default function SignupPage() {
     setForm((current) => ({ ...current, country, currency: currencyForCountry(country), referralCode: "", testerCode: "" }));
   }
   function canAdvance() {
+    if (step === 0 && !form.country) return "Choose your market to continue.";
     if (step === 0 && !form.isSoleTrader && !form.companyName.trim()) return "Enter your registered company name, or select sole trader.";
     if (step === 1 && (!Number.isInteger(vehicleCount) || vehicleCount < 1 || vehicleCount > 55)) return "Enter a vehicle count from 1 to 55. Fleets with 56+ vehicles need custom pricing.";
     if (step === 2) {
@@ -128,12 +129,12 @@ export default function SignupPage() {
         <label>Choose your market<select value={form.country} onChange={(e) => changeCountry(e.target.value)}>{COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}</select><small>This determines your marketplace, currency and local time zone. Cross-market matching is disabled.</small></label>
         <label>Account type<select value={form.isSoleTrader ? "sole" : "company"} onChange={(e) => update("isSoleTrader", e.target.value === "sole")}><option value="company">Registered business</option><option value="sole">Sole trader / individual operator</option></select></label>
         <label>{form.isSoleTrader ? "Trading name (optional)" : "Registered company name"}<input value={form.companyName} onChange={(e) => update("companyName", e.target.value)} required={!form.isSoleTrader} maxLength={120} placeholder={form.isSoleTrader ? "You can use your own name" : "Name registered to your business"} /></label>
-        <div className="signup-note"><strong>{marketLabel} marketplace</strong><p>{isIndia ? "Browse India-only delivery opportunities using INR. A short optional market-research step helps shape the experience." : isUk ? "Use the UK marketplace with GBP pricing. UK launch promotion and weekly subscription access are separate from account creation." : form.currency === "EUR" ? "Use this country-specific euro marketplace with EUR pricing. The same weekly-access and fleet tiers as the UK are used; each country remains a separate marketplace." : "Use the selected Post2Drive marketplace. Pricing and access terms will be shown before any payment."}</p></div>
+        <div className="signup-note"><strong>{form.country ? `${marketLabel} marketplace` : "Select a market"}</strong><p>{!form.country ? "Choose a country to see the correct marketplace, currency and access options." : isIndia ? "Browse India-only delivery opportunities using INR. A short optional market-research step helps shape the experience." : isUk ? "Use this country's marketplace with GBP pricing. Market-specific access and promotion rules are shown before you commit." : form.currency === "EUR" ? "Use this country's separate marketplace with EUR pricing. The available weekly-access and fleet tiers will be shown before you commit." : "Use the selected Post2Drive marketplace. Pricing and access terms will be shown before any payment."}</p></div>
       </div>}
 
       {step === 1 && <div className="signup-fields">
         <label>How many vehicles will use this account?<input type="number" min="1" max="55" step="1" required value={form.fleetVehicleCount} onChange={(e) => { const v = e.target.value; setForm((current) => ({ ...current, fleetVehicleCount: v, planType: Number(v) === 1 ? "individual" : "fleet" })); }} /></label>
-        <div className="signup-plan-card"><span className="signup-plan-label">YOUR PLAN TYPE</span><h3>{selectedPlan === "individual" ? "Individual · 1 vehicle" : "Fleet · 2–55 vehicles"}</h3>{hasWeeklyPricing ? <><p className="signup-plan-price">{priceSymbol}{(selectedPlan === "individual" ? 9.99 : vehicleCount <= 5 ? 16.99 : vehicleCount <= 15 ? 24.99 : vehicleCount <= 30 ? 36.99 : 49.99).toFixed(2)} / 7 days</p><small>{isUk ? "UK weekly prices." : "Euro-market weekly prices, using the same numeric tiers as the UK."} Unlimited legitimate marketplace activity; no per-job charges. No payment is taken at signup and checkout is not yet connected.</small></> : <><p>India pricing will be confirmed before any paid plan becomes available.</p><small>Creating an account does not charge you.</small></>}</div>
+        <div className="signup-plan-card"><span className="signup-plan-label">YOUR PLAN TYPE</span><h3>{selectedPlan === "individual" ? "Individual · 1 vehicle" : "Fleet · 2–55 vehicles"}</h3>{hasWeeklyPricing ? <><p className="signup-plan-price">{priceSymbol}{(selectedPlan === "individual" ? 9.99 : vehicleCount <= 5 ? 16.99 : vehicleCount <= 15 ? 24.99 : vehicleCount <= 30 ? 36.99 : 49.99).toFixed(2)} / 7 days</p><small>"Prices shown for your selected market." Unlimited legitimate marketplace activity; no per-job charges. No payment is taken at signup and checkout is not yet connected.</small></> : <><p>India pricing will be confirmed before any paid plan becomes available.</p><small>Creating an account does not charge you.</small></>}</div>
         <p className="signup-muted">One account supports both posting and fulfilling jobs. Vehicle count determines the account plan—not whether you are a driver or a business posting deliveries. Fleets above 55 vehicles require custom pricing.</p>
       </div>}
 
