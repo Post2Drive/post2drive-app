@@ -42,6 +42,24 @@ async function POSTHandler(request: Request) {
           : undefined,
     });
 
-    return NextResponse.json(ÂˆİXØÙ\ÜÎˆYKˆ^[Y[Yˆ^[Y[šYˆİ]\Îˆ^[Y[œİ]\ËˆXØÙ\ÜÔİ\Y]ˆ^[Y[˜XØÙ\ÜÔİ\Y]ˆXØÙ\ÜÑ[™Ğ]ˆ^[Y[˜XØÙ\ÜÑ[™Ğ]ˆJNÂˆHØ]Ú
-\œ›ÜŠHÂˆÛÛœİY\ÜØYÙHBˆ\œ›Üˆ[œİ[˜Ù[Ùˆ\œ›Ü‚ˆÈ\œ›Ü‹›Y\ÜØYÙBˆˆ•[˜X›HÈÛÛ™š\›HİXœØÜš\[Ûˆ^[Y[ˆÂ‚ˆ™]\›ˆ™^™\ÜÛœÙKšœÛÛŠˆÈ\œ›ÜˆY\ÜØYÙHKˆÈİ]\ÎˆBˆ
-NÂˆBŸB‚™^ÜÛÛœİÔÕHÚ]\SY]šXÜÊ‹Ø\KÜİXœØÜš\[Û‹İÙXšÛÚÈ‹ÔÕ[™\ŠNÂ
+    return NextResponse.json({
+      success: true,
+      paymentId: payment.id,
+      status: payment.status,
+      accessStartedAt: payment.accessStartedAt,
+      accessEndsAt: payment.accessEndsAt,
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Unable to confirm subscription payment.";
+
+    return NextResponse.json(
+      { error: message },
+      { status: 400 }
+    );
+  }
+}
+
+export const POST = withApiMetrics("/api/subscription/webhook", POSTHandler);
