@@ -5,6 +5,7 @@ import bcrypt from "bcryptjs";
 import { randomBytes } from "crypto";
 import { isSupportedMarket } from "@/lib/market";
 import { authOptions } from "@/lib/auth";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
   isUkAccount,
@@ -277,7 +278,7 @@ async function DELETEHandler(req: Request) {
         companyNumber: null,
         marketingConsent: false,
         marketingConsentAt: null,
-        marketResearch: null,
+        marketResearch: Prisma.DbNull,
         deletionRequestedAt: stamp,
         isTester: false,
         testerApprovalStatus: null,
