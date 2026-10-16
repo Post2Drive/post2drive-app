@@ -144,6 +144,7 @@ async function runQA() {
   const countryCode = (process.env.QA_MARKET_COUNTRY || "GB").trim().toUpperCase();
   const market = getMarket(countryCode);
   if (!market) throw new Error("QA_MARKET_COUNTRY must be a supported country code.");
+  const selectedMarket = market;
   if (!isQaRunnerEnabled()) {
     throw new Error("QA runner is disabled unless an explicitly allow-listed staging deployment and isolated QA database are configured.");
   }
@@ -233,7 +234,7 @@ async function runQA() {
       endpoints[path] = { count: row.count, failures: row.failures, p50Ms: row.durations[Math.floor((row.durations.length - 1) * 0.5)], p95Ms: row.durations[Math.floor((row.durations.length - 1) * 0.95)], maxMs: row.durations[row.durations.length - 1] };
     }
     const summary = {
-      runId, marker, status: finalStatus, target: base, targetAccounts: 500, country: market.country, currency: market.currency, marketLabel: market.label, createdAccounts, eventCount: events.length, routeMatrixTarget, routeMatrixExecuted,
+      runId, marker, status: finalStatus, target: base, targetAccounts: 500, country: selectedMarket.country, currency: selectedMarket.currency, marketLabel: selectedMarket.label, createdAccounts, eventCount: events.length, routeMatrixTarget, routeMatrixExecuted,
       passed, failed, durationMs: Date.now() - started, p50Ms: percentile(0.5), p95Ms: percentile(0.95),
       cohorts: { posterFocused: 100, driverFocused: 150, both: 249, restricted: 1 },
       endpoints, syntheticDataRetained: true, realMoneyPaymentsAttempted: false, emailDeliveryTested: false, ...extra,
@@ -258,7 +259,7 @@ async function runQA() {
       const email = "qa-" + runId + "-" + String(i + 1).padStart(3, "0") + "@post2drive.invalid";
       const password = "QA-" + crypto.randomUUID() + "-p2d";
       const payload = {
-        name: "QA User " + (i + 1), email, phone: market.dialingCode + "770090" + String(i).padStart(4, "0"),
+        name: "QA User " + (i + 1), email, phone: selectedMarket.dialingCode + "770090" + String(i).padStart(4, "0"),
         password, companyName: "[QA-" + runId + "] " + cohort + " " + String(i + 1).padStart(3, "0"),
         planType: "individual", isSoleTrader: true, country: market.country, currency: market.currency,
       };
