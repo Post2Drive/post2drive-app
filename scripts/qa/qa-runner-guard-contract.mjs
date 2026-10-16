@@ -69,10 +69,25 @@ try {
   assert.ok(authSource.includes("if (!networkLimit.allowed || !emailLimit.allowed) return null"), "credential login must reject over-limit attempts");
   assert.ok(authSource.includes("Login rate-limit control unavailable."), "login throttling must fail closed without logging raw errors");
 
+  const qaAuthorization = readFileSync("lib/qaRunAuthorization.ts", "utf8");
+  assert.ok(qaAuthorization.includes("isQaRunnerEnabled()"), "QA throttle bypass must require the staging guard");
+  assert.ok(qaAuthorization.includes("target_url = ${base}"), "QA throttle bypass must match the configured staging target");
+  assert.ok(qaAuthorization.includes("target_accounts = 500"), "QA throttle bypass must be limited to the fixed synthetic cohort");
+  assert.ok(qaAuthorization.includes("status = 'running'"), "QA throttle bypass must require a currently running QA run");
+  const rateLimitSource = readFileSync("lib/rateLimit.ts", "utf8");
+  assert.ok(rateLimitSource.includes("isAuthorizedQaRunId(qaRunId, new URL(request.url).origin)"), "network throttle bypass must verify both active run and request origin");
+
+  const qaRoute = readFileSync("app/api/qa/run/route.ts", "utf8");
+  assert.ok(qaRoute.includes('getMarket(countryCode)'), "QA runner must resolve the selected country from supported markets");
+  assert.ok(qaRoute.includes('process.env.QA_MARKET_COUNTRY || "GB"'), "QA runner must support an explicit per-country test selection");
+  assert.ok(qaRoute.includes("country: market.country, currency: market.currency"), "synthetic accounts must use the selected market currency");
+  assert.ok(qaRoute.includes("currency: market.currency"), "synthetic jobs must use the selected market currency");
+  assert.ok(qaRoute.includes('crypto.randomUUID();'), "QA run IDs must use high entropy");
+
   console.log(JSON.stringify({
     status: "passed",
-    checks: rejected.length + 12,
-    covered: ["valid staging allow-list", ...rejected.map(([label]) => label), "GET guard before sensitive operations", "raw QA errors not returned", "GET and POST handlers present", "resend endpoint rate-limited", "verification token endpoint rate-limited", "login network/email rate limits", "login throttling fails closed"]
+    checks: rejected.length + 21,
+    covered: ["valid Railway staging allow-list", ...rejected.map(([label]) => label), "GET guard before sensitive operations", "raw QA errors not returned", "GET and POST handlers present", "resend endpoint rate-limited", "verification token endpoint rate-limited", "login network/email rate limits", "login throttling fails closed", "QA throttle bypass requires an active run, target and origin", "QA runner is market-parameterized", "synthetic fixtures use market currency", "high-entropy QA run IDs"]
   }, null, 2));
 } finally {
   for (const [key, value] of Object.entries(original)) {
