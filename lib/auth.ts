@@ -20,7 +20,7 @@ export const authOptions: NextAuthOptions = {
         if (!credentials?.email || !credentials?.password) return null;
 
         const normalizedEmail = credentials.email.trim().toLowerCase();
-        const rawQaRunId = req.headers["x-post2drive-qa-run-id"];
+        const rawQaRunId = req.headers?.["x-post2drive-qa-run-id"];
         const qaRunId = Array.isArray(rawQaRunId) ? rawQaRunId[0] : rawQaRunId;
         const authorizedQaRun = qaRunId ? await isAuthorizedQaRunId(qaRunId) : false;
 
