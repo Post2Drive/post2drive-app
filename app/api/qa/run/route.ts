@@ -788,6 +788,9 @@ async function runAndCleanup() {
     const cleanup = await cleanupSyntheticRuns([String(summary.runId)], base);
     console.log("POST2DRIVE_QA_CLEANUP_RESULT " + JSON.stringify(cleanup));
   }
+  if (summary?.status === "failed" || summary?.status === "aborted") {
+    lastError = "QA run did not pass; inspect the preserved country report.";
+  }
   return summary;
 }
 
