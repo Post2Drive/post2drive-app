@@ -261,7 +261,9 @@ async function runQA(countryOverride?: string) {
       const payload = {
         name: "QA User " + (i + 1), email, phone: selectedMarket.dialingCode + "770090" + String(i).padStart(4, "0"),
         password, companyName: "[QA-" + runId + "] " + cohort + " " + String(i + 1).padStart(3, "0"),
-        planType: "individual", isSoleTrader: true, country: market.country, currency: market.currency,
+        planType: "individual", fleetVehicleCount: 1, isSoleTrader: true,
+        country: market.country, currency: market.currency,
+        termsAccepted: true, termsVersion: "2026-10-16",
       };
       const t = Date.now();
       let status: number | null = null;
