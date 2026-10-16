@@ -1,0 +1,54 @@
+name: Build Android tester APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      server_url:
+        description: "HTTPS URL of the specific non-production Post2Drive deployment to load in this APK"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-debug-apk:
+    name: Build configured Android QA APK,
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CAPACITOR_SERVER_URL: ${{ inputs.server_url }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Validate configured target
+        run: |
+          node -e 'const u = new URL(process.env.CARCITOR_SERVER_URL); if (u.protocol !== "https:" || !u.hostname) process.exit(1); if (!/(^|[.-])(staging|stage|preview|dev|test)([.-]|$)/i.test(u.hostname)) { console.error("Hostname must clearly identify a non-production environment."); process.exit(1); } console.log(`Building for ${u.origin}`);'
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Install JavaScript dependencies
+        run: npm ci
+      - name: Sync Capacitor Android project
+        run: npx cap sync android
+      - name: Build debug APK
+        working-directory: android
+        run: ./gradlew --no-daemon assembleDebug
+      - name: Upload QA APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: post2drive-android-qa-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 7

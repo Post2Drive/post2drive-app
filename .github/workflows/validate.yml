@@ -1,0 +1,72 @@
+name: Validate
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main, "feat/**", "feature/**"]
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: post2drive
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d post2drive"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/post2drive?schema=public
+      NEXTAUTH_SECRET: ci-only-secret
+      NEXTAUTH_URL: http://localhost:3000
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Validate reliability confidence-bound calculations
+        run: node scripts/qa/reliability-budget.mjs
+      - name: Validate Railway health endpoint contract
+        run: npm run qa:health-contract
+      - name: Validate lifecycle, incident, and market-guard contracts
+        run: npm run qa:lifecycle-contract
+      - name: Validate supported-market isolation
+        run: npm run qa:market-isolation
+      - name: Validate UK/India pickup-time conversion and DST edges
+        run: npm run qa:market-timezone
+      - name: Validate Prisma schema
+        run: npx prisma validate --schema=prisma/schema.prisma
+      - name: Generate Prisma client
+        run: npx prisma generate --schema=prisma/schema.prisma
+      - name: Apply all migrations to a clean PostgreSQL database
+        run: npx prisma migrate deploy --schema=prisma/schema.prisma
+      - name: Validate migrations in isolated staging schema
+        run: |
+          DATABASE_URL="postgresql://postgres:postgres@localhost:5432/post2drive?schema=staging" npx prisma migrate deploy --schema=prisma/schema.prisma
+          psql "postgresql://postgres:postgres@localhost:5432/post2drive" -v ON_ERROR_STOP=1 -c "SELECT count(*) > 0 AS staging_migrations_applied FROM staging.\"_prisma_migrations\" WHERE finished_at IS NOT NULL;"
+      - name: Install PostgreSQL client for QA inventory validation
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+      - name: Validate read-only QA cleanup inventory on an empty database
+        run: |
+          psql "postgresql://postgres:postgres@localhost:5432/post2drive" -v run_id=ci-no-such-run -f scripts/qa/cleanup-inventory.sql > /tmp/qa-inventory.txt
+          grep -q "(0 rows)" /tmp/qa-inventory.txt
+      - name: Type-check TypeScript
+        run: npx tsc --noEmit
+      - name: Build Next.js production bundle
+        run: npm run build
