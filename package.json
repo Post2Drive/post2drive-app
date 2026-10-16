@@ -13,7 +13,8 @@
     "qa:market-isolation": "node --experimental-strip-types scripts/qa/market-isolation-contract.mjs",
     "qa:health-contract": "node scripts/qa/health-contract.mjs",
     "qa:country-matrix": "node --experimental-strip-types scripts/qa/country-matrix-contract.mjs",
-    "qa:all": "npm run qa:health-contract && npm run qa:market-timezone && npm run qa:market-isolation && npm run qa:country-matrix && npm run qa:lifecycle-contract"
+    "qa:qa-runner-guard": "node --experimental-strip-types scripts/qa/qa-runner-guard-contract.mjs",
+    "qa:all": "npm run qa:health-contract && npm run qa:market-timezone && npm run qa:market-isolation && npm run qa:country-matrix && npm run qa:qa-runner-guard && npm run qa:lifecycle-contract"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.2",
