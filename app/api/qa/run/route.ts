@@ -93,8 +93,8 @@ async function cleanupSyntheticRuns(runIds: string[], base: string) {
       );
       const run = runs[0];
       const allowedStatuses = new Set(["completed", "running", "failed", "aborted"]);
-      if (!run || !allowedStatuses.has(run.status) || run.target_url !== base || run.target_accounts !== 500) {
-        throw new Error("Cleanup refused: run must be an explicitly named 500-account QA run for this exact staging target: " + runId);
+      if (!run || !allowedStatuses.has(run.status) || run.target_url !== base || run.target_accounts !== 10_000) {
+        throw new Error("Cleanup refused: run must be an explicitly named 10,000-account QA run for this exact staging target: " + runId);
       }
       const marker = "%QA-" + runId + "%";
       const emailPattern = "qa-" + runId + "-%@post2drive.invalid";
@@ -148,7 +148,7 @@ async function runQA() {
   if (!isQaRunnerEnabled()) {
     throw new Error("QA runner is disabled unless an explicitly allow-listed staging deployment and isolated QA database are configured.");
   }
-  if (!base.startsWith("https://") || !db || process.env.QA_ACCOUNT_COUNT !== "500" || process.env.POST2DRIVE_QA_DATABASE_ISOLATED !== "true") throw new Error("QA preflight requires an HTTPS staging target, an explicitly isolated DATABASE_URL and QA_ACCOUNT_COUNT=500.");
+  if (!base.startsWith("https://") || !db || process.env.QA_ACCOUNT_COUNT !== "10000" || process.env.POST2DRIVE_QA_DATABASE_ISOLATED !== "true") throw new Error("QA preflight requires an HTTPS staging target, an explicitly isolated DATABASE_URL and QA_ACCOUNT_COUNT=10000.");
   const runId = new Date().toISOString().replace(/[^0-9]/g, "").slice(0, 14) + "-" + crypto.randomUUID();
   const marker = "QA-" + runId;
   const started = Date.now();
@@ -234,9 +234,9 @@ async function runQA() {
       endpoints[path] = { count: row.count, failures: row.failures, p50Ms: row.durations[Math.floor((row.durations.length - 1) * 0.5)], p95Ms: row.durations[Math.floor((row.durations.length - 1) * 0.95)], maxMs: row.durations[row.durations.length - 1] };
     }
     const summary = {
-      runId, marker, status: finalStatus, target: base, targetAccounts: 500, country: selectedMarket.country, currency: selectedMarket.currency, marketLabel: selectedMarket.label, createdAccounts, eventCount: events.length, routeMatrixTarget, routeMatrixExecuted,
+      runId, marker, status: finalStatus, target: base, targetAccounts: 10_000, country: selectedMarket.country, currency: selectedMarket.currency, marketLabel: selectedMarket.label, createdAccounts, eventCount: events.length, routeMatrixTarget, routeMatrixExecuted,
       passed, failed, durationMs: Date.now() - started, p50Ms: percentile(0.5), p95Ms: percentile(0.95),
-      cohorts: { posterFocused: 100, driverFocused: 150, both: 249, restricted: 1 },
+      cohorts: { posterFocused: 100, driverFocused: 150, both: 9_749, restricted: 1 },
       endpoints, syntheticDataRetained: true, realMoneyPaymentsAttempted: false, emailDeliveryTested: false, ...extra,
     };
     await prisma.$executeRawUnsafe(
@@ -248,14 +248,14 @@ async function runQA() {
   }
 
   await prisma.$executeRawUnsafe(
-    "INSERT INTO qa_test_runs(id,target_url,target_accounts,status) VALUES($1,$2,500,'running')",
+    "INSERT INTO qa_test_runs(id,target_url,target_accounts,status) VALUES($1,$2,10000,'running')",
     runId, base,
   );
 
   try {
-    console.log("Starting staging QA run " + runId + " for " + market.country + "/" + market.currency + " with 500 synthetic accounts at " + base);
-    await parallel(Array.from({ length: 500 }, (_, i) => i), 2, async i => {
-      const cohort: AccountFixture["cohort"] = i < 100 ? "poster-focused" : i < 250 ? "driver-focused" : i < 499 ? "both" : "restricted";
+    console.log("Starting staging QA run " + runId + " for " + market.country + "/" + market.currency + " with 10,000 synthetic accounts at " + base);
+    await parallel(Array.from({ length: 10_000 }, (_, i) => i), 12, async i => {
+      const cohort: AccountFixture["cohort"] = i < 100 ? "poster-focused" : i < 250 ? "driver-focused" : i < 9_999 ? "both" : "restricted";
       const email = "qa-" + runId + "-" + String(i + 1).padStart(3, "0") + "@post2drive.invalid";
       const password = "QA-" + crypto.randomUUID() + "-p2d";
       const payload = {
@@ -277,15 +277,15 @@ async function runQA() {
       const persistStarted = Date.now();
       try {
         await prisma.$transaction(async tx => {
-          const ukPromotion = market.country === "GB" && i !== 499;
-          const paidWeeklyMarket = market.country !== "GB" && market.country !== "IN" && i !== 499;
+          const ukPromotion = market.country === "GB" && i !== 9_999;
+          const paidWeeklyMarket = market.country !== "GB" && market.country !== "IN" && i !== 9_999;
           const accessEndsAt = new Date(Date.now() + 60 * 86400000);
           await tx.account.update({
             where: { id: accountId },
             data: {
-              isTester: i !== 499,
-              verificationStatus: i === 499 ? "not_started" : "verified",
-              verifiedAt: i === 499 ? null : new Date(),
+              isTester: i !== 9_999,
+              verificationStatus: i === 9_999 ? "not_started" : "verified",
+              verifiedAt: i === 9_999 ? null : new Date(),
               promotionParticipant: ukPromotion,
               trialStartedAt: ukPromotion ? new Date() : null,
               trialEndsAt: ukPromotion ? accessEndsAt : null,
@@ -306,7 +306,7 @@ async function runQA() {
     });
 
     await prisma.$executeRawUnsafe("UPDATE qa_test_runs SET created_accounts=$2 WHERE id=$1", runId, createdAccounts);
-    if (createdAccounts !== 500) return await finish("aborted", { reason: "Stopped before workflows because signup did not create exactly 500 accounts.", createdAccounts });
+    if (createdAccounts !== 10_000) return await finish("aborted", { reason: "Stopped before workflows because signup did not create exactly 10,000 accounts.", createdAccounts });
 
     await parallel(fixtures, 4, async account => {
       const client = new ApiClient(account, base, runId);
@@ -644,7 +644,7 @@ async function runQA() {
       await check(signed[0].client!, signed[0], "admin-access", "ordinary-user-cannot-read-admin", "GET", "/api/admin/testers", undefined, [403]);
       await check(signed[0].client!, signed[0], "payments", "pending-payment-record-without-real-charge", "POST", "/api/subscription/create-payment", {}, [200]);
     }
-    const restricted = fixtures.find(a => a.index === 499);
+    const restricted = fixtures.find(a => a.index === 9_999);
     if (restricted?.client && posters[0]) {
       const sample = await createJob(posters[0], 1800, "bid");
       if (sample) await check(restricted.client, restricted, "access-control", market.country === "IN" ? "india-non-weekly-market-access-policy" : "restricted-account-cannot-bid", "POST", "/api/jobs/" + sample + "/bid", { amount: 100 }, market.country === "IN" ? [200] : [403, 402]);
@@ -747,7 +747,7 @@ async function runQA() {
 
     // Delete one synthetic account through the real account-deletion flow only after
     // its route-matrix checks; the QA cleanup can still recover it by run mapping.
-    const deleteFixture = fixtures.find(account => account.index === 498 && account.client);
+    const deleteFixture = fixtures.find(account => account.index === 9_998 && account.client);
     if (deleteFixture?.client) {
       await check(deleteFixture.client, deleteFixture, "account-lifecycle", "synthetic-account-delete-confirmation", "DELETE", "/api/account", { confirm: "DELETE", currentPassword: deleteFixture.password }, [200, 202]);
     }
@@ -852,7 +852,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: true, active, activeRunId, lastRunId, lastFinishedAt, lastError: lastError ? "QA run failed; inspect restricted staging logs." : null });
   }
   if (!token) return NextResponse.json({ ok: true, stagingOnly: true });
-  if (!expectedToken || token !== expectedToken || accounts !== "500" || target !== "staging" || confirm !== "RUN_500_SYNTHETIC_ACCOUNTS_ON_STAGING") {
+  if (!expectedToken || token !== expectedToken || accounts !== "10000" || target !== "staging" || confirm !== "RUN_10000_SYNTHETIC_ACCOUNTS_ON_STAGING") {
     return NextResponse.json({ error: "Unauthorized or invalid staging confirmation." }, { status: 401 });
   }
   if (active) return NextResponse.json({ error: "A QA run is already active.", activeRunId }, { status: 409 });
@@ -862,7 +862,7 @@ export async function GET(req: Request) {
     lastError = error instanceof Error ? error.message : String(error);
     console.error("QA background task failed", error);
   }).finally(() => { active = false; });
-  return NextResponse.json({ accepted: true, target: "staging", accounts: 500 });
+  return NextResponse.json({ accepted: true, target: "staging", accounts: 10_000 });
 }
 
 export async function POST(req: Request) {
@@ -894,8 +894,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: error instanceof Error ? error.message : "Cleanup failed." }, { status: 409 });
     }
   }
-  if (body?.target !== "staging" || body?.accounts !== 500 || body?.confirm !== "RUN_500_SYNTHETIC_ACCOUNTS_ON_STAGING") {
-    return NextResponse.json({ error: "Explicit staging target, accounts=500 and confirmation token required." }, { status: 400 });
+  if (body?.target !== "staging" || body?.accounts !== 10_000 || body?.confirm !== "RUN_10000_SYNTHETIC_ACCOUNTS_ON_STAGING") {
+    return NextResponse.json({ error: "Explicit staging target, accounts=10000 and confirmation token required." }, { status: 400 });
   }
   active = true;
   lastError = null;
