@@ -7,11 +7,11 @@
 
 ## Prepared source bundle
 
-The current clean-start bundle is named post2drive-clean-start.zip. Its SHA-256 is:
+The current clean-start bundle is named post2drive-clean-start.zip. SHA-256:
 
-    152c51e2c6a21400cec56b67b618c9b2e131978c6d164911e0999921da267625
+    19c34528045b717ef5f6e7546f028a884ece41414073ac13c22b51d6b88a91fc
 
-The ZIP contains the Next.js/TypeScript app and docs, including the database-aware health endpoint, Railway staging runbook and health contract check. It excludes .env files, node_modules, .next, Android build outputs, APK/AAB files and signing keys. Recompute this hash if the bundle changes.
+The ZIP contains the Next.js/TypeScript app and docs, including the database-aware health endpoint, Railway staging runbook and health contract check. It excludes .env files, node_modules, .next, Android build outputs, APK/AAB files and signing keys. Recompute the checksum if the bundle changes.
 
 ## Verified targeted checks
 
@@ -19,7 +19,7 @@ The ZIP contains the Next.js/TypeScript app and docs, including the database-awa
 - UK/India timezone conversion and daylight-saving edge-case tests — pass.
 - Lifecycle contract regression checks — pass.
 - Reliability-budget calculation check — pass.
-- Railway health-endpoint contract check — pass.
+- App health endpoint contract check — pass.
 - ZIP integrity and excluded-artifact checks — pass.
 
 These targeted checks are not a substitute for CI. A complete dependency install, Prisma migration validation, TypeScript check and Next.js production build have not yet been verified successfully in this environment.
@@ -31,12 +31,13 @@ Project ID: 074d55f7-6a58-4c46-86aa-a2c7b0079859
 Environment: staging  
 Environment ID: 293eb264-dd1d-4eef-87ca-016943459edf
 
-- Postgres service ID: 4fb4f66a-9869-4976-bc29-217efe0104f4 — deployment succeeded; persistent volume attached.
-- Redis service ID: 47efbd4e-f432-4fa1-91eb-a809c26d9f80 — deployment succeeded; persistent volume attached; not consumed by the app code yet.
-- Web service ID: 561c5355-867e-49fc-84bf-e519e1ac8ef0 — configured but has no source or deployment.
-- Reserved marketplace URL: https://post2drive-web-staging.up.railway.app — domain is assigned to web service port 3000, but it is not yet serving the app.
-- Infrastructure smoke-test service ID: 04107a5c-3b23-4d89-8864-af75355530a3 — deployed as a Railway Function with Postgres/Redis references.
-- Infrastructure smoke-test URL: https://post2drive-infra-smoke-test-staging.up.railway.app — its home page clearly states that it is an infra check, not the marketplace. GET /api/health checks PostgreSQL and Redis connectivity. Railway reports a successful deployment and domain assignment; an external HTTP request has not yet been independently verified by the available fetch tools.
+- Postgres service ID: 4fb4f66a-9869-4976-bc29-217efe0104f4 — deployment succeeded; online; persistent volume attached.
+- Redis service ID: 47efbd4e-f432-4fa1-91eb-a809c26d9f80 — deployment succeeded; online; persistent volume attached; not consumed by the app code yet.
+- Web service ID: 561c5355-867e-49fc-84bf-e519e1ac8ef0 — configured but has no source or application deployment.
+- Reserved marketplace URL: https://post2drive-web-staging.up.railway.app — assigned to web service port 3000, but it is not serving the app yet.
+- Infrastructure smoke-test service ID: 04107a5c-3b23-4d89-8864-af75355530a3 — Railway Function deployment succeeded.
+- Infrastructure smoke-test URL: https://post2drive-infra-smoke-test-staging.up.railway.app — clearly labeled as an infrastructure check, not the marketplace.
+- Health URL: https://post2drive-infra-smoke-test-staging.up.railway.app/api/health — verified with an HTTP 200 response from a POST probe. This endpoint returns 200 only if a PostgreSQL SELECT 1 and Redis PING both succeed; it does not expose credentials or connection details.
 
 The web service is configured for Railpack, npm run build, npx prisma migrate deploy, npm run start, and /api/health. Its database and Redis settings use Railway private-service variable references. A staging-only NextAuth secret is configured; no live email or payment credentials are configured.
 
