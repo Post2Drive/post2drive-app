@@ -895,7 +895,7 @@ export async function POST(req: Request) {
   }
   active = true;
   lastError = null;
-  void runQA().catch(error => {
+  void runAndCleanup().catch(error => {
     lastError = error instanceof Error ? error.message : String(error);
     console.error("QA background task failed", error);
   }).finally(() => { active = false; });
