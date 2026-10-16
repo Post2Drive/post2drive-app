@@ -146,7 +146,7 @@ Before accepting real subscription payments, select a provider and implement/tes
 | `npx tsc --noEmit` | Run TypeScript type checking |
 | `npx prisma migrate deploy --schema=prisma/schema.prisma` | Apply committed migrations |
 | `npm run qa:lifecycle-contract` | Run lifecycle, incident, and market-isolation regression guards |
-| `npm run qa:market-timezone` | Run UK GMT/BST, India IST, and daylight-saving edge-case tests |
+| `npm run qa:market-timezone` | Run UK, India and euro-market timezone/DST edge-case tests |
 | `node scripts/qa/reliability-budget.mjs` | Verify reliability confidence-bound calculations |
 
 Run the timezone and lifecycle contract checks, Prisma migration checks, TypeScript check, and production build before proposing a release. Review the scripts in `package.json` before adding or changing commands.
