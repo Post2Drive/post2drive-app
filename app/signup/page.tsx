@@ -32,10 +32,15 @@ export default function SignupPage() {
   const selectedCountry = COUNTRIES.find((country) => country.code === form.country);
   const marketLabel = selectedCountry?.name ?? "Selected market";
   const marketDisplay = form.country ? `${marketLabel} · ${form.currency}` : "Choose your market";
-  const hasWeeklyPricing = isUk || form.currency === "EUR";
+  const hasWeeklyPricing = Boolean(selectedCountry && !isIndia);
   const priceSymbol = symbolFor(form.currency);
   const vehicleCount = Number(form.fleetVehicleCount);
   const selectedPlan = vehicleCount === 1 ? "individual" : "fleet";
+  function formatMarketPrice(amount: number) {
+    return new Intl.NumberFormat(selectedCountry?.locale ?? "en-GB", {
+      style: "currency", currency: form.currency, minimumFractionDigits: 2, maximumFractionDigits: 2,
+    }).format(amount);
+  }
   const steps = useMemo(() => isIndia
     ? ["Business setup", "Vehicles & capacity", "Your account", "Market research (optional)", "Review & agree"]
     : ["Business setup", "Vehicles & capacity", "Your account", "Plan & review"], [isIndia]);
@@ -134,7 +139,7 @@ export default function SignupPage() {
 
       {step === 1 && <div className="signup-fields">
         <label>How many vehicles will use this account?<input type="number" min="1" max="55" step="1" required value={form.fleetVehicleCount} onChange={(e) => { const v = e.target.value; setForm((current) => ({ ...current, fleetVehicleCount: v, planType: Number(v) === 1 ? "individual" : "fleet" })); }} /></label>
-        <div className="signup-plan-card"><span className="signup-plan-label">YOUR PLAN TYPE</span><h3>{selectedPlan === "individual" ? "Individual · 1 vehicle" : "Fleet · 2–55 vehicles"}</h3>{hasWeeklyPricing ? <><p className="signup-plan-price">{priceSymbol}{(selectedPlan === "individual" ? 9.99 : vehicleCount <= 5 ? 16.99 : vehicleCount <= 15 ? 24.99 : vehicleCount <= 30 ? 36.99 : 49.99).toFixed(2)} / 7 days</p><small>Prices shown for your selected market. Unlimited legitimate marketplace activity; no per-job charges. No payment is taken at signup and checkout is not yet connected.</small></> : <><p>{isIndia ? "India pricing will be confirmed before any paid plan becomes available." : `Pricing for ${marketLabel} will be confirmed before any paid plan becomes available.`}</p><small>Creating an account does not charge you.</small></>}</div>
+        <div className="signup-plan-card"><span className="signup-plan-label">YOUR PLAN TYPE</span><h3>{selectedPlan === "individual" ? "Individual · 1 vehicle" : "Fleet · 2–55 vehicles"}</h3>{hasWeeklyPricing ? <><p className="signup-plan-price">{formatMarketPrice(selectedPlan === "individual" ? 9.99 : vehicleCount <= 5 ? 16.99 : vehicleCount <= 15 ? 24.99 : vehicleCount <= 30 ? 36.99 : 49.99)} / 7 days</p><small>Prices shown for your selected market. Unlimited legitimate marketplace activity; no per-job charges. No payment is taken at signup and checkout is not yet connected.</small></> : <><p>{isIndia ? "India pricing will be confirmed before any paid plan becomes available." : `Pricing for ${marketLabel} will be confirmed before any paid plan becomes available.`}</p><small>Creating an account does not charge you.</small></>}</div>
         <p className="signup-muted">One account supports both posting and fulfilling jobs. Vehicle count determines the account plan—not whether you are a driver or a business posting deliveries. Fleets above 55 vehicles require custom pricing.</p>
       </div>}
 
