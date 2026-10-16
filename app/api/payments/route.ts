@@ -32,6 +32,12 @@ async function GETHandler() {
       );
     }
 
+    const account = await prisma.account.findUnique({
+      where: { id: accountId },
+      select: { country: true, currency: true },
+    });
+    if (!account) return NextResponse.json({ error: "Account not found." }, { status: 404 });
+
     const [asPoster, asDriver] = await Promise.all([
       prisma.job.findMany({
         where: {
@@ -131,6 +137,8 @@ async function GETHandler() {
     ).length;
 
     return NextResponse.json({
+      currency: account.currency,
+      country: account.country,
       asPoster,
       asDriver,
 
