@@ -13,7 +13,7 @@ type RateLimitOptions = {
 function bucketKey(scope: string, identity: string, windowStart: number) {
   // Only a one-way digest is persisted; never write raw emails, IPs or account IDs.
   return createHash("sha256")
-    .update(`${scope}\u0000${identity}\u0000${windowStart}`)
+    .update(`${scope}\\u0000${identity}\\u0000${windowStart}`)
     .digest("hex");
 }
 
@@ -71,7 +71,12 @@ export function clientNetworkIdentity(request: Request): string {
 export async function enforceRateLimit(request: Request, options: Omit<RateLimitOptions, "identity"> & { identity?: string }) {
   try {
     const qaRunId = request.headers.get("x-post2drive-qa-run-id");
-    if (qaRunId && await isAuthorizedQaRunId(qaRunId, new URL(request.url).origin)) {
+    // Railway/Next may expose an internal request URL (for example http://10.x.x.x)
+    // even when the public request reached the HTTPS staging host. The QA helper
+    // independently checks the allow-listed staging deployment, exact QA target,
+    // and a persisted 10,000-account run with status=running. Do not compare that
+    // internal URL origin to QA_BASE_URL or valid synthetic traffic gets throttled.
+    if (qaRunId && await isAuthorizedQaRunId(qaRunId)) {
       return null;
     }
     const result = await checkRateLimit({ ...options, identity: options.identity ?? clientNetworkIdentity(request) });
