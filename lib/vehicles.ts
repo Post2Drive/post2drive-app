@@ -1,0 +1,18 @@
+export const VEHICLE_TYPES = [
+  "Motorcycle courier",
+  "Car",
+  "Small van (SWB)",
+  "Medium van (MWB)",
+  "Large van (LWB)",
+  "Luton van",
+  "7.5t box truck",
+  "12t rigid",
+  "18t rigid",
+  "26t rigid",
+  "32t HGV artic",
+  "Flatbed",
+  "Tipper",
+  "Refrigerated van/truck",
+  "Pickup truck",
+  "Other (specify in notes)",
+];

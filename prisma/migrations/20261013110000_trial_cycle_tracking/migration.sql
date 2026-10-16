@@ -1,0 +1,35 @@
+CREATE TABLE "TrialCycle" (
+  "id" TEXT NOT NULL,
+  "accountId" TEXT NOT NULL,
+  "cycleNumber" INTEGER NOT NULL,
+  "startAt" TIMESTAMP(3) NOT NULL,
+  "endAt" TIMESTAMP(3) NOT NULL,
+  "graceStartedAt" TIMESTAMP(3),
+  "graceEndsAt" TIMESTAMP(3),
+  "status" TEXT NOT NULL DEFAULT 'active',
+  "posterPostedTarget" INTEGER NOT NULL DEFAULT 60,
+  "posterCompletedTarget" INTEGER NOT NULL DEFAULT 15,
+  "driverCompletedTarget" INTEGER NOT NULL DEFAULT 30,
+  "verifiedReferralsTarget" INTEGER NOT NULL DEFAULT 15,
+  "completedReferralsTarget" INTEGER NOT NULL DEFAULT 5,
+  "posterPostedActual" INTEGER NOT NULL DEFAULT 0,
+  "posterCompletedActual" INTEGER NOT NULL DEFAULT 0,
+  "driverCompletedActual" INTEGER NOT NULL DEFAULT 0,
+  "verifiedReferralsActual" INTEGER NOT NULL DEFAULT 0,
+  "completedReferralsActual" INTEGER NOT NULL DEFAULT 0,
+  "posterAdjustedTarget" INTEGER NOT NULL DEFAULT 60,
+  "driverAdjustedTarget" INTEGER NOT NULL DEFAULT 30,
+  "posterFairnessRatio" DOUBLE PRECISION NOT NULL DEFAULT 1,
+  "driverFairnessRatio" DOUBLE PRECISION NOT NULL DEFAULT 1,
+  "graceGranted" BOOLEAN NOT NULL DEFAULT false,
+  "decision" TEXT,
+  "decisionAt" TIMESTAMP(3),
+  "lastEvaluatedAt" TIMESTAMP(3),
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL,
+  CONSTRAINT "TrialCycle_pkey" PRIMARY KEY ("id"),
+  CONSTRAINT "TrialCycle_accountId_fkey" FOREIGN KEY ("accountId") REFERENCES "Account"("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE UNIQUE INDEX "TrialCycle_accountId_cycleNumber_key" ON "TrialCycle"("accountId", "cycleNumber");
+CREATE INDEX "TrialCycle_accountId_status_idx" ON "TrialCycle"("accountId", "status");

@@ -1,0 +1,768 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AccountType {
+  poster
+  driver
+  both
+}
+
+enum PlanType {
+  individual
+  fleet
+}
+
+enum SubscriptionStatus {
+  promotional
+  active
+  past_due
+  cancelled
+  inactive
+}
+
+enum UserRole {
+  owner
+  member
+}
+
+enum VerificationStatus {
+  not_started
+  payment_pending
+  pending
+  failed
+  manual_review
+  verified
+  suspended
+}
+
+enum VerificationAttemptStatus {
+  awaiting_payment
+  pending
+  failed
+  correction
+  manual_review
+  successful
+  expired
+}
+
+enum VerificationFeeStatus {
+  unpaid
+  paid
+  waived
+}
+
+enum JobStatus {
+  open
+  accepted
+  in_transit
+  delivered
+  completed
+  cancelled
+}
+
+enum PriceMode {
+  fixed
+  bid
+}
+
+enum BidStatus {
+  active
+  invalidated
+}
+
+enum ReferralStatus {
+  pending
+  qualified
+  rejected
+}
+
+enum OpportunityStatus {
+  exposed
+  viewed
+  bid
+  accepted
+  expired
+  unavailable
+}
+
+enum QualificationSide {
+  driver
+  poster
+}
+
+enum TesterApprovalStatus {
+  pending
+  approved
+  rejected
+}
+
+model Account {
+  id   String      @id @default(cuid())
+  type AccountType
+
+  // Commercial account classification.
+  planType          PlanType @default(individual)
+  fleetVehicleCount Int?
+
+  companyName   String
+  companyNumber String?
+  isSoleTrader  Boolean @default(false)
+  country       String  @default("GB")
+  currency      String  @default("GBP")
+  displayId     String  @unique
+
+  marketingConsent   Boolean   @default(false)
+  marketingConsentAt DateTime?
+
+  // Captured when the user accepts the current legal terms at signup.
+  termsAcceptedAt DateTime?
+  termsVersion String?
+
+  // Optional India-market product research; not required for account access.
+  marketResearch Json?
+
+  // Anonymized account deletion workflow. Marketplace audit records may be retained without personal identifiers.
+  deletionRequestedAt DateTime?
+
+  // Verification.
+  verificationStatus VerificationStatus @default(not_started)
+  verifiedAt         DateTime?
+  isTester           Boolean            @default(false)
+  testerApprovalStatus TesterApprovalStatus?
+
+  // Activity / inactivity.
+  lastActivityAt DateTime  @default(now())
+  inactiveSince  DateTime?
+
+  // Promotional membership.
+  promotionParticipant Boolean   @default(false)
+  trialStartedAt       DateTime?
+  trialEndsAt          DateTime?
+  freeEndsAt           DateTime?
+  freeMonthsEarned     Int       @default(0)
+  extensionCount       Int       @default(0)
+  graceUsed            Boolean   @default(false)
+
+  // Subscription.
+  subscriptionStatus    SubscriptionStatus @default(inactive)
+  subscriptionPlanKey   String?
+  subscriptionStartedAt DateTime?
+  subscriptionEndsAt    DateTime?
+
+  createdAt DateTime @default(now())
+
+  users        User[]
+  postedJobs   Job[]  @relation("PostedJobs")
+  acceptedJobs Job[]  @relation("AcceptedJobs")
+  bids         Bid[]
+
+  vehicles Vehicle[]
+
+  ratingsGiven    Rating[] @relation("RatingsGiven")
+  ratingsReceived Rating[] @relation("RatingsReceived")
+
+  verificationAttempts VerificationAttempt[]
+
+  referralsGiven   Referral[] @relation("Referrer")
+  referralReceived Referral?  @relation("ReferredAccount")
+
+  driverOpportunities DriverOpportunity[]
+
+  qualificationSnapshots QualificationSnapshot[]
+  trialCycles TrialCycle[]
+
+  usageEvents          PlatformUsageEvent[]
+  jobActivities        JobActivity[]
+  subscriptionPayments SubscriptionPayment[]
+  notifications        Notification[]
+  uploadedIncidentEvidence IncidentEvidence[]
+
+  blocksCreated AccountBlock[] @relation("AccountBlocksCreated")
+  blocksReceived AccountBlock[] @relation("AccountBlocksReceived")
+  moderationReportsFiled ModerationReport[] @relation("ModerationReportReporter")
+  moderationReportsReceived ModerationReport[] @relation("ModerationReportTarget")
+  moderationReportsReviewed ModerationReport[] @relation("ModerationReportReviewer")
+}
+
+model SubscriptionPayment {
+  id String @id @default(cuid())
+
+  account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  accountId String
+
+  planKey     String
+  amountPence Int
+  currency    String @default("GBP")
+
+  status String @default("pending")
+
+  provider           String?
+  providerPaymentId  String? @unique
+  providerCheckoutId String? @unique
+
+  accessStartedAt DateTime?
+  accessEndsAt    DateTime?
+
+  createdAt DateTime  @default(now())
+  paidAt    DateTime?
+
+  @@index([accountId, createdAt])
+  @@index([accountId, status])
+}
+
+model PromotionConfig {
+  // There is one active global promotion configuration.
+  id        String   @id @default("global")
+  name      String   @default("Launch Promotion")
+  startAt   DateTime
+  endAt     DateTime
+  active    Boolean  @default(true)
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+}
+
+model VerificationAttempt {
+  id        String  @id @default(cuid())
+  account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  accountId String
+
+  attemptNumber Int
+
+  status VerificationAttemptStatus @default(awaiting_payment)
+
+  feePence  Int
+  feeStatus VerificationFeeStatus @default(unpaid)
+
+  submittedAt DateTime?
+  startedAt   DateTime  @default(now())
+
+  failedAt DateTime?
+
+  // User submission deadlines.
+  correctionDeadline    DateTime?
+  finalEvidenceDeadline DateTime?
+
+  completedAt DateTime?
+
+  failureReasons Json?
+  notes          String?
+
+  createdAt DateTime @default(now())
+
+  @@unique([accountId, attemptNumber])
+  @@index([accountId, status])
+}
+
+model Rating {
+  id    String @id @default(cuid())
+  job   Job    @relation(fields: [jobId], references: [id])
+  jobId String
+
+  rater   Account @relation("RatingsGiven", fields: [raterId], references: [id])
+  raterId String
+
+  ratee   Account @relation("RatingsReceived", fields: [rateeId], references: [id])
+  rateeId String
+
+  stars   Int
+  comment String?
+
+  createdAt DateTime @default(now())
+
+  @@unique([jobId, raterId])
+}
+
+model Vehicle {
+  id        String  @id @default(cuid())
+  account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  accountId String
+
+  vehicleType String
+  regPlate    String
+
+  ownershipType String?
+  make          String?
+  model         String?
+  mamKg         Int?
+
+  v5cDocumentUrl       String?
+  insuranceDocumentUrl String?
+  operatorLicenceNo    String?
+
+  verificationStatus VerificationStatus @default(not_started)
+  verifiedAt         DateTime?
+
+  motValidUntil       DateTime?
+  insuranceValidUntil DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([regPlate])
+  @@index([accountId])
+}
+
+model User {
+  id        String  @id @default(cuid())
+  account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  accountId String
+
+  name         String
+  email          String    @unique
+  emailVerifiedAt DateTime?
+  phone          String
+  passwordHash   String
+
+  role UserRole @default(owner)
+
+  createdAt DateTime @default(now())
+
+  resetTokens            PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
+}
+
+model EmailVerificationToken {
+  id String @id @default(cuid())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  tokenHash String   @unique
+  expiresAt   DateTime
+  usedAt      DateTime?
+  lastSentAt  DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model PasswordResetToken {
+  id     String @id @default(cuid())
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  token     String   @unique
+  expiresAt DateTime
+
+  createdAt DateTime @default(now())
+}
+
+model Job {
+  id String @id @default(cuid())
+
+  poster   Account @relation("PostedJobs", fields: [posterId], references: [id])
+  posterId String
+
+  pickup    String
+  pickupLat Float?
+  pickupLng Float?
+
+  dropoff    String
+  dropoffLat Float?
+  dropoffLng Float?
+
+  jobDate     DateTime
+  pickupTime  String?
+  dropoffTime String?
+
+  vehicleType String
+
+  weightKg   Float?
+  dimensions String?
+
+  crossBorder Boolean @default(false)
+
+  price        Float
+  pricePerMile Float?
+
+  currency  String    @default("GBP")
+  priceMode PriceMode @default(fixed)
+
+  notes String?
+
+  status JobStatus @default(open)
+
+  acceptedBy   Account? @relation("AcceptedJobs", fields: [acceptedById], references: [id])
+  acceptedById String?
+
+  invitedAccountId String?
+
+  pickupConfirmedById String?
+
+  pickupContactName  String?
+  pickupContactPhone String?
+
+  dropoffContactName  String?
+  dropoffContactPhone String?
+
+  deliveryMarkedById String?
+
+  cancelledById String?
+  cancelledAt   DateTime?
+
+  paidMarkedById String?
+  paidMarkedAt   DateTime?
+
+  receivedConfirmedById String?
+  receivedConfirmedAt   DateTime?
+
+  bids Bid[]
+
+  ratings Rating[]
+
+  driverOpportunities DriverOpportunity[]
+
+  createdAt  DateTime      @default(now())
+  activities JobActivity[]
+  incidentEvidence IncidentEvidence[]
+  moderationReports ModerationReport[]
+
+  @@index([status])
+  @@index([posterId])
+  @@index([acceptedById])
+  @@index([vehicleType])
+  @@index([createdAt])
+}
+
+model Bid {
+  id String @id @default(cuid())
+
+  job   Job    @relation(fields: [jobId], references: [id])
+  jobId String
+
+  bidder   Account @relation(fields: [bidderId], references: [id])
+  bidderId String
+
+  amount Float
+
+  status BidStatus @default(active)
+
+  createdAt DateTime @default(now())
+
+  @@index([jobId])
+  @@index([bidderId])
+}
+
+model Referral {
+  id String @id @default(cuid())
+
+  referrer   Account @relation("Referrer", fields: [referrerId], references: [id])
+  referrerId String
+
+  referredAccount   Account @relation("ReferredAccount", fields: [referredAccountId], references: [id])
+  referredAccountId String  @unique
+
+  status ReferralStatus @default(pending)
+
+  // Registration was successfully verified.
+  verifiedAt DateTime?
+
+  // The referred account completed its first qualifying genuine job.
+  qualifyingJobId String?
+  qualifyingJobAt DateTime?
+
+  rejectedAt      DateTime?
+  rejectionReason String?
+
+  createdAt DateTime @default(now())
+
+  @@index([referrerId, status])
+}
+
+model DriverOpportunity {
+  id String @id @default(cuid())
+
+  driver   Account @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  driverId String
+
+  job   Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  jobId String
+
+  status OpportunityStatus @default(exposed)
+
+  // When this job first became reasonably available to this driver.
+  exposedAt DateTime @default(now())
+
+  // Last time the opportunity was visible to the driver.
+  lastSeenAt DateTime?
+
+  // Driver actually opened/viewed the job.
+  viewedAt DateTime?
+
+  // Driver bid on it.
+  bidAt DateTime?
+
+  // Driver accepted it.
+  acceptedAt DateTime?
+
+  // Job became unavailable before this driver could reasonably act.
+  expiredAt DateTime?
+
+  // Explanation when the opportunity is marked unavailable.
+  reason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([driverId, jobId])
+  @@index([driverId, status])
+  @@index([jobId])
+}
+
+model QualificationSnapshot {
+  id String @id @default(cuid())
+
+  account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  accountId String
+
+  side QualificationSide
+
+  cycleNumber Int
+
+  evaluatedAt DateTime @default(now())
+
+  // Normal programme target.
+  normalTarget Int
+
+  // Platform-derived fair target.
+  adjustedTarget Int
+
+  // Actual completed/achieved amount.
+  actualAmount Int
+
+  // Ratio between 0 and 1.
+  fairnessRatio Float
+
+  // Marketplace opportunity data used for calculation.
+  opportunitiesAvailable Int
+
+  opportunitiesRequired Int
+
+  userParticipationRatio Float?
+
+  qualified    Boolean @default(false)
+  graceGranted Boolean @default(false)
+
+  explanation String?
+
+  @@index([accountId, side, cycleNumber])
+}
+
+model PlatformUsageEvent {
+  id String @id @default(cuid())
+
+  account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  accountId String
+
+  // Examples:
+  // job_accepted
+  // job_completed
+  // job_posted
+  // referral_verified
+  // referral_completed
+  eventType String
+
+  // Unique business key prevents duplicate counting.
+  eventKey String
+
+  // Optional monetary amount in pence.
+  amountPence Int?
+
+  metadata Json?
+
+  createdAt DateTime @default(now())
+
+  @@unique([accountId, eventKey])
+  @@index([accountId, eventType, createdAt])
+}
+
+model JobActivity {
+  id String @id @default(cuid())
+
+  job   Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  jobId String
+
+  actor   Account? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  actorId String?
+
+  action String
+
+  fromStatus JobStatus?
+  toStatus   JobStatus?
+
+  description String?
+
+  metadata Json?
+
+  evidenceFiles IncidentEvidence[]
+
+  createdAt DateTime @default(now())
+
+  @@index([jobId, createdAt])
+  @@index([actorId, createdAt])
+  @@index([action, createdAt])
+}
+
+
+model TesterAccessCode {
+  id                 String   @id @default(cuid())
+  codeHash           String   @unique
+  claimedAt          DateTime?
+  claimedByAccountId String?  @unique
+  createdAt          DateTime @default(now())
+}
+
+
+model RateLimitBucket {
+  // SHA-256 of scope + identity + fixed-window epoch; raw IP/email values are never stored.
+  key       String   @id
+  count     Int      @default(1)
+  expiresAt DateTime
+
+  @@index([expiresAt])
+}
+
+model ApiRequestMetric {
+  id         String   @id @default(cuid())
+  method     String
+  route      String
+  statusCode Int
+  durationMs Int
+  // Set only for requests in non-production environments that carry a QA run identifier.
+  qaRunId    String?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([route, createdAt])
+  @@index([statusCode, createdAt])
+  @@index([qaRunId, createdAt])
+}
+
+model TrialCycle {
+  id        String  @id @default(cuid())
+  account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  accountId String
+
+  // 0 is the initial three-month period; 1-3 are the three possible extensions.
+  cycleNumber Int
+  startAt     DateTime
+  endAt       DateTime
+  graceStartedAt DateTime?
+  graceEndsAt    DateTime?
+
+  // active, grace, extended, failed, or max_extensions_complete.
+  status String @default("active")
+
+  posterPostedTarget       Int @default(60)
+  posterCompletedTarget    Int @default(15)
+  driverCompletedTarget    Int @default(30)
+  verifiedReferralsTarget  Int @default(15)
+  completedReferralsTarget Int @default(5)
+
+  posterPostedActual       Int @default(0)
+  posterCompletedActual    Int @default(0)
+  driverCompletedActual    Int @default(0)
+  verifiedReferralsActual  Int @default(0)
+  completedReferralsActual Int @default(0)
+
+  posterAdjustedTarget Int @default(60)
+  driverAdjustedTarget Int @default(30)
+  posterFairnessRatio  Float @default(1)
+  driverFairnessRatio  Float @default(1)
+
+  graceGranted    Boolean   @default(false)
+  decision        String?
+  decisionAt      DateTime?
+  lastEvaluatedAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([accountId, cycleNumber])
+  @@index([accountId, status])
+}
+
+
+model Notification {
+  id        String   @id @default(cuid())
+  account   Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  accountId String
+
+  type      String
+  title     String
+  body      String
+  jobId     String?
+  eventKey  String?  @unique
+  metadata  Json?
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([accountId, readAt, createdAt])
+  @@index([jobId, createdAt])
+}
+
+model IncidentEvidence {
+  id String @id @default(cuid())
+
+  incident   JobActivity @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  incidentId String
+
+  job   Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  jobId String
+
+  uploadedBy   Account @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
+  uploadedById String
+
+  fileName  String
+  mimeType  String
+  sizeBytes Int
+  sha256    String
+  content   Bytes
+
+  createdAt DateTime @default(now())
+
+  @@index([incidentId, createdAt])
+  @@index([jobId, createdAt])
+}
+
+
+model AccountBlock {
+  id        String   @id @default(cuid())
+  blocker   Account  @relation("AccountBlocksCreated", fields: [blockerId], references: [id], onDelete: Cascade)
+  blockerId String
+  blocked   Account  @relation("AccountBlocksReceived", fields: [blockedId], references: [id], onDelete: Cascade)
+  blockedId String
+  createdAt DateTime @default(now())
+
+  @@unique([blockerId, blockedId])
+  @@index([blockedId, createdAt])
+}
+
+model ModerationReport {
+  id                  String   @id @default(cuid())
+  reporter            Account  @relation("ModerationReportReporter", fields: [reporterId], references: [id], onDelete: Restrict)
+  reporterId          String
+  reportedAccount     Account? @relation("ModerationReportTarget", fields: [reportedAccountId], references: [id], onDelete: SetNull)
+  reportedAccountId   String?
+  job                 Job?     @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  jobId               String?
+  reason              String
+  details             String?
+  status              String   @default("open")
+  adminNotes          String?
+  reviewer            Account? @relation("ModerationReportReviewer", fields: [reviewerAccountId], references: [id], onDelete: SetNull)
+  reviewerAccountId   String?
+  createdAt           DateTime @default(now())
+  reviewedAt          DateTime?
+
+  @@index([status, createdAt])
+  @@index([reporterId, createdAt])
+  @@index([reportedAccountId, createdAt])
+  @@index([jobId, createdAt])
+}
