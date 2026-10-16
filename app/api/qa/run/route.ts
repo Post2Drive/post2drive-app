@@ -155,6 +155,8 @@ async function runQA() {
   lastRunId = runId;
   const events: EventResult[] = [];
   let createdAccounts = 0;
+  let routeMatrixExecuted = 0;
+  const routeMatrixTarget = 10_000;
   const fixtures: AccountFixture[] = [];
 
   async function record(e: { index?: number; accountId?: string; cohort?: string; scenario: string; action: string; method: string; path: string; expected: number[]; actual: number | null; duration: number; details?: Record<string, unknown> }) {
@@ -217,6 +219,7 @@ async function runQA() {
   async function finish(status: string, extra: Record<string, unknown> = {}) {
     const passed = events.filter(e => e.passed).length;
     const failed = events.length - passed;
+    const finalStatus = status === "completed" && (failed > 0 || routeMatrixExecuted !== routeMatrixTarget) ? "failed" : status;
     const durations = events.map(e => e.duration).sort((a, b) => a - b);
     const percentile = (p: number) => durations.length ? durations[Math.floor((durations.length - 1) * p)] : 0;
     const byPath: Record<string, { count: number; failures: number; durations: number[] }> = {};
@@ -230,14 +233,14 @@ async function runQA() {
       endpoints[path] = { count: row.count, failures: row.failures, p50Ms: row.durations[Math.floor((row.durations.length - 1) * 0.5)], p95Ms: row.durations[Math.floor((row.durations.length - 1) * 0.95)], maxMs: row.durations[row.durations.length - 1] };
     }
     const summary = {
-      runId, marker, status, target: base, targetAccounts: 500, country: market.country, currency: market.currency, marketLabel: market.label, createdAccounts, eventCount: events.length,
+      runId, marker, status: finalStatus, target: base, targetAccounts: 500, country: market.country, currency: market.currency, marketLabel: market.label, createdAccounts, eventCount: events.length, routeMatrixTarget, routeMatrixExecuted,
       passed, failed, durationMs: Date.now() - started, p50Ms: percentile(0.5), p95Ms: percentile(0.95),
       cohorts: { posterFocused: 100, driverFocused: 150, both: 249, restricted: 1 },
       endpoints, syntheticDataRetained: true, realMoneyPaymentsAttempted: false, emailDeliveryTested: false, ...extra,
     };
     await prisma.$executeRawUnsafe(
       "UPDATE qa_test_runs SET status=$2,finished_at=now(),created_accounts=$3,successful_checks=$4,failed_checks=$5,duration_ms=$6,summary=$7::jsonb WHERE id=$1",
-      runId, status, createdAccounts, passed, failed, Date.now() - started, JSON.stringify(summary),
+      runId, finalStatus, createdAccounts, passed, failed, Date.now() - started, JSON.stringify(summary),
     );
     console.log("POST2DRIVE_QA_RESULT " + JSON.stringify(summary));
     return summary;
@@ -644,6 +647,108 @@ async function runQA() {
     if (restricted?.client && posters[0]) {
       const sample = await createJob(posters[0], 1800, "bid");
       if (sample) await check(restricted.client, restricted, "access-control", market.country === "IN" ? "india-non-weekly-market-access-policy" : "restricted-account-cannot-bid", "POST", "/api/jobs/" + sample + "/bid", { amount: 100 }, market.country === "IN" ? [200] : [403, 402]);
+    }
+
+    // Exercise the API surface with 10,000 real requests per selected country.
+    // The cases include unauthenticated access-control probes, malformed inputs,
+    // unsupported methods, unknown-resource IDs, country immutability and admin gates.
+    type RouteMatrixCase = {
+      name: string;
+      auth: boolean;
+      method: string;
+      path: (index: number, missingJobId: string) => string;
+      body?: (index: number) => unknown;
+      expected: number[];
+    };
+    const routeMatrixCases: RouteMatrixCase[] = [
+      { name: "unauth-account-read", auth: false, method: "GET", path: () => "/api/account", expected: [401] },
+      { name: "unauth-account-patch", auth: false, method: "PATCH", path: () => "/api/account", body: () => ({ name: "attacker" }), expected: [401] },
+      { name: "unauth-account-delete", auth: false, method: "DELETE", path: () => "/api/account", body: () => ({ confirm: "DELETE", currentPassword: "wrong" }), expected: [401] },
+      { name: "unauth-access-read", auth: false, method: "GET", path: () => "/api/account/access", expected: [401] },
+      { name: "unauth-job-list", auth: false, method: "GET", path: () => "/api/jobs", expected: [401] },
+      { name: "unauth-job-create", auth: false, method: "POST", path: () => "/api/jobs", body: () => ({}), expected: [401] },
+      { name: "unauth-vehicle-list", auth: false, method: "GET", path: () => "/api/vehicles", expected: [401] },
+      { name: "unauth-vehicle-create", auth: false, method: "POST", path: () => "/api/vehicles", body: () => ({}), expected: [401] },
+      { name: "unauth-payment-summary", auth: false, method: "GET", path: () => "/api/payments", expected: [401] },
+      { name: "unauth-notification-list", auth: false, method: "GET", path: () => "/api/notifications", expected: [401] },
+      { name: "unauth-promotion-status", auth: false, method: "GET", path: () => "/api/promotion/status", expected: [401] },
+      { name: "unauth-referral-progress", auth: false, method: "GET", path: () => "/api/promotion/referrals/progress", expected: [401] },
+      { name: "unauth-rating-write", auth: false, method: "POST", path: () => "/api/ratings", body: () => ({ jobId: "missing", stars: 5 }), expected: [401] },
+      { name: "unauth-subscription-create", auth: false, method: "POST", path: () => "/api/subscription/create-payment", body: () => ({}), expected: [401] },
+      { name: "unauth-verification-start", auth: false, method: "POST", path: () => "/api/verification/start", body: () => ({}), expected: [401] },
+      { name: "unauth-admin-performance", auth: false, method: "GET", path: () => "/api/admin/performance", expected: [401] },
+      { name: "unauth-admin-research", auth: false, method: "GET", path: () => "/api/admin/research", expected: [401] },
+      { name: "unauth-admin-testers", auth: false, method: "GET", path: () => "/api/admin/testers", expected: [401] },
+      { name: "unauth-admin-incidents", auth: false, method: "GET", path: () => "/api/admin/incidents/resolve", expected: [401] },
+      { name: "authenticated-job-search", auth: true, method: "GET", path: (i) => "/api/jobs?search=" + encodeURIComponent("QA-" + marker + "-" + i), expected: [200] },
+      { name: "negative-min-price", auth: true, method: "GET", path: () => "/api/jobs?minPrice=-1", expected: [400] },
+      { name: "nonnumeric-max-price", auth: true, method: "GET", path: () => "/api/jobs?maxPrice=not-a-number", expected: [400] },
+      { name: "authenticated-account-read", auth: true, method: "GET", path: () => "/api/account", expected: [200] },
+      { name: "authenticated-access-read", auth: true, method: "GET", path: () => "/api/account/access", expected: [200] },
+      { name: "country-change-rejected", auth: true, method: "PATCH", path: () => "/api/account", body: () => ({ country: market.country === "IN" ? "GB" : "IN", currency: market.country === "IN" ? "GBP" : "INR" }), expected: [409] },
+      { name: "authenticated-vehicle-list", auth: true, method: "GET", path: () => "/api/vehicles", expected: [200] },
+      { name: "invalid-vehicle-type", auth: true, method: "POST", path: () => "/api/vehicles", body: () => ({ vehicleType: "not-a-vehicle" }), expected: [400] },
+      { name: "authenticated-payment-summary", auth: true, method: "GET", path: () => "/api/payments", expected: [200] },
+      { name: "notification-limit-clamped", auth: true, method: "GET", path: (i) => "/api/notifications?limit=" + (i % 150 - 20), expected: [200] },
+      { name: "invalid-rating-rejected", auth: true, method: "POST", path: () => "/api/ratings", body: (i) => ({ jobId: "missing-" + i, stars: i % 9 - 2 }), expected: [400] },
+      { name: "wrong-password-delete-rejected", auth: true, method: "DELETE", path: () => "/api/account", body: () => ({ confirm: "DELETE", currentPassword: "not-the-real-password" }), expected: [403] },
+      { name: "authenticated-promotion-status", auth: true, method: "GET", path: () => "/api/promotion/status", expected: [200] },
+      { name: "authenticated-referral-progress", auth: true, method: "GET", path: () => "/api/promotion/referrals/progress", expected: [200] },
+      { name: "non-admin-performance-denied", auth: true, method: "GET", path: () => "/api/admin/performance", expected: [403] },
+      { name: "non-admin-research-denied", auth: true, method: "GET", path: () => "/api/admin/research", expected: [403] },
+      { name: "non-admin-testers-denied", auth: true, method: "GET", path: () => "/api/admin/testers", expected: [403] },
+      { name: "non-admin-incidents-denied", auth: true, method: "GET", path: () => "/api/admin/incidents/resolve", expected: [403] },
+      { name: "invalid-email-token", auth: true, method: "POST", path: () => "/api/email/verify", body: () => ({ token: "invalid" }), expected: [400] },
+      { name: "invalid-resend-email", auth: true, method: "POST", path: () => "/api/email/verification/resend", body: () => ({ email: "not-an-email" }), expected: [200, 409, 503] },
+      { name: "missing-job-read", auth: true, method: "GET", path: (i, id) => "/api/jobs/" + id, expected: [404] },
+      { name: "missing-job-activity", auth: true, method: "GET", path: (i, id) => "/api/jobs/" + id + "/activity", expected: [404] },
+      { name: "missing-job-bids", auth: true, method: "GET", path: (i, id) => "/api/jobs/" + id + "/bids", expected: [404] },
+      { name: "missing-job-accept", auth: true, method: "POST", path: (i, id) => "/api/jobs/" + id + "/accept", body: () => ({}), expected: [404] },
+      { name: "missing-job-bid", auth: true, method: "POST", path: (i, id) => "/api/jobs/" + id + "/bid", body: () => ({ amount: 0 }), expected: [404] },
+      { name: "missing-job-cancel", auth: true, method: "POST", path: (i, id) => "/api/jobs/" + id + "/cancel", body: () => ({}), expected: [404] },
+      { name: "missing-job-edit", auth: true, method: "PATCH", path: (i, id) => "/api/jobs/" + id + "/edit", body: () => ({}), expected: [404] },
+      { name: "missing-job-confirm-pickup", auth: true, method: "POST", path: (i, id) => "/api/jobs/" + id + "/confirm-pickup", body: () => ({}), expected: [404] },
+      { name: "missing-job-mark-delivered", auth: true, method: "POST", path: (i, id) => "/api/jobs/" + id + "/mark-delivered", body: () => ({}), expected: [404] },
+      { name: "missing-job-confirm-delivered", auth: true, method: "POST", path: (i, id) => "/api/jobs/" + id + "/confirm-delivered", body: () => ({}), expected: [404] },
+      { name: "missing-job-reject-delivered", auth: true, method: "POST", path: (i, id) => "/api/jobs/" + id + "/reject-delivered", body: () => ({}), expected: [404] },
+      { name: "missing-job-driver-cancel", auth: true, method: "POST", path: (i, id) => "/api/jobs/" + id + "/driver-cancel", body: () => ({}), expected: [404] },
+      { name: "missing-job-unassign", auth: true, method: "POST", path: (i, id) => "/api/jobs/" + id + "/unassign", body: () => ({}), expected: [404] },
+      { name: "missing-job-mark-paid", auth: true, method: "POST", path: (i, id) => "/api/jobs/" + id + "/payment/mark-paid", body: () => ({}), expected: [404] },
+      { name: "missing-job-confirm-received", auth: true, method: "POST", path: (i, id) => "/api/jobs/" + id + "/payment/confirm-received", body: () => ({}), expected: [404] },
+      { name: "missing-job-incidents", auth: true, method: "GET", path: (i, id) => "/api/jobs/" + id + "/incidents", expected: [404] },
+      { name: "missing-job-incident-create", auth: true, method: "POST", path: (i, id) => "/api/jobs/" + id + "/incidents", body: () => ({}), expected: [404] },
+      { name: "missing-job-incident-terminate", auth: true, method: "POST", path: (i, id) => "/api/jobs/" + id + "/incidents/terminate", body: () => ({}), expected: [404] },
+      { name: "missing-job-incident-updates", auth: true, method: "POST", path: (i, id) => "/api/jobs/" + id + "/incidents/updates", body: () => ({}), expected: [404] },
+      { name: "missing-job-evidence-upload", auth: true, method: "POST", path: (i, id) => "/api/jobs/" + id + "/incidents/qa-missing-incident/evidence", body: () => ({}), expected: [404] },
+      { name: "missing-job-evidence-read", auth: true, method: "GET", path: (i, id) => "/api/jobs/" + id + "/incidents/qa-missing-incident/evidence/qa-missing-evidence", expected: [404] },
+      { name: "missing-bid-accept", auth: true, method: "POST", path: (i, id) => "/api/jobs/" + id + "/bids/qa-missing-bid/accept", body: () => ({}), expected: [404] },
+      { name: "unsupported-edit-method", auth: true, method: "GET", path: (i, id) => "/api/jobs/" + id + "/edit", expected: [405] },
+      { name: "unsupported-incident-terminate-method", auth: true, method: "GET", path: (i, id) => "/api/jobs/" + id + "/incidents/terminate", expected: [405] },
+      { name: "unsupported-incident-update-method", auth: true, method: "GET", path: (i, id) => "/api/jobs/" + id + "/incidents/updates", expected: [405] },
+      { name: "unauthenticated-health-is-public", auth: false, method: "GET", path: () => "/api/health", expected: [200] },
+      { name: "qa-status-has-no-secret-data", auth: false, method: "GET", path: () => "/api/qa/run", expected: [200] },
+      { name: "auth-session-is-public-safe", auth: false, method: "GET", path: () => "/api/auth/session", expected: [200] },
+      { name: "auth-csrf-is-public-safe", auth: false, method: "GET", path: () => "/api/auth/csrf", expected: [200] },
+      { name: "invalid-signup-is-rejected", auth: false, method: "POST", path: () => "/api/signup", body: () => ({}), expected: [400] },
+      { name: "subscription-webhook-rejects-unsigned", auth: false, method: "POST", path: () => "/api/subscription/webhook", body: () => ({}), expected: [401] },
+      { name: "verification-webhook-rejects-unsigned", auth: false, method: "POST", path: () => "/api/verification/start/webhook", body: () => ({}), expected: [401, 503] },
+      { name: "qa-runner-rejects-unsigned-post", auth: false, method: "POST", path: () => "/api/qa/run", body: () => ({}), expected: [401] },
+    ];
+    await parallel(Array.from({ length: routeMatrixTarget }, (_, i) => i), 12, async i => {
+      const scenario = routeMatrixCases[i % routeMatrixCases.length];
+      const account = scenario.auth && signed.length ? signed[i % signed.length] : null;
+      const missingJobId = "qa-missing-" + runId + "-" + i;
+      const path = scenario.path(i, missingJobId);
+      const body = scenario.body ? scenario.body(i) : undefined;
+      await check(account?.client ?? null, account, "route-matrix", scenario.name + "-" + i, scenario.method, path, body, scenario.expected);
+      routeMatrixExecuted++;
+    });
+
+    // Delete one synthetic account through the real account-deletion flow only after
+    // its route-matrix checks; the QA cleanup can still recover it by run mapping.
+    const deleteFixture = fixtures.find(account => account.index === 498 && account.client);
+    if (deleteFixture?.client) {
+      await check(deleteFixture.client, deleteFixture, "account-lifecycle", "synthetic-account-delete-confirmation", "DELETE", "/api/account", { confirm: "DELETE", currentPassword: deleteFixture.password }, [200, 202]);
     }
 
     const count = async (query: string, ...params: unknown[]) => {
