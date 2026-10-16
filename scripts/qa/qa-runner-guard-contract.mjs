@@ -83,11 +83,15 @@ try {
   assert.ok(qaRoute.includes("country: market.country, currency: market.currency"), "synthetic accounts must use the selected market currency");
   assert.ok(qaRoute.includes("currency: market.currency"), "synthetic jobs must use the selected market currency");
   assert.ok(qaRoute.includes('crypto.randomUUID();'), "QA run IDs must use high entropy");
+  assert.ok(qaRoute.includes("const routeMatrixTarget = 10_000"), "each country run must target 10,000 API route scenarios");
+  assert.ok(qaRoute.includes("routeMatrixExecuted !== routeMatrixTarget"), "a short route matrix must not be reported as completed");
+  assert.ok(qaRoute.includes("'syntheticDataRetained',false"), "cleanup must mark synthetic data as deleted in the preserved report");
+  assert.ok(qaRoute.includes("preservedAuditEvents: true, preservedRunSummary: true"), "cleanup must retain findings and the run summary");
 
   console.log(JSON.stringify({
     status: "passed",
-    checks: rejected.length + 21,
-    covered: ["valid Railway staging allow-list", ...rejected.map(([label]) => label), "GET guard before sensitive operations", "raw QA errors not returned", "GET and POST handlers present", "resend endpoint rate-limited", "verification token endpoint rate-limited", "login network/email rate limits", "login throttling fails closed", "QA throttle bypass requires an active run, target and origin", "QA runner is market-parameterized", "synthetic fixtures use market currency", "high-entropy QA run IDs"]
+    checks: rejected.length + 25,
+    covered: ["valid Railway staging allow-list", ...rejected.map(([label]) => label), "GET guard before sensitive operations", "raw QA errors not returned", "GET and POST handlers present", "resend endpoint rate-limited", "verification token endpoint rate-limited", "login network/email rate limits", "login throttling fails closed", "QA throttle bypass requires an active run, target and origin", "QA runner is market-parameterized", "synthetic fixtures use market currency", "high-entropy QA run IDs", "10,000 API route scenarios required per country", "cleanup preserves findings and records synthetic-data deletion"]
   }, null, 2));
 } finally {
   for (const [key, value] of Object.entries(original)) {
