@@ -15,7 +15,7 @@ export async function recordAcceptedJobUsage(
 
   if (
     !account ||
-    !isUkAccount(account)
+    !isWeeklyPricingEligible(account)
   ) {
     return null;
   }
