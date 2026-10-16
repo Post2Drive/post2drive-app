@@ -25,7 +25,12 @@ export function getPaidPriceMinorUnits(account: {
     ? getFleetPrice(account.fleetVehicleCount ?? 0, account)
     : getIndividualWeeklyPrice(account);
 
-  return price === null ? null : Math.round(price * 100);
+  if (price === null) return null;
+  const currency = account.currency ?? "GBP";
+  const fractionDigits = new Intl.NumberFormat("en", {
+    style: "currency", currency,
+  }).resolvedOptions().maximumFractionDigits;
+  return Math.round(price * (10 ** fractionDigits));
 }
 
 /** Backwards-compatible alias. The integer is currency minor units, not always GBP pence. */
