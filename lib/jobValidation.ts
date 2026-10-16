@@ -119,8 +119,8 @@ export function validateJobInput(body: unknown, expectedMarket?: MarketIdentity)
       const market = marketForAccount(expectedMarket);
       if (!market) return { ok: false, error: "Your account's country and currency are not supported." };
       if (currency !== market.currency) return { ok: false, error: `Jobs in ${market.label} must use ${market.currency}.` };
-    } else if (currency !== "GBP" && currency !== "INR") {
-      return { ok: false, error: "Choose a supported market currency (GBP or INR)." };
+    } else if (currency !== "GBP" && currency !== "INR" && currency !== "EUR") {
+      return { ok: false, error: "Choose a supported market currency (GBP, EUR or INR)." };
     }
 
     return { ok: true, data: {
