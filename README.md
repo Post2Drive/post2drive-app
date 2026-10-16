@@ -1,4 +1,4 @@
-# Post2Drive — UK Freight & Courier Marketplace
+# Post2Drive — UK, India & European Freight and Courier Marketplace
 
 Post2Drive is a two-sided freight and courier marketplace in active development. It is designed for people and businesses that post freight jobs and drivers or transport operators who discover, bid on, and fulfil those jobs.
 
@@ -11,7 +11,7 @@ The product is being built around a unified account: users can post jobs, find j
 ## Clean-start safeguards
 
 - This repository is the new source of truth. Do not connect it to a previous production database or reuse deleted Railway URLs.
-- Keep country and currency immutable after signup; UK/GBP and India/INR listings are kept separate on the server.
+- Keep country and currency immutable after signup; GB/GBP, India/INR, and each euro-using European country/EUR market are kept separate on the server.
 - Never commit `.env` files, signing keys, API keys, tokens, or database credentials.
 - Payment and email integrations remain disabled until their providers and end-to-end verification are configured.
 - Destructive QA runs must use an isolated non-production database and explicit authorization; do not copy production data into tests.
@@ -24,7 +24,7 @@ The product is being built around a unified account: users can post jobs, find j
 - Account types for posters, drivers, and users who need both capabilities.
 - NextAuth credentials authentication with JWT sessions.
 - Optional email-verification flow using Resend, controlled by configuration. Keep it disabled until the sender domain, delivery, token expiry, single-use behavior, resend cooldown, and protected-action checks have been tested end to end.
-- Country-first onboarding for the two currently supported markets: United Kingdom (GBP, Europe/London) and India (INR, Asia/Kolkata), with separate listings and server-enforced isolation.
+- Country-first onboarding for the United Kingdom (GBP), India (INR), all 21 EU euro-area countries, and six additional European euro-using states. Each country has its own currency and local timezone, with server-enforced listing isolation.
 
 ### Freight marketplace and job lifecycle
 - Create and post freight jobs.
@@ -45,23 +45,25 @@ Feature availability and workflow rules are enforced by the application. The lis
 
 ## Subscriptions and commercial rules
 
-The current agreed commercial model is for **UK/GB accounts using GBP**:
+The weekly-access commercial model applies to **UK/GB accounts using GBP and supported euro markets using EUR**. India remains separately configured. Euro plans use the same numeric tiers as the UK:
 
-| Plan | Current price | Access |
-| --- | ---: | --- |
-| Individual | £9.99 | One-off 7-day access |
-| Fleet: 2–5 vehicles | £16.99 | Tier based on vehicle count |
-| Fleet: 6–15 vehicles | £24.99 | Tier based on vehicle count |
-| Fleet: 16–30 vehicles | £36.99 | Tier based on vehicle count |
-| Fleet: 31–55 vehicles | £49.99 | Tier based on vehicle count |
-| Fleet: 56+ vehicles | Custom | Contact / custom pricing |
+| Plan | UK price | Euro-market price | Access |
+| --- | ---: | ---: | --- |
+| Individual | £9.99 | €9.99 | One-off 7-day access |
+| Fleet: 2–5 vehicles | £16.99 | €16.99 | 7-day access |
+| Fleet: 6–15 vehicles | £24.99 | €24.99 | 7-day access |
+| Fleet: 16–30 vehicles | £36.99 | €36.99 | 7-day access |
+| Fleet: 31–55 vehicles | £49.99 | €49.99 | 7-day access |
+| Fleet: 56+ vehicles | Custom | Custom | Contact / custom pricing |
 
 Current rules:
 - Paid access starts only after trusted payment confirmation.
 - A repeat purchase extends an active subscription from its current expiry rather than replacing the remaining time.
 - There is no automatic recurring billing in the current model.
 - There is no per-job fee in the current model.
-- Do not change the country/GBP eligibility, prices, billing cadence, or fee model without an explicit product decision.
+- One access period is 7 × 24 hours from activation or renewal. All tiers include unlimited legitimate marketplace activity and no per-job charges.
+- UK launch promotion, tester invitations, and referral rules remain UK-only; euro markets use the same base weekly plan tiers.
+- These changes establish product pricing logic, not a live checkout. Do not accept real payments until a provider is integrated and settlement/webhook flows are validated.
 
 ### Payment integration status
 
