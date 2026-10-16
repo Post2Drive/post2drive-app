@@ -127,13 +127,12 @@ async function cleanupSyntheticRuns(runIds: string[], base: string) {
       await exec("accounts", qaAccounts + 'DELETE FROM "Account" WHERE id IN (SELECT account_id FROM qa_accounts)', runId, marker, emailPattern);
       await exec("apiMetrics", 'DELETE FROM "ApiRequestMetric" WHERE "qaRunId"=$1', runId);
       await exec("accountMappings", 'DELETE FROM qa_test_accounts WHERE run_id=$1', runId);
-      if (run.status !== "completed") {
-        await tx.$executeRawUnsafe(
-          "UPDATE qa_test_runs SET status='aborted', created_accounts=GREATEST(created_accounts,$2), summary=COALESCE(summary,'{}'::jsonb) || jsonb_build_object('status','aborted','cleanupReason','explicitly requested staging synthetic cleanup','recoveredSyntheticAccounts',$2) WHERE id=$1",
-          runId, recoveredAccounts
-        );
-      }
-      results.push({ runId, priorStatus: run.status, recoveredSyntheticAccounts: recoveredAccounts, deleted: counts, preservedAuditEvents: true, preservedRunSummary: true });
+      const finalStatus = run.status === "completed" ? "completed" : "aborted";
+      await tx.$executeRawUnsafe(
+        "UPDATE qa_test_runs SET status=$2, created_accounts=GREATEST(created_accounts,$3), summary=COALESCE(summary,'{}'::jsonb) || jsonb_build_object('status',$2,'cleanupReason','explicitly requested staging synthetic cleanup','recoveredSyntheticAccounts',$3,'syntheticDataRetained',false,'syntheticDataCleanedAt',now(),'cleanupCounts',$4::jsonb) WHERE id=$1",
+        runId, finalStatus, recoveredAccounts, JSON.stringify(counts)
+      );
+      results.push({ runId, priorStatus: run.status, finalStatus, recoveredSyntheticAccounts: recoveredAccounts, deleted: counts, preservedAuditEvents: true, preservedRunSummary: true });
     }
     return results;
   }, { maxWait: 10000, timeout: 30000 });
