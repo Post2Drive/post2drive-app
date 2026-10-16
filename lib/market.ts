@@ -84,10 +84,10 @@ export function marketForAccount(value: MarketIdentity) {
   return market;
 }
 
-/** The UK and euro-using markets share the same 7-day pricing model. India remains separately configured. */
+/** All supported non-India markets use the UK 7-day access model; India remains separately configured. */
 export function isWeeklyPricingMarket(value: MarketIdentity): boolean {
   const market = marketForAccount(value);
-  return Boolean(market && (market.country === "GB" || market.currency === "EUR"));
+  return Boolean(market && market.country !== "IN");
 }
 
 export function marketTimeZone(value: MarketIdentity): string {
