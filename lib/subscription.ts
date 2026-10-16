@@ -47,8 +47,8 @@ export async function createPendingSubscriptionPayment(accountId: string) {
   }
 
   const planKey = getPaidPlanKey(account);
-  const amountPence = getPaidPriceMinorUnits(account);
-  if (!planKey || amountPence === null) {
+  const amountMinorUnits = getPaidPriceMinorUnits(account);
+  if (!planKey || amountMinorUnits === null) {
     throw new Error("This account does not have a valid weekly subscription price.");
   }
 
@@ -56,7 +56,7 @@ export async function createPendingSubscriptionPayment(accountId: string) {
     data: {
       accountId,
       planKey,
-      amountPence,
+      amountMinorUnits,
       currency: account.currency,
       status: "pending",
     },
