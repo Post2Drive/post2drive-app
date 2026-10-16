@@ -1,0 +1,69 @@
+#!/usr/bin/env node
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { isQaRunnerEnabled } from "../../lib/qaRunnerGuard.ts";
+
+const keys = [
+  "POST2DRIVE_QA_MODE",
+  "POST2DRIVE_QA_ENVIRONMENT",
+  "POST2DRIVE_QA_DATABASE_ISOLATED",
+  "DEPLOYMENT_ID",
+  "POST2DRIVE_QA_ALLOWED_DEPLOYMENT_ID",
+  "QA_BASE_URL",
+];
+const original = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
+
+function configure(overrides = {}) {
+  for (const key of keys) delete process.env[key];
+  Object.assign(process.env, {
+    POST2DRIVE_QA_MODE: "true",
+    POST2DRIVE_QA_ENVIRONMENT: "staging",
+    POST2DRIVE_QA_DATABASE_ISOLATED: "true",
+    DEPLOYMENT_ID: "staging-deployment-123",
+    POST2DRIVE_QA_ALLOWED_DEPLOYMENT_ID: "staging-deployment-123",
+    QA_BASE_URL: "https://post2drive-web-staging.up.railway.app",
+    ...overrides,
+  });
+}
+
+try {
+  configure();
+  assert.equal(isQaRunnerEnabled(), true, "valid, allow-listed staging config should enable QA");
+
+  const rejected = [
+    ["QA mode disabled", { POST2DRIVE_QA_MODE: "false" }],
+    ["production environment", { POST2DRIVE_QA_ENVIRONMENT: "production" }],
+    ["database not isolated", { POST2DRIVE_QA_DATABASE_ISOLATED: "false" }],
+    ["missing deployment ID", { DEPLOYMENT_ID: "" }],
+    ["missing allow-list ID", { POST2DRIVE_QA_ALLOWED_DEPLOYMENT_ID: "" }],
+    ["deployment mismatch", { POST2DRIVE_QA_ALLOWED_DEPLOYMENT_ID: "other-deployment" }],
+    ["HTTP URL", { QA_BASE_URL: "http://post2drive-staging.example.test" }],
+    ["non-staging host", { QA_BASE_URL: "https://post2drive.example.com" }],
+    ["invalid URL", { QA_BASE_URL: "not a URL" }],
+  ];
+  for (const [label, overrides] of rejected) {
+    configure(overrides);
+    assert.equal(isQaRunnerEnabled(), false, `${label} must keep QA disabled`);
+  }
+
+  const route = readFileSync("app/api/qa/run/route.ts", "utf8");
+  const getStart = route.indexOf("export async function GET");
+  const postStart = route.indexOf("export async function POST");
+  assert.ok(getStart >= 0 && postStart > getStart, "QA GET and POST handlers must exist");
+  const getHandler = route.slice(getStart, postStart);
+  const guardPosition = getHandler.indexOf("if (!isQaRunnerEnabled())");
+  const reportPosition = getHandler.indexOf("if (report)");
+  assert.ok(guardPosition >= 0 && reportPosition > guardPosition, "GET staging guard must execute before report/status/run actions");
+  assert.ok(getHandler.includes('lastError: lastError ? "QA run failed; inspect restricted staging logs." : null'), "status endpoint must not expose raw internal QA error strings");
+
+  console.log(JSON.stringify({
+    status: "passed",
+    checks: rejected.length + 4,
+    covered: ["valid staging allow-list", ...rejected.map(([label]) => label), "GET guard before sensitive operations", "raw QA errors not returned", "GET and POST handlers present"]
+  }, null, 2));
+} finally {
+  for (const [key, value] of Object.entries(original)) {
+    if (value === undefined) delete process.env[key];
+    else process.env[key] = value;
+  }
+}
