@@ -34,7 +34,7 @@ export default function SubscriptionPricing() {
         Unlimited legitimate marketplace activity · No per-job charges
       </div>
       <p style={{ margin: "14px 0 0", fontSize: 13, color: "#6B7C93" }}>
-        Fleets with 56+ vehicles need a custom plan. EUR pricing uses the same numeric tiers as GBP. India pricing remains separate. Prices are published for product planning; payment checkout is not connected yet.
+        Fleets with 56+ vehicles need a custom plan. The same numeric tiers apply in each supported non-India market using that market’s local currency. India pricing remains separate. Prices are published for product planning; payment checkout is not connected yet.
       </p>
     </section>
   );
