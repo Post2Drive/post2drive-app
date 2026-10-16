@@ -5,34 +5,29 @@ import {
 } from "@/lib/promotion";
 import { markReferralVerified } from "@/lib/referrals";
 
-export function getVerificationFeePence(
+export function getVerificationFeeMinorUnits(
   account: {
-    type:
-      | "poster"
-      | "driver"
-      | "both";
-    planType:
-      | "individual"
-      | "fleet";
+    type: "poster" | "driver" | "both";
+    planType: "individual" | "fleet";
     fleetVehicleCount?: number | null;
+    currency?: string | null;
   }
 ) {
   /*
-   * Verification is based on the commercial plan, not on
-   * whether a user posts or fulfils jobs.
-   *
-   * Individual: £2 company/person verification.
-   * Fleet: £2 company verification + 50p per vehicle.
+   * The UK schedule is mirrored numerically in euro markets.
+   * Individual: 2.00 in the account currency.
+   * Fleet: 2.00 in the account currency + 0.50 per vehicle.
+   * These integers are minor currency units, not necessarily pence.
    */
   if (account.planType === "fleet") {
-    const vehicleCount =
-      account.fleetVehicleCount || 0;
-
+    const vehicleCount = account.fleetVehicleCount || 0;
     return 200 + vehicleCount * 50;
   }
-
   return 200;
 }
+
+/** Backwards-compatible alias; EUR accounts also use currency minor units (cents). */
+export const getVerificationFeePence = getVerificationFeeMinorUnits;
 
 function addWorkingDays(
   date: Date,
@@ -114,11 +109,9 @@ export async function createVerificationAttempt(
   const attemptNumber =
     attempts.length + 1;
 
-  const feePence =
+  const feeMinorUnits =
     attemptNumber === 1
-      ? getVerificationFeePence(
-          account
-        )
+      ? getVerificationFeeMinorUnits(account)
       : 0;
 
   const feeStatus =
@@ -136,7 +129,8 @@ export async function createVerificationAttempt(
             attemptNumber === 1
               ? "awaiting_payment"
               : "correction",
-          feePence,
+          feeMinorUnits,
+          feeCurrency: account.currency,
           feeStatus,
         },
       }
@@ -159,7 +153,10 @@ export async function createVerificationAttempt(
   return {
     alreadyVerified: false,
     attempt,
-    feePence,
+    feeMinorUnits,
+    // Legacy response alias until all integrations use currency-neutral names.
+    feePence: feeMinorUnits,
+    feeCurrency: account.currency,
   };
 }
 
