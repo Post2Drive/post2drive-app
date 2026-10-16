@@ -29,7 +29,7 @@ export function getPaidPriceMinorUnits(account: {
   const currency = account.currency ?? "GBP";
   const fractionDigits = new Intl.NumberFormat("en", {
     style: "currency", currency,
-  }).resolvedOptions().maximumFractionDigits;
+  }).resolvedOptions().maximumFractionDigits ?? 2;
   return Math.round(price * (10 ** fractionDigits));
 }
 
