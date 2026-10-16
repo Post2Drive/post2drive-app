@@ -22,6 +22,7 @@ async function POSTHandler() {
     return NextResponse.json({
       paymentId: payment.id,
       planKey: payment.planKey,
+      amountMinorUnits: payment.amountPence,
       amountPence: payment.amountPence,
       currency: payment.currency,
       status: payment.status,
