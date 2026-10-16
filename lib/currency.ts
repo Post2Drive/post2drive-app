@@ -6,6 +6,7 @@ export const COUNTRIES = Object.values(MARKETS)
     code: market.country,
     name: market.label,
     currency: market.currency,
+    locale: market.locale,
     dialingCode: market.dialingCode,
   }))
   .sort((a, b) => {
@@ -14,7 +15,7 @@ export const COUNTRIES = Object.values(MARKETS)
     if (a.code === "IN") return -1;
     if (b.code === "IN") return 1;
     return a.name.localeCompare(b.name);
-  }) as { code: SupportedCountry; name: string; currency: string; dialingCode: string }[];
+  }) as { code: SupportedCountry; name: string; currency: string; locale: string; dialingCode: string }[];
 
 /** Friendly names for every currency used by a configured Post2Drive market. */
 const CURRENCY_LABELS: Record<string, string> = {
