@@ -21,6 +21,7 @@ for (const [country, currency] of Object.entries(additionalMarkets)) {
   assert.equal(getMarket(country)?.currency, currency, `${country} must use ${currency}`);
   assert.equal(isSupportedMarket({ country, currency }), true, `${country} + ${currency} must be supported`);
   assert.equal(isSupportedMarket({ country, currency: "EUR" }), false, `${country} must reject mismatched currency`);
+  assert.equal(isWeeklyPricingMarket({ country, currency }), true, `${country} must use the UK weekly pricing model`);
 }
 assert.equal(Object.keys(additionalMarkets).length, 14, "all requested additional markets are included");
 assert.equal(isSupportedMarket({ country: "GB", currency: "GBP" }), true);
@@ -32,7 +33,10 @@ assert.equal(sameMarket({ country: "GB", currency: "GBP" }, { country: "IN", cur
 assert.equal(sameMarket({ country: "FR", currency: "EUR" }, { country: "DE", currency: "EUR" }), false, "euro countries remain isolated from each other");
 assert.equal(isWeeklyPricingMarket({ country: "GB", currency: "GBP" }), true);
 assert.equal(isWeeklyPricingMarket({ country: "IE", currency: "EUR" }), true);
+for (const [country, currency] of Object.entries(additionalMarkets)) {
+  assert.equal(isWeeklyPricingMarket({ country, currency }), true, `${country} must use the UK weekly pricing model`);
+}
 assert.equal(isWeeklyPricingMarket({ country: "IN", currency: "INR" }), false);
 assert.equal(isWeeklyPricingMarket({ country: "FR", currency: "GBP" }), false, "country and currency must match for paid access");
 assert.equal(sameMarket({ country: "GB", currency: "INR" }, { country: "GB", currency: "INR" }), false, "invalid market identities must never compare equal");
-console.log("Market isolation contract checks passed: GB, IN, 27 euro-using markets and 14 additional local-currency markets; currencies and cross-market separation.");
+console.log("Market isolation contract checks passed: UK pricing model for all supported non-India markets, India remains separate, currencies and cross-market separation.");
