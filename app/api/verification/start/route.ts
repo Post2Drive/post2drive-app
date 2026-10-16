@@ -46,6 +46,7 @@ async function POSTHandler() {
     return NextResponse.json({
       success: true,
       ...result,
+      feeCurrency: result.feeCurrency ?? result.account?.currency ?? null,
     });
   } catch (error) {
     console.error(
