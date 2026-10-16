@@ -138,10 +138,10 @@ async function cleanupSyntheticRuns(runIds: string[], base: string) {
   }, { maxWait: 30000, timeout: 180000 });
 }
 
-async function runQA() {
+async function runQA(countryOverride?: string) {
   const base = (process.env.QA_BASE_URL || "").replace(/\/+$/, "");
   const db = process.env.DATABASE_URL || "";
-  const countryCode = (process.env.QA_MARKET_COUNTRY || "GB").trim().toUpperCase();
+  const countryCode = (countryOverride || process.env.QA_MARKET_COUNTRY || "GB").trim().toUpperCase();
   const market = getMarket(countryCode);
   if (!market) throw new Error("QA_MARKET_COUNTRY must be a supported country code.");
   const selectedMarket = market;
@@ -778,8 +778,8 @@ async function runQA() {
   }
 }
 
-async function runAndCleanup() {
-  const summary = await runQA();
+async function runAndCleanup(countryOverride?: string) {
+  const summary = await runQA(countryOverride);
   if (
     process.env.QA_AUTO_CLEANUP === "true" &&
     process.env.QA_ALLOW_CLEANUP === "true" &&
@@ -855,10 +855,12 @@ export async function GET(req: Request) {
   if (!expectedToken || token !== expectedToken || accounts !== "10000" || target !== "staging" || confirm !== "RUN_10000_SYNTHETIC_ACCOUNTS_ON_STAGING") {
     return NextResponse.json({ error: "Unauthorized or invalid staging confirmation." }, { status: 401 });
   }
+  const requestedCountry = (url.searchParams.get("country") || process.env.QA_MARKET_COUNTRY || "GB").trim().toUpperCase();
+  if (!getMarket(requestedCountry)) return NextResponse.json({ error: "Unsupported country code." }, { status: 400 });
   if (active) return NextResponse.json({ error: "A QA run is already active.", activeRunId }, { status: 409 });
   active = true;
   lastError = null;
-  void runAndCleanup().catch(error => {
+  void runAndCleanup(requestedCountry).catch(error => {
     lastError = error instanceof Error ? error.message : String(error);
     console.error("QA background task failed", error);
   }).finally(() => { active = false; });
@@ -894,12 +896,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: error instanceof Error ? error.message : "Cleanup failed." }, { status: 409 });
     }
   }
+  const requestedCountry = String(body?.country || process.env.QA_MARKET_COUNTRY || "GB").trim().toUpperCase();
+  if (!getMarket(requestedCountry)) return NextResponse.json({ error: "Unsupported country code." }, { status: 400 });
   if (body?.target !== "staging" || body?.accounts !== 10_000 || body?.confirm !== "RUN_10000_SYNTHETIC_ACCOUNTS_ON_STAGING") {
     return NextResponse.json({ error: "Explicit staging target, accounts=10000 and confirmation token required." }, { status: 400 });
   }
   active = true;
   lastError = null;
-  void runAndCleanup().catch(error => {
+  void runAndCleanup(requestedCountry).catch(error => {
     lastError = error instanceof Error ? error.message : String(error);
     console.error("QA background task failed", error);
   }).finally(() => { active = false; });
