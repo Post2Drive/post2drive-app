@@ -25,7 +25,7 @@ export const authOptions: NextAuthOptions = {
         const authorizedQaRun = qaRunId ? await isAuthorizedQaRunId(qaRunId) : false;
 
         if (!authorizedQaRun) {
-          const headers = new Headers(req.headers as unknown as HeadersInit);
+          const headers = new Headers((req.headers ?? {}) as unknown as HeadersInit);
           const networkIdentity = clientNetworkIdentity(
             new Request("https://post2drive.invalid/", { headers }),
           );
