@@ -15,7 +15,12 @@ type AccessData = {
   subscriptionEndsAt: string | null;
   subscriptionPlanKey: string | null;
   endsAt: string | null;
-  priceGbp: number | null;
+  price: number | null;
+  currency: string;
+  marketLabel: string;
+  locale: string;
+  timeZone: string;
+  priceGbp?: number | null;
   pendingPayment: {
     id: string;
     amountPence: number;
@@ -24,11 +29,11 @@ type AccessData = {
   } | null;
 };
 
-function formatDate(value: string | null) {
+function formatDate(value: string | null, locale = "en-GB", timeZone = "Europe/London") {
   if (!value) return null;
 
-  return new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Europe/London",
+  return new Intl.DateTimeFormat(locale, {
+    timeZone,
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -79,10 +84,11 @@ export default function SubscriptionStatus() {
         : "var(--color-danger)";
 
   const endsAt = formatDate(
-    data.endsAt ||
-      data.freeEndsAt ||
-      data.subscriptionEndsAt
+    data.endsAt || data.freeEndsAt || data.subscriptionEndsAt,
+    data.locale,
+    data.timeZone,
   );
+  const formattedPrice = data.price === null || !data.currency ? null : new Intl.NumberFormat(data.locale || "en-GB", { style: "currency", currency: data.currency }).format(data.price);
 
   const planName =
     data.planType === "fleet"
@@ -163,7 +169,7 @@ export default function SubscriptionStatus() {
         </span>
       </div>
 
-      {trialActive && data.priceGbp !== null && (
+      {trialActive && formattedPrice !== null && (
         <div
           style={{
             marginTop: 17,
@@ -189,7 +195,7 @@ export default function SubscriptionStatus() {
                 fontSize: 18,
               }}
             >
-              £{data.priceGbp.toFixed(2)} / 7 days
+              {formattedPrice} / 7 days
             </div>
 
             <div
@@ -251,7 +257,7 @@ export default function SubscriptionStatus() {
             fontSize: 13,
           }}
         >
-          Your UK marketplace access has expired. Renewing will restore
+          Your {data.marketLabel.toLowerCase()} marketplace access has expired. Renewing will restore
           marketplace access once payment is successfully confirmed.
         </div>
       )}
