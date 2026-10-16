@@ -63,10 +63,16 @@ try {
   assert.ok(verifyRoute.includes('scope: "email-verification-confirm"'), "verification token attempts must have a network rate limit");
   assert.ok(verifyRoute.includes("if (limit) return limit"), "verification token rate limit must be enforced");
 
+  const authSource = readFileSync("lib/auth.ts", "utf8");
+  assert.ok(authSource.includes('scope: "login-network"'), "credential login must be rate-limited by network");
+  assert.ok(authSource.includes('scope: "login-email"'), "credential login must be rate-limited by normalized email");
+  assert.ok(authSource.includes("if (!networkLimit.allowed || !emailLimit.allowed) return null"), "credential login must reject over-limit attempts");
+  assert.ok(authSource.includes("Login rate-limit control unavailable."), "login throttling must fail closed without logging raw errors");
+
   console.log(JSON.stringify({
     status: "passed",
-    checks: rejected.length + 8,
-    covered: ["valid staging allow-list", ...rejected.map(([label]) => label), "GET guard before sensitive operations", "raw QA errors not returned", "GET and POST handlers present", "resend endpoint rate-limited", "verification token endpoint rate-limited"]
+    checks: rejected.length + 12,
+    covered: ["valid staging allow-list", ...rejected.map(([label]) => label), "GET guard before sensitive operations", "raw QA errors not returned", "GET and POST handlers present", "resend endpoint rate-limited", "verification token endpoint rate-limited", "login network/email rate limits", "login throttling fails closed"]
   }, null, 2));
 } finally {
   for (const [key, value] of Object.entries(original)) {
