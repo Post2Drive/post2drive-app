@@ -662,7 +662,7 @@ async function runQA() {
       syntheticJobActivities: await count('SELECT count(*)::int AS count FROM "JobActivity" a JOIN "Job" j ON j.id=a."jobId" WHERE j.notes LIKE $1', "%" + marker + "%"),
       loggedInteractions: await count("SELECT count(*)::int AS count FROM qa_test_events WHERE run_id=$1", runId),
     };
-    return await finish("completed", { successfulLogins: signed.length, persistedDataSummary, limitations: ["Email delivery and real provider settlements were not attempted.", "This is API-driven lifecycle simulation, not browser-based usability testing.", "Route distances and prices are deterministic scenario estimates calibrated to UK DfT freight statistics, not live routing results or market quotes."] });
+    return await finish("completed", { successfulLogins: signed.length, persistedDataSummary, limitations: ["Email delivery and real provider settlements were not attempted.", "This is API-driven lifecycle simulation, not browser-based usability testing.", "Route distances and prices are deterministic synthetic estimates, not live routing results or market quotes."] });
   } catch (error) {
     lastError = error instanceof Error ? error.message : String(error);
     console.error("Staging QA runner exception", error);
