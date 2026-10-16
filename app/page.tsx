@@ -130,7 +130,7 @@ export default async function HomePage() {
             color: "var(--color-text)",
           }}
         >
-          UK Freight & Courier Exchange
+          Freight & Courier Exchange
         </h1>
 
         <p

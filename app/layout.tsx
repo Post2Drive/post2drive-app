@@ -4,7 +4,7 @@ import MainNav from "./main-nav";
 
 export const metadata = {
   title: "Post2Drive",
-  description: "UK freight and courier job marketplace",
+  description: "Freight and courier marketplace for businesses, fleets and independent drivers",
 };
 
 export default function RootLayout({
