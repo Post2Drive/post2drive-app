@@ -84,6 +84,10 @@ try {
   assert.ok(qaRoute.includes("currency: market.currency"), "synthetic jobs must use the selected market currency");
   assert.ok(qaRoute.includes('crypto.randomUUID();'), "QA run IDs must use high entropy");
   assert.ok(qaRoute.includes("const routeMatrixTarget = 10_000"), "each country run must target 10,000 API route scenarios");
+  assert.ok(qaRoute.includes("Array.from({ length: 10_000 }, (_, i) => i)"), "each country run must provision 10,000 synthetic accounts");
+  assert.ok(qaRoute.includes("createdAccounts !== 10_000"), "the run must abort unless all 10,000 synthetic accounts are created");
+  assert.ok(qaRoute.includes("target_accounts !== 10_000"), "cleanup must be bound to a recorded 10,000-account run");
+  assert.ok(qaRoute.includes('accounts !== "10000"'), "the HTTP trigger must require explicit 10,000-account confirmation");
   assert.ok(qaRoute.includes("routeMatrixExecuted !== routeMatrixTarget"), "a short route matrix must not be reported as completed");
   assert.ok(qaRoute.includes("'syntheticDataRetained',false"), "cleanup must mark synthetic data as deleted in the preserved report");
   assert.ok(qaRoute.includes("preservedAuditEvents: true, preservedRunSummary: true"), "cleanup must retain findings and the run summary");
