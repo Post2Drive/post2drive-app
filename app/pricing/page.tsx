@@ -1,4 +1,4 @@
-import SubscriptionPricing from "@/components/subscription-pricing";
+import SubscriptionUK and euro-market pricing from "@/components/subscription-pricing";
 
 export default function PricingPage() {
   return (
@@ -26,7 +26,7 @@ export default function PricingPage() {
             color: "#6B7C93",
           }}
         >
-          Simple weekly access for the UK marketplace.
+          The same 7-day individual and fleet model is available in GBP for the UK and EUR for supported euro markets.
         </p>
       </div>
 
