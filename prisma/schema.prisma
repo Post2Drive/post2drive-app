@@ -198,7 +198,7 @@ model SubscriptionPayment {
 
   planKey     String
   // Integer amount in currency minor units: pence for GBP, cents for EUR.
-  amountPence Int
+  amountMinorUnits Int
   currency    String @default("GBP")
 
   status String @default("pending")
@@ -237,7 +237,9 @@ model VerificationAttempt {
 
   status VerificationAttemptStatus @default(awaiting_payment)
 
-  feePence  Int
+  // Integer fee in the account currency's minor units (pence/cents/paise).
+  feeMinorUnits Int
+  feeCurrency String @default("GBP")
   feeStatus VerificationFeeStatus @default(unpaid)
 
   submittedAt DateTime?
