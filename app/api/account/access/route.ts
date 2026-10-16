@@ -4,7 +4,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAccountAccess } from "@/lib/access";
-import { getPaidPricePence } from "@/lib/subscription";
+import { getPaidPriceMinorUnits } from "@/lib/subscription";
+import { marketForAccount } from "@/lib/market";
 
 export const dynamic = "force-dynamic";
 
@@ -46,7 +47,9 @@ async function GETHandler() {
     },
   });
 
-  const pricePence = getPaidPricePence(access.account);
+  const priceMinorUnits = getPaidPriceMinorUnits(access.account);
+  const market = marketForAccount(access.account);
+  const price = priceMinorUnits === null ? null : priceMinorUnits / 100;
 
   return NextResponse.json({
     allowed: access.allowed,
@@ -62,7 +65,12 @@ async function GETHandler() {
     subscriptionEndsAt: access.account.subscriptionEndsAt,
     subscriptionPlanKey: access.account.subscriptionPlanKey,
     endsAt: access.endsAt ?? null,
-    priceGbp: pricePence === null ? null : pricePence / 100,
+    price,
+    currency: access.account.currency,
+    marketLabel: market?.label ?? "Marketplace",
+    locale: market?.locale ?? "en-GB",
+    timeZone: market?.timeZone ?? "Europe/London",
+    priceGbp: access.account.currency === "GBP" ? price : null,
     pendingPayment,
   });
 }
