@@ -1,6 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { getFleetPrice, INDIVIDUAL_PRICE_GBP, INDIVIDUAL_ACCESS_DAYS } from "@/lib/pricing";
-import { isUkAccount } from "@/lib/uk";
+import { getFleetPrice, getIndividualWeeklyPrice, INDIVIDUAL_ACCESS_DAYS, isWeeklyPricingEligible } from "@/lib/pricing";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -9,56 +8,48 @@ export function getPaidPlanKey(account: {
   currency?: string | null;
   planType?: "individual" | "fleet" | null;
 }) {
-  if (!isUkAccount(account)) return null;
+  if (!isWeeklyPricingEligible(account)) return null;
   return account.planType === "fleet" ? "fleet" : "individual";
 }
 
-export function getPaidPricePence(account: {
+/** Return the amount in minor currency units (pence for GBP, cents for EUR). */
+export function getPaidPriceMinorUnits(account: {
   country?: string | null;
   currency?: string | null;
   planType?: "individual" | "fleet" | null;
   fleetVehicleCount?: number | null;
 }) {
-  if (!isUkAccount(account)) return null;
+  if (!isWeeklyPricingEligible(account)) return null;
 
-  if (account.planType === "fleet") {
-    const vehicleCount = account.fleetVehicleCount ?? 0;
-    const price = getFleetPrice(vehicleCount, account);
+  const price = account.planType === "fleet"
+    ? getFleetPrice(account.fleetVehicleCount ?? 0, account)
+    : getIndividualWeeklyPrice(account);
 
-    return price === null ? null : Math.round(price * 100);
-  }
-
-  return Math.round(INDIVIDUAL_PRICE_GBP * 100);
+  return price === null ? null : Math.round(price * 100);
 }
 
+/** Backwards-compatible alias. The integer is currency minor units, not always GBP pence. */
+export const getPaidPricePence = getPaidPriceMinorUnits;
+
 export function calculatePaidAccessEnd(startAt: Date) {
-  return new Date(
-    startAt.getTime() + INDIVIDUAL_ACCESS_DAYS * DAY_MS
-  );
+  return new Date(startAt.getTime() + INDIVIDUAL_ACCESS_DAYS * DAY_MS);
 }
 
 export async function createPendingSubscriptionPayment(accountId: string) {
-  const account = await prisma.account.findUnique({
-    where: { id: accountId },
-  });
+  const account = await prisma.account.findUnique({ where: { id: accountId } });
 
-  if (!account) {
-    throw new Error("Account not found.");
+  if (!account) throw new Error("Account not found.");
+  if (!isWeeklyPricingEligible(account)) {
+    throw new Error("Paid weekly access is currently available only to supported GB/GBP and euro/EUR markets.");
   }
-
-  if (!isUkAccount(account)) {
-    throw new Error("Paid UK subscriptions are currently available only for GB accounts using GBP.");
-  }
-
   if (account.verificationStatus !== "verified" && !account.isTester) {
     throw new Error("Account must be successfully verified before purchasing access.");
   }
 
   const planKey = getPaidPlanKey(account);
-  const amountPence = getPaidPricePence(account);
-
+  const amountPence = getPaidPriceMinorUnits(account);
   if (!planKey || amountPence === null) {
-    throw new Error("This account does not have a valid UK subscription price.");
+    throw new Error("This account does not have a valid weekly subscription price.");
   }
 
   return prisma.subscriptionPayment.create({
@@ -66,7 +57,7 @@ export async function createPendingSubscriptionPayment(accountId: string) {
       accountId,
       planKey,
       amountPence,
-      currency: "GBP",
+      currency: account.currency,
       status: "pending",
     },
   });
@@ -86,27 +77,23 @@ export async function confirmSubscriptionPayment(
       include: { account: true },
     });
 
-    if (!payment) {
-      throw new Error("Subscription payment not found.");
+    if (!payment) throw new Error("Subscription payment not found.");
+    if (payment.status === "paid") return payment;
+    if (payment.status !== "pending") throw new Error("Subscription payment is not payable.");
+    if (payment.currency !== payment.account.currency) {
+      throw new Error("Payment currency does not match the account market.");
     }
-
-    if (payment.status === "paid") {
-      return payment;
-    }
-
-    if (payment.status !== "pending") {
-      throw new Error("Subscription payment is not payable.");
+    if (!isWeeklyPricingEligible(payment.account)) {
+      throw new Error("This account is not eligible for paid weekly access.");
     }
 
     const now = new Date();
-
     const currentEnd =
       payment.account.subscriptionStatus === "active" &&
       payment.account.subscriptionEndsAt &&
       payment.account.subscriptionEndsAt > now
         ? payment.account.subscriptionEndsAt
         : now;
-
     const accessEndsAt = calculatePaidAccessEnd(currentEnd);
 
     await tx.account.update({

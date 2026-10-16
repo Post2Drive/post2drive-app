@@ -17,7 +17,7 @@ export default function PricingPage() {
             color: "#102A43",
           }}
         >
-          Pricing
+          UK and euro-market pricing
         </h1>
 
         <p
@@ -26,7 +26,7 @@ export default function PricingPage() {
             color: "#6B7C93",
           }}
         >
-          Simple weekly access for the UK marketplace.
+          The same 7-day individual and fleet model is available in GBP for the UK and EUR for supported euro markets.
         </p>
       </div>
 

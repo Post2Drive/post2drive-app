@@ -9,7 +9,7 @@ import { recordDriverOpportunity } from "@/lib/opportunities";
 import { validateJobInput } from "@/lib/jobValidation";
 import { buildJobFilters } from "@/lib/jobSearch";
 import { getSyntheticAccountIdsForUser } from "@/lib/qaIsolation";
-import { isSupportedMarket } from "@/lib/market";
+import { isSupportedMarket, marketForAccount } from "@/lib/market";
 import { enforceRateLimit } from "@/lib/rateLimit";
 
 async function GETHandler(req: Request) {
@@ -379,7 +379,7 @@ async function POSTHandler(req: Request) {
     pickupAt = getJobPickupAt(validation.data.jobDate, validation.data.pickupTime, account);
   } catch (error) {
     const code = error instanceof Error ? error.message : "";
-    const marketName = account.country === "IN" ? "India local time" : "UK local time";
+    const marketName = `${marketForAccount(account)?.label ?? "Selected market"} local time`;
     return NextResponse.json({
       error: code === "AMBIGUOUS_PICKUP_TIME_DST"
         ? "The selected pickup time is ambiguous because of the daylight-saving clock change. Please choose another time."

@@ -197,6 +197,7 @@ model SubscriptionPayment {
   accountId String
 
   planKey     String
+  // Integer amount in currency minor units: pence for GBP, cents for EUR.
   amountPence Int
   currency    String @default("GBP")
 

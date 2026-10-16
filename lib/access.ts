@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { isUkAccount } from "@/lib/uk";
+import { isWeeklyPricingEligible } from "@/lib/pricing";
 import { getTrialCycleStatus } from "@/lib/trialCycles";
 
 export async function getAccountAccess(accountId: string) {
@@ -76,10 +77,10 @@ export async function getAccountAccess(accountId: string) {
     }
   }
 
-  if (!isUkAccount(account)) {
+  if (!isWeeklyPricingEligible(account)) {
     return {
       allowed: true,
-      reason: "non_uk_account" as const,
+      reason: "non_weekly_market" as const,
       account,
     };
   }
@@ -95,6 +96,7 @@ export async function getAccountAccess(accountId: string) {
   const now = new Date();
 
   if (
+    isUkAccount(account) &&
     account.promotionParticipant &&
     account.freeEndsAt &&
     account.freeEndsAt > now

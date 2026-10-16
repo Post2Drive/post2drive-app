@@ -11,6 +11,8 @@ import {
 import {
   isUkAccount,
 } from "@/lib/uk";
+import { isWeeklyPricingEligible } from "@/lib/pricing";
+import { symbolFor } from "@/lib/currency";
 import SignOutButton from "@/app/sign-out-button";
 import NotificationCenter from "@/components/notification-center";
 
@@ -99,6 +101,7 @@ export default async function DashboardPage() {
 
   const ukEligible =
     isUkAccount(account);
+  const weeklyPricingEligible = isWeeklyPricingEligible(account);
 
   const trialCycleStatus =
     ukEligible
@@ -560,7 +563,7 @@ export default async function DashboardPage() {
           Access & subscription
         </h2>
 
-        {ukEligible ? (
+        {weeklyPricingEligible ? (
           <>
             <p>
               {plan.description}
@@ -570,10 +573,7 @@ export default async function DashboardPage() {
               <p>
                 Paid plan:{" "}
                 <strong>
-                  £
-                  {plan.price.toFixed(
-                    2
-                  )}
+                  {symbolFor(plan.currency ?? account.currency)}{plan.price.toFixed(2)}
                   /7 days
                 </strong>
               </p>
@@ -581,10 +581,7 @@ export default async function DashboardPage() {
           </>
         ) : (
           <p>
-            Your country's pricing
-            and promotional programme
-            will be displayed
-            separately.
+            Weekly pricing for this market will be configured separately.
           </p>
         )}
       </section>

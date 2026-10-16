@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
-import { isSupportedMarket, sameMarket } from "@/lib/market";
+import { isSupportedMarket, marketTimeZone, sameMarket } from "@/lib/market";
 
 export type JobMarketCheck =
   | { ok: true; country: string; currency: string; timeZone: string }
@@ -30,7 +30,7 @@ export async function checkJobMarket(accountId: string, jobId: string): Promise<
     return { ok: false, status: 403, code: "MARKET_MISMATCH", error: "This job is not available in your account's market." };
   }
 
-  const timeZone = actor.country === "IN" ? "Asia/Kolkata" : "Europe/London";
+  const timeZone = marketTimeZone(actor);
   return { ok: true, country: actor.country!, currency: actor.currency!, timeZone };
 }
 

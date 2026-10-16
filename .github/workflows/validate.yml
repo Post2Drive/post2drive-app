@@ -47,7 +47,7 @@ jobs:
         run: npm run qa:lifecycle-contract
       - name: Validate supported-market isolation
         run: npm run qa:market-isolation
-      - name: Validate UK/India pickup-time conversion and DST edges
+      - name: Validate UK/India/euro-market pickup-time conversion and DST edges
         run: npm run qa:market-timezone
       - name: Validate Prisma schema
         run: npx prisma validate --schema=prisma/schema.prisma
