@@ -684,6 +684,17 @@ export async function GET(req: Request) {
   const target = url.searchParams.get("target") || "";
   const report = url.searchParams.get("report") || "";
   const expectedToken = process.env.QA_RUN_TOKEN || "";
+
+  // Defense in depth: never expose QA reports/status or start the destructive
+  // synthetic-account runner unless this exact deployment is explicitly
+  // allow-listed as staging with a separate QA database.
+  if (!isQaRunnerEnabled()) {
+    return NextResponse.json(
+      { error: "QA endpoints are available only on an explicitly allow-listed staging deployment." },
+      { status: 404 },
+    );
+  }
+
   if (report) {
     if (!expectedToken || token !== expectedToken) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
     const runId = url.searchParams.get("runId") || "";
@@ -719,7 +730,7 @@ export async function GET(req: Request) {
   // Never log or echo the token; rotate QA_RUN_TOKEN immediately after starting the run.
   if (url.searchParams.get("mode") === "status") {
     if (!expectedToken || token !== expectedToken) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-    return NextResponse.json({ ok: true, active, activeRunId, lastRunId, lastFinishedAt, lastError });
+    return NextResponse.json({ ok: true, active, activeRunId, lastRunId, lastFinishedAt, lastError: lastError ? "QA run failed; inspect restricted staging logs." : null });
   }
   if (!token) return NextResponse.json({ ok: true, stagingOnly: true });
   if (!expectedToken || token !== expectedToken || accounts !== "500" || target !== "staging" || confirm !== "RUN_500_SYNTHETIC_ACCOUNTS_ON_STAGING") {
