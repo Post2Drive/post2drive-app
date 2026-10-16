@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
-import { getMarket, isSupportedMarket, sameMarket } from "../../lib/market.ts";
+import { getMarket, isSupportedMarket, isWeeklyPricingMarket, sameMarket } from "../../lib/market.ts";
 
 assert.equal(getMarket("GB")?.currency, "GBP");
 assert.equal(getMarket("GB")?.timeZone, "Europe/London");
@@ -20,5 +20,10 @@ assert.equal(isSupportedMarket({ country: "GB", currency: "INR" }), false, "curr
 assert.equal(isSupportedMarket({ country: "IN", currency: "GBP" }), false, "currency must match country");
 assert.equal(sameMarket({ country: "GB", currency: "GBP" }, { country: "GB", currency: "GBP" }), true);
 assert.equal(sameMarket({ country: "GB", currency: "GBP" }, { country: "IN", currency: "INR" }), false);
+assert.equal(sameMarket({ country: "FR", currency: "EUR" }, { country: "DE", currency: "EUR" }), false, "euro countries remain isolated from each other");
+assert.equal(isWeeklyPricingMarket({ country: "GB", currency: "GBP" }), true);
+assert.equal(isWeeklyPricingMarket({ country: "IE", currency: "EUR" }), true);
+assert.equal(isWeeklyPricingMarket({ country: "IN", currency: "INR" }), false);
+assert.equal(isWeeklyPricingMarket({ country: "FR", currency: "GBP" }), false, "country and currency must match for paid access");
 assert.equal(sameMarket({ country: "GB", currency: "INR" }, { country: "GB", currency: "INR" }), false, "invalid market identities must never compare equal");
 console.log("Market isolation contract checks passed: GB, IN and 27 euro-using European markets; currencies and cross-market separation.");
