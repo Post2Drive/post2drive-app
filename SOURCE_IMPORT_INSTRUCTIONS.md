@@ -1,29 +1,31 @@
 # Import the prepared application source
 
 **Canonical app repository:** https://github.com/Post2Drive/post2drive-app  
-**Current state:** GitHub contains bootstrap documentation. The full application source bundle has not yet been uploaded.
+**Current state:** GitHub contains bootstrap documentation; the full source bundle still must be pushed.
 
-The prepared ZIP is available from the current ChatGPT conversation as post2drive-clean-start.zip. Verify the ZIP integrity and inspect the staged Git changes before publishing.
+The current prepared ZIP is named post2drive-clean-start.zip in the ChatGPT conversation. Its SHA-256 is:
+
+    fc7823bb7a47a250307fed91afae9ae63616e9edbc2000c2149a3bfbf8104ba3
 
 ## Windows PowerShell
 
-1. Extract post2drive-clean-start.zip into C:\Projects\post2drive-source. It contains a top-level freight-app-main directory.
-2. Clone the existing repository, preserving the status commit already on main:
+1. Extract the ZIP into C:\Projects\post2drive-source. It contains a top-level freight-app-main directory.
+2. Clone the existing app repository so its bootstrap commits are retained:
 
    ```powershell
    git clone https://github.com/Post2Drive/post2drive-app.git C:\Projects\post2drive-app
    ```
 
-3. Copy the source tree into the clone. Do not use /MIR, which may delete repository-only import notes.
+3. Copy the application source tree into the clone. Do not use /MIR; it may delete repository-only handoff notes.
 
    ```powershell
    robocopy C:\Projects\post2drive-source\freight-app-main C:\Projects\post2drive-app /E /XD node_modules .next /XF .env
    Set-Location C:\Projects\post2drive-app
    ```
 
-   Review the Robocopy summary; exit codes 0–7 generally indicate the copy completed without fatal error.
+   Review the Robocopy summary; exit codes 0–7 generally indicate the copy completed without a fatal error.
 
-4. Stage and inspect the changes before committing:
+4. Inspect staged files:
 
    ```powershell
    git status --short
@@ -32,7 +34,7 @@ The prepared ZIP is available from the current ChatGPT conversation as post2driv
    git status --short
    ```
 
-   Ensure no .env, provider secrets, signing keys/keystores, database dumps, personal data, node_modules, .next, or APK/AAB build outputs are staged.
+   Ensure .env files, provider secrets, signing keys/keystores, database dumps, personal data, node_modules, .next, APK and AAB outputs are not staged.
 
 5. Commit and push without force:
 
@@ -41,13 +43,24 @@ The prepared ZIP is available from the current ChatGPT conversation as post2driv
    git push origin main
    ```
 
-   If the remote has changed since cloning, fetch and reconcile the changes before pushing. Never force-push.
+   If the push is rejected because main advanced, fetch and reconcile; do not force-push.
 
-## Validation and Railway
+## Required validation before Railway source connection
 
-The first source push should trigger the Validate workflow. Do not connect Railway until the complete source is in Git and CI validates dependency installation, Prisma migrations, TypeScript and the Next.js build. Then configure only staging secrets and an isolated non-production database in the private Post2Drive Staging project.
+The prepared source includes a GitHub Actions Validate workflow. Check the actual Actions result for dependency installation, Prisma validation/migrations, TypeScript and production build. Targeted static/contract tests are not enough by themselves.
 
-Railway project ID: 074d55f7-6a58-4c46-86aa-a2c7b0079859  
-Staging environment ID: 293eb264-dd1d-4eef-87ca-016943459edf
+## Railway staging already provisioned
 
-The staging project has no service, database, deployment, or public domain at this time. Do not deploy production or attach live credentials as a shortcut.
+Private project **Post2Drive Staging**  
+Project ID: 074d55f7-6a58-4c46-86aa-a2c7b0079859  
+Environment ID: 293eb264-dd1d-4eef-87ca-016943459edf
+
+The environment contains persistent Postgres and Redis services, and an existing Post2Drive Web service configured for build, Prisma migrations, start and /api/health. Its hostname is:
+
+https://post2drive-web-staging.up.railway.app
+
+**The URL is reserved but will not serve the app until a deployment succeeds.** The web service currently has no source attached, intentionally avoiding an automatic failed build from this documentation-only Git state.
+
+After the source is pushed and CI passes, connect the existing Post2Drive Web service to Post2Drive/post2drive-app main **in the staging environment only**. Do not create a duplicate service or connect production.
+
+Email verification is off for isolated staging signup because no email-provider key is configured. Do not use real personal data. Do not enable live payment processing or the destructive QA runner. The provisioned Redis service is not yet consumed by app code; do not claim performance gains until it is wired and tested.
