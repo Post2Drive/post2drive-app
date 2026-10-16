@@ -24,6 +24,8 @@ type PaymentJob = {
 };
 
 type PaymentData = {
+  currency: string;
+  country: string;
   asPoster: PaymentJob[];
   asDriver: PaymentJob[];
 
@@ -259,13 +261,13 @@ export default function PaymentsPage() {
           value={String(
             data.posterSummary.jobsPaymentPending,
           )}
-          subtext={`£${data.posterSummary.awaitingPayment.toFixed(2)}`}
+          subtext={money(data.posterSummary.awaitingPayment, data.currency)}
         />
 
         <SummaryCard
           label="Driver payments received"
           value={String(data.driverSummary.jobsReceived)}
-          subtext={`£${data.driverSummary.confirmedReceived.toFixed(2)}`}
+          subtext={money(data.driverSummary.confirmedReceived, data.currency)}
         />
 
         <SummaryCard
@@ -273,7 +275,7 @@ export default function PaymentsPage() {
           value={String(
             data.driverSummary.jobsAwaitingReceipt,
           )}
-          subtext={`£${data.driverSummary.awaitingReceiptConfirmation.toFixed(2)}`}
+          subtext={money(data.driverSummary.awaitingReceiptConfirmation, data.currency)}
         />
       </section>
 
@@ -288,21 +290,21 @@ export default function PaymentsPage() {
           <span>
             Total value:{" "}
             <strong>
-              £{data.posterSummary.totalValue.toFixed(2)}
+              {money(data.posterSummary.totalValue, data.currency)}
             </strong>
           </span>
 
           <span>
             Marked paid:{" "}
             <strong>
-              £{data.posterSummary.markedPaid.toFixed(2)}
+              {money(data.posterSummary.markedPaid, data.currency)}
             </strong>
           </span>
 
           <span>
             Payment pending:{" "}
             <strong>
-              £{data.posterSummary.awaitingPayment.toFixed(2)}
+              {money(data.posterSummary.awaitingPayment, data.currency)}
             </strong>
           </span>
         </div>
@@ -381,24 +383,21 @@ export default function PaymentsPage() {
           <span>
             Total receivable:{" "}
             <strong>
-              £{data.driverSummary.totalReceivable.toFixed(2)}
+              {money(data.driverSummary.totalReceivable, data.currency)}
             </strong>
           </span>
 
           <span>
             Received confirmed:{" "}
             <strong>
-              £{data.driverSummary.confirmedReceived.toFixed(2)}
+              {money(data.driverSummary.confirmedReceived, data.currency)}
             </strong>
           </span>
 
           <span>
             Awaiting poster payment:{" "}
             <strong>
-              £
-              {data.driverSummary.awaitingPaymentFromPoster.toFixed(
-                2,
-              )}
+              {money(data.driverSummary.awaitingPaymentFromPoster, data.currency)}
             </strong>
           </span>
         </div>
