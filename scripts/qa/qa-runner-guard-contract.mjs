@@ -7,8 +7,8 @@ const keys = [
   "POST2DRIVE_QA_MODE",
   "POST2DRIVE_QA_ENVIRONMENT",
   "POST2DRIVE_QA_DATABASE_ISOLATED",
-  "DEPLOYMENT_ID",
-  "POST2DRIVE_QA_ALLOWED_DEPLOYMENT_ID",
+  "RAILWAY_ENVIRONMENT_ID",
+  "POST2DRIVE_QA_ALLOWED_ENVIRONMENT_ID",
   "QA_BASE_URL",
 ];
 const original = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
@@ -19,8 +19,8 @@ function configure(overrides = {}) {
     POST2DRIVE_QA_MODE: "true",
     POST2DRIVE_QA_ENVIRONMENT: "staging",
     POST2DRIVE_QA_DATABASE_ISOLATED: "true",
-    DEPLOYMENT_ID: "staging-deployment-123",
-    POST2DRIVE_QA_ALLOWED_DEPLOYMENT_ID: "staging-deployment-123",
+    RAILWAY_ENVIRONMENT_ID: "staging-environment-123",
+    POST2DRIVE_QA_ALLOWED_ENVIRONMENT_ID: "staging-environment-123",
     QA_BASE_URL: "https://post2drive-web-staging.up.railway.app",
     ...overrides,
   });
@@ -34,9 +34,9 @@ try {
     ["QA mode disabled", { POST2DRIVE_QA_MODE: "false" }],
     ["production environment", { POST2DRIVE_QA_ENVIRONMENT: "production" }],
     ["database not isolated", { POST2DRIVE_QA_DATABASE_ISOLATED: "false" }],
-    ["missing deployment ID", { DEPLOYMENT_ID: "" }],
-    ["missing allow-list ID", { POST2DRIVE_QA_ALLOWED_DEPLOYMENT_ID: "" }],
-    ["deployment mismatch", { POST2DRIVE_QA_ALLOWED_DEPLOYMENT_ID: "other-deployment" }],
+    ["missing Railway environment ID", { RAILWAY_ENVIRONMENT_ID: "" }],
+    ["missing environment allow-list", { POST2DRIVE_QA_ALLOWED_ENVIRONMENT_ID: "" }],
+    ["environment mismatch", { POST2DRIVE_QA_ALLOWED_ENVIRONMENT_ID: "other-environment" }],
     ["HTTP URL", { QA_BASE_URL: "http://post2drive-staging.example.test" }],
     ["non-staging host", { QA_BASE_URL: "https://post2drive.example.com" }],
     ["invalid URL", { QA_BASE_URL: "not a URL" }],
@@ -55,6 +55,13 @@ try {
   const reportPosition = getHandler.indexOf("if (report)");
   assert.ok(guardPosition >= 0 && reportPosition > guardPosition, "GET staging guard must execute before report/status/run actions");
   assert.ok(getHandler.includes('lastError: lastError ? "QA run failed; inspect restricted staging logs." : null'), "status endpoint must not expose raw internal QA error strings");
+  const statusStart = getHandler.indexOf('if (url.searchParams.get("mode") === "status")');
+  const reportEnd = getHandler.indexOf("// One-time, high-entropy trigger", statusStart);
+  const statusHandler = getHandler.slice(statusStart, reportEnd);
+  assert.ok(statusHandler.includes("WHERE status='running' ORDER BY started_at DESC LIMIT 1"), "status must read active runs from the durable QA ledger, not process memory alone");
+  assert.ok(statusHandler.includes("ORDER BY started_at DESC LIMIT 1"), "status must expose the latest persisted run after a process restart");
+  assert.ok(statusHandler.includes("persistedRunningRun") && statusHandler.includes("latestRun"), "status response must expose normalized durable run summaries");
+  assert.ok(statusHandler.includes("Unable to read durable QA run status."), "status must fail closed if the durable ledger cannot be read");
 
   const resendRoute = readFileSync("app/api/email/verification/resend/route.ts", "utf8");
   assert.ok(resendRoute.includes('scope: "email-verification-resend"'), "verification resend must have a network rate limit");
@@ -69,10 +76,36 @@ try {
   assert.ok(authSource.includes("if (!networkLimit.allowed || !emailLimit.allowed) return null"), "credential login must reject over-limit attempts");
   assert.ok(authSource.includes("Login rate-limit control unavailable."), "login throttling must fail closed without logging raw errors");
 
+  const qaAuthorization = readFileSync("lib/qaRunAuthorization.ts", "utf8");
+  assert.ok(qaAuthorization.includes("isQaRunnerEnabled()"), "QA throttle bypass must require the staging guard");
+  assert.ok(qaAuthorization.includes("target_url = ${base}"), "QA throttle bypass must match the configured staging target");
+  assert.ok(qaAuthorization.includes("target_accounts = 10000"), "QA throttle bypass must be limited to the fixed synthetic cohort");
+  assert.ok(qaAuthorization.includes("status = 'running'"), "QA throttle bypass must require a currently running QA run");
+  const rateLimitSource = readFileSync("lib/rateLimit.ts", "utf8");
+  assert.ok(rateLimitSource.includes("isAuthorizedQaRunId(qaRunId)"), "network throttle bypass must verify the active run without relying on proxy-internal request origin");
+
+  const qaRoute = readFileSync("app/api/qa/run/route.ts", "utf8");
+  assert.ok(qaRoute.includes('getMarket(countryCode)'), "QA runner must resolve the selected country from supported markets");
+  assert.ok(qaRoute.includes('process.env.QA_MARKET_COUNTRY || "GB"'), "QA runner must support an explicit per-country test selection");
+  assert.ok(qaRoute.includes("country: market.country, currency: market.currency"), "synthetic accounts must use the selected market currency");
+  assert.ok(qaRoute.includes("currency: market.currency"), "synthetic jobs must use the selected market currency");
+  assert.ok(qaRoute.includes('crypto.randomUUID();'), "QA run IDs must use high entropy");
+  assert.ok(qaRoute.includes("const routeMatrixTarget = 10_000"), "each country run must target 10,000 API route scenarios");
+  assert.ok(qaRoute.includes("Array.from({ length: 10_000 }, (_, i) => i)"), "each country run must provision 10,000 synthetic accounts");
+  assert.ok(qaRoute.includes("createdAccounts !== 10_000"), "the run must abort unless all 10,000 synthetic accounts are created");
+  assert.ok(qaRoute.includes("target_accounts !== 10_000"), "cleanup must be bound to a recorded 10,000-account run");
+  assert.ok(qaRoute.includes('accounts !== "10000"'), "the HTTP trigger must require explicit 10,000-account confirmation");
+  assert.ok(qaRoute.includes("routeMatrixExecuted !== routeMatrixTarget"), "a short route matrix must not be reported as completed");
+  assert.ok(qaRoute.includes("'syntheticDataRetained',false"), "cleanup must mark synthetic data as deleted in the preserved report");
+  assert.ok(qaRoute.includes("preservedAuditEvents: true, preservedRunSummary: true"), "cleanup must retain findings and the run summary");
+  assert.ok(qaRoute.includes('process.env.QA_AUTO_CLEANUP === "true"'), "automatic cleanup must require explicit staging configuration");
+  assert.ok(qaRoute.includes("cleanupSyntheticRuns([String(summary.runId)], base)"), "a country run must clean its synthetic records before the next run");
+  assert.ok(qaRoute.includes('run.status === "running" ? "aborted" : run.status'), "cleanup must preserve failed-run status instead of hiding a failure");
+
   console.log(JSON.stringify({
     status: "passed",
-    checks: rejected.length + 12,
-    covered: ["valid staging allow-list", ...rejected.map(([label]) => label), "GET guard before sensitive operations", "raw QA errors not returned", "GET and POST handlers present", "resend endpoint rate-limited", "verification token endpoint rate-limited", "login network/email rate limits", "login throttling fails closed"]
+    checks: rejected.length + 28,
+    covered: ["valid Railway staging allow-list", ...rejected.map(([label]) => label), "GET guard before sensitive operations", "raw QA errors not returned", "GET and POST handlers present", "resend endpoint rate-limited", "verification token endpoint rate-limited", "login network/email rate limits", "login throttling fails closed", "QA throttle bypass requires an active run, target and origin", "QA runner is market-parameterized", "synthetic fixtures use market currency", "high-entropy QA run IDs", "10,000 API route scenarios required per country", "cleanup preserves findings, marks data deleted and preserves failure status"]
   }, null, 2));
 } finally {
   for (const [key, value] of Object.entries(original)) {

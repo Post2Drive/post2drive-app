@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { emailVerificationEnabled } from "@/lib/emailVerification";
 import { checkRateLimit, clientNetworkIdentity } from "@/lib/rateLimit";
+import { isAuthorizedQaRunId } from "@/lib/qaRunAuthorization";
 
 export const authOptions: NextAuthOptions = {
   session: { strategy: "jwt" },
@@ -19,35 +20,41 @@ export const authOptions: NextAuthOptions = {
         if (!credentials?.email || !credentials?.password) return null;
 
         const normalizedEmail = credentials.email.trim().toLowerCase();
-        const headers = new Headers(req.headers as unknown as HeadersInit);
-        const networkIdentity = clientNetworkIdentity(
-          new Request("https://post2drive.invalid/", { headers }),
-        );
+        const rawQaRunId = req.headers?.["x-post2drive-qa-run-id"];
+        const qaRunId = Array.isArray(rawQaRunId) ? rawQaRunId[0] : rawQaRunId;
+        const authorizedQaRun = qaRunId ? await isAuthorizedQaRunId(qaRunId) : false;
 
-        let networkLimit;
-        let emailLimit;
-        try {
-          [networkLimit, emailLimit] = await Promise.all([
-            checkRateLimit({
-              scope: "login-network",
-              identity: networkIdentity,
-              limit: 20,
-              windowMs: 15 * 60 * 1000,
-            }),
-            checkRateLimit({
-              scope: "login-email",
-              identity: normalizedEmail,
-              limit: 10,
-              windowMs: 15 * 60 * 1000,
-            }),
-          ]);
-        } catch {
-          // Fail closed if the database-backed login throttle is unavailable.
-          console.error("Login rate-limit control unavailable.");
-          return null;
+        if (!authorizedQaRun) {
+          const headers = new Headers((req.headers ?? {}) as unknown as HeadersInit);
+          const networkIdentity = clientNetworkIdentity(
+            new Request("https://post2drive.invalid/", { headers }),
+          );
+
+          let networkLimit;
+          let emailLimit;
+          try {
+            [networkLimit, emailLimit] = await Promise.all([
+              checkRateLimit({
+                scope: "login-network",
+                identity: networkIdentity,
+                limit: 20,
+                windowMs: 15 * 60 * 1000,
+              }),
+              checkRateLimit({
+                scope: "login-email",
+                identity: normalizedEmail,
+                limit: 10,
+                windowMs: 15 * 60 * 1000,
+              }),
+            ]);
+          } catch {
+            // Fail closed if the database-backed login throttle is unavailable.
+            console.error("Login rate-limit control unavailable.");
+            return null;
+          }
+
+          if (!networkLimit.allowed || !emailLimit.allowed) return null;
         }
-
-        if (!networkLimit.allowed || !emailLimit.allowed) return null;
 
         const user = await prisma.user.findUnique({
           where: { email: normalizedEmail },

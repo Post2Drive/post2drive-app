@@ -79,14 +79,17 @@ async function POSTHandler(
 
     const recipientId = job.posterId === accountId ? job.acceptedById : job.posterId;
     if (recipientId && recipientId !== accountId) {
-      await tx.notification.create({
-        data: {
+      const eventKey = `delivery-marked:${routeParams.id}:${accountId}`;
+      await tx.notification.upsert({
+        where: { eventKey },
+        update: {},
+        create: {
           accountId: recipientId,
           type: "delivery_marked",
           title: "Delivery awaiting confirmation",
           body: `Job ${routeParams.id} was marked delivered. Please review and confirm or report a delivery issue.`,
           jobId: routeParams.id,
-          eventKey: `delivery-marked:${routeParams.id}:${accountId}`,
+          eventKey,
         },
       });
     }

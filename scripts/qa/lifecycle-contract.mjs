@@ -123,7 +123,8 @@ contains("app/api/jobs/[id]/confirm-pickup/route.ts", [
 contains("app/api/jobs/[id]/mark-delivered/route.ts", [
   'job.status !== "in_transit"',
   'toStatus: "delivered"',
-  "tx.notification.create",
+  "tx.notification.upsert",
+  "delivery-marked:",
 ]);
 contains("app/api/jobs/[id]/confirm-delivered/route.ts", [
   'status: "delivered"',

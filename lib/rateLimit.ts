@@ -1,6 +1,7 @@
 import { createHash } from "crypto";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { isAuthorizedQaRunId } from "@/lib/qaRunAuthorization";
 
 type RateLimitOptions = {
   scope: string;
@@ -69,6 +70,12 @@ export function clientNetworkIdentity(request: Request): string {
 /** Apply a shared durable limit and convert DB failures to a safe 503 response. */
 export async function enforceRateLimit(request: Request, options: Omit<RateLimitOptions, "identity"> & { identity?: string }) {
   try {
+    const qaRunId = request.headers.get("x-post2drive-qa-run-id");
+    // Railway may expose an internal HTTP URL behind the HTTPS edge proxy.
+    // Authorization independently verifies the allow-listed staging target and active persisted run.
+    if (qaRunId && await isAuthorizedQaRunId(qaRunId)) {
+      return null;
+    }
     const result = await checkRateLimit({ ...options, identity: options.identity ?? clientNetworkIdentity(request) });
     if (!result.allowed) return rateLimitResponse(result.retryAfterSeconds);
     return null;

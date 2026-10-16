@@ -2,6 +2,7 @@ import { isQaRunnerEnabled } from "@/lib/qaRunnerGuard";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { VEHICLE_TYPES } from "@/lib/vehicles";
+import { getMarket } from "@/lib/market";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -92,8 +93,8 @@ async function cleanupSyntheticRuns(runIds: string[], base: string) {
       );
       const run = runs[0];
       const allowedStatuses = new Set(["completed", "running", "failed", "aborted"]);
-      if (!run || !allowedStatuses.has(run.status) || run.target_url !== base || run.target_accounts !== 500) {
-        throw new Error("Cleanup refused: run must be an explicitly named 500-account QA run for this exact staging target: " + runId);
+      if (!run || !allowedStatuses.has(run.status) || run.target_url !== base || run.target_accounts !== 10_000) {
+        throw new Error("Cleanup refused: run must be an explicitly named 10,000-account QA run for this exact staging target: " + runId);
       }
       const marker = "%QA-" + runId + "%";
       const emailPattern = "qa-" + runId + "-%@post2drive.invalid";
@@ -126,32 +127,37 @@ async function cleanupSyntheticRuns(runIds: string[], base: string) {
       await exec("accounts", qaAccounts + 'DELETE FROM "Account" WHERE id IN (SELECT account_id FROM qa_accounts)', runId, marker, emailPattern);
       await exec("apiMetrics", 'DELETE FROM "ApiRequestMetric" WHERE "qaRunId"=$1', runId);
       await exec("accountMappings", 'DELETE FROM qa_test_accounts WHERE run_id=$1', runId);
-      if (run.status !== "completed") {
-        await tx.$executeRawUnsafe(
-          "UPDATE qa_test_runs SET status='aborted', created_accounts=GREATEST(created_accounts,$2), summary=COALESCE(summary,'{}'::jsonb) || jsonb_build_object('status','aborted','cleanupReason','explicitly requested staging synthetic cleanup','recoveredSyntheticAccounts',$2) WHERE id=$1",
-          runId, recoveredAccounts
-        );
-      }
-      results.push({ runId, priorStatus: run.status, recoveredSyntheticAccounts: recoveredAccounts, deleted: counts, preservedAuditEvents: true, preservedRunSummary: true });
+      const finalStatus = run.status === "running" ? "aborted" : run.status;
+      await tx.$executeRawUnsafe(
+        "UPDATE qa_test_runs SET status=$2, created_accounts=GREATEST(created_accounts,$3), summary=COALESCE(summary,'{}'::jsonb) || jsonb_build_object('status',$2,'cleanupReason','explicitly requested staging synthetic cleanup','recoveredSyntheticAccounts',$3,'syntheticDataRetained',false,'syntheticDataCleanedAt',now(),'cleanupCounts',$4::jsonb) WHERE id=$1",
+        runId, finalStatus, recoveredAccounts, JSON.stringify(counts)
+      );
+      results.push({ runId, priorStatus: run.status, finalStatus, recoveredSyntheticAccounts: recoveredAccounts, deleted: counts, preservedAuditEvents: true, preservedRunSummary: true });
     }
     return results;
-  }, { maxWait: 10000, timeout: 30000 });
+  }, { maxWait: 30000, timeout: 180000 });
 }
 
-async function runQA() {
+async function runQA(countryOverride?: string) {
   const base = (process.env.QA_BASE_URL || "").replace(/\/+$/, "");
   const db = process.env.DATABASE_URL || "";
+  const countryCode = (countryOverride || process.env.QA_MARKET_COUNTRY || "GB").trim().toUpperCase();
+  const market = getMarket(countryCode);
+  if (!market) throw new Error("QA_MARKET_COUNTRY must be a supported country code.");
+  const selectedMarket = market;
   if (!isQaRunnerEnabled()) {
     throw new Error("QA runner is disabled unless an explicitly allow-listed staging deployment and isolated QA database are configured.");
   }
-  if (!base.startsWith("https://") || !db || process.env.QA_ACCOUNT_COUNT !== "500" || process.env.POST2DRIVE_QA_DATABASE_ISOLATED !== "true") throw new Error("QA preflight requires an HTTPS staging target, an explicitly isolated DATABASE_URL and QA_ACCOUNT_COUNT=500.");
-  const runId = new Date().toISOString().replace(/[^0-9]/g, "").slice(0, 14) + "-" + crypto.randomUUID().slice(0, 8);
+  if (!base.startsWith("https://") || !db || process.env.QA_ACCOUNT_COUNT !== "10000" || process.env.POST2DRIVE_QA_DATABASE_ISOLATED !== "true") throw new Error("QA preflight requires an HTTPS staging target, an explicitly isolated DATABASE_URL and QA_ACCOUNT_COUNT=10000.");
+  const runId = new Date().toISOString().replace(/[^0-9]/g, "").slice(0, 14) + "-" + crypto.randomUUID();
   const marker = "QA-" + runId;
   const started = Date.now();
   activeRunId = runId;
   lastRunId = runId;
   const events: EventResult[] = [];
   let createdAccounts = 0;
+  let routeMatrixExecuted = 0;
+  const routeMatrixTarget = 10_000;
   const fixtures: AccountFixture[] = [];
 
   async function record(e: { index?: number; accountId?: string; cohort?: string; scenario: string; action: string; method: string; path: string; expected: number[]; actual: number | null; duration: number; details?: Record<string, unknown> }) {
@@ -214,6 +220,7 @@ async function runQA() {
   async function finish(status: string, extra: Record<string, unknown> = {}) {
     const passed = events.filter(e => e.passed).length;
     const failed = events.length - passed;
+    const finalStatus = status === "completed" && (failed > 0 || routeMatrixExecuted !== routeMatrixTarget) ? "failed" : status;
     const durations = events.map(e => e.duration).sort((a, b) => a - b);
     const percentile = (p: number) => durations.length ? durations[Math.floor((durations.length - 1) * p)] : 0;
     const byPath: Record<string, { count: number; failures: number; durations: number[] }> = {};
@@ -227,34 +234,36 @@ async function runQA() {
       endpoints[path] = { count: row.count, failures: row.failures, p50Ms: row.durations[Math.floor((row.durations.length - 1) * 0.5)], p95Ms: row.durations[Math.floor((row.durations.length - 1) * 0.95)], maxMs: row.durations[row.durations.length - 1] };
     }
     const summary = {
-      runId, marker, status, target: base, targetAccounts: 500, createdAccounts, eventCount: events.length,
+      runId, marker, status: finalStatus, target: base, targetAccounts: 10_000, country: selectedMarket.country, currency: selectedMarket.currency, marketLabel: selectedMarket.label, createdAccounts, eventCount: events.length, routeMatrixTarget, routeMatrixExecuted,
       passed, failed, durationMs: Date.now() - started, p50Ms: percentile(0.5), p95Ms: percentile(0.95),
-      cohorts: { posterFocused: 100, driverFocused: 150, both: 249, restricted: 1 },
+      cohorts: { posterFocused: 100, driverFocused: 150, both: 9_749, restricted: 1 },
       endpoints, syntheticDataRetained: true, realMoneyPaymentsAttempted: false, emailDeliveryTested: false, ...extra,
     };
     await prisma.$executeRawUnsafe(
       "UPDATE qa_test_runs SET status=$2,finished_at=now(),created_accounts=$3,successful_checks=$4,failed_checks=$5,duration_ms=$6,summary=$7::jsonb WHERE id=$1",
-      runId, status, createdAccounts, passed, failed, Date.now() - started, JSON.stringify(summary),
+      runId, finalStatus, createdAccounts, passed, failed, Date.now() - started, JSON.stringify(summary),
     );
     console.log("POST2DRIVE_QA_RESULT " + JSON.stringify(summary));
     return summary;
   }
 
   await prisma.$executeRawUnsafe(
-    "INSERT INTO qa_test_runs(id,target_url,target_accounts,status) VALUES($1,$2,500,'running')",
+    "INSERT INTO qa_test_runs(id,target_url,target_accounts,status) VALUES($1,$2,10000,'running')",
     runId, base,
   );
 
   try {
-    console.log("Starting staging QA run " + runId + " with 500 synthetic accounts at " + base);
-    await parallel(Array.from({ length: 500 }, (_, i) => i), 2, async i => {
-      const cohort: AccountFixture["cohort"] = i < 100 ? "poster-focused" : i < 250 ? "driver-focused" : i < 499 ? "both" : "restricted";
+    console.log("Starting staging QA run " + runId + " for " + market.country + "/" + market.currency + " with 10,000 synthetic accounts at " + base);
+    await parallel(Array.from({ length: 10_000 }, (_, i) => i), 12, async i => {
+      const cohort: AccountFixture["cohort"] = i < 100 ? "poster-focused" : i < 250 ? "driver-focused" : i < 9_999 ? "both" : "restricted";
       const email = "qa-" + runId + "-" + String(i + 1).padStart(3, "0") + "@post2drive.invalid";
       const password = "QA-" + crypto.randomUUID() + "-p2d";
       const payload = {
-        name: "QA User " + (i + 1), email, phone: "+44770090" + String(i).padStart(4, "0"),
+        name: "QA User " + (i + 1), email, phone: selectedMarket.dialingCode + "770090" + String(i).padStart(4, "0"),
         password, companyName: "[QA-" + runId + "] " + cohort + " " + String(i + 1).padStart(3, "0"),
-        planType: "individual", isSoleTrader: true, country: "GB", currency: "GBP",
+        planType: "individual", fleetVehicleCount: 1, isSoleTrader: true,
+        country: market.country, currency: market.currency,
+        termsAccepted: true, termsVersion: "2026-10-16",
       };
       const t = Date.now();
       let status: number | null = null;
@@ -270,17 +279,21 @@ async function runQA() {
       const persistStarted = Date.now();
       try {
         await prisma.$transaction(async tx => {
+          const ukPromotion = market.country === "GB" && i !== 9_999;
+          const paidWeeklyMarket = market.country !== "GB" && market.country !== "IN" && i !== 9_999;
+          const accessEndsAt = new Date(Date.now() + 60 * 86400000);
           await tx.account.update({
             where: { id: accountId },
             data: {
-              isTester: i !== 499,
-              verificationStatus: i === 499 ? "not_started" : "verified",
-              verifiedAt: i === 499 ? null : new Date(),
-              promotionParticipant: i !== 499,
-              trialStartedAt: i === 499 ? null : new Date(),
-              trialEndsAt: i === 499 ? null : new Date(Date.now() + 60 * 86400000),
-              freeEndsAt: i === 499 ? null : new Date(Date.now() + 60 * 86400000),
-              subscriptionStatus: i === 499 ? "inactive" : "promotional",
+              isTester: i !== 9_999,
+              verificationStatus: i === 9_999 ? "not_started" : "verified",
+              verifiedAt: i === 9_999 ? null : new Date(),
+              promotionParticipant: ukPromotion,
+              trialStartedAt: ukPromotion ? new Date() : null,
+              trialEndsAt: ukPromotion ? accessEndsAt : null,
+              freeEndsAt: ukPromotion ? accessEndsAt : null,
+              subscriptionStatus: ukPromotion ? "promotional" : paidWeeklyMarket ? "active" : "inactive",
+              subscriptionEndsAt: paidWeeklyMarket ? accessEndsAt : null,
             },
           });
           await tx.$executeRawUnsafe("INSERT INTO qa_test_accounts(run_id,account_id,email,cohort,account_index) VALUES($1,$2,$3,$4,$5)", runId, accountId, email, cohort, i + 1);
@@ -295,9 +308,9 @@ async function runQA() {
     });
 
     await prisma.$executeRawUnsafe("UPDATE qa_test_runs SET created_accounts=$2 WHERE id=$1", runId, createdAccounts);
-    if (createdAccounts !== 500) return await finish("aborted", { reason: "Stopped before workflows because signup did not create exactly 500 accounts.", createdAccounts });
+    if (createdAccounts !== 10_000) return await finish("aborted", { reason: "Stopped before workflows because signup did not create exactly 10,000 accounts.", createdAccounts });
 
-    await parallel(fixtures, 4, async account => {
+    await parallel(fixtures.filter(account => account.index < 499 || account.index === 9_999), 16, async account => {
       const client = new ApiClient(account, base, runId);
       const t = Date.now();
       let status = 401;
@@ -324,23 +337,14 @@ async function runQA() {
     const posters = signed.filter(a => a.index < 100);
     const drivers = signed.filter(a => a.index >= 100 && a.index < 250);
     const both = signed.filter(a => a.index >= 250 && a.index < 499);
-    const lanes = [
-      { pickup: "London", dropoff: "Birmingham", miles: 118 },
-      { pickup: "Birmingham", dropoff: "Manchester", miles: 86 },
-      { pickup: "Bristol", dropoff: "London", miles: 120 },
-      { pickup: "Leeds", dropoff: "Newcastle", miles: 95 },
-      { pickup: "Glasgow", dropoff: "Edinburgh", miles: 47 },
-      { pickup: "Manchester", dropoff: "Liverpool", miles: 35 },
-      { pickup: "Nottingham", dropoff: "Leicester", miles: 28 },
-      { pickup: "Cardiff", dropoff: "Bristol", miles: 44 },
-      { pickup: "Southampton", dropoff: "London", miles: 80 },
-      { pickup: "Sheffield", dropoff: "Leeds", miles: 35 },
-      { pickup: "Oxford", dropoff: "Birmingham", miles: 65 },
-      { pickup: "Cambridge", dropoff: "London", miles: 58 },
-      { pickup: "Newcastle", dropoff: "York", miles: 82 },
-      { pickup: "Exeter", dropoff: "Bristol", miles: 80 },
-      { pickup: "Liverpool", dropoff: "Manchester", miles: 35 },
-    ];
+    // Synthetic endpoints deliberately carry the market code so a test run never
+    // seeds UK city names into another country's fixtures.
+    const laneMiles = [118, 86, 120, 95, 47, 35, 28, 44, 80, 35, 65, 58, 82, 80, 35];
+    const lanes = laneMiles.map((miles, index) => ({
+      pickup: "QA Origin " + market.country + " " + (index + 1),
+      dropoff: "QA Destination " + market.country + " " + (index + 1),
+      miles,
+    }));
     const freightProfiles = [
       { vehicleType: "Motorcycle courier", weightKg: 3, dimensions: "30x25x20 cm", cargo: "urgent documents", rate: 0.65 },
       { vehicleType: "Car", weightKg: 30, dimensions: "60x45x35 cm", cargo: "small parcels", rate: 0.75, range: "short" },
@@ -359,9 +363,7 @@ async function runQA() {
     ];
     const pickupSlots = ["06:30", "07:30", "09:00", "11:00", "13:00", "15:30", "17:00"];
     const jobPayload = (n: number, mode: "fixed" | "bid") => {
-      // Fixture mix guided by UK Department for Transport domestic road-freight statistics (2025):
-      // mean haul about 105 km; articulated HGV average about 134 km versus about 58 km for rigid HGVs.
-      // Scenario miles and prices are deterministic estimates, not live routing results or market quotes.
+      // Synthetic distances and prices are deterministic test fixtures, not live routing results or market quotes.
       const profile = freightProfiles[Math.abs(n * 5) % freightProfiles.length];
       const lanePool = lanes.filter(lane => profile.range === "short" ? lane.miles <= 65 :
         profile.range === "medium" ? lane.miles >= 35 && lane.miles <= 86 : lane.miles >= 80);
@@ -375,12 +377,12 @@ async function runQA() {
       return {
         pickup: lane.pickup, dropoff: lane.dropoff, jobDate, pickupTime,
         dropoffTime: pad(dropoffHour) + ":00", vehicleType: profile.vehicleType,
-        weightKg: profile.weightKg, dimensions: profile.dimensions, price, priceMode: mode, currency: "GBP",
+        weightKg: profile.weightKg, dimensions: profile.dimensions, price, priceMode: mode, currency: market.currency,
         crossBorder: false,
         notes: "Synthetic QA only " + marker + "; lane=" + lane.pickup + " to " + lane.dropoff +
           "; estimatedMiles=" + lane.miles + "; cargo=" + profile.cargo + "; scenario=" + n,
-        pickupContactName: "QA Contact", pickupContactPhone: "+447700900111",
-        dropoffContactName: "QA Receiver", dropoffContactPhone: "+447700900112",
+        pickupContactName: "QA Contact", pickupContactPhone: market.dialingCode + "7700900111",
+        dropoffContactName: "QA Receiver", dropoffContactPhone: market.dialingCode + "7700900112",
       };
     };
     async function createJob(p: AccountFixture, n: number, mode: "fixed" | "bid") {
@@ -644,10 +646,112 @@ async function runQA() {
       await check(signed[0].client!, signed[0], "admin-access", "ordinary-user-cannot-read-admin", "GET", "/api/admin/testers", undefined, [403]);
       await check(signed[0].client!, signed[0], "payments", "pending-payment-record-without-real-charge", "POST", "/api/subscription/create-payment", {}, [200]);
     }
-    const restricted = fixtures.find(a => a.index === 499);
+    const restricted = fixtures.find(a => a.index === 9_999);
     if (restricted?.client && posters[0]) {
       const sample = await createJob(posters[0], 1800, "bid");
-      if (sample) await check(restricted.client, restricted, "access-control", "restricted-account-cannot-bid", "POST", "/api/jobs/" + sample + "/bid", { amount: 100 }, [403, 402]);
+      if (sample) await check(restricted.client, restricted, "access-control", market.country === "IN" ? "india-non-weekly-market-access-policy" : "restricted-account-cannot-bid", "POST", "/api/jobs/" + sample + "/bid", { amount: 100 }, market.country === "IN" ? [200] : [403, 402]);
+    }
+
+    // Exercise the API surface with 10,000 real requests per selected country.
+    // The cases include unauthenticated access-control probes, malformed inputs,
+    // unsupported methods, unknown-resource IDs, country immutability and admin gates.
+    type RouteMatrixCase = {
+      name: string;
+      auth: boolean;
+      method: string;
+      path: (index: number, missingJobId: string) => string;
+      body?: (index: number) => unknown;
+      expected: number[];
+    };
+    const routeMatrixCases: RouteMatrixCase[] = [
+      { name: "unauth-account-read", auth: false, method: "GET", path: () => "/api/account", expected: [401] },
+      { name: "unauth-account-patch", auth: false, method: "PATCH", path: () => "/api/account", body: () => ({ name: "attacker" }), expected: [401] },
+      { name: "unauth-account-delete", auth: false, method: "DELETE", path: () => "/api/account", body: () => ({ confirm: "DELETE", currentPassword: "wrong" }), expected: [401] },
+      { name: "unauth-access-read", auth: false, method: "GET", path: () => "/api/account/access", expected: [401] },
+      { name: "unauth-job-list", auth: false, method: "GET", path: () => "/api/jobs", expected: [401] },
+      { name: "unauth-job-create", auth: false, method: "POST", path: () => "/api/jobs", body: () => ({}), expected: [401] },
+      { name: "unauth-vehicle-list", auth: false, method: "GET", path: () => "/api/vehicles", expected: [401] },
+      { name: "unauth-vehicle-create", auth: false, method: "POST", path: () => "/api/vehicles", body: () => ({}), expected: [401] },
+      { name: "unauth-payment-summary", auth: false, method: "GET", path: () => "/api/payments", expected: [401] },
+      { name: "unauth-notification-list", auth: false, method: "GET", path: () => "/api/notifications", expected: [401] },
+      { name: "unauth-promotion-status", auth: false, method: "GET", path: () => "/api/promotion/status", expected: [401] },
+      { name: "unauth-referral-progress", auth: false, method: "GET", path: () => "/api/promotion/referrals/progress", expected: [401] },
+      { name: "unauth-rating-write", auth: false, method: "POST", path: () => "/api/ratings", body: () => ({ jobId: "missing", stars: 5 }), expected: [401] },
+      { name: "unauth-subscription-create", auth: false, method: "POST", path: () => "/api/subscription/create-payment", body: () => ({}), expected: [401] },
+      { name: "unauth-verification-start", auth: false, method: "POST", path: () => "/api/verification/start", body: () => ({}), expected: [401] },
+      { name: "unauth-admin-performance", auth: false, method: "GET", path: () => "/api/admin/performance", expected: [401] },
+      { name: "unauth-admin-research", auth: false, method: "GET", path: () => "/api/admin/research", expected: [401] },
+      { name: "unauth-admin-testers", auth: false, method: "GET", path: () => "/api/admin/testers", expected: [401] },
+      { name: "unauth-admin-incidents", auth: false, method: "GET", path: () => "/api/admin/incidents/resolve", expected: [401] },
+      { name: "authenticated-job-search", auth: true, method: "GET", path: (i) => "/api/jobs?search=" + encodeURIComponent("QA-" + marker + "-" + i), expected: [200] },
+      { name: "negative-min-price", auth: true, method: "GET", path: () => "/api/jobs?minPrice=-1", expected: [400] },
+      { name: "nonnumeric-max-price", auth: true, method: "GET", path: () => "/api/jobs?maxPrice=not-a-number", expected: [400] },
+      { name: "authenticated-account-read", auth: true, method: "GET", path: () => "/api/account", expected: [200] },
+      { name: "authenticated-access-read", auth: true, method: "GET", path: () => "/api/account/access", expected: [200] },
+      { name: "country-change-rejected", auth: true, method: "PATCH", path: () => "/api/account", body: () => ({ country: market.country === "IN" ? "GB" : "IN", currency: market.country === "IN" ? "GBP" : "INR" }), expected: [409] },
+      { name: "authenticated-vehicle-list", auth: true, method: "GET", path: () => "/api/vehicles", expected: [200] },
+      { name: "invalid-vehicle-type", auth: true, method: "POST", path: () => "/api/vehicles", body: () => ({ vehicleType: "not-a-vehicle" }), expected: [400] },
+      { name: "authenticated-payment-summary", auth: true, method: "GET", path: () => "/api/payments", expected: [200] },
+      { name: "notification-limit-clamped", auth: true, method: "GET", path: (i) => "/api/notifications?limit=" + (i % 150 - 20), expected: [200] },
+      { name: "invalid-rating-rejected", auth: true, method: "POST", path: () => "/api/ratings", body: (i) => ({ jobId: "missing-" + i, stars: i % 9 - 2 }), expected: [400] },
+      { name: "wrong-password-delete-rejected", auth: true, method: "DELETE", path: () => "/api/account", body: () => ({ confirm: "DELETE", currentPassword: "not-the-real-password" }), expected: [403] },
+      { name: "authenticated-promotion-status", auth: true, method: "GET", path: () => "/api/promotion/status", expected: [200] },
+      { name: "authenticated-referral-progress", auth: true, method: "GET", path: () => "/api/promotion/referrals/progress", expected: [200] },
+      { name: "non-admin-performance-denied", auth: true, method: "GET", path: () => "/api/admin/performance", expected: [403] },
+      { name: "non-admin-research-denied", auth: true, method: "GET", path: () => "/api/admin/research", expected: [403] },
+      { name: "non-admin-testers-denied", auth: true, method: "GET", path: () => "/api/admin/testers", expected: [403] },
+      { name: "non-admin-incidents-denied", auth: true, method: "GET", path: () => "/api/admin/incidents/resolve", expected: [403] },
+      { name: "invalid-email-token", auth: true, method: "POST", path: () => "/api/email/verify", body: () => ({ token: "invalid" }), expected: [400] },
+      { name: "invalid-resend-email", auth: true, method: "POST", path: () => "/api/email/verification/resend", body: () => ({ email: "not-an-email" }), expected: [200, 409, 503] },
+      { name: "missing-job-read", auth: true, method: "GET", path: (i, id) => "/api/jobs/" + id, expected: [404] },
+      { name: "missing-job-activity", auth: true, method: "GET", path: (i, id) => "/api/jobs/" + id + "/activity", expected: [404] },
+      { name: "missing-job-bids", auth: true, method: "GET", path: (i, id) => "/api/jobs/" + id + "/bids", expected: [404] },
+      { name: "missing-job-accept", auth: true, method: "POST", path: (i, id) => "/api/jobs/" + id + "/accept", body: () => ({}), expected: [404] },
+      { name: "missing-job-bid", auth: true, method: "POST", path: (i, id) => "/api/jobs/" + id + "/bid", body: () => ({ amount: 0 }), expected: [404] },
+      { name: "missing-job-cancel", auth: true, method: "POST", path: (i, id) => "/api/jobs/" + id + "/cancel", body: () => ({}), expected: [404] },
+      { name: "missing-job-edit", auth: true, method: "PATCH", path: (i, id) => "/api/jobs/" + id + "/edit", body: () => ({}), expected: [404] },
+      { name: "missing-job-confirm-pickup", auth: true, method: "POST", path: (i, id) => "/api/jobs/" + id + "/confirm-pickup", body: () => ({}), expected: [404] },
+      { name: "missing-job-mark-delivered", auth: true, method: "POST", path: (i, id) => "/api/jobs/" + id + "/mark-delivered", body: () => ({}), expected: [404] },
+      { name: "missing-job-confirm-delivered", auth: true, method: "POST", path: (i, id) => "/api/jobs/" + id + "/confirm-delivered", body: () => ({}), expected: [404] },
+      { name: "missing-job-reject-delivered", auth: true, method: "POST", path: (i, id) => "/api/jobs/" + id + "/reject-delivered", body: () => ({}), expected: [404] },
+      { name: "missing-job-driver-cancel", auth: true, method: "POST", path: (i, id) => "/api/jobs/" + id + "/driver-cancel", body: () => ({}), expected: [404] },
+      { name: "missing-job-unassign", auth: true, method: "POST", path: (i, id) => "/api/jobs/" + id + "/unassign", body: () => ({}), expected: [404] },
+      { name: "missing-job-mark-paid", auth: true, method: "POST", path: (i, id) => "/api/jobs/" + id + "/payment/mark-paid", body: () => ({}), expected: [404] },
+      { name: "missing-job-confirm-received", auth: true, method: "POST", path: (i, id) => "/api/jobs/" + id + "/payment/confirm-received", body: () => ({}), expected: [404] },
+      { name: "missing-job-incidents", auth: true, method: "GET", path: (i, id) => "/api/jobs/" + id + "/incidents", expected: [404] },
+      { name: "missing-job-incident-create", auth: true, method: "POST", path: (i, id) => "/api/jobs/" + id + "/incidents", body: () => ({}), expected: [404] },
+      { name: "missing-job-incident-terminate", auth: true, method: "POST", path: (i, id) => "/api/jobs/" + id + "/incidents/terminate", body: () => ({}), expected: [404] },
+      { name: "missing-job-incident-updates", auth: true, method: "POST", path: (i, id) => "/api/jobs/" + id + "/incidents/updates", body: () => ({}), expected: [404] },
+      { name: "missing-job-evidence-upload", auth: true, method: "POST", path: (i, id) => "/api/jobs/" + id + "/incidents/qa-missing-incident/evidence", body: () => ({}), expected: [404] },
+      { name: "missing-job-evidence-read", auth: true, method: "GET", path: (i, id) => "/api/jobs/" + id + "/incidents/qa-missing-incident/evidence/qa-missing-evidence", expected: [404] },
+      { name: "missing-bid-accept", auth: true, method: "POST", path: (i, id) => "/api/jobs/" + id + "/bids/qa-missing-bid/accept", body: () => ({}), expected: [404] },
+      { name: "unsupported-edit-method", auth: true, method: "GET", path: (i, id) => "/api/jobs/" + id + "/edit", expected: [405] },
+      { name: "unsupported-incident-terminate-method", auth: true, method: "GET", path: (i, id) => "/api/jobs/" + id + "/incidents/terminate", expected: [405] },
+      { name: "unsupported-incident-update-method", auth: true, method: "GET", path: (i, id) => "/api/jobs/" + id + "/incidents/updates", expected: [405] },
+      { name: "unauthenticated-health-is-public", auth: false, method: "GET", path: () => "/api/health", expected: [200] },
+      { name: "qa-status-has-no-secret-data", auth: false, method: "GET", path: () => "/api/qa/run", expected: [200] },
+      { name: "auth-session-is-public-safe", auth: false, method: "GET", path: () => "/api/auth/session", expected: [200] },
+      { name: "auth-csrf-is-public-safe", auth: false, method: "GET", path: () => "/api/auth/csrf", expected: [200] },
+      { name: "invalid-signup-is-rejected", auth: false, method: "POST", path: () => "/api/signup", body: () => ({}), expected: [400] },
+      { name: "subscription-webhook-rejects-unsigned", auth: false, method: "POST", path: () => "/api/subscription/webhook", body: () => ({}), expected: [401] },
+      { name: "verification-webhook-rejects-unsigned", auth: false, method: "POST", path: () => "/api/verification/start/webhook", body: () => ({}), expected: [401, 503] },
+      { name: "qa-runner-rejects-unsigned-post", auth: false, method: "POST", path: () => "/api/qa/run", body: () => ({}), expected: [401] },
+    ];
+    await parallel(Array.from({ length: routeMatrixTarget }, (_, i) => i), 12, async i => {
+      const scenario = routeMatrixCases[i % routeMatrixCases.length];
+      const account = scenario.auth && signed.length ? signed[i % signed.length] : null;
+      const missingJobId = "qa-missing-" + runId + "-" + i;
+      const path = scenario.path(i, missingJobId);
+      const body = scenario.body ? scenario.body(i) : undefined;
+      await check(account?.client ?? null, account, "route-matrix", scenario.name + "-" + i, scenario.method, path, body, scenario.expected);
+      routeMatrixExecuted++;
+    });
+
+    // Delete one synthetic account through the real account-deletion flow only after
+    // its route-matrix checks; the QA cleanup can still recover it by run mapping.
+    const deleteFixture = fixtures.find(account => account.index === 498 && account.client);
+    if (deleteFixture?.client) {
+      await check(deleteFixture.client, deleteFixture, "account-lifecycle", "synthetic-account-delete-confirmation", "DELETE", "/api/account", { confirm: "DELETE", currentPassword: deleteFixture.password }, [200, 202]);
     }
 
     const count = async (query: string, ...params: unknown[]) => {
@@ -665,7 +769,7 @@ async function runQA() {
       syntheticJobActivities: await count('SELECT count(*)::int AS count FROM "JobActivity" a JOIN "Job" j ON j.id=a."jobId" WHERE j.notes LIKE $1', "%" + marker + "%"),
       loggedInteractions: await count("SELECT count(*)::int AS count FROM qa_test_events WHERE run_id=$1", runId),
     };
-    return await finish("completed", { successfulLogins: signed.length, persistedDataSummary, limitations: ["Email delivery and real provider settlements were not attempted.", "This is API-driven lifecycle simulation, not browser-based usability testing.", "Route distances and prices are deterministic scenario estimates calibrated to UK DfT freight statistics, not live routing results or market quotes."] });
+    return await finish("completed", { successfulLogins: signed.length, persistedDataSummary, limitations: ["Email delivery and real provider settlements were not attempted.", "This is API-driven lifecycle simulation, not browser-based usability testing.", "Route distances and prices are deterministic synthetic estimates, not live routing results or market quotes."] });
   } catch (error) {
     lastError = error instanceof Error ? error.message : String(error);
     console.error("Staging QA runner exception", error);
@@ -674,6 +778,23 @@ async function runQA() {
     activeRunId = null;
     lastFinishedAt = new Date().toISOString();
   }
+}
+
+async function runAndCleanup(countryOverride?: string) {
+  const summary = await runQA(countryOverride);
+  if (
+    process.env.QA_AUTO_CLEANUP === "true" &&
+    process.env.QA_ALLOW_CLEANUP === "true" &&
+    summary?.runId
+  ) {
+    const base = (process.env.QA_BASE_URL || "").replace(/\/+$/, "");
+    const cleanup = await cleanupSyntheticRuns([String(summary.runId)], base);
+    console.log("POST2DRIVE_QA_CLEANUP_RESULT " + JSON.stringify(cleanup));
+  }
+  if (summary?.status === "failed" || summary?.status === "aborted") {
+    lastError = "QA run did not pass; inspect the preserved country report.";
+  }
+  return summary;
 }
 
 export async function GET(req: Request) {
@@ -727,23 +848,56 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Unknown report type." }, { status: 400 });
   }
   // One-time, high-entropy trigger for controlled staging automation when POST dispatch is unavailable.
-  // Never log or echo the token; rotate QA_RUN_TOKEN immediately after starting the run.
+  // Never log or echo the token; rotate QA_RUN_TOKEN after the run and its preserved report have been retrieved.
   if (url.searchParams.get("mode") === "status") {
     if (!expectedToken || token !== expectedToken) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-    return NextResponse.json({ ok: true, active, activeRunId, lastRunId, lastFinishedAt, lastError: lastError ? "QA run failed; inspect restricted staging logs." : null });
+    try {
+      // Process-local flags are not reliable across restarts or replicas. Read the
+      // durable run ledger so a deployment replacement cannot hide a running/stuck run.
+      const [runningRows, latestRows] = await Promise.all([
+        prisma.$queryRawUnsafe<Array<{ id: string; started_at: Date; target_accounts: number; created_accounts: number; successful_checks: number; failed_checks: number }>>(
+          "SELECT id,started_at,target_accounts,created_accounts,successful_checks,failed_checks FROM qa_test_runs WHERE status='running' ORDER BY started_at DESC LIMIT 1"
+        ),
+        prisma.$queryRawUnsafe<Array<{ id: string; status: string; started_at: Date; finished_at: Date | null; target_accounts: number; created_accounts: number; successful_checks: number; failed_checks: number; duration_ms: bigint | null; summary: unknown }>>(
+          "SELECT id,status,started_at,finished_at,target_accounts,created_accounts,successful_checks,failed_checks,duration_ms,summary FROM qa_test_runs ORDER BY started_at DESC LIMIT 1"
+        )
+      ]);
+      const running = runningRows[0] ?? null;
+      const latest = latestRows[0] ?? null;
+      const serialise = (row: any) => row ? {
+        ...row,
+        started_at: row.started_at instanceof Date ? row.started_at.toISOString() : row.started_at,
+        finished_at: row.finished_at instanceof Date ? row.finished_at.toISOString() : row.finished_at,
+        duration_ms: row.duration_ms === null || row.duration_ms === undefined ? null : Number(row.duration_ms)
+      } : null;
+      return NextResponse.json({
+        ok: true,
+        active: Boolean(running) || active,
+        activeRunId: running?.id ?? (active ? activeRunId : null),
+        lastRunId: latest?.id ?? lastRunId,
+        lastFinishedAt: latest?.finished_at ?? lastFinishedAt,
+        persistedRunningRun: serialise(running),
+        latestRun: serialise(latest),
+        lastError: lastError ? "QA run failed; inspect restricted staging logs." : null
+      });
+    } catch {
+      return NextResponse.json({ error: "Unable to read durable QA run status." }, { status: 503 });
+    }
   }
   if (!token) return NextResponse.json({ ok: true, stagingOnly: true });
-  if (!expectedToken || token !== expectedToken || accounts !== "500" || target !== "staging" || confirm !== "RUN_500_SYNTHETIC_ACCOUNTS_ON_STAGING") {
+  if (!expectedToken || token !== expectedToken || accounts !== "10000" || target !== "staging" || confirm !== "RUN_10000_SYNTHETIC_ACCOUNTS_ON_STAGING") {
     return NextResponse.json({ error: "Unauthorized or invalid staging confirmation." }, { status: 401 });
   }
+  const requestedCountry = (url.searchParams.get("country") || process.env.QA_MARKET_COUNTRY || "GB").trim().toUpperCase();
+  if (!getMarket(requestedCountry)) return NextResponse.json({ error: "Unsupported country code." }, { status: 400 });
   if (active) return NextResponse.json({ error: "A QA run is already active.", activeRunId }, { status: 409 });
   active = true;
   lastError = null;
-  void runQA().catch(error => {
+  void runAndCleanup(requestedCountry).catch(error => {
     lastError = error instanceof Error ? error.message : String(error);
     console.error("QA background task failed", error);
   }).finally(() => { active = false; });
-  return NextResponse.json({ accepted: true, target: "staging", accounts: 500 });
+  return NextResponse.json({ accepted: true, target: "staging", accounts: 10_000 });
 }
 
 export async function POST(req: Request) {
@@ -775,14 +929,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: error instanceof Error ? error.message : "Cleanup failed." }, { status: 409 });
     }
   }
-  if (body?.target !== "staging" || body?.accounts !== 500 || body?.confirm !== "RUN_500_SYNTHETIC_ACCOUNTS_ON_STAGING") {
-    return NextResponse.json({ error: "Explicit staging target, accounts=500 and confirmation token required." }, { status: 400 });
+  const requestedCountry = String(body?.country || process.env.QA_MARKET_COUNTRY || "GB").trim().toUpperCase();
+  if (!getMarket(requestedCountry)) return NextResponse.json({ error: "Unsupported country code." }, { status: 400 });
+  if (body?.target !== "staging" || body?.accounts !== 10_000 || body?.confirm !== "RUN_10000_SYNTHETIC_ACCOUNTS_ON_STAGING") {
+    return NextResponse.json({ error: "Explicit staging target, accounts=10000 and confirmation token required." }, { status: 400 });
   }
   active = true;
   lastError = null;
-  void runQA().catch(error => {
+  void runAndCleanup(requestedCountry).catch(error => {
     lastError = error instanceof Error ? error.message : String(error);
     console.error("QA background task failed", error);
   }).finally(() => { active = false; });
-  return NextResponse.json({ accepted: true, target: "staging", accounts: 500 }, { status: 202 });
+  return NextResponse.json({ accepted: true, target: "staging", accounts: 10_000 }, { status: 202 });
 }
