@@ -10,6 +10,7 @@ const euroMarkets = ["AT", "BE", "BG", "HR", "CY", "EE", "FI", "FR", "DE", "GR",
 for (const country of euroMarkets) {
   assert.equal(getMarket(country)?.currency, "EUR", `${country} must use EUR`);
   assert.equal(isSupportedMarket({ country, currency: "EUR" }), true, `${country} + EUR must be supported`);
+  assert.equal(isWeeklyPricingMarket({ country, currency: "EUR" }), true, `${country} must use the UK weekly pricing model`);
 }
 assert.equal(euroMarkets.length, 27, "all EU euro-area countries and other euro-using European states are included");
 const additionalMarkets = {
