@@ -23,7 +23,7 @@ async function POSTHandler() {
       paymentId: payment.id,
       planKey: payment.planKey,
       amountMinorUnits: payment.amountPence,
-      amountPence: payment.amountPence,
+      amountMinorUnits: payment.amountMinorUnits,
       currency: payment.currency,
       status: payment.status,
     });
