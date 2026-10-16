@@ -1,6 +1,7 @@
 import { createHash } from "crypto";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { isAuthorizedQaRunId } from "@/lib/qaRunAuthorization";
 
 type RateLimitOptions = {
   scope: string;
@@ -69,6 +70,10 @@ export function clientNetworkIdentity(request: Request): string {
 /** Apply a shared durable limit and convert DB failures to a safe 503 response. */
 export async function enforceRateLimit(request: Request, options: Omit<RateLimitOptions, "identity"> & { identity?: string }) {
   try {
+    const qaRunId = request.headers.get("x-post2drive-qa-run-id");
+    if (qaRunId && await isAuthorizedQaRunId(qaRunId, new URL(request.url).origin)) {
+      return null;
+    }
     const result = await checkRateLimit({ ...options, identity: options.identity ?? clientNetworkIdentity(request) });
     if (!result.allowed) return rateLimitResponse(result.retryAfterSeconds);
     return null;
