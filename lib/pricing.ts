@@ -1,5 +1,5 @@
 import { isUkAccount } from "@/lib/uk";
-import { isWeeklyPricingMarket } from "@/lib/market";
+import { isWeeklyPricingMarket, marketForAccount, MARKETS } from "@/lib/market";
 
 export type PricingPlan = "individual" | "fleet";
 
@@ -11,12 +11,12 @@ export interface PricingAccount {
 }
 
 /*
- * UK and euro-market launch pricing.
+ * UK-model launch pricing for all supported non-India markets.
  * Access is sold in 7-day periods (7 x 24 hours from activation/recharge).
  * Individual = one verified person + one vehicle.
  * Fleet = 2+ vehicles under the same business/account.
  * All plans: unlimited legitimate marketplace activity and no per-job charges.
- * EUR prices intentionally use the same numeric tiers as the UK plan.
+ * Each supported non-India market uses the same numeric tiers in its own local currency.
  */
 export const INDIVIDUAL_PRICE_GBP = 9.99;
 export const INDIVIDUAL_PRICE_EUR = 9.99;
@@ -45,15 +45,18 @@ export function isWeeklyPricingEligible(account: PricingAccount) {
 }
 
 function pricesFor(account?: PricingAccount) {
-  const currency = account?.currency ?? "GBP";
   if (account && !isWeeklyPricingEligible(account)) return null;
-  if (currency === "EUR") {
-    return { currency, symbol: "€", individual: INDIVIDUAL_PRICE_EUR, fleet: FLEET_PRICES_EUR };
-  }
-  if (currency === "GBP") {
-    return { currency, symbol: "£", individual: INDIVIDUAL_PRICE_GBP, fleet: FLEET_PRICES_GBP };
-  }
-  return null;
+  const market = account ? marketForAccount(account) : MARKETS.GB;
+  if (!market || market.country === "IN") return null;
+  return {
+    currency: market.currency,
+    symbol: market.symbol,
+    format: (amount: number) => new Intl.NumberFormat(market.locale, {
+      style: "currency", currency: market.currency,
+    }).format(amount),
+    individual: INDIVIDUAL_PRICE_GBP,
+    fleet: FLEET_PRICES_GBP,
+  };
 }
 
 export function getIndividualWeeklyPrice(account?: PricingAccount) {
@@ -102,7 +105,7 @@ export function getPlanDisplay(
       currency: prices.currency,
       description: price === null
         ? "Fleets with 56+ vehicles need a custom plan."
-        : `${prices.symbol}${price.toFixed(2)} for 7-day access, based on fleet size. Unlimited legitimate marketplace activity; no per-job charges.`,
+        : `${prices.format(price)} for 7-day access, based on fleet size. Unlimited legitimate marketplace activity; no per-job charges.`,
     };
   }
 
@@ -111,6 +114,6 @@ export function getPlanDisplay(
     name: "Individual",
     price: prices.individual,
     currency: prices.currency,
-    description: `${prices.symbol}${prices.individual.toFixed(2)} for 7 days of access. One verified person and one vehicle. Unlimited legitimate marketplace activity with no per-job charges.`,
+    description: `${prices.format(prices.individual)} for 7 days of access. One verified person and one vehicle. Unlimited legitimate marketplace activity with no per-job charges.`,
   };
 }

@@ -12,7 +12,7 @@ export function getPaidPlanKey(account: {
   return account.planType === "fleet" ? "fleet" : "individual";
 }
 
-/** Return the amount in minor currency units (pence for GBP, cents for EUR). */
+/** Return the price in minor currency units for the account currency. */
 export function getPaidPriceMinorUnits(account: {
   country?: string | null;
   currency?: string | null;
@@ -25,7 +25,12 @@ export function getPaidPriceMinorUnits(account: {
     ? getFleetPrice(account.fleetVehicleCount ?? 0, account)
     : getIndividualWeeklyPrice(account);
 
-  return price === null ? null : Math.round(price * 100);
+  if (price === null) return null;
+  const currency = account.currency ?? "GBP";
+  const fractionDigits = new Intl.NumberFormat("en", {
+    style: "currency", currency,
+  }).resolvedOptions().maximumFractionDigits ?? 2;
+  return Math.round(price * (10 ** fractionDigits));
 }
 
 /** Backwards-compatible alias. The integer is currency minor units, not always GBP pence. */
@@ -40,7 +45,7 @@ export async function createPendingSubscriptionPayment(accountId: string) {
 
   if (!account) throw new Error("Account not found.");
   if (!isWeeklyPricingEligible(account)) {
-    throw new Error("Paid weekly access is currently available only to supported GB/GBP and euro/EUR markets.");
+    throw new Error("Paid weekly access is available to supported non-India markets.");
   }
   if (account.verificationStatus !== "verified" && !account.isTester) {
     throw new Error("Account must be successfully verified before purchasing access.");

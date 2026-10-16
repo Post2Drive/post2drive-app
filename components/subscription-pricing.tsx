@@ -1,11 +1,11 @@
 "use client";
 
 const plans = [
-  { name: "Individual", detail: "1 verified person · 1 vehicle", gbp: "£9.99", eur: "€9.99" },
-  { name: "Fleet 2–5", detail: "2–5 vehicles", gbp: "£16.99", eur: "€16.99" },
-  { name: "Fleet 6–15", detail: "6–15 vehicles", gbp: "£24.99", eur: "€24.99" },
-  { name: "Fleet 16–30", detail: "16–30 vehicles", gbp: "£36.99", eur: "€36.99" },
-  { name: "Fleet 31–55", detail: "31–55 vehicles", gbp: "£49.99", eur: "€49.99" },
+  { name: "Individual", detail: "1 verified person · 1 vehicle", gbp: "£9.99", eur: "€9.99", local: "9.99 in local currency" },
+  { name: "Fleet 2–5", detail: "2–5 vehicles", gbp: "£16.99", eur: "€16.99", local: "16.99 in local currency" },
+  { name: "Fleet 6–15", detail: "6–15 vehicles", gbp: "£24.99", eur: "€24.99", local: "24.99 in local currency" },
+  { name: "Fleet 16–30", detail: "16–30 vehicles", gbp: "£36.99", eur: "€36.99", local: "36.99 in local currency" },
+  { name: "Fleet 31–55", detail: "31–55 vehicles", gbp: "£49.99", eur: "€49.99", local: "49.99 in local currency" },
 ];
 
 export default function SubscriptionPricing() {
@@ -25,7 +25,8 @@ export default function SubscriptionPricing() {
             <div style={{ fontSize: 12, color: "#6B7C93", marginBottom: 12 }}>{plan.detail}</div>
             <div style={{ fontSize: 22, fontWeight: 700, color: "#102A43" }}>{plan.gbp}<span style={{ fontSize: 12, fontWeight: 500 }}> GBP</span></div>
             <div style={{ fontSize: 22, fontWeight: 700, color: "#102A43", marginTop: 4 }}>{plan.eur}<span style={{ fontSize: 12, fontWeight: 500 }}> EUR</span></div>
-            <div style={{ fontSize: 13, color: "#6B7C93", marginTop: 8 }}>per 7 days</div>
+            <div style={{ fontSize: 13, color: "#6B7C93", marginTop: 8 }}>{plan.local}</div>
+            <div style={{ fontSize: 13, color: "#6B7C93", marginTop: 4 }}>per 7 days</div>
           </div>
         ))}
       </div>
@@ -34,7 +35,7 @@ export default function SubscriptionPricing() {
         Unlimited legitimate marketplace activity · No per-job charges
       </div>
       <p style={{ margin: "14px 0 0", fontSize: 13, color: "#6B7C93" }}>
-        Fleets with 56+ vehicles need a custom plan. EUR pricing uses the same numeric tiers as GBP. India pricing remains separate. Prices are published for product planning; payment checkout is not connected yet.
+        Fleets with 56+ vehicles need a custom plan. The same numeric tiers apply in each supported non-India market using that market’s local currency. India pricing remains separate. Prices are published for product planning; payment checkout is not connected yet.
       </p>
     </section>
   );

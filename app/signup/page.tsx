@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { COUNTRIES, currencyForCountry, symbolFor } from "@/lib/currency";
+import { COUNTRIES, currencyForCountry } from "@/lib/currency";
 
 const TERMS_VERSION = "2026-10-16";
 type ResearchAnswers = { role: string; currentDiscovery: string; biggestChallenge: string; preferredAccess: string };
@@ -32,10 +32,14 @@ export default function SignupPage() {
   const selectedCountry = COUNTRIES.find((country) => country.code === form.country);
   const marketLabel = selectedCountry?.name ?? "Selected market";
   const marketDisplay = form.country ? `${marketLabel} · ${form.currency}` : "Choose your market";
-  const hasWeeklyPricing = isUk || form.currency === "EUR";
-  const priceSymbol = symbolFor(form.currency);
+  const hasWeeklyPricing = Boolean(selectedCountry && !isIndia);
   const vehicleCount = Number(form.fleetVehicleCount);
   const selectedPlan = vehicleCount === 1 ? "individual" : "fleet";
+  function formatMarketPrice(amount: number) {
+    return new Intl.NumberFormat(selectedCountry?.locale ?? "en-GB", {
+      style: "currency", currency: form.currency,
+    }).format(amount);
+  }
   const steps = useMemo(() => isIndia
     ? ["Business setup", "Vehicles & capacity", "Your account", "Market research (optional)", "Review & agree"]
     : ["Business setup", "Vehicles & capacity", "Your account", "Plan & review"], [isIndia]);
@@ -129,12 +133,12 @@ export default function SignupPage() {
         <label>Choose your market<select required value={form.country} onChange={(e) => changeCountry(e.target.value)}><option value="" disabled>Choose a country</option>{COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}</select><small>This determines your marketplace, currency and local time zone. Cross-market matching is disabled.</small></label>
         <label>Account type<select value={form.isSoleTrader ? "sole" : "company"} onChange={(e) => update("isSoleTrader", e.target.value === "sole")}><option value="company">Registered business</option><option value="sole">Sole trader / individual operator</option></select></label>
         <label>{form.isSoleTrader ? "Trading name (optional)" : "Registered company name"}<input value={form.companyName} onChange={(e) => update("companyName", e.target.value)} required={!form.isSoleTrader} maxLength={120} placeholder={form.isSoleTrader ? "You can use your own name" : "Name registered to your business"} /></label>
-        <div className="signup-note"><strong>{form.country ? `${marketLabel} marketplace` : "Select a market"}</strong><p>{!form.country ? "Choose a country to see the correct marketplace, currency and access options." : isIndia ? "Browse India-only delivery opportunities using INR. A short optional market-research step helps shape the experience." : isUk ? "Use this country's marketplace with GBP pricing. Market-specific access and promotion rules are shown before you commit." : form.currency === "EUR" ? "Use this country's separate marketplace with EUR pricing. The available weekly-access and fleet tiers will be shown before you commit." : "Use the selected Post2Drive marketplace. Pricing and access terms will be shown before any payment."}</p></div>
+        <div className="signup-note"><strong>{form.country ? `${marketLabel} marketplace` : "Select a market"}</strong><p>{!form.country ? "Choose a country to see the correct marketplace, currency and access options." : isIndia ? "Browse India-only delivery opportunities using INR. A short optional market-research step helps shape the experience." : isUk ? "Use this country's marketplace with GBP pricing. Market-specific access and promotion rules are shown before you commit." : "Use this country's separate marketplace with its local currency and the same 7-day individual and fleet access model as the UK. UK-only promotions do not automatically apply."}</p></div>
       </div>}
 
       {step === 1 && <div className="signup-fields">
         <label>How many vehicles will use this account?<input type="number" min="1" max="55" step="1" required value={form.fleetVehicleCount} onChange={(e) => { const v = e.target.value; setForm((current) => ({ ...current, fleetVehicleCount: v, planType: Number(v) === 1 ? "individual" : "fleet" })); }} /></label>
-        <div className="signup-plan-card"><span className="signup-plan-label">YOUR PLAN TYPE</span><h3>{selectedPlan === "individual" ? "Individual · 1 vehicle" : "Fleet · 2–55 vehicles"}</h3>{hasWeeklyPricing ? <><p className="signup-plan-price">{priceSymbol}{(selectedPlan === "individual" ? 9.99 : vehicleCount <= 5 ? 16.99 : vehicleCount <= 15 ? 24.99 : vehicleCount <= 30 ? 36.99 : 49.99).toFixed(2)} / 7 days</p><small>Prices shown for your selected market. Unlimited legitimate marketplace activity; no per-job charges. No payment is taken at signup and checkout is not yet connected.</small></> : <><p>India pricing will be confirmed before any paid plan becomes available.</p><small>Creating an account does not charge you.</small></>}</div>
+        <div className="signup-plan-card"><span className="signup-plan-label">YOUR PLAN TYPE</span><h3>{selectedPlan === "individual" ? "Individual · 1 vehicle" : "Fleet · 2–55 vehicles"}</h3>{hasWeeklyPricing ? <><p className="signup-plan-price">{formatMarketPrice(selectedPlan === "individual" ? 9.99 : vehicleCount <= 5 ? 16.99 : vehicleCount <= 15 ? 24.99 : vehicleCount <= 30 ? 36.99 : 49.99)} / 7 days</p><small>Prices shown for your selected market. Unlimited legitimate marketplace activity; no per-job charges. No payment is taken at signup and checkout is not yet connected.</small></> : <><p>{isIndia ? "India pricing will be confirmed before any paid plan becomes available." : `Pricing for ${marketLabel} will be confirmed before any paid plan becomes available.`}</p><small>Creating an account does not charge you.</small></>}</div>
         <p className="signup-muted">One account supports both posting and fulfilling jobs. Vehicle count determines the account plan—not whether you are a driver or a business posting deliveries. Fleets above 55 vehicles require custom pricing.</p>
       </div>}
 
@@ -158,7 +162,7 @@ export default function SignupPage() {
         <div className="signup-review-grid"><div><span>MARKET</span><strong>{marketDisplay}</strong></div><div><span>BUSINESS</span><strong>{form.isSoleTrader ? (form.companyName.trim() || form.name || "Sole trader") : form.companyName}</strong></div><div><span>ACCOUNT PLAN</span><strong>{selectedPlan === "individual" ? "Individual · 1 vehicle" : `Fleet · ${form.fleetVehicleCount} vehicles`}</strong></div><div><span>EMAIL</span><strong>{form.email}</strong></div></div>
         {isUk && <div className="signup-note"><strong>Promotion is not guaranteed</strong><p>Entering an invitation code creates a tester application. Access and any promotional trial begin only after approval. Paid subscription checkout is not activated by this signup.</p></div>}
         <label className="signup-checkbox"><input type="checkbox" checked={form.termsAccepted} onChange={(e) => update("termsAccepted", e.target.checked)} /><span>I agree to the <a href="/terms" target="_blank" rel="noreferrer">Terms of Service</a> and acknowledge the <a href="/privacy" target="_blank" rel="noreferrer">Privacy Notice</a>.</span></label>
-        <p className="signup-muted">Your account will be created in {isIndia ? "the India marketplace with INR" : isUk ? "the selected GBP marketplace" : `the ${marketLabel} marketplace with EUR`}. Each country market keeps public job listings separate.</p>
+        <p className="signup-muted">Your account will be created in {isIndia ? "the India marketplace with INR" : `the ${marketLabel} marketplace with ${form.currency}`}. Each country market keeps public job listings separate.</p>
       </div>}
 
       {error && <p className="signup-error" role="alert">{error}</p>}

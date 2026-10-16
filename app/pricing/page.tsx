@@ -17,7 +17,7 @@ export default function PricingPage() {
             color: "#102A43",
           }}
         >
-          UK and euro-market pricing
+          Pricing by market
         </h1>
 
         <p
@@ -26,7 +26,7 @@ export default function PricingPage() {
             color: "#6B7C93",
           }}
         >
-          The same 7-day individual and fleet model is available in GBP for the UK and EUR for supported euro markets.
+          The UK 7-day model applies across all supported markets except India, using each market’s local currency and the same numeric price tiers. India pricing remains separate.
         </p>
       </div>
 

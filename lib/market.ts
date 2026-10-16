@@ -33,6 +33,24 @@ export const MARKETS = {
   VA: { country: "VA", currency: "EUR", label: "Vatican City", timeZone: "Europe/Vatican", symbol: "€", locale: "it-VA", dialingCode: "+39" },
   XK: { country: "XK", currency: "EUR", label: "Kosovo", timeZone: "Europe/Belgrade", symbol: "€", locale: "sq-XK", dialingCode: "+383" },
   ME: { country: "ME", currency: "EUR", label: "Montenegro", timeZone: "Europe/Podgorica", symbol: "€", locale: "sr-ME", dialingCode: "+382" },
+
+  // Additional mainstream European markets using their local currencies.
+  CZ: { country: "CZ", currency: "CZK", label: "Czechia", timeZone: "Europe/Prague", symbol: "Kč", locale: "cs-CZ", dialingCode: "+420" },
+  DK: { country: "DK", currency: "DKK", label: "Denmark", timeZone: "Europe/Copenhagen", symbol: "kr", locale: "da-DK", dialingCode: "+45" },
+  HU: { country: "HU", currency: "HUF", label: "Hungary", timeZone: "Europe/Budapest", symbol: "Ft", locale: "hu-HU", dialingCode: "+36" },
+  IS: { country: "IS", currency: "ISK", label: "Iceland", timeZone: "Atlantic/Reykjavik", symbol: "kr", locale: "is-IS", dialingCode: "+354" },
+  NO: { country: "NO", currency: "NOK", label: "Norway", timeZone: "Europe/Oslo", symbol: "kr", locale: "nb-NO", dialingCode: "+47" },
+  PL: { country: "PL", currency: "PLN", label: "Poland", timeZone: "Europe/Warsaw", symbol: "zł", locale: "pl-PL", dialingCode: "+48" },
+  RO: { country: "RO", currency: "RON", label: "Romania", timeZone: "Europe/Bucharest", symbol: "lei", locale: "ro-RO", dialingCode: "+40" },
+  SE: { country: "SE", currency: "SEK", label: "Sweden", timeZone: "Europe/Stockholm", symbol: "kr", locale: "sv-SE", dialingCode: "+46" },
+  CH: { country: "CH", currency: "CHF", label: "Switzerland", timeZone: "Europe/Zurich", symbol: "CHF", locale: "de-CH", dialingCode: "+41" },
+  TR: { country: "TR", currency: "TRY", label: "Türkiye", timeZone: "Europe/Istanbul", symbol: "₺", locale: "tr-TR", dialingCode: "+90" },
+
+  // North American and Asia-Pacific markets.
+  US: { country: "US", currency: "USD", label: "United States", timeZone: "America/New_York", symbol: "$", locale: "en-US", dialingCode: "+1" },
+  CA: { country: "CA", currency: "CAD", label: "Canada", timeZone: "America/Toronto", symbol: "CA$", locale: "en-CA", dialingCode: "+1" },
+  AU: { country: "AU", currency: "AUD", label: "Australia", timeZone: "Australia/Sydney", symbol: "A$", locale: "en-AU", dialingCode: "+61" },
+  NZ: { country: "NZ", currency: "NZD", label: "New Zealand", timeZone: "Pacific/Auckland", symbol: "NZ$", locale: "en-NZ", dialingCode: "+64" },
 } as const;
 
 export type SupportedCountry = keyof typeof MARKETS;
@@ -66,10 +84,10 @@ export function marketForAccount(value: MarketIdentity) {
   return market;
 }
 
-/** The UK and euro-using markets share the same 7-day pricing model. India remains separately configured. */
+/** All supported non-India markets use the UK 7-day access model; India remains separately configured. */
 export function isWeeklyPricingMarket(value: MarketIdentity): boolean {
   const market = marketForAccount(value);
-  return Boolean(market && (market.country === "GB" || market.currency === "EUR"));
+  return Boolean(market && market.country !== "IN");
 }
 
 export function marketTimeZone(value: MarketIdentity): string {
