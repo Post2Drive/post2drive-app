@@ -54,7 +54,8 @@ function qaSummary(run:Row|undefined):Row {
   return {};
 }
 function MetricCard({ label, value, hint }: {label:string;value:unknown;hint?:string}) {
-  return <div style={{ ...card, padding:15 }}><div style={{ color:palette.muted, fontSize:12, marginBottom:8 }}>{label}</div><div style={{ fontSize:27, lineHeight:1.15, fontWeight:750, fontVariantNumeric:"tabular-nums" }}>{num(value)}</div>{hint?<div style={{ color:palette.muted,fontSize:12,marginTop:6 }}>{hint}</div>:null}</div>;
+  const display=typeof value==="string" && value.trim()!=="" && !Number.isFinite(Number(value)) ? value : num(value);
+  return <div style={{ ...card, padding:15 }}><div style={{ color:palette.muted, fontSize:12, marginBottom:8 }}>{label}</div><div style={{ fontSize:typeof display==="string" && display.length>14?18:27, lineHeight:1.15, fontWeight:750, fontVariantNumeric:"tabular-nums",overflowWrap:"anywhere" }}>{display}</div>{hint?<div style={{ color:palette.muted,fontSize:12,marginTop:6 }}>{hint}</div>:null}</div>;
 }
 export default function PerformanceDashboard() {
   const [days,setDays]=useState(7);
@@ -107,6 +108,16 @@ export default function PerformanceDashboard() {
       <MetricCard label="New · 30 days" value={o.new30d}/>
       <MetricCard label="Jobs posted · 7 days" value={o.jobs7d}/>
     </div>
+    <Section title="Metric definitions and data quality" subtitle="Missing instrumentation is not equivalent to zero activity. Interpret each measure within its stated source and exclusions.">
+      <Table rows={[
+        {metric:"Real accounts / user activity",source:"Account and usage tables",rule:"QA accounts excluded by qa_test_accounts membership"},
+        {metric:"API reliability and latency",source:"ApiRequestMetric",rule:"Only non-QA telemetry; route templates, status and duration, no request payloads"},
+        {metric:"Payment records",source:"SubscriptionPayment / Job declarations",rule:"Recorded statuses and user declarations; not proof of provider-settled revenue"},
+        {metric:"Vehicle compliance",source:"Vehicle document status and expiry dates",rule:"Operational records only; not independent authenticity verification"},
+        {metric:"Country contract scenarios",source:"CI-generated country-matrix-report.json",rule:"Not yet ingested into dashboard history; contract suite remains a separate CI result"},
+        {metric:"Route-matrix QA",source:"qa_test_runs and qa_test_events",rule:"Actual staging HTTP run results; verify completed status before treating as pass"}
+      ]} columns={[{key:"metric",label:"Metric"},{key:"source",label:"Source"},{key:"rule",label:"Interpretation / limitation"}]}/>
+    </Section>
     <Section title="API health and bottlenecks" subtitle="Backend response times recorded by this app release. P95 is the response time within which 95% of requests finished. Routes without data have not yet been instrumented or exercised.">
       <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(210px,1fr))",gap:10,marginBottom:16 }}>
         <MetricCard label="Instrumented routes" value={data.endpointPerformance.length}/>
