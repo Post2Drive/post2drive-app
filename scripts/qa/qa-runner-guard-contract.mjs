@@ -55,6 +55,13 @@ try {
   const reportPosition = getHandler.indexOf("if (report)");
   assert.ok(guardPosition >= 0 && reportPosition > guardPosition, "GET staging guard must execute before report/status/run actions");
   assert.ok(getHandler.includes('lastError: lastError ? "QA run failed; inspect restricted staging logs." : null'), "status endpoint must not expose raw internal QA error strings");
+  const statusStart = getHandler.indexOf('if (url.searchParams.get("mode") === "status")');
+  const reportEnd = getHandler.indexOf("// One-time, high-entropy trigger", statusStart);
+  const statusHandler = getHandler.slice(statusStart, reportEnd);
+  assert.ok(statusHandler.includes("WHERE status='running' ORDER BY started_at DESC LIMIT 1"), "status must read active runs from the durable QA ledger, not process memory alone");
+  assert.ok(statusHandler.includes("ORDER BY started_at DESC LIMIT 1"), "status must expose the latest persisted run after a process restart");
+  assert.ok(statusHandler.includes("persistedRunningRun") && statusHandler.includes("latestRun"), "status response must expose normalized durable run summaries");
+  assert.ok(statusHandler.includes("Unable to read durable QA run status."), "status must fail closed if the durable ledger cannot be read");
 
   const resendRoute = readFileSync("app/api/email/verification/resend/route.ts", "utf8");
   assert.ok(resendRoute.includes('scope: "email-verification-resend"'), "verification resend must have a network rate limit");
