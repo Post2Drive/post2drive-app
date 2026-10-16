@@ -127,7 +127,7 @@ async function cleanupSyntheticRuns(runIds: string[], base: string) {
       await exec("accounts", qaAccounts + 'DELETE FROM "Account" WHERE id IN (SELECT account_id FROM qa_accounts)', runId, marker, emailPattern);
       await exec("apiMetrics", 'DELETE FROM "ApiRequestMetric" WHERE "qaRunId"=$1', runId);
       await exec("accountMappings", 'DELETE FROM qa_test_accounts WHERE run_id=$1', runId);
-      const finalStatus = run.status === "completed" ? "completed" : "aborted";
+      const finalStatus = run.status === "running" ? "aborted" : run.status;
       await tx.$executeRawUnsafe(
         "UPDATE qa_test_runs SET status=$2, created_accounts=GREATEST(created_accounts,$3), summary=COALESCE(summary,'{}'::jsonb) || jsonb_build_object('status',$2,'cleanupReason','explicitly requested staging synthetic cleanup','recoveredSyntheticAccounts',$3,'syntheticDataRetained',false,'syntheticDataCleanedAt',now(),'cleanupCounts',$4::jsonb) WHERE id=$1",
         runId, finalStatus, recoveredAccounts, JSON.stringify(counts)
@@ -777,6 +777,20 @@ async function runQA() {
   }
 }
 
+async function runAndCleanup() {
+  const summary = await runQA();
+  if (
+    process.env.QA_AUTO_CLEANUP === "true" &&
+    process.env.QA_ALLOW_CLEANUP === "true" &&
+    summary?.runId
+  ) {
+    const base = (process.env.QA_BASE_URL || "").replace(/\/+$/, "");
+    const cleanup = await cleanupSyntheticRuns([String(summary.runId)], base);
+    console.log("POST2DRIVE_QA_CLEANUP_RESULT " + JSON.stringify(cleanup));
+  }
+  return summary;
+}
+
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const token = url.searchParams.get("token") || "";
@@ -840,7 +854,7 @@ export async function GET(req: Request) {
   if (active) return NextResponse.json({ error: "A QA run is already active.", activeRunId }, { status: 409 });
   active = true;
   lastError = null;
-  void runQA().catch(error => {
+  void runAndCleanup().catch(error => {
     lastError = error instanceof Error ? error.message : String(error);
     console.error("QA background task failed", error);
   }).finally(() => { active = false; });
