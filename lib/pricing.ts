@@ -51,6 +51,9 @@ function pricesFor(account?: PricingAccount) {
   return {
     currency: market.currency,
     symbol: market.symbol,
+    format: (amount: number) => new Intl.NumberFormat(market.locale, {
+      style: "currency", currency: market.currency,
+    }).format(amount),
     individual: INDIVIDUAL_PRICE_GBP,
     fleet: FLEET_PRICES_GBP,
   };
@@ -102,7 +105,7 @@ export function getPlanDisplay(
       currency: prices.currency,
       description: price === null
         ? "Fleets with 56+ vehicles need a custom plan."
-        : `${prices.symbol}${price.toFixed(2)} for 7-day access, based on fleet size. Unlimited legitimate marketplace activity; no per-job charges.`,
+        : `${prices.format(price)} for 7-day access, based on fleet size. Unlimited legitimate marketplace activity; no per-job charges.`,
     };
   }
 
@@ -111,6 +114,6 @@ export function getPlanDisplay(
     name: "Individual",
     price: prices.individual,
     currency: prices.currency,
-    description: `${prices.symbol}${prices.individual.toFixed(2)} for 7 days of access. One verified person and one vehicle. Unlimited legitimate marketplace activity with no per-job charges.`,
+    description: `${prices.format(prices.individual)} for 7 days of access. One verified person and one vehicle. Unlimited legitimate marketplace activity with no per-job charges.`,
   };
 }
