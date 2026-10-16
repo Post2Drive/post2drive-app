@@ -40,7 +40,7 @@ async function GETHandler() {
     select: {
       id: true,
       planKey: true,
-      amountPence: true,
+      amountMinorUnits: true,
       currency: true,
       status: true,
       createdAt: true,
