@@ -3,9 +3,9 @@
 **Canonical app repository:** https://github.com/Post2Drive/post2drive-app  
 **Current state:** GitHub contains bootstrap documentation; the full source bundle still must be pushed.
 
-The current prepared ZIP is named post2drive-clean-start.zip in the ChatGPT conversation. Its SHA-256 is:
+The current prepared ZIP is named post2drive-clean-start.zip in the ChatGPT conversation. SHA-256:
 
-    152c51e2c6a21400cec56b67b618c9b2e131978c6d164911e0999921da267625
+    19c34528045b717ef5f6e7546f028a884ece41414073ac13c22b51d6b88a91fc
 
 ## Windows PowerShell
 
@@ -55,16 +55,17 @@ Private project **Post2Drive Staging**
 Project ID: 074d55f7-6a58-4c46-86aa-a2c7b0079859  
 Environment ID: 293eb264-dd1d-4eef-87ca-016943459edf
 
-There are persistent Postgres and Redis services, a preconfigured web service, and a separately deployed infra-only check.
+The project has persistent Postgres and Redis services, a preconfigured web service, and a separate infrastructure-only health check.
 
-- Infrastructure smoke test: https://post2drive-infra-smoke-test-staging.up.railway.app
-- Smoke-test health endpoint: https://post2drive-infra-smoke-test-staging.up.railway.app/api/health
+- Infrastructure smoke-test page: https://post2drive-infra-smoke-test-staging.up.railway.app
+- Infrastructure health endpoint: https://post2drive-infra-smoke-test-staging.up.railway.app/api/health
+
+The health endpoint has been verified with an HTTP 200 POST probe. It returns 200 only if PostgreSQL SELECT 1 and Redis PING both succeed. The page is explicitly labeled as an infrastructure check, not the marketplace app.
+
 - Reserved marketplace URL: https://post2drive-web-staging.up.railway.app
 
-The smoke test checks PostgreSQL SELECT 1 and Redis PING, returning only service check results. It is **not the marketplace app**. Railway reports its deployment succeeded and the domain is assigned, but external HTTP reachability has not been independently confirmed by the available fetch tools.
+The marketplace hostname is assigned to the web service on port 3000, but it will not serve the app until the source is pushed, CI passes and the existing web service is connected to the app repository in staging.
 
-The marketplace hostname is reserved but will not serve the app until a deployment succeeds. The existing web service has no source attached, intentionally avoiding an automatic build from a documentation-only Git state.
+After the source is pushed and CI passes, connect the existing Post2Drive Web service to Post2Drive/post2drive-app main in the staging environment only. Do not create a duplicate service or connect production.
 
-After the source is pushed and CI passes, connect the existing Post2Drive Web service to Post2Drive/post2drive-app main **in the staging environment only**. Do not create a duplicate service or connect production.
-
-Email verification is off for isolated staging signup because no email-provider key is configured. Do not use real personal data. Do not enable live payment processing or the destructive QA runner. The provisioned Redis service is not yet consumed by app code; do not claim performance gains until it is wired and tested.
+Email verification is off for isolated staging signup because no email-provider key is configured. Do not use real personal data. Do not enable live payment processing or the destructive QA runner. Redis is provisioned but not yet consumed by app code; do not claim performance gains until it is wired and tested.
