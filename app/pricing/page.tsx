@@ -1,4 +1,4 @@
-import SubscriptionUK and euro-market pricing from "@/components/subscription-pricing";
+import SubscriptionPricing from "@/components/subscription-pricing";
 
 export default function PricingPage() {
   return (
@@ -17,7 +17,7 @@ export default function PricingPage() {
             color: "#102A43",
           }}
         >
-          Pricing
+          UK and euro-market pricing
         </h1>
 
         <p
