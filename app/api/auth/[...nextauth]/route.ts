@@ -5,7 +5,8 @@ import { authOptions } from "@/lib/auth";
 
 const handler = NextAuth(authOptions);
 
-async function rateLimitedAuthPost(request: Request, context: unknown) {
+async function rateLimitedAuthPost(...args: any[]) {
+  const request = args[0] as Request;
   const pathname = new URL(request.url).pathname;
 
   // Limit credential callbacks across all app instances using the shared
@@ -19,7 +20,7 @@ async function rateLimitedAuthPost(request: Request, context: unknown) {
     if (limited) return limited;
   }
 
-  return handler(request, context);
+  return handler(...args);
 }
 
 export const GET = withApiMetrics("/api/auth/[...nextauth]", handler);
