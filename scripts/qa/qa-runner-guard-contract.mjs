@@ -75,7 +75,7 @@ try {
   assert.ok(qaAuthorization.includes("target_accounts = 10000"), "QA throttle bypass must be limited to the fixed synthetic cohort");
   assert.ok(qaAuthorization.includes("status = 'running'"), "QA throttle bypass must require a currently running QA run");
   const rateLimitSource = readFileSync("lib/rateLimit.ts", "utf8");
-  assert.ok(rateLimitSource.includes("isAuthorizedQaRunId(qaRunId, new URL(request.url).origin)"), "network throttle bypass must verify both active run and request origin");
+  assert.ok(rateLimitSource.includes("isAuthorizedQaRunId(qaRunId)"), "network throttle bypass must verify the active run without relying on proxy-internal request origin");
 
   const qaRoute = readFileSync("app/api/qa/run/route.ts", "utf8");
   assert.ok(qaRoute.includes('getMarket(countryCode)'), "QA runner must resolve the selected country from supported markets");
