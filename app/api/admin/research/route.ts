@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { isTesterAdmin } from "@/lib/testerAdmin";
 
@@ -11,7 +12,7 @@ export async function GET() {
     return NextResponse.json({ error: session ? "Admin access required." : "Not logged in." }, { status: session ? 403 : 401 });
   }
   const accounts = await prisma.account.findMany({
-    where: { country: "IN", currency: "INR", marketResearch: { not: null }, deletionRequestedAt: null },
+    where: { country: "IN", currency: "INR", marketResearch: { not: Prisma.DbNull }, deletionRequestedAt: null },
     select: { id: true, marketResearch: true, createdAt: true },
     orderBy: { createdAt: "desc" },
     take: 1000,
