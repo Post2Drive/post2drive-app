@@ -851,7 +851,38 @@ export async function GET(req: Request) {
   // Never log or echo the token; rotate QA_RUN_TOKEN after the run and its preserved report have been retrieved.
   if (url.searchParams.get("mode") === "status") {
     if (!expectedToken || token !== expectedToken) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-    return NextResponse.json({ ok: true, active, activeRunId, lastRunId, lastFinishedAt, lastError: lastError ? "QA run failed; inspect restricted staging logs." : null });
+    try {
+      // Process-local flags are not reliable across restarts or replicas. Read the
+      // durable run ledger so a deployment replacement cannot hide a running/stuck run.
+      const [runningRows, latestRows] = await Promise.all([
+        prisma.$queryRawUnsafe<Array<{ id: string; started_at: Date; target_accounts: number; created_accounts: number; successful_checks: number; failed_checks: number }>>(
+          "SELECT id,started_at,target_accounts,created_accounts,successful_checks,failed_checks FROM qa_test_runs WHERE status='running' ORDER BY started_at DESC LIMIT 1"
+        ),
+        prisma.$queryRawUnsafe<Array<{ id: string; status: string; started_at: Date; finished_at: Date | null; target_accounts: number; created_accounts: number; successful_checks: number; failed_checks: number; duration_ms: bigint | null; summary: unknown }>>(
+          "SELECT id,status,started_at,finished_at,target_accounts,created_accounts,successful_checks,failed_checks,duration_ms,summary FROM qa_test_runs ORDER BY started_at DESC LIMIT 1"
+        )
+      ]);
+      const running = runningRows[0] ?? null;
+      const latest = latestRows[0] ?? null;
+      const serialise = (row: any) => row ? {
+        ...row,
+        started_at: row.started_at instanceof Date ? row.started_at.toISOString() : row.started_at,
+        finished_at: row.finished_at instanceof Date ? row.finished_at.toISOString() : row.finished_at,
+        duration_ms: row.duration_ms === null || row.duration_ms === undefined ? null : Number(row.duration_ms)
+      } : null;
+      return NextResponse.json({
+        ok: true,
+        active: Boolean(running) || active,
+        activeRunId: running?.id ?? (active ? activeRunId : null),
+        lastRunId: latest?.id ?? lastRunId,
+        lastFinishedAt: latest?.finished_at ?? lastFinishedAt,
+        persistedRunningRun: serialise(running),
+        latestRun: serialise(latest),
+        lastError: lastError ? "QA run failed; inspect restricted staging logs." : null
+      });
+    } catch {
+      return NextResponse.json({ error: "Unable to read durable QA run status." }, { status: 503 });
+    }
   }
   if (!token) return NextResponse.json({ ok: true, stagingOnly: true });
   if (!expectedToken || token !== expectedToken || accounts !== "10000" || target !== "staging" || confirm !== "RUN_10000_SYNTHETIC_ACCOUNTS_ON_STAGING") {
