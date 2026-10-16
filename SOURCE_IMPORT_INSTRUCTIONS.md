@@ -5,7 +5,7 @@
 
 The current prepared ZIP is named post2drive-clean-start.zip in the ChatGPT conversation. Its SHA-256 is:
 
-    fc7823bb7a47a250307fed91afae9ae63616e9edbc2000c2149a3bfbf8104ba3
+    152c51e2c6a21400cec56b67b618c9b2e131978c6d164911e0999921da267625
 
 ## Windows PowerShell
 
@@ -55,11 +55,15 @@ Private project **Post2Drive Staging**
 Project ID: 074d55f7-6a58-4c46-86aa-a2c7b0079859  
 Environment ID: 293eb264-dd1d-4eef-87ca-016943459edf
 
-The environment contains persistent Postgres and Redis services, and an existing Post2Drive Web service configured for build, Prisma migrations, start and /api/health. Its hostname is:
+There are persistent Postgres and Redis services, a preconfigured web service, and a separately deployed infra-only check.
 
-https://post2drive-web-staging.up.railway.app
+- Infrastructure smoke test: https://post2drive-infra-smoke-test-staging.up.railway.app
+- Smoke-test health endpoint: https://post2drive-infra-smoke-test-staging.up.railway.app/api/health
+- Reserved marketplace URL: https://post2drive-web-staging.up.railway.app
 
-**The URL is reserved but will not serve the app until a deployment succeeds.** The web service currently has no source attached, intentionally avoiding an automatic failed build from this documentation-only Git state.
+The smoke test checks PostgreSQL SELECT 1 and Redis PING, returning only service check results. It is **not the marketplace app**. Railway reports its deployment succeeded and the domain is assigned, but external HTTP reachability has not been independently confirmed by the available fetch tools.
+
+The marketplace hostname is reserved but will not serve the app until a deployment succeeds. The existing web service has no source attached, intentionally avoiding an automatic build from a documentation-only Git state.
 
 After the source is pushed and CI passes, connect the existing Post2Drive Web service to Post2Drive/post2drive-app main **in the staging environment only**. Do not create a duplicate service or connect production.
 
