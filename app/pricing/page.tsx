@@ -26,7 +26,7 @@ export default function PricingPage() {
             color: "#6B7C93",
           }}
         >
-          The published 7-day individual and fleet prices currently apply to the UK (GBP) and supported euro markets (EUR). Additional supported countries can register in their local currency, but local pricing is not configured yet.
+          The UK 7-day model applies across all supported markets except India, using each market’s local currency and the same numeric price tiers. India pricing remains separate.
         </p>
       </div>
 
