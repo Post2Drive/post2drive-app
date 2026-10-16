@@ -135,7 +135,7 @@ async function cleanupSyntheticRuns(runIds: string[], base: string) {
       results.push({ runId, priorStatus: run.status, finalStatus, recoveredSyntheticAccounts: recoveredAccounts, deleted: counts, preservedAuditEvents: true, preservedRunSummary: true });
     }
     return results;
-  }, { maxWait: 10000, timeout: 30000 });
+  }, { maxWait: 30000, timeout: 180000 });
 }
 
 async function runQA() {
