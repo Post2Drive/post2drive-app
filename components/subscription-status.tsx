@@ -23,7 +23,7 @@ type AccessData = {
   priceGbp?: number | null;
   pendingPayment: {
     id: string;
-    amountPence: number;
+    amountMinorUnits: number;
     currency: string;
     status: string;
   } | null;
