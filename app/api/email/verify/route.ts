@@ -1,9 +1,12 @@
 import { withApiMetrics } from "@/lib/apiMetrics";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { enforceRateLimit } from "@/lib/rateLimit";
 import { hashEmailVerificationToken } from "@/lib/emailVerification";
 
 async function POSTHandler(req: Request) {
+  const limit = await enforceRateLimit(req, { scope: "email-verification-confirm", limit: 20, windowMs: 15 * 60 * 1000 });
+  if (limit) return limit;
   const body = await req.json().catch(() => null);
   const rawToken = typeof body?.token === "string" ? body.token.trim() : "";
   if (!/^[a-f0-9]{64}$/i.test(rawToken)) {

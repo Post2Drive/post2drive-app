@@ -49,6 +49,8 @@ jobs:
         run: npm run qa:market-isolation
       - name: Validate country matrix across all supported markets
         run: npm run qa:country-matrix
+      - name: Validate QA runner staging-only guard
+        run: npm run qa:qa-runner-guard
       - name: Validate UK/India/euro-market pickup-time conversion and DST edges
         run: npm run qa:market-timezone
       - name: Validate Prisma schema

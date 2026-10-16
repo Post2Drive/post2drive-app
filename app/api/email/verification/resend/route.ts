@@ -1,6 +1,7 @@
 import { withApiMetrics } from "@/lib/apiMetrics";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { enforceRateLimit } from "@/lib/rateLimit";
 import {
   createEmailVerificationToken,
   emailDeliveryConfigured,
@@ -14,6 +15,8 @@ const genericResponse = {
 };
 
 async function POSTHandler(req: Request) {
+  const limit = await enforceRateLimit(req, { scope: "email-verification-resend", limit: 5, windowMs: 15 * 60 * 1000 });
+  if (limit) return limit;
   if (!emailVerificationEnabled()) {
     return NextResponse.json({
       success: false,
