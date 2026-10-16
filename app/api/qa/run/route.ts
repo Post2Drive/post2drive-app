@@ -2,6 +2,7 @@ import { isQaRunnerEnabled } from "@/lib/qaRunnerGuard";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { VEHICLE_TYPES } from "@/lib/vehicles";
+import { getMarket } from "@/lib/market";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -141,11 +142,14 @@ async function cleanupSyntheticRuns(runIds: string[], base: string) {
 async function runQA() {
   const base = (process.env.QA_BASE_URL || "").replace(/\/+$/, "");
   const db = process.env.DATABASE_URL || "";
+  const countryCode = (process.env.QA_MARKET_COUNTRY || "GB").trim().toUpperCase();
+  const market = getMarket(countryCode);
+  if (!market) throw new Error("QA_MARKET_COUNTRY must be a supported country code.");
   if (!isQaRunnerEnabled()) {
     throw new Error("QA runner is disabled unless an explicitly allow-listed staging deployment and isolated QA database are configured.");
   }
   if (!base.startsWith("https://") || !db || process.env.QA_ACCOUNT_COUNT !== "500" || process.env.POST2DRIVE_QA_DATABASE_ISOLATED !== "true") throw new Error("QA preflight requires an HTTPS staging target, an explicitly isolated DATABASE_URL and QA_ACCOUNT_COUNT=500.");
-  const runId = new Date().toISOString().replace(/[^0-9]/g, "").slice(0, 14) + "-" + crypto.randomUUID().slice(0, 8);
+  const runId = new Date().toISOString().replace(/[^0-9]/g, "").slice(0, 14) + "-" + crypto.randomUUID();
   const marker = "QA-" + runId;
   const started = Date.now();
   activeRunId = runId;
@@ -227,7 +231,7 @@ async function runQA() {
       endpoints[path] = { count: row.count, failures: row.failures, p50Ms: row.durations[Math.floor((row.durations.length - 1) * 0.5)], p95Ms: row.durations[Math.floor((row.durations.length - 1) * 0.95)], maxMs: row.durations[row.durations.length - 1] };
     }
     const summary = {
-      runId, marker, status, target: base, targetAccounts: 500, createdAccounts, eventCount: events.length,
+      runId, marker, status, target: base, targetAccounts: 500, country: market.country, currency: market.currency, marketLabel: market.label, createdAccounts, eventCount: events.length,
       passed, failed, durationMs: Date.now() - started, p50Ms: percentile(0.5), p95Ms: percentile(0.95),
       cohorts: { posterFocused: 100, driverFocused: 150, both: 249, restricted: 1 },
       endpoints, syntheticDataRetained: true, realMoneyPaymentsAttempted: false, emailDeliveryTested: false, ...extra,
@@ -246,15 +250,15 @@ async function runQA() {
   );
 
   try {
-    console.log("Starting staging QA run " + runId + " with 500 synthetic accounts at " + base);
+    console.log("Starting staging QA run " + runId + " for " + market.country + "/" + market.currency + " with 500 synthetic accounts at " + base);
     await parallel(Array.from({ length: 500 }, (_, i) => i), 2, async i => {
       const cohort: AccountFixture["cohort"] = i < 100 ? "poster-focused" : i < 250 ? "driver-focused" : i < 499 ? "both" : "restricted";
       const email = "qa-" + runId + "-" + String(i + 1).padStart(3, "0") + "@post2drive.invalid";
       const password = "QA-" + crypto.randomUUID() + "-p2d";
       const payload = {
-        name: "QA User " + (i + 1), email, phone: "+44770090" + String(i).padStart(4, "0"),
+        name: "QA User " + (i + 1), email, phone: market.dialingCode + "770090" + String(i).padStart(4, "0"),
         password, companyName: "[QA-" + runId + "] " + cohort + " " + String(i + 1).padStart(3, "0"),
-        planType: "individual", isSoleTrader: true, country: "GB", currency: "GBP",
+        planType: "individual", isSoleTrader: true, country: market.country, currency: market.currency,
       };
       const t = Date.now();
       let status: number | null = null;
@@ -270,17 +274,21 @@ async function runQA() {
       const persistStarted = Date.now();
       try {
         await prisma.$transaction(async tx => {
+          const ukPromotion = market.country === "GB" && i !== 499;
+          const paidWeeklyMarket = market.country !== "GB" && market.country !== "IN" && i !== 499;
+          const accessEndsAt = new Date(Date.now() + 60 * 86400000);
           await tx.account.update({
             where: { id: accountId },
             data: {
               isTester: i !== 499,
               verificationStatus: i === 499 ? "not_started" : "verified",
               verifiedAt: i === 499 ? null : new Date(),
-              promotionParticipant: i !== 499,
-              trialStartedAt: i === 499 ? null : new Date(),
-              trialEndsAt: i === 499 ? null : new Date(Date.now() + 60 * 86400000),
-              freeEndsAt: i === 499 ? null : new Date(Date.now() + 60 * 86400000),
-              subscriptionStatus: i === 499 ? "inactive" : "promotional",
+              promotionParticipant: ukPromotion,
+              trialStartedAt: ukPromotion ? new Date() : null,
+              trialEndsAt: ukPromotion ? accessEndsAt : null,
+              freeEndsAt: ukPromotion ? accessEndsAt : null,
+              subscriptionStatus: ukPromotion ? "promotional" : paidWeeklyMarket ? "active" : "inactive",
+              subscriptionEndsAt: paidWeeklyMarket ? accessEndsAt : null,
             },
           });
           await tx.$executeRawUnsafe("INSERT INTO qa_test_accounts(run_id,account_id,email,cohort,account_index) VALUES($1,$2,$3,$4,$5)", runId, accountId, email, cohort, i + 1);
@@ -324,23 +332,14 @@ async function runQA() {
     const posters = signed.filter(a => a.index < 100);
     const drivers = signed.filter(a => a.index >= 100 && a.index < 250);
     const both = signed.filter(a => a.index >= 250 && a.index < 499);
-    const lanes = [
-      { pickup: "London", dropoff: "Birmingham", miles: 118 },
-      { pickup: "Birmingham", dropoff: "Manchester", miles: 86 },
-      { pickup: "Bristol", dropoff: "London", miles: 120 },
-      { pickup: "Leeds", dropoff: "Newcastle", miles: 95 },
-      { pickup: "Glasgow", dropoff: "Edinburgh", miles: 47 },
-      { pickup: "Manchester", dropoff: "Liverpool", miles: 35 },
-      { pickup: "Nottingham", dropoff: "Leicester", miles: 28 },
-      { pickup: "Cardiff", dropoff: "Bristol", miles: 44 },
-      { pickup: "Southampton", dropoff: "London", miles: 80 },
-      { pickup: "Sheffield", dropoff: "Leeds", miles: 35 },
-      { pickup: "Oxford", dropoff: "Birmingham", miles: 65 },
-      { pickup: "Cambridge", dropoff: "London", miles: 58 },
-      { pickup: "Newcastle", dropoff: "York", miles: 82 },
-      { pickup: "Exeter", dropoff: "Bristol", miles: 80 },
-      { pickup: "Liverpool", dropoff: "Manchester", miles: 35 },
-    ];
+    // Synthetic endpoints deliberately carry the market code so a test run never
+    // seeds UK city names into another country's fixtures.
+    const laneMiles = [118, 86, 120, 95, 47, 35, 28, 44, 80, 35, 65, 58, 82, 80, 35];
+    const lanes = laneMiles.map((miles, index) => ({
+      pickup: "QA Origin " + market.country + " " + (index + 1),
+      dropoff: "QA Destination " + market.country + " " + (index + 1),
+      miles,
+    }));
     const freightProfiles = [
       { vehicleType: "Motorcycle courier", weightKg: 3, dimensions: "30x25x20 cm", cargo: "urgent documents", rate: 0.65 },
       { vehicleType: "Car", weightKg: 30, dimensions: "60x45x35 cm", cargo: "small parcels", rate: 0.75, range: "short" },
@@ -359,9 +358,7 @@ async function runQA() {
     ];
     const pickupSlots = ["06:30", "07:30", "09:00", "11:00", "13:00", "15:30", "17:00"];
     const jobPayload = (n: number, mode: "fixed" | "bid") => {
-      // Fixture mix guided by UK Department for Transport domestic road-freight statistics (2025):
-      // mean haul about 105 km; articulated HGV average about 134 km versus about 58 km for rigid HGVs.
-      // Scenario miles and prices are deterministic estimates, not live routing results or market quotes.
+      // Synthetic distances and prices are deterministic test fixtures, not live routing results or market quotes.
       const profile = freightProfiles[Math.abs(n * 5) % freightProfiles.length];
       const lanePool = lanes.filter(lane => profile.range === "short" ? lane.miles <= 65 :
         profile.range === "medium" ? lane.miles >= 35 && lane.miles <= 86 : lane.miles >= 80);
@@ -375,12 +372,12 @@ async function runQA() {
       return {
         pickup: lane.pickup, dropoff: lane.dropoff, jobDate, pickupTime,
         dropoffTime: pad(dropoffHour) + ":00", vehicleType: profile.vehicleType,
-        weightKg: profile.weightKg, dimensions: profile.dimensions, price, priceMode: mode, currency: "GBP",
+        weightKg: profile.weightKg, dimensions: profile.dimensions, price, priceMode: mode, currency: market.currency,
         crossBorder: false,
         notes: "Synthetic QA only " + marker + "; lane=" + lane.pickup + " to " + lane.dropoff +
           "; estimatedMiles=" + lane.miles + "; cargo=" + profile.cargo + "; scenario=" + n,
-        pickupContactName: "QA Contact", pickupContactPhone: "+447700900111",
-        dropoffContactName: "QA Receiver", dropoffContactPhone: "+447700900112",
+        pickupContactName: "QA Contact", pickupContactPhone: market.dialingCode + "7700900111",
+        dropoffContactName: "QA Receiver", dropoffContactPhone: market.dialingCode + "7700900112",
       };
     };
     async function createJob(p: AccountFixture, n: number, mode: "fixed" | "bid") {
@@ -647,7 +644,7 @@ async function runQA() {
     const restricted = fixtures.find(a => a.index === 499);
     if (restricted?.client && posters[0]) {
       const sample = await createJob(posters[0], 1800, "bid");
-      if (sample) await check(restricted.client, restricted, "access-control", "restricted-account-cannot-bid", "POST", "/api/jobs/" + sample + "/bid", { amount: 100 }, [403, 402]);
+      if (sample) await check(restricted.client, restricted, "access-control", market.country === "IN" ? "india-non-weekly-market-access-policy" : "restricted-account-cannot-bid", "POST", "/api/jobs/" + sample + "/bid", { amount: 100 }, market.country === "IN" ? [200] : [403, 402]);
     }
 
     const count = async (query: string, ...params: unknown[]) => {
