@@ -1,33 +1,25 @@
 import { isUkAccount } from "@/lib/uk";
+import { isWeeklyPricingMarket } from "@/lib/market";
 
-export type PricingPlan =
-  | "individual"
-  | "fleet";
+export type PricingPlan = "individual" | "fleet";
 
 export interface PricingAccount {
   country?: string | null;
   currency?: string | null;
   planType?: PricingPlan | null;
+  fleetVehicleCount?: number | null;
 }
 
 /*
- * UK launch pricing
- *
- * Access is sold in 7-day periods.
- * One access period = 7 x 24 hours from activation/recharge.
- *
- * Individual:
- *   1 verified person + 1 vehicle
- *
- * Fleet:
- *   2+ vehicles under the same business/account
- *
- * All plans:
- *   Unlimited legitimate marketplace activity
- *   No per-job charges
+ * UK and euro-market launch pricing.
+ * Access is sold in 7-day periods (7 x 24 hours from activation/recharge).
+ * Individual = one verified person + one vehicle.
+ * Fleet = 2+ vehicles under the same business/account.
+ * All plans: unlimited legitimate marketplace activity and no per-job charges.
+ * EUR prices intentionally use the same numeric tiers as the UK plan.
  */
-
 export const INDIVIDUAL_PRICE_GBP = 9.99;
+export const INDIVIDUAL_PRICE_EUR = 9.99;
 export const INDIVIDUAL_ACCESS_DAYS = 7;
 
 export const FLEET_PRICES_GBP = {
@@ -37,123 +29,88 @@ export const FLEET_PRICES_GBP = {
   "31-55": 49.99,
 } as const;
 
-export function isUkPricingEligible(
-  account: PricingAccount
-) {
-  return isUkAccount({
-    country: account.country,
-    currency: account.currency,
-  });
+export const FLEET_PRICES_EUR = {
+  "2-5": 16.99,
+  "6-15": 24.99,
+  "16-30": 36.99,
+  "31-55": 49.99,
+} as const;
+
+export function isUkPricingEligible(account: PricingAccount) {
+  return isUkAccount({ country: account.country, currency: account.currency });
 }
 
-export function calculateIndividualWeeklyPrice(
-  account?: PricingAccount
-) {
-  if (
-    account &&
-    !isUkPricingEligible(account)
-  ) {
-    return null;
-  }
-
-  return INDIVIDUAL_PRICE_GBP;
+export function isWeeklyPricingEligible(account: PricingAccount) {
+  return isWeeklyPricingMarket({ country: account.country, currency: account.currency });
 }
 
-/*
- * Kept for compatibility with existing callers.
- * Individual pricing is no longer based on accepted-job volume.
- */
-export function calculateIndividualMonthlyPrice(
-  _acceptedJobs: number,
-  account?: PricingAccount
-) {
-  if (
-    account &&
-    !isUkPricingEligible(account)
-  ) {
-    return null;
+function pricesFor(account?: PricingAccount) {
+  const currency = account?.currency ?? "GBP";
+  if (account && !isWeeklyPricingEligible(account)) return null;
+  if (currency === "EUR") {
+    return { currency, symbol: "€", individual: INDIVIDUAL_PRICE_EUR, fleet: FLEET_PRICES_EUR };
   }
-
-  return INDIVIDUAL_PRICE_GBP;
-}
-
-export function getFleetPrice(
-  vehicleCount: number,
-  account?: PricingAccount
-) {
-  if (
-    account &&
-    !isUkPricingEligible(account)
-  ) {
-    return null;
+  if (currency === "GBP") {
+    return { currency, symbol: "£", individual: INDIVIDUAL_PRICE_GBP, fleet: FLEET_PRICES_GBP };
   }
-
-  /*
-   * A single vehicle belongs on the Individual plan.
-   * Fleet starts at 2 vehicles.
-   */
-  if (vehicleCount < 2) {
-    return null;
-  }
-
-  if (vehicleCount <= 5) {
-    return FLEET_PRICES_GBP["2-5"];
-  }
-
-  if (vehicleCount <= 15) {
-    return FLEET_PRICES_GBP["6-15"];
-  }
-
-  if (vehicleCount <= 30) {
-    return FLEET_PRICES_GBP["16-30"];
-  }
-
-  if (vehicleCount <= 55) {
-    return FLEET_PRICES_GBP["31-55"];
-  }
-
   return null;
 }
 
+export function getIndividualWeeklyPrice(account?: PricingAccount) {
+  return pricesFor(account)?.individual ?? null;
+}
+
+export function calculateIndividualWeeklyPrice(account?: PricingAccount) {
+  return getIndividualWeeklyPrice(account);
+}
+
+/** Kept for compatibility with existing callers; pricing is a flat 7-day fee. */
+export function calculateIndividualMonthlyPrice(_acceptedJobs: number, account?: PricingAccount) {
+  return getIndividualWeeklyPrice(account);
+}
+
+export function getFleetPrice(vehicleCount: number, account?: PricingAccount) {
+  const prices = pricesFor(account);
+  if (!prices || vehicleCount < 2 || vehicleCount > 55) return null;
+  if (vehicleCount <= 5) return prices.fleet["2-5"];
+  if (vehicleCount <= 15) return prices.fleet["6-15"];
+  if (vehicleCount <= 30) return prices.fleet["16-30"];
+  return prices.fleet["31-55"];
+}
+
 export function getPlanDisplay(
-  planKey:
-    | "individual"
-    | "fleet"
-    | null,
-  account?: PricingAccount
+  planKey: PricingPlan | null,
+  account?: PricingAccount,
 ) {
-  if (
-    account &&
-    !isUkPricingEligible(account)
-  ) {
+  const prices = pricesFor(account);
+  if (!prices) {
     return {
       key: planKey,
       name: "Local plan",
       price: null,
-      currency:
-        account.currency || null,
-      description:
-        "Pricing for this country will be configured separately.",
+      currency: account?.currency ?? null,
+      description: "Pricing for this country will be configured separately.",
     };
   }
 
   if (planKey === "fleet") {
+    const price = getFleetPrice(account?.fleetVehicleCount ?? 0, account);
     return {
       key: "fleet",
       name: "Fleet",
-      price: null,
-      currency: "GBP",
-      description:
-        "UK fleet pricing is based on the number of vehicles and provides 7-day access with unlimited legitimate marketplace activity.",
+      price,
+      currency: prices.currency,
+      description: price === null
+        ? "Fleets with 56+ vehicles need a custom plan."
+        : `${prices.symbol}${price.toFixed(2)} for 7-day access, based on fleet size. Unlimited legitimate marketplace activity; no per-job charges.`,
     };
   }
 
   return {
     key: "individual",
     name: "Individual",
-    price: INDIVIDUAL_PRICE_GBP,
-    currency: "GBP",
-    description:
-      "£9.99 for 7 days of access. One verified person and one vehicle. Unlimited legitimate marketplace activity with no per-job charges.",
+    price: prices.individual,
+    currency: prices.currency,
+    description: `${prices.symbol}${prices.individual.toFixed(2)} for 7 days of access. One verified person and one vehicle. Unlimited legitimate marketplace activity with no per-job charges.`,
   };
 }
