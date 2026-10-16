@@ -37,6 +37,22 @@ function Distribution({ rows }: { rows:Row[] }) {
     return <div key={String(r.label??i)}><div style={{ display:"flex", justifyContent:"space-between", gap:12, fontSize:13, marginBottom:5 }}><span>{String(r.label??"Unknown").replaceAll("_"," ")}</span><strong>{num(r.count)} <span style={{ color:palette.muted,fontWeight:400 }}>({pct}%)</span></strong></div><div style={{ height:7, background:"#edf0f4", borderRadius:99, overflow:"hidden" }}><div style={{ width:pct+"%", height:"100%", background:"#3778c2", borderRadius:99 }} /></div></div>;
   })}</div>;
 }
+function TrendBars({ rows, labelKey, valueKey, valueLabel }: { rows:Row[]; labelKey:string; valueKey:string; valueLabel:string }) {
+  const values=rows.map(r=>Number(r[valueKey]||0));
+  const max=Math.max(1,...values);
+  if(!rows.length)return <p style={{color:palette.muted,fontSize:13}}>No trend data collected yet.</p>;
+  return <div style={{display:"grid",gridTemplateColumns:"repeat("+Math.min(rows.length,12)+",minmax(0,1fr))",gap:5,alignItems:"end",minHeight:130}}>
+    {rows.map((r,i)=>{const v=Number(r[valueKey]||0);const height=Math.max(v>0?4:1,Math.round(v/max*88));return <div key={String(r[labelKey]??i)} title={String(r[labelKey]??"")+": "+num(v)+" "+valueLabel} style={{display:"flex",height:130,flexDirection:"column",justifyContent:"end",alignItems:"stretch",gap:5,minWidth:0}}>
+      <span style={{fontSize:10,textAlign:"center",color:palette.muted,overflow:"hidden"}}>{v?num(v):""}</span><div style={{height:height+"px",background:"#3778c2",borderRadius:"4px 4px 0 0",minHeight:1}}/><span style={{fontSize:10,textAlign:"center",color:palette.muted,overflow:"hidden",whiteSpace:"nowrap"}}>{String(r[labelKey]??"").slice(5,10)||String(i+1)}</span>
+    </div>})}
+  </div>;
+}
+function qaSummary(run:Row|undefined):Row {
+  const raw=run?.summary;
+  if(raw&&typeof raw==="object")return raw as Row;
+  if(typeof raw==="string"){try{return JSON.parse(raw) as Row;}catch{return {};}}
+  return {};
+}
 function MetricCard({ label, value, hint }: {label:string;value:unknown;hint?:string}) {
   return <div style={{ ...card, padding:15 }}><div style={{ color:palette.muted, fontSize:12, marginBottom:8 }}>{label}</div><div style={{ fontSize:27, lineHeight:1.15, fontWeight:750, fontVariantNumeric:"tabular-nums" }}>{num(value)}</div>{hint?<div style={{ color:palette.muted,fontSize:12,marginTop:6 }}>{hint}</div>:null}</div>;
 }
@@ -163,6 +179,10 @@ export default function PerformanceDashboard() {
         {key:"durationMs",label:"Duration",render:(v:any)=>duration(v)}
       ]}/>
     </Section>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,380px),1fr))",gap:14}}>
+      <Section title="Account registrations · daily trend" subtitle="Real accounts only; synthetic QA accounts excluded."><TrendBars rows={data.accountGrowth.slice(-12)} labelKey="day" valueKey="count" valueLabel="new accounts"/></Section>
+      <Section title="API traffic · hourly trend" subtitle="Real-user telemetry only; QA-run requests are excluded."><TrendBars rows={data.apiHourly.slice(-12)} labelKey="hour" valueKey="total" valueLabel="requests"/></Section>
+    </div>
     <Section title="Account registrations · 30 day trend">
       <Table rows={data.accountGrowth} columns={[
         {key:"day",label:"Day",render:(v:any)=>date(v)},
@@ -176,7 +196,21 @@ export default function PerformanceDashboard() {
         {key:"errors",label:"5xx errors",render:(v:any)=>num(v)}
       ]}/>
     </Section>
-    <Section title="Synthetic QA runs" subtitle="Latest 10 stored runs, kept separate from business totals.">
+    {data.qaRuns?.length ? <Section title="Latest QA run · execution summary" subtitle="QA metrics are intentionally separate from real-user and commercial metrics.">
+      {(() => { const run=data.qaRuns[0]; const s=qaSummary(run); return <div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(145px,1fr))",gap:10,marginBottom:14}}>
+          <MetricCard label="Market" value={s.marketLabel||s.country||"Not recorded"} hint={s.currency||"Country contract metadata"}/>
+          <MetricCard label="Synthetic accounts target" value={s.accountCount??run.targetAccounts??0} hint="Isolated QA dataset"/>
+          <MetricCard label="Live HTTP requests target" value={s.routeMatrixTarget??0} hint="Actual API requests"/>
+          <MetricCard label="Live HTTP requests executed" value={s.routeMatrixExecuted??0}/>
+          <MetricCard label="P50 response time" value={s.p50Ms==null?"—":duration(s.p50Ms)}/>
+          <MetricCard label="P95 response time" value={s.p95Ms==null?"—":duration(s.p95Ms)}/>
+        </div>
+        <p style={{fontSize:12,color:palette.muted,margin:"0 0 8px"}}>Cleanup: {s.syntheticDataRetained===false?"synthetic records removed":s.syntheticDataRetained===true?"synthetic records retained":"not reported"} · Endpoints exercised: {Array.isArray(s.endpoints)?s.endpoints.length:"not reported"} · Run ID: {String(run.id||"—")}</p>
+        {s.persistedDataSummary&&typeof s.persistedDataSummary==="object"?<Table rows={Object.entries(s.persistedDataSummary).map(([label,value])=>({label,value}))} columns={[{key:"label",label:"Persisted data check"},{key:"value",label:"Result",render:(v:any)=>typeof v==="object"?JSON.stringify(v):String(v??"—")}]}/>:null}
+      </div>})()}
+    </Section> : null}
+    <Section title="Synthetic QA runs" subtitle="Latest 10 stored runs, kept separate from business totals. Country, route-matrix counts and latency are shown in the run summary above.">
       <Table rows={data.qaRuns} columns={[
         {key:"startedAt",label:"Started",render:(v:any)=>date(v)},
         {key:"status",label:"Run status"},
