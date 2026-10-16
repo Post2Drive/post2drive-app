@@ -56,10 +56,17 @@ try {
   assert.ok(guardPosition >= 0 && reportPosition > guardPosition, "GET staging guard must execute before report/status/run actions");
   assert.ok(getHandler.includes('lastError: lastError ? "QA run failed; inspect restricted staging logs." : null'), "status endpoint must not expose raw internal QA error strings");
 
+  const resendRoute = readFileSync("app/api/email/verification/resend/route.ts", "utf8");
+  assert.ok(resendRoute.includes('scope: "email-verification-resend"'), "verification resend must have a network rate limit");
+  assert.ok(resendRoute.includes("if (limit) return limit"), "verification resend must enforce its rate limit before processing");
+  const verifyRoute = readFileSync("app/api/email/verify/route.ts", "utf8");
+  assert.ok(verifyRoute.includes('scope: "email-verification-confirm"'), "verification token attempts must have a network rate limit");
+  assert.ok(verifyRoute.includes("if (limit) return limit"), "verification token rate limit must be enforced");
+
   console.log(JSON.stringify({
     status: "passed",
-    checks: rejected.length + 4,
-    covered: ["valid staging allow-list", ...rejected.map(([label]) => label), "GET guard before sensitive operations", "raw QA errors not returned", "GET and POST handlers present"]
+    checks: rejected.length + 8,
+    covered: ["valid staging allow-list", ...rejected.map(([label]) => label), "GET guard before sensitive operations", "raw QA errors not returned", "GET and POST handlers present", "resend endpoint rate-limited", "verification token endpoint rate-limited"]
   }, null, 2));
 } finally {
   for (const [key, value] of Object.entries(original)) {
