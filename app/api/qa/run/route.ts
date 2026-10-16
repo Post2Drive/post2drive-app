@@ -845,7 +845,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Unknown report type." }, { status: 400 });
   }
   // One-time, high-entropy trigger for controlled staging automation when POST dispatch is unavailable.
-  // Never log or echo the token; rotate QA_RUN_TOKEN immediately after starting the run.
+  // Never log or echo the token; rotate QA_RUN_TOKEN after the run and its preserved report have been retrieved.
   if (url.searchParams.get("mode") === "status") {
     if (!expectedToken || token !== expectedToken) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
     return NextResponse.json({ ok: true, active, activeRunId, lastRunId, lastFinishedAt, lastError: lastError ? "QA run failed; inspect restricted staging logs." : null });
