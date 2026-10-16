@@ -903,5 +903,5 @@ export async function POST(req: Request) {
     lastError = error instanceof Error ? error.message : String(error);
     console.error("QA background task failed", error);
   }).finally(() => { active = false; });
-  return NextResponse.json({ accepted: true, target: "staging", accounts: 500 }, { status: 202 });
+  return NextResponse.json({ accepted: true, target: "staging", accounts: 10_000 }, { status: 202 });
 }
