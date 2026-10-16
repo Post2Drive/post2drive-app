@@ -37,7 +37,7 @@ export default function SignupPage() {
   const selectedPlan = vehicleCount === 1 ? "individual" : "fleet";
   function formatMarketPrice(amount: number) {
     return new Intl.NumberFormat(selectedCountry?.locale ?? "en-GB", {
-      style: "currency", currency: form.currency, minimumFractionDigits: 2, maximumFractionDigits: 2,
+      style: "currency", currency: form.currency,
     }).format(amount);
   }
   const steps = useMemo(() => isIndia
