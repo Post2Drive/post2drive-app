@@ -8,6 +8,7 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import SignOutButton from "@/app/sign-out-button";
 import { symbolFor, COUNTRIES } from "@/lib/currency";
+import { formatMarketDate } from "@/lib/localisation";
 
 type Contact = {
   companyName: string;
@@ -665,7 +666,7 @@ export default function JobsPage() {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
-        <h1>{accountCountry === "IN" ? "India delivery marketplace" : "UK delivery marketplace"}</h1>
+        <h1>{countryName} delivery marketplace</h1>
         {accountCountry === "IN" && <Link className="button-link button-link-secondary" href="/requirements">My Requirements</Link>}
       </div>
 
@@ -924,7 +925,7 @@ export default function JobsPage() {
                   <span>·</span>
 
                   <span>
-                    {new Date(job.jobDate).toLocaleDateString("en-GB")}
+                    {formatMarketDate(job.jobDate, { country: accountCountry, currency: job.currency })}
                   </span>
 
                   {job.pickupTime && (
