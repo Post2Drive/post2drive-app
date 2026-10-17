@@ -109,7 +109,8 @@ async function PATCHHandler(
     pickupAt = await getJobPickupAtForAccount(
       accountId,
       data.jobDate,
-      data.pickupTime
+      data.pickupTime,
+      data.pickupTimeZone
     );
   } catch {
     return NextResponse.json(
@@ -194,6 +195,8 @@ async function PATCHHandler(
       data.jobDate.getTime() ||
     job.pickupTime !==
       data.pickupTime ||
+    job.pickupTimeZone !==
+      data.pickupTimeZone ||
     job.dropoffTime !==
       data.dropoffTime ||
     job.vehicleType !==
@@ -232,6 +235,7 @@ async function PATCHHandler(
         jobDate: data.jobDate,
         pickupTime: data.pickupTime,
         dropoffTime: data.dropoffTime,
+        pickupTimeZone: data.pickupTimeZone,
         vehicleType: data.vehicleType,
         weightKg: data.weightKg,
         dimensions: data.dimensions,
