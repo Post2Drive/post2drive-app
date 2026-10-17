@@ -376,6 +376,7 @@ model Job {
   pickupTime    String?
   dropoffTime   String?
   pickupTimeZone String?
+  dropoffTimeZone String?
 
   vehicleType String
 
