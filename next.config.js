@@ -16,13 +16,6 @@ const securityHeaders = [
 ];
 
 const nextConfig = {
-  async rewrites() {
-    if (process.env.ENABLE_EMBEDDED_OPS_DASHBOARD !== "true") return [];
-    return { beforeFiles: [
-      { source: "/admin-access", destination: "http://127.0.0.1:3101/admin-access" },
-      { source: "/admin-access/:path*", destination: "http://127.0.0.1:3101/admin-access/:path*" },
-    ] };
-  },
   poweredByHeader: false,
   async headers() {
     return [
