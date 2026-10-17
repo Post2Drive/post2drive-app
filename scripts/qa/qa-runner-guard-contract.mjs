@@ -111,7 +111,7 @@ try {
   assert.ok(qaRoute.includes("VALUES($1,$2,10000,'queued'"), "HTTP requests must enqueue a durable run");
   assert.ok(qaWorker.includes("FOR UPDATE SKIP LOCKED"), "worker claims must be atomic across replicas");
   assert.ok(qaWorker.includes("workerHeartbeatAt"), "worker heartbeat must be persisted");
-  assert.ok(qaWorker.includes("runQaWorker(job.id, country)"), "worker must invoke the shared runner");
+  assert.ok(qaWorker.includes("runQaWorker(job.id, country, workerId)"), "worker must invoke the shared runner with the claim owner ID");
   assert.ok(qaRunner.includes("status='running' AND target_url=$2 AND target_accounts=10000 AND summary->>'workerId'=$3"), "runner must verify the exact worker-owned staging row");
   assert.ok(qaRunner.includes("summary=COALESCE(summary,'{}'::jsonb) || $7::jsonb"), "run finalization must preserve worker metadata");
   assert.ok(qaRunner.includes("summary->>'workerId'=$8"), "only the claiming worker may finalize a run");
