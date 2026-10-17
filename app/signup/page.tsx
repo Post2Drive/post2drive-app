@@ -168,6 +168,7 @@ export default function SignupPage() {
       {error && <p className="signup-error" role="alert">{error}</p>}
       <div className="signup-actions">{step > 0 && <button className="signup-secondary" type="button" disabled={loading} onClick={() => { setError(""); setStep((current) => current - 1); }}>Back</button>}{step < steps.length - 1 ? <button type="submit">Continue</button> : <button type="submit" disabled={loading}>{loading ? "Creating account…" : "Create account"}</button>}</div>
       <p className="signup-login-link">Already registered? <a href="/login">Log in</a></p>
+      <p className="signup-login-link"><a href="/admin-access">Admin dashboard</a></p>
     </form>}
     <p className="signup-footnote">By continuing, you can review the plan details and terms before creating your account. Account creation itself does not take payment.</p>
   </section></main>;

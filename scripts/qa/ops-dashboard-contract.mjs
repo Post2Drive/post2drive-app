@@ -6,7 +6,10 @@ const pkg = JSON.parse(readFileSync(new URL("../../package.json", import.meta.ur
 
 for (const [name, pattern] of [
   ["separate operations service", /post2drive-ops-dashboard/],
+  ["separate admin username", /OPS_DASHBOARD_USERNAME/],
   ["separate operator credential", /OPS_DASHBOARD_PASSWORD/],
+  ["admin-only login form", /name="username"/],
+  ["dashboard-only admin portal", /ADMIN DASHBOARD/],
   ["signed session secret", /OPS_DASHBOARD_SESSION_SECRET/],
   ["timing-safe password check", /timingSafeEqual/],
   ["read-only database guidance", /dedicated read-only database role/],

@@ -22,7 +22,8 @@ The service runs its own small HTTP server and reads aggregate data from the exi
 Set these as Railway service secrets, never commit them or paste them into chat:
 
 - `DATABASE_URL`: connection string for a **dedicated least-privilege read-only database role**. It must be able to SELECT only the required reporting tables/views. Do not reuse a privileged application owner connection for the public-facing analytics service.
-- `OPS_DASHBOARD_PASSWORD`: strong random operator password of at least 16 characters.
+- `OPS_DASHBOARD_USERNAME`: dedicated admin username of at least 3 characters. Do not reuse a customer login.
+- `OPS_DASHBOARD_PASSWORD`: strong random admin password of at least 16 characters.
 - `OPS_DASHBOARD_SESSION_SECRET`: independent random secret of at least 32 characters.
 - `NODE_ENV=production` for Secure cookies.
 
@@ -30,7 +31,7 @@ Do not deploy with a blank/default password or with a database role that can mod
 
 ## Access and network
 
-- The dashboard has a dedicated operator password, signed HttpOnly session cookie, SameSite=Strict, no-store responses and a restrictive content security policy.
+- The dashboard has a dedicated admin username/password, signed HttpOnly session cookie, SameSite=Strict, no-store responses and a restrictive content security policy. It is dashboard-only and does not use customer signup, login, jobs or marketplace pages.
 - Do not disable authentication to make the dashboard easier to open.
 - Keep the public domain private to authorised operators where Railway access controls or an approved access gateway are available. If a public domain is enabled, the operator password remains mandatory.
 - Use HTTPS in deployed environments. No secrets, emails, contact details or individual account rows are rendered in charts.

@@ -11,7 +11,6 @@ const baseLinks = [
   { href: "/vehicles", label: "Vehicles" },
   { href: "/payments", label: "Payments" },
   { href: "/settings", label: "Account" },
-  { href: "/admin", label: "Admin" },
 ];
 
 export default function MainNav() {
