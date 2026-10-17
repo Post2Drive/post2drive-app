@@ -26,7 +26,7 @@ export default function PricingPage() {
             color: "#6B7C93",
           }}
         >
-          The UK 7-day model applies across all supported markets except India, using each market’s local currency and the same numeric price tiers. India pricing remains separate.
+          The configured 7-day access model and numeric price tiers apply across supported non-India markets, displayed in each market’s local currency. India pricing remains separate. These are planning prices only; checkout is not connected.
         </p>
       </div>
 
