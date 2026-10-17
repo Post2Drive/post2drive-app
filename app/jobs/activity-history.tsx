@@ -38,6 +38,9 @@ export default function ActivityHistory({
 }: {
   jobId: string;
 }) {
+  const { data: session } = useSession();
+  const country = (session?.user as any)?.country ?? "GB";
+  const currency = (session?.user as any)?.currency ?? "GBP";
   const [activities, setActivities] = useState<Activity[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
