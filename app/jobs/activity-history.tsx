@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
+import { formatMarketDateTime } from "@/lib/localisation";
 
 type Activity = {
   id: string;
@@ -131,7 +133,7 @@ export default function ActivityHistory({
                     >
                       {new Date(
                         activity.createdAt
-                      ).toLocaleString()}
+                       ).toLocaleString()}
                     </div>
 
                     {activity.description && (
