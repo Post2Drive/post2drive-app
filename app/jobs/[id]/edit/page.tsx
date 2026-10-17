@@ -3,25 +3,8 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-
-const VEHICLE_TYPES = [
-  "Motorcycle courier",
-  "Car",
-  "Small van (SWB)",
-  "Medium van (MWB)",
-  "Large van (LWB)",
-  "Luton van",
-  "7.5t box truck",
-  "12t rigid",
-  "18t rigid",
-  "26t rigid",
-  "32t HGV artic",
-  "Flatbed",
-  "Tipper",
-  "Refrigerated van/truck",
-  "Pickup truck",
-  "Other (specify in notes)",
-];
+import { useSession } from "next-auth/react";
+import { VEHICLE_TYPES, vehicleTypeLabel } from "@/lib/vehicles";
 
 type Job = {
   id: string;
@@ -64,6 +47,8 @@ function inputDate(value?: string | null) {
 
 export default function EditJobPage() {
   const params = useParams();
+  const { data: session } = useSession();
+  const country = (session?.user as any)?.country ?? "GB";
   const router = useRouter();
 
   const jobId = useMemo(() => {
