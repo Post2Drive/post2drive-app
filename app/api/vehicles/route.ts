@@ -4,7 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { VEHICLE_TYPES } from "@/lib/vehicles";
-import { getLocalisationProfile } from "@/lib/localisation";
+import { getLocalisationProfile, getJurisdictionOptions } from "@/lib/localisation";
 
 async function currentAccount() {
   const session = await getServerSession(authOptions);
@@ -47,6 +47,7 @@ async function POSTHandler(req: Request) {
     const body = await req.json();
     const vehicleType = String(body.vehicleType ?? "").trim();
     const regPlate = String(body.regPlate ?? "").trim().toUpperCase();
+    const registrationRegion = String(body.registrationRegion ?? "").trim().toUpperCase();
     const ownershipType = String(body.ownershipType ?? "").trim();
     const make = String(body.make ?? "").trim();
     const model = String(body.model ?? "").trim();
@@ -62,6 +63,13 @@ async function POSTHandler(req: Request) {
     }
     if (!regPlate || regPlate.length > 20 || !/^[A-Z0-9 -]+$/.test(regPlate)) {
       return NextResponse.json({ error: "Enter a valid registration plate." }, { status: 400 });
+    }
+    const jurisdictionOptions = getJurisdictionOptions(account.country);
+    if (marketProfile?.jurisdictionSelectionRequired && !registrationRegion) {
+      return NextResponse.json({ error: "Select your vehicle registration jurisdiction." }, { status: 400 });
+    }
+    if (registrationRegion && !jurisdictionOptions.some((region) => region.code === registrationRegion)) {
+      return NextResponse.json({ error: "Select a valid vehicle registration jurisdiction for your market." }, { status: 400 });
     }
     if (!["owned", "leased", "rented", "other"].includes(ownershipType)) {
       return NextResponse.json({ error: "Select the vehicle ownership type." }, { status: 400 });
@@ -103,6 +111,7 @@ async function POSTHandler(req: Request) {
         accountId: account.id,
         vehicleType,
         regPlate,
+        registrationRegion: registrationRegion || null,
         ownershipType,
         make: make || null,
         model: model || null,
