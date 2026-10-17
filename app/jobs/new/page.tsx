@@ -253,7 +253,7 @@ export default function NewJobPage() {
     ) {
       setLoading(false);
       setError(
-        'Could not read pickup pin. Use "51.5074,-0.1278" or a Google Maps link.'
+        'Could not read pickup pin. Use latitude,longitude or a Google Maps link.'
       );
       return;
     }
@@ -264,7 +264,7 @@ export default function NewJobPage() {
     ) {
       setLoading(false);
       setError(
-        'Could not read drop-off pin. Use "51.5074,-0.1278" or a Google Maps link.'
+        'Could not read drop-off pin. Use latitude,longitude or a Google Maps link.'
       );
       return;
     }
@@ -356,7 +356,7 @@ export default function NewJobPage() {
         {step === 0 && <section style={{ display: "grid", gap: 16 }}>
           <div><h2 style={{ margin: "0 0 5px", fontSize: 20 }}>Where and when?</h2><p style={{ margin: 0, color: "var(--color-muted)", fontSize: 14 }}>Use an address or place name. Map pins are optional, but help drivers find the exact entrance.</p></div>
           <label>Pickup location *<input required maxLength={300} value={form.pickup} onChange={(e) => update("pickup", e.target.value)} placeholder={country === "IN" ? "e.g. Gachibowli, Hyderabad" : "e.g. pickup address or business park"} /></label>
-          <label>Pickup map pin (optional)<input value={form.pickupPin} onChange={(e) => update("pickupPin", e.target.value)} placeholder="Latitude,longitude or Google Maps link" /><small>Paste a Google Maps URL or coordinates such as 51.5074,-0.1278.</small></label>
+          <label>Pickup map pin (optional)<input value={form.pickupPin} onChange={(e) => update("pickupPin", e.target.value)} placeholder="Latitude,longitude or Google Maps link" /><small>Paste a Google Maps URL or latitude,longitude coordinates.</small></label>
           <label>Drop-off location *<input required maxLength={300} value={form.dropoff} onChange={(e) => update("dropoff", e.target.value)} placeholder={country === "IN" ? "e.g. Hitech City, Hyderabad" : "e.g. delivery address or city centre"} /></label>
           <label>Drop-off map pin (optional)<input value={form.dropoffPin} onChange={(e) => update("dropoffPin", e.target.value)} placeholder="Latitude,longitude or Google Maps link" /></label>
           <div className="signup-fields">
