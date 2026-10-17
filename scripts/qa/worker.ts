@@ -102,7 +102,7 @@ async function executeRun(job: { id: string; summary: unknown; target_url: strin
   const stopHeartbeat = startHeartbeat(job.id);
   activeJob = true;
   try {
-    const result = await runQaWorker(job.id, country);
+    const result = await runQaWorker(job.id, country, workerId);
     await prisma.$executeRawUnsafe(
       `UPDATE qa_test_runs
        SET summary=COALESCE(summary,'{}'::jsonb) ||
