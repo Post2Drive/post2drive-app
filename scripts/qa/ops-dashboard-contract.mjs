@@ -68,7 +68,7 @@ for (const [name, pattern] of [
   else assert.match(server, pattern, name);
 }
 assert.equal(pkg.scripts["qa:ops-dashboard"], "node scripts/qa/ops-dashboard-contract.mjs");
-assert.match(proxyRoute, /127\\.0\\.0\\.1:3101/);
+assert.match(proxyRoute, /127\.0\.0\.1:3101/);
 assert.match(proxyRoute, /ENABLE_EMBEDDED_OPS_DASHBOARD/);
 assert.match(proxyRoute, /Same-origin admin request required/);
 assert.match(proxyRoute, /OPS_DASHBOARD_URL/);
