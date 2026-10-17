@@ -2,7 +2,12 @@ import http from "node:http";
 import crypto from "node:crypto";
 import { PrismaClient } from "@prisma/client";
 
-const prisma = new PrismaClient({ log: ["error"] });
+const dashboardDatabaseUrl = process.env.OPS_DASHBOARD_DATABASE_URL;
+if (!dashboardDatabaseUrl) {
+  console.error("OPS_DASHBOARD_DATABASE_URL is required; refusing to use the application database credentials.");
+  process.exit(1);
+}
+const prisma = new PrismaClient({ datasources: { db: { url: dashboardDatabaseUrl } }, log: ["error"] });
 const PORT = Number(process.env.PORT || 8080);
 const USERNAME = process.env.OPS_DASHBOARD_USERNAME;
 const PASSWORD = process.env.OPS_DASHBOARD_PASSWORD;
@@ -329,6 +334,9 @@ async function metrics(url) {
 
 const server = http.createServer(async (req,res) => {
   const url = new URL(req.url || "/", "http://localhost");
+  const basePath = "/admin-access";
+  if (url.pathname === basePath) url.pathname = "/";
+  else if (url.pathname.startsWith(basePath + "/")) url.pathname = url.pathname.slice(basePath.length);
   try {
     if (req.method === "GET" && url.pathname === "/health") return send(res,200,JSON.stringify({ok:true,service:"post2drive-ops-dashboard"}),"application/json");
     if (req.method === "POST" && url.pathname === "/login") {
@@ -337,7 +345,7 @@ const server = http.createServer(async (req,res) => {
       const now = Date.now();
       const attempt = loginAttempts.get(ip);
       if (attempt && now - attempt.startedAt < LOGIN_WINDOW_MS && attempt.count >= LOGIN_MAX_ATTEMPTS) {
-        return send(res,429,pageLogin("Too many sign-in attempts. Wait 15 minutes and try again."),"text/html; charset=utf-8",{"retry-after":"900"});
+        return send(res,429,pageLogin("Too many sign-in attempts. Wait 15 minutes and try again.").replaceAll('action="/login"', 'action="/admin-access/login"'),"text/html; charset=utf-8",{"retry-after":"900"});
       }
       if (!attempt || now - attempt.startedAt >= LOGIN_WINDOW_MS) loginAttempts.set(ip,{startedAt:now,count:0});
       const form = new URLSearchParams(await body(req));
@@ -351,19 +359,19 @@ const server = http.createServer(async (req,res) => {
         const entry=loginAttempts.get(ip)||{startedAt:now,count:0};
         entry.count+=1;loginAttempts.set(ip,entry);
         if (loginAttempts.size > 5000) for (const [key,value] of loginAttempts) if (now-value.startedAt>=LOGIN_WINDOW_MS) loginAttempts.delete(key);
-        return send(res,401,pageLogin("Access denied. Check the admin credentials."));
+        return send(res,401,pageLogin("Access denied. Check the admin credentials.").replaceAll('action="/login"', 'action="/admin-access/login"'));
       }
       loginAttempts.delete(ip);
       const stamp = String(Date.now());
-      const cookie = `ops_session=${stamp}.${sign(stamp)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${SESSION_TTL_MS/1000}${IS_PRODUCTION ? "; Secure" : ""}`;
-      res.writeHead(303,{Location:"/", "Set-Cookie":cookie,"Cache-Control":"no-store"}); return res.end();
+      const cookie = `ops_session=${stamp}.${sign(stamp)}; Path=/admin-access; HttpOnly; SameSite=Strict; Max-Age=${SESSION_TTL_MS/1000}${IS_PRODUCTION ? "; Secure" : ""}`;
+      res.writeHead(303,{Location:"/admin-access", "Set-Cookie":cookie,"Cache-Control":"no-store"}); return res.end();
     }
     if (req.method === "POST" && url.pathname === "/logout") {
-      res.writeHead(303,{Location:"/","Set-Cookie":`ops_session=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0`,"Cache-Control":"no-store"});return res.end();
+      res.writeHead(303,{Location:"/admin-access","Set-Cookie":`ops_session=; Path=/admin-access; HttpOnly; SameSite=Strict; Max-Age=0`,"Cache-Control":"no-store"});return res.end();
     }
     if (!validSession(req)) {
       if (url.pathname.startsWith("/api/")) return send(res,401,JSON.stringify({error:"Operations access required"}),"application/json");
-      return send(res,200,pageLogin());
+      return send(res,200,pageLogin().replaceAll('action="/login"', 'action="/admin-access/login"'));
     }
     if (req.method === "POST" && url.pathname === "/api/admin-action") {
       let origin;
@@ -393,7 +401,7 @@ const server = http.createServer(async (req,res) => {
       try { responseBody = JSON.parse(responseText); } catch { responseBody = {error:"Application bridge returned an invalid response"}; }
       return send(res,response.status,JSON.stringify(responseBody),"application/json");
     }
-    if (req.method === "GET" && url.pathname === "/") return send(res,200,dashboard);
+    if (req.method === "GET" && url.pathname === "/") return send(res,200,dashboard.replaceAll('action="/logout"', 'action="/admin-access/logout"').replaceAll("fetch('/api/", "fetch('/admin-access/api/").replaceAll('fetch("/api/', 'fetch("/admin-access/api/'));
     if (req.method === "GET" && url.pathname === "/api/metrics") {
       const result = await metrics(url);
       return send(res,200,JSON.stringify(result,(_k,v)=>typeof v==="bigint"?Number(v):v),"application/json");
