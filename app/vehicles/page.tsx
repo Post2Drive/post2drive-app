@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { VEHICLE_TYPES } from "@/lib/vehicles";
+import { getLocalisationProfile, formatMarketDate } from "@/lib/localisation";
 
 type Vehicle = {
   id: string;
@@ -39,6 +40,8 @@ export default function VehiclesPage() {
   const [isTester, setIsTester] = useState(false);
   const [testerApprovalStatus, setTesterApprovalStatus] = useState<string | null>(null);
   const expiryDatesOptional = isTester || testerApprovalStatus === "pending";
+  const [market, setMarket] = useState({ country: "GB", currency: "GBP" });
+  const marketProfile = getLocalisationProfile(market);
   const [form, setForm] = useState(initialForm);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -52,6 +55,7 @@ export default function VehiclesPage() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Could not load vehicles.");
       setVehicles(data.vehicles || []);
+      if (data.market) setMarket({ country: data.market.country, currency: data.market.currency });
       setIsTester(Boolean(data.isTester));
       setTesterApprovalStatus(data.testerApprovalStatus || null);
     } catch (err) {
@@ -129,8 +133,8 @@ export default function VehiclesPage() {
     <main style={{ maxWidth: 760, margin: "0 auto", padding: 24 }}>
       <p><Link href="/settings" className="button-link button-link-secondary">← Back to settings</Link></p>
       <h1>Vehicle onboarding</h1>
-      {isTester && <p><strong>Account status: Tester</strong> — verification checks are bypassed for testing; vehicle records remain unverified. MOT and insurance expiry dates are optional for this test account.</p>}
-      {testerApprovalStatus === "pending" && <p><strong>Tester application pending review.</strong> Add the details below for the administrator to review. Tester access is not enabled until approval. MOT and insurance expiry dates are optional while your application is pending.</p>}
+      {isTester && <p><strong>Account status: Tester</strong> — verification checks are bypassed for testing; vehicle records remain unverified. {marketProfile?.inspectionLabel} and insurance expiry dates are optional for this test account.</p>}
+      {testerApprovalStatus === "pending" && <p><strong>Tester application pending review.</strong> Add the details below for the administrator to review. Tester access is not enabled until approval. {marketProfile?.inspectionLabel} and insurance expiry dates are optional while your application is pending.</p>}
       {testerApprovalStatus === "rejected" && <p><strong>Tester application rejected.</strong> Tester access has not been enabled. Contact the Post2Drive administrator if you believe this is an error.</p>}
       <p>Add your vehicle and supporting details. Registration does not mean the vehicle is verified or eligible for jobs.</p>
 
@@ -151,7 +155,7 @@ export default function VehiclesPage() {
           </select>
         </label>
 
-        {field("Registration plate", "regPlate", "text", true)}
+        {field(marketProfile?.registrationLabel ?? "Vehicle registration number", "regPlate", "text", true)}
 
         <label style={{ display: "block", fontSize: 14 }}>
           Ownership
@@ -170,10 +174,11 @@ export default function VehiclesPage() {
         {field("Make", "make")}
         {field("Model", "model")}
         {field("Maximum authorised mass (kg)", "mamKg", "number")}
-        {field("V5C document URL (optional)", "v5cDocumentUrl", "url")}
+        {field(`${marketProfile?.registrationDocumentLabel ?? "Vehicle registration document"} URL (optional)`, "v5cDocumentUrl", "url")}
         {field("Insurance document URL (optional)", "insuranceDocumentUrl", "url")}
         {field("Operator licence number (if applicable)", "operatorLicenceNo")}
-        {field("MOT valid until", "motValidUntil", "date", !expiryDatesOptional)}
+        {field(marketProfile?.inspectionLabel ?? "Inspection valid until (if required)", "motValidUntil", "date", !expiryDatesOptional && Boolean(marketProfile?.inspectionRequiredAtCountryLevel))}
+        <small>{marketProfile?.inspectionHelp}</small>
         {field("Insurance valid until", "insuranceValidUntil", "date", !expiryDatesOptional)}
 
         <button type="submit" disabled={saving} style={{ padding: "11px 18px", minHeight: 42, borderRadius: 8, fontWeight: 650, cursor: saving ? "wait" : "pointer" }}>
@@ -190,7 +195,7 @@ export default function VehiclesPage() {
             <strong>{vehicle.vehicleType} — {vehicle.regPlate}</strong>
             <p>Status: <strong>{vehicle.verificationStatus}</strong></p>
             <p>{[vehicle.make, vehicle.model, vehicle.mamKg ? `${vehicle.mamKg} kg MAM` : null].filter(Boolean).join(" · ") || "No additional vehicle details"}</p>
-            <p>MOT expiry: {vehicle.motValidUntil ? new Date(vehicle.motValidUntil).toLocaleDateString() : "Not recorded"}</p>
+            <p>{marketProfile?.inspectionLabel ?? "Inspection expiry"}: {vehicle.motValidUntil ? formatMarketDate(vehicle.motValidUntil, market) : "Not recorded"}</p>
             <p>Insurance expiry: {vehicle.insuranceValidUntil ? new Date(vehicle.insuranceValidUntil).toLocaleDateString() : "Not recorded"}</p>
           </section>
         ))}
