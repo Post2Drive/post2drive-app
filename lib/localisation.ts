@@ -215,6 +215,19 @@ export function formatMarketDate(value: Date | string | number, identity: Market
   }).format(date);
 }
 
+
+export function formatMarketCurrency(value: number | string, identity: MarketIdentity): string {
+  const profile = getLocalisationProfile(identity);
+  const amount = Number(value);
+  if (!profile || !Number.isFinite(amount)) return String(value);
+  return new Intl.NumberFormat(profile.locale, {
+    style: "currency",
+    currency: profile.currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+}
+
 export function formatMarketDateTime(value: Date | string | number, identity: MarketIdentity): string {
   const profile = getLocalisationProfile(identity);
   const date = value instanceof Date ? value : new Date(value);
