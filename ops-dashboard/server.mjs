@@ -143,7 +143,13 @@ async function metrics(url) {
     safeQuery("Activity summary",`SELECT action AS label,count(*)::int AS count FROM "JobActivity" ja JOIN "Job" j ON j.id=ja."jobId" JOIN "Account" a ON a.id=j."posterId" LEFT JOIN qa_test_accounts qa ON qa.account_id=a.id WHERE qa.account_id IS NULL AND ($1::text IS NULL OR a.country=$1) AND ja."createdAt">=now()-($2::int*interval '1 day') GROUP BY action ORDER BY count DESC LIMIT 15`,country,days),
     safeQuery("Bid summary",`SELECT count(*)::int AS total FROM "Bid" b JOIN "Job" j ON j.id=b."jobId" JOIN "Account" a ON a.id=j."posterId" LEFT JOIN qa_test_accounts qa ON qa.account_id=a.id WHERE qa.account_id IS NULL AND ($1::text IS NULL OR a.country=$1) AND b."createdAt">=now()-($2::int*interval '1 day')`,country,days)
   ]);
-  const normalise = rows => rows.map(row => Object.fromEntries(Object.entries(row).map(([k,v]) => [k, typeof v === "bigint" ? Number(v) : v instanceof Date ? v.toISOString() : v])));
+  const [testerApplications, testerCodes, incidentQueue, researchResults] = await Promise.all([
+    safeQuery("Pending tester applications", `SELECT a.id, a."companyName", a.country, a."planType" AS "planType", a."createdAt" AS "createdAt", a."verificationStatus" AS "verificationStatus", count(DISTINCT v.id)::int AS "vehicleCount", string_agg(DISTINCT u.name, ', ' ORDER BY u.name) AS "contactNames", bool_and(u."emailVerifiedAt" IS NOT NULL) AS "allEmailsVerified" FROM "Account" a LEFT JOIN "Vehicle" v ON v."accountId"=a.id LEFT JOIN "User" u ON u."accountId"=a.id WHERE a."testerApprovalStatus"='pending' GROUP BY a.id ORDER BY a."createdAt" ASC LIMIT 100`),
+    safeQuery("Tester access-code history", `SELECT CASE WHEN c."claimedAt" IS NULL THEN 'Unused' ELSE 'Redeemed' END AS status, count(*)::int AS count, count(*) FILTER (WHERE c."claimedAt" IS NOT NULL)::int AS redeemed, min(c."createdAt") AS "oldestCreatedAt", max(c."createdAt") AS "latestCreatedAt" FROM "TesterAccessCode" c GROUP BY 1 ORDER BY 1`),
+    safeQuery("Incident review queue", `SELECT ja.id AS "incidentId", ja."jobId", ja.description, ja.metadata, ja."createdAt" AS "createdAt", j.status::text AS "jobStatus", j.pickup, j.dropoff, a."companyName" AS "reportedBy", EXISTS(SELECT 1 FROM "JobActivity" r WHERE r.action='INCIDENT_RESOLUTION_RECORDED' AND r."jobId"=ja."jobId" AND r.metadata->>'parentIncidentId'=ja.id) AS "hasResolution" FROM "JobActivity" ja JOIN "Job" j ON j.id=ja."jobId" LEFT JOIN "Account" a ON a.id=ja."actorId" WHERE ja.action='INCIDENT_REPORTED' ORDER BY ja."createdAt" DESC LIMIT 100`),
+    safeQuery("Aggregated market research", `SELECT a.country AS market, e.key AS question, e.value AS answer, count(*)::int AS responses FROM "Account" a CROSS JOIN LATERAL jsonb_each_text(CASE WHEN jsonb_typeof(a."marketResearch"::jsonb)='object' THEN a."marketResearch"::jsonb ELSE '{}'::jsonb END) e WHERE a."marketResearch" IS NOT NULL AND ($1::text IS NULL OR a.country=$1) GROUP BY a.country,e.key,e.value ORDER BY a.country,e.key,responses DESC LIMIT 250`, country)
+  ]);
+    const normalise = rows => rows.map(row => Object.fromEntries(Object.entries(row).map(([k,v]) => [k, typeof v === "bigint" ? Number(v) : v instanceof Date ? v.toISOString() : v])));
   const o = Object.fromEntries(Object.entries(overviewRows[0] || {}).map(([k,v]) => [k, Number(v || 0)]));
   const patterns = [];
   if (o.totalAccounts < 30) patterns.push({title:"Small platform sample",detail:"Fewer than 30 real accounts in this market; conversion and growth signals are directional only."});
@@ -169,6 +175,7 @@ async function metrics(url) {
     apiHourly:normalise(apiHourly).map(r=>({hour:r.hour,requests:Number(r.requests||0),errors:Number(r.errors||0)})),
     routes:normalise(routes),recentErrors:normalise(recentErrors),qaRuns:normalise(qaRuns),qaFailures:normalise(qaFailures),
     paymentStatuses:normalise(paymentStatuses),activity:normalise(activityRows),bidSummary:normalise(bidRows),
+    testerApplications:normalise(testerApplications),testerCodes:normalise(testerCodes),incidentQueue:normalise(incidentQueue),researchResults:normalise(researchResults),
     sources:sourceList(code),patterns,warnings,
     dataCoverage:warnings.length?"Partial · some sources unavailable":"Database query coverage available; external industry feeds pending",
     externalCoverage:"Official source directory only; no live national logistics series yet",
