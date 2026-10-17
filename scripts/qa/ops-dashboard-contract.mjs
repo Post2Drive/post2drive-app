@@ -21,6 +21,8 @@ for (const [name, pattern] of [
   ["reporting period selector", /id="days"/],
   ["command centre navigation", /Command Centre/],
   ["needs-attention queue", /id="attentionQueue"/],
+  ["audit CSV export", /id="exportAudit"/],
+  ["formula-safe audit export", /if\(\/\^\[=\+@-\]\/\.test\(text\)\)/],
   ["country readiness evidence model", /COUNTRY_READINESS_JSON/],
   ["seven launch readiness gates", /operationalRecovery/],
   ["notification health view", /notificationSummary/],
