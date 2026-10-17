@@ -31,6 +31,8 @@ for (const market of Object.values(MARKETS)) {
 
   if (market.country !== "GB") {
     check(vehicleTypeLabel("Luton van", market.country) !== "Luton van", `${market.country}: UK-specific Luton van label leaked`);
+    check(vehicleTypeLabel("Luton van", market.country) !== "Box van / moving truck", `${market.country}: generic vehicle label used instead of market terminology`);
+    check(vehicleTypeLabel("32t HGV artic", market.country) !== "Articulated truck / tractor-trailer", `${market.country}: generic articulated-truck label used instead of market terminology`);
     check(vehicleTypeLabel("32t HGV artic", market.country) !== "32t HGV artic", `${market.country}: UK-specific HGV label leaked`);
     check(!profile?.registrationDocumentLabel.includes("V5C"), `${market.country}: UK V5C label leaked`);
     check(!profile?.inspectionLabel.startsWith("MOT"), `${market.country}: UK MOT label leaked`);
