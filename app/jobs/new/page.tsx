@@ -128,7 +128,7 @@ export default function NewJobPage() {
       const price = Number(form.price);
       if (!form.price.trim() || !Number.isFinite(price) || price <= 0) return "Enter a price greater than zero.";
       if (form.priceMode !== "fixed" && form.priceMode !== "bid") return "Choose fixed pricing or open bidding.";
-      if (form.weightKg.trim() && (!Number.isFinite(Number(form.weightKg)) || Number(form.weightKg) < 0)) return "Enter a valid weight in kilograms.";
+      if (form.weightKg.trim() && (!Number.isFinite(Number(form.weightKg)) || Number(form.weightKg) < 0)) return `Enter a valid weight in ${marketProfile?.weightUnit ?? "kg"}.`;
     }
     if (step === 2) {
       for (const [label, value] of [["Pickup contact name", form.pickupContactName], ["Drop-off contact name", form.dropoffContactName]] as const) {
