@@ -1,51 +1,17 @@
-# Publish the clean-start source to `Post2Drive/post2drive-app`
+# Historical guide: publishing the clean-start source
 
-The application source bundle is prepared, but it has **not yet been uploaded as application source**. The GitHub repository contains import/status documentation on `main`, so clone the repository first and copy the source into that working tree. This keeps the remote history and avoids an unrelated-history merge.
+**Status: superseded as of 18 October 2026.** The application source is already in `Post2Drive/post2drive-app`, and Railway staging has a deployed web service. Do not follow the old archive-copy or first-deployment instructions as outstanding work.
 
-## Windows PowerShell
+This file is retained as history because it records how the repository was bootstrapped. Current operational facts belong in:
 
-1. Download and extract `post2drive-clean-start.zip` to a temporary folder, for example `C:\Projects\post2drive-source`. The archive contains a top-level `freight-app-main` folder.
-2. Clone the existing application repository:
+- [Repository README](../README.md)
+- [Railway staging runbook](RAILWAY_STAGING_SETUP.md)
+- [Launch readiness and release gates](LAUNCH_READINESS.md)
 
-   ```powershell
-   git clone https://github.com/Post2Drive/post2drive-app.git C:\Projects\post2drive-app
-   ```
+## Current staging note
 
-3. Copy the contents of the extracted source folder into the clone. This merges the application files while preserving repository-only import notes; do not use `/MIR` because it could delete those notes.
+Railway staging currently runs the web application from `feature/country-localisation-audit`, not `main`. The current app database observed in Railway migration logs is `post2drive_qa` on `Postgres-J8xl`. A second PostgreSQL service named `Postgres` is retained pending data-ownership verification.
 
-   ```powershell
-   robocopy C:\Projects\post2drive-source\freight-app-main C:\Projects\post2drive-app /E /XD node_modules .next /XF .env
-   Set-Location C:\Projects\post2drive-app
-   ```
+Redis had no application runtime consumer and has been removed as an active service; its persistent volume is retained detached. The service displayed as `Post2Drive Infra Smoke Test` is configured as a PostgreSQL-backed QA worker and has no public domain.
 
-   `robocopy` exit codes 0–7 generally indicate that the copy completed without a fatal error. Review its summary.
-
-4. Review and commit the staged source.
-
-   ```powershell
-   git status --short
-   git add -A
-   git diff --cached --stat
-   git status --short
-   ```
-
-   Confirm that the staged files contain no `.env`, provider secrets, signing keys/keystores, database dumps, personal data, `node_modules`, `.next`, or APK/AAB build artifacts. Then commit and push:
-
-   ```powershell
-   git commit -m "chore: establish clean Post2Drive source baseline"
-   git push origin main
-   ```
-
-   If the remote has changed since the clone, fetch and reconcile before pushing. Do not force-push.
-
-## Before publishing
-
-- Never add `.env`, provider secrets, signing keys, keystores, database dumps or personal data.
-- Keep `CAPACITOR_SERVER_URL` unset until a deliberate non-production HTTPS server exists.
-- The first source push triggers the `Validate` workflow. Treat the repository as a development baseline until dependency installation, Prisma migration, type-check and production build all pass.
-
-## Railway staging
-
-The private `Post2Drive Staging` Railway project has persistent `Postgres` and `Redis` services, a preconfigured `Post2Drive Web` service, and a separate deployed infra-only smoke-test function. The infra check is at `https://post2drive-infra-smoke-test-staging.up.railway.app` and its `/api/health` endpoint probes Postgres and Redis. It is not the marketplace. The public marketplace hostname `https://post2drive-web-staging.up.railway.app` is reserved, but **the app is not serving there yet** because the web service has no source/deployment. The web service is configured for `npm run build`, `npx prisma migrate deploy`, `npm run start`, and `/api/health`.
-
-After the complete source is pushed and GitHub Actions passes, connect the existing web service to `Post2Drive/post2drive-app` on `main` in the `staging` environment. Do not create a duplicate app service. Follow [`RAILWAY_STAGING_SETUP.md`](RAILWAY_STAGING_SETUP.md), test with synthetic data only, and do not deploy the unverified baseline into production.
+Keep production untouched, use synthetic data only in staging, and verify the exact deployed commit and CI status before releases. This staging state does not imply public-launch readiness.
