@@ -24,7 +24,8 @@
     "qa:localisation": "node --experimental-strip-types scripts/qa/localisation-contract.mjs",
     "qa:localisation-copy": "node scripts/qa/localisation-copy-audit.mjs",
     "ops:dashboard": "node ops-dashboard/server.mjs",
-    "qa:ops-dashboard": "node scripts/qa/ops-dashboard-contract.mjs"
+    "qa:ops-dashboard": "node scripts/qa/ops-dashboard-contract.mjs",
+    "predeploy:staging": "node ops-dashboard/provision-readonly-role.mjs && npx prisma migrate deploy"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.2",
