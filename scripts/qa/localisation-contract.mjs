@@ -18,6 +18,9 @@ for (const market of Object.values(MARKETS)) {
   check(profile?.locale === market.locale, `${market.country}: locale mismatch`);
   check(profile?.timeZone === market.timeZone, `${market.country}: timezone mismatch`);
   check(profile?.dialingCode === market.dialingCode, `${market.country}: dialing code mismatch`);
+  check(profile?.authorityLabel !== "Local vehicle registration / transport authority", `${market.country}: market-specific authority terminology missing`);
+  check(profile?.distanceUnit === (market.country === "GB" || market.country === "US" ? "mile" : "km"), `${market.country}: distance unit mismatch`);
+  check(profile?.inspectionRequiredAtCountryLevel === false, `${market.country}: blanket inspection rule is unsafe without vehicle class/jurisdiction`);
   check(Boolean(formatMarketDate("2026-10-17", { country: market.country, currency: market.currency })), `${market.country}: calendar date formatting failed`);
 
   for (const type of VEHICLE_TYPES) {
@@ -45,6 +48,6 @@ console.log(JSON.stringify({
   status: "passed",
   supportedMarkets: Object.keys(MARKETS).length,
   assertions,
-  scope: "market metadata consistency, date formatting, non-GB vehicle label fallbacks and known jurisdictional-market flags",
-  limitation: "This contract test does not validate each country's laws, region-specific requirements, translations, or every visible string in the app."
+  scope: "market metadata, locale dates, country-specific vehicle authority terms, distance units, inspection-rule safety and vehicle labels across every supported market",
+  limitation: "This contract test does not replace legal verification of each country's laws or state/province/territory-specific requirements."
 }, null, 2));
