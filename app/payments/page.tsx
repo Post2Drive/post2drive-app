@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { symbolFor } from "@/lib/currency";
+import { formatMarketDate } from "@/lib/localisation";
 
 type PaymentJob = {
   id: string;
@@ -55,20 +56,9 @@ function money(value: number, currency: string) {
   return `${symbolFor(currency)}${Number(value || 0).toFixed(2)}`;
 }
 
-function date(value?: string | null) {
+function date(value: string | null | undefined, country: string, currency: string) {
   if (!value) return "";
-
-  const d = new Date(value);
-
-  if (Number.isNaN(d.getTime())) {
-    return "";
-  }
-
-  return d.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
+  return formatMarketDate(value, { country, currency });
 }
 
 export default function PaymentsPage() {
@@ -322,7 +312,7 @@ export default function PaymentsPage() {
                     </strong>
 
                     <div style={muted}>
-                      Completed job · {date(job.createdAt)}
+                      Completed job · {date(job.createdAt, data.country, data.currency)}
                     </div>
                   </div>
 
@@ -342,7 +332,7 @@ export default function PaymentsPage() {
                   {job.paidMarkedAt ? (
                     <span style={paidBadge}>
                       ✓ Marked paid ·{" "}
-                      {date(job.paidMarkedAt)}
+                      {date(job.paidMarkedAt, data.country, data.currency)}
                     </span>
                   ) : (
                     <button
@@ -446,7 +436,7 @@ export default function PaymentsPage() {
                   {job.receivedConfirmedAt ? (
                     <span style={receivedBadge}>
                       ✓ You confirmed receipt ·{" "}
-                      {date(job.receivedConfirmedAt)}
+                      {date(job.receivedConfirmedAt, data.country, data.currency)}
                     </span>
                   ) : (
                     <button
