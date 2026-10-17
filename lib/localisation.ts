@@ -22,6 +22,8 @@ export type LocalisationProfile = {
   authorityLabel: string;
   inspectionRequiredAtCountryLevel: boolean;
   jurisdictionSelectionRequired: boolean;
+  weightUnit: "kg" | "lb";
+  vehicleMassLabel: string;
 };
 
 const VEHICLE_TERMS: Record<string, Pick<LocalisationProfile,
