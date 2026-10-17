@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { getLocalisationProfile } from "@/lib/localisation";
 
 
 export default function SettingsPage() {
@@ -74,6 +75,8 @@ export default function SettingsPage() {
 
   if (!account) return <p>Loading...</p>;
 
+  const marketProfile = getLocalisationProfile({ country: account.country, currency: account.currency });
+
   return (
     <div style={{ maxWidth: 500 }}>
       <p>
@@ -102,7 +105,7 @@ export default function SettingsPage() {
         </label>
         <div style={{ border: "1px solid var(--color-border)", borderRadius: 10, background: "var(--color-primary-soft)", padding: 13 }}>
           <strong>Marketplace</strong>
-          <p style={{ margin: "6px 0 0" }}>{account.country === "IN" ? "India · INR · Asia/Kolkata" : "United Kingdom · GBP · Europe/London"}</p>
+          <p style={{ margin: "6px 0 0" }}>{marketProfile ? `${marketProfile.marketplaceLabel} · ${marketProfile.currency} · ${marketProfile.timeZone}` : "Market configuration unavailable"}</p>
           <small>Country and currency are fixed at signup so your public job marketplace remains separate from the other market.</small>
         </div>
         <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -142,7 +145,7 @@ export default function SettingsPage() {
 
       <h3 style={{ marginTop: 32 }}>Subscription</h3>
       <p style={{ color: "var(--color-muted)" }}>
-        UK paid access is offered in 7-day periods after the promotional period ends. Payment processing is not yet enabled in this rebuild.
+        {account.country === "IN" ? "India access and pricing follow the India-market policy. Payment processing is not yet enabled in this rebuild." : `Access for ${marketProfile?.marketplaceLabel ?? "your market"} is currently configured in 7-day periods after any applicable promotional period. Payment processing is not yet enabled in this rebuild.`}
       </p>
 
       <section style={{ marginTop: 36, padding: 18, border: "1px solid #E2B9B9", borderRadius: 12, background: "#FFF8F8" }}>
