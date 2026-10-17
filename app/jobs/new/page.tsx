@@ -377,7 +377,7 @@ export default function NewJobPage() {
                 <small>Choose the time zone where the pickup takes place.</small>
               </label>
             )}
-            <label>Estimated drop-off time (optional)<input type="time" value={form.dropoffTime} onChange={(e) => update("dropoffTime", e.target.value)} /><small>Use the selected pickup time zone unless the delivery is in another zone.</small></label>
+            <label>Estimated drop-off time (optional)<input type="time" value={form.dropoffTime} onChange={(e) => update("dropoffTime", e.target.value)} /><small>Drop-off time uses the pickup time zone; add a note if delivery scheduling uses another zone.</small></label>
           </div>
         </section>}
 
