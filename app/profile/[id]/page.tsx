@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { COUNTRIES } from "@/lib/currency";
+import { formatMarketDate } from "@/lib/localisation";
+import { vehicleTypeLabel } from "@/lib/vehicles";
 
 export default function ProfilePage() {
   const params = useParams();
@@ -24,6 +27,7 @@ export default function ProfilePage() {
 
   const { account, avgRating, ratingCount, recentRatings, jobsPosted, jobsCompleted } = data;
   const days = Math.floor((Date.now() - new Date(account.createdAt).getTime()) / (1000 * 60 * 60 * 24));
+  const countryName = COUNTRIES.find((market) => market.code === account.country)?.name ?? account.country;
 
   return (
     <div style={{ maxWidth: 600 }}>
@@ -33,7 +37,7 @@ export default function ProfilePage() {
       <h1>{account.companyName}</h1>
       <p style={{ color: "var(--color-muted)" }}>
         {account.displayId} · {account.isSoleTrader ? "Sole trader" : "Company"} ·{" "}
-        {account.country} · on platform {days} day{days === 1 ? "" : "s"}
+        {countryName} · on platform {days} day{days === 1 ? "" : "s"}
       </p>
 
       <p>
@@ -49,7 +53,7 @@ export default function ProfilePage() {
           <ul>
             {account.vehicles.map((v: any, i: number) => (
               <li key={i}>
-                {v.vehicleType} — {v.regPlate}
+                {vehicleTypeLabel(v.vehicleType, account.country)} — {v.regPlate}
               </li>
             ))}
           </ul>
@@ -63,7 +67,7 @@ export default function ProfilePage() {
           <li key={i} style={{ borderBottom: "1px solid var(--color-border)", padding: "8px 0" }}>
             {"★".repeat(r.stars)}
             {r.comment && <p>{r.comment}</p>}
-            <p style={{ color: "var(--color-muted)", fontSize: 12 }}>{new Date(r.createdAt).toLocaleDateString()}</p>
+            <p style={{ color: "var(--color-muted)", fontSize: 12 }}>{formatMarketDate(r.createdAt, { country: account.country, currency: account.currency })}</p>
           </li>
         ))}
       </ul>
