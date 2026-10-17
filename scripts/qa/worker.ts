@@ -96,10 +96,11 @@ async function executeRun(job: { id: string; summary: unknown; target_url: strin
   }
   const summary = (job.summary && typeof job.summary === "object") ? job.summary as Record<string, unknown> : {};
   const country = typeof summary.country === "string" ? summary.country : (process.env.QA_MARKET_COUNTRY || "GB");
+  const testType = summary.testType === "api-load" || summary.testType === "synthetic-accounts" || summary.testType === "workflow-e2e" ? summary.testType : "workflow-e2e";
   const stopHeartbeat = startHeartbeat(job.id);
   activeJob = true;
   try {
-    const result = await runQaWorker(job.id, country, workerId);
+    const result = await runQaWorker(job.id, country, workerId, testType);
     await prisma.$executeRawUnsafe(
       `UPDATE qa_test_runs
        SET summary=COALESCE(summary,'{}'::jsonb) ||
