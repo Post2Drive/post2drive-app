@@ -8,7 +8,7 @@ export const MARKETS = {
   BE: { country: "BE", currency: "EUR", label: "Belgium", timeZone: "Europe/Brussels", symbol: "€", locale: "fr-BE", dialingCode: "+32" },
   BG: { country: "BG", currency: "EUR", label: "Bulgaria", timeZone: "Europe/Sofia", symbol: "€", locale: "bg-BG", dialingCode: "+359" },
   HR: { country: "HR", currency: "EUR", label: "Croatia", timeZone: "Europe/Zagreb", symbol: "€", locale: "hr-HR", dialingCode: "+385" },
-  CY: { country: "CY", currency: "EUR", label: "Cyprus", timeZone: "Asia/Nicosia", symbol: "€", locale: "el-CY", dialingCode: "+357" },
+  CY: { country: "CY", currency: "EUR", label: "Cyprus", timeZone: "Europe/Nicosia", symbol: "€", locale: "el-CY", dialingCode: "+357" },
   EE: { country: "EE", currency: "EUR", label: "Estonia", timeZone: "Europe/Tallinn", symbol: "€", locale: "et-EE", dialingCode: "+372" },
   FI: { country: "FI", currency: "EUR", label: "Finland", timeZone: "Europe/Helsinki", symbol: "€", locale: "fi-FI", dialingCode: "+358" },
   FR: { country: "FR", currency: "EUR", label: "France", timeZone: "Europe/Paris", symbol: "€", locale: "fr-FR", dialingCode: "+33" },
@@ -84,12 +84,12 @@ export function marketForAccount(value: MarketIdentity) {
   return market;
 }
 
-/** All supported non-India markets use the UK 7-day access model; India remains separately configured. */
+/** Supported non-India markets share the configured 7-day access policy; India remains separately configured. */
 export function isWeeklyPricingMarket(value: MarketIdentity): boolean {
   const market = marketForAccount(value);
   return Boolean(market && market.country !== "IN");
 }
 
 export function marketTimeZone(value: MarketIdentity): string {
-  return marketForAccount(value)?.timeZone ?? MARKETS.GB.timeZone;
+  return marketForAccount(value)?.timeZone ?? "UTC";
 }

@@ -85,7 +85,7 @@ All gates below must be evidenced, not inferred from a successful build.
 
 ### After each session
 - Reconcile jobs, bids, notifications, incidents and activity events against the scenario log.
-- Clean up only records explicitly tagged to that staging test run and only after reviewing a read-only cleanup inventory.
+- For the current QA campaign, do not clean up synthetic records. Keep cleanup disabled, retain every synthetic account/job/event and preserve the run summary for review.
 - Preserve failure evidence until triage is complete; do not delete evidence needed for an open incident.
 - Publish a concise pass/fail report with the denominator, critical failures, latency percentiles, outstanding severity-1/2 issues and the next go/no-go decision.
 

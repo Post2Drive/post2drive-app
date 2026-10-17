@@ -288,6 +288,7 @@ model Vehicle {
 
   vehicleType String
   regPlate    String
+  registrationRegion String?
 
   ownershipType String?
   make          String?
@@ -371,9 +372,11 @@ model Job {
   dropoffLat Float?
   dropoffLng Float?
 
-  jobDate     DateTime
-  pickupTime  String?
-  dropoffTime String?
+  jobDate       DateTime
+  pickupTime    String?
+  dropoffTime   String?
+  pickupTimeZone String?
+  dropoffTimeZone String?
 
   vehicleType String
 
@@ -768,4 +771,19 @@ model ModerationReport {
   @@index([reporterId, createdAt])
   @@index([reportedAccountId, createdAt])
   @@index([jobId, createdAt])
+}
+
+model AdminAuditEvent {
+  id         String   @id @default(cuid())
+  actor      String
+  action     String
+  entityType String
+  entityId   String?
+  market     String?
+  details    Json?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([entityType, entityId])
+  @@index([market, createdAt])
 }

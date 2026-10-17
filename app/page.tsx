@@ -183,6 +183,7 @@ export default async function HomePage() {
           >
             Log In
           </Link>
+          <Link href="/admin-access" style={{ background: "var(--color-surface)", color: "var(--color-text)", border: "1px solid var(--color-border)", padding: "12px 22px", borderRadius: 8, textDecoration: "none", fontWeight: 700 }}>Admin</Link>
         </div>
       </section>
     </main>

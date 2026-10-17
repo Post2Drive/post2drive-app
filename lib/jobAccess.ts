@@ -1,6 +1,7 @@
 import { getAccountAccess } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { marketTimeZone, isSupportedMarket, type MarketIdentity } from "@/lib/market";
+import { getTimeZoneOptions } from "@/lib/localisation";
 import { localDateTimeToInstant } from "@/lib/localTime";
 
 type AccessResult = Awaited<ReturnType<typeof getAccountAccess>>;
@@ -26,10 +27,16 @@ function getDateParts(value: Date) {
 export function getJobPickupAt(
   jobDate: Date,
   pickupTime?: string | null,
-  market: MarketIdentity = { country: "GB", currency: "GBP" }
+  market: MarketIdentity = { country: "GB", currency: "GBP" },
+  pickupTimeZone?: string | null
 ): Date {
   const { year, month, day } = getDateParts(jobDate);
-  const timeZone = marketTimeZone(market);
+  const defaultTimeZone = marketTimeZone(market);
+  const options = getTimeZoneOptions(market.country ?? "GB", defaultTimeZone);
+  if (pickupTimeZone && !options.some((option) => option.value === pickupTimeZone)) {
+    throw new Error("INVALID_PICKUP_TIME_ZONE");
+  }
+  const timeZone = pickupTimeZone || defaultTimeZone;
 
   const time = pickupTime?.trim() || "00:00";
   const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(time);
@@ -56,7 +63,8 @@ export function getJobPickupAt(
 export async function getJobPickupAtForAccount(
   accountId: string,
   jobDate: Date,
-  pickupTime?: string | null
+  pickupTime?: string | null,
+  pickupTimeZone?: string | null
 ): Promise<Date> {
   const account = await prisma.account.findUnique({
     where: { id: accountId },
@@ -65,7 +73,7 @@ export async function getJobPickupAtForAccount(
   if (!account || !isSupportedMarket(account)) {
     throw new Error("UNSUPPORTED_MARKET");
   }
-  return getJobPickupAt(jobDate, pickupTime, account);
+  return getJobPickupAt(jobDate, pickupTime, account, pickupTimeZone);
 }
 
 export function pickupIsWithinAccessWindow(

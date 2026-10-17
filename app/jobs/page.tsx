@@ -8,6 +8,8 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import SignOutButton from "@/app/sign-out-button";
 import { symbolFor, COUNTRIES } from "@/lib/currency";
+import { formatMarketDate, formatMarketCurrency, getLocalisationProfile, getTimeZoneOptions } from "@/lib/localisation";
+import { vehicleTypeLabel } from "@/lib/vehicles";
 
 type Contact = {
   companyName: string;
@@ -31,6 +33,8 @@ type Job = {
   jobDate: string;
   pickupTime: string | null;
   dropoffTime: string | null;
+  pickupTimeZone?: string | null;
+  dropoffTimeZone?: string | null;
   vehicleType: string;
   weightKg: number | null;
   dimensions: string | null;
@@ -254,6 +258,8 @@ export default function JobsPage() {
   const accountCountry =
     (session?.user as any)
       ?.country;
+
+  const marketProfile = getLocalisationProfile({ country: accountCountry || "GB", currency: (session?.user as any)?.currency || "GBP" });
 
   const countryName =
     COUNTRIES.find(
@@ -665,7 +671,7 @@ export default function JobsPage() {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
-        <h1>{accountCountry === "IN" ? "India delivery marketplace" : "UK delivery marketplace"}</h1>
+        <h1>{countryName} delivery marketplace</h1>
         {accountCountry === "IN" && <Link className="button-link button-link-secondary" href="/requirements">My Requirements</Link>}
       </div>
 
@@ -697,7 +703,7 @@ export default function JobsPage() {
           display: "flex",
           gap: 4,
           borderBottom:
-            "1px solid #ccc",
+            "1px solid var(--color-border)",
           marginBottom: 12,
         }}
       >
@@ -713,10 +719,11 @@ export default function JobsPage() {
               border: "none",
               borderBottom:
                 tab === t.key
-                  ? "2px solid #333"
+                  ? "2px solid var(--color-primary-action)"
                   : "2px solid transparent",
               background:
-                "none",
+                "transparent",
+              color: "var(--color-text)",
               fontWeight:
                 tab === t.key
                   ? 700
@@ -835,7 +842,7 @@ export default function JobsPage() {
                           marginTop: 7,
                           padding: "3px 8px",
                           borderRadius: 999,
-                          background: "#E8F1FB",
+                          background: "var(--color-primary-soft)",
                           color: "var(--color-primary-action)",
                           fontSize: 12,
                           fontWeight: 700,
@@ -852,20 +859,20 @@ export default function JobsPage() {
                       borderRadius: 999,
                       background:
                         job.status === "open"
-                          ? "#E8F5E9"
+                          ? "var(--color-positive-soft)"
                           : job.status === "completed"
-                          ? "#E0F2F1"
+                          ? "var(--color-positive-soft)"
                           : job.status === "cancelled"
-                          ? "#FFEBEE"
-                          : "#FFF8E1",
+                          ? "var(--color-danger-soft)"
+                          : "var(--color-warning-soft)",
                       color:
                         job.status === "open"
-                          ? "#2E7D32"
+                          ? "var(--color-positive)"
                           : job.status === "completed"
-                          ? "#00695C"
+                          ? "var(--color-positive)"
                           : job.status === "cancelled"
-                          ? "#C62828"
-                          : "#8D6E00",
+                          ? "var(--color-danger)"
+                          : "var(--color-warning)",
                       fontSize: 12,
                       fontWeight: 700,
                       textTransform: "capitalize",
@@ -904,19 +911,17 @@ export default function JobsPage() {
                     fontSize: 14,
                   }}
                 >
-                  <span>{job.vehicleType}</span>
+                  <span>{vehicleTypeLabel(job.vehicleType, accountCountry)}</span>
                   <span>·</span>
                   <strong>
-                    {symbolFor(job.currency)}
-                    {job.price}
+                    {formatMarketCurrency(job.price, { country: accountCountry || "GB", currency: job.currency })}
                   </strong>
 
                   {job.pricePerMile && (
                     <>
                       <span>·</span>
                       <span>
-                        {symbolFor(job.currency)}
-                        {job.pricePerMile}/mile
+                        {formatMarketCurrency(marketProfile?.distanceUnit === "km" ? job.pricePerMile * 0.621371 : job.pricePerMile, { country: accountCountry || "GB", currency: job.currency })}/{marketProfile?.distanceUnit ?? "mile"}
                       </span>
                     </>
                   )}
@@ -924,20 +929,20 @@ export default function JobsPage() {
                   <span>·</span>
 
                   <span>
-                    {new Date(job.jobDate).toLocaleDateString("en-GB")}
+                    {formatMarketDate(job.jobDate, { country: accountCountry, currency: job.currency })}
                   </span>
 
                   {job.pickupTime && (
                     <>
                       <span>·</span>
-                      <span>Pickup {job.pickupTime}</span>
+                      <span>Pickup {job.pickupTime} ({getTimeZoneOptions(accountCountry || "GB", marketProfile?.timeZone).find((zone) => zone.value === job.pickupTimeZone)?.label ?? job.pickupTimeZone ?? marketProfile?.timeZone})</span>
                     </>
                   )}
 
                   {job.dropoffTime && (
                     <>
                       <span>·</span>
-                      <span>Drop-off {job.dropoffTime}</span>
+                      <span>Drop-off {job.dropoffTime} ({getTimeZoneOptions(accountCountry || "GB", marketProfile?.timeZone).find((zone) => zone.value === job.dropoffTimeZone)?.label ?? job.dropoffTimeZone ?? job.pickupTimeZone ?? marketProfile?.timeZone})</span>
                     </>
                   )}
                 </div>
@@ -963,7 +968,7 @@ export default function JobsPage() {
                       fontSize: 13,
                     }}
                   >
-                    {job.weightKg ? `${job.weightKg} kg` : ""}
+                    {job.weightKg ? `${accountCountry === "US" ? (job.weightKg / 0.45359237).toLocaleString("en-US", { maximumFractionDigits: 1 }) + " lb" : job.weightKg + " kg"}` : ""}
                     {job.weightKg && job.dimensions ? " · " : ""}
                     {job.dimensions || ""}
                   </p>
@@ -1238,12 +1243,7 @@ export default function JobsPage() {
                                     .displayId
                                 }
                                 ) —{" "}
-                                {symbolFor(
-                                  job.currency
-                                )}
-                                {
-                                  bid.amount
-                                }
+                                {formatMarketCurrency(bid.amount, { country: accountCountry || "GB", currency: job.currency })}
 
                                 {ageText(
                                   bid
@@ -1280,7 +1280,7 @@ export default function JobsPage() {
                     <div
                       style={{
                         marginTop: 18,
-                        background: "#F4F7FA",
+                        background: "var(--ops-surface-inset)",
                         border: "1px solid var(--color-border)",
                         padding: 16,
                         borderRadius: 12,

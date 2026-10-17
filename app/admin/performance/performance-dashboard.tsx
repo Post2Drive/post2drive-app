@@ -34,7 +34,7 @@ function Distribution({ rows }: { rows:Row[] }) {
   if (!rows.length) return <p style={{ color:palette.muted,fontSize:13 }}>No records yet.</p>;
   return <div style={{ display:"grid", gap:12 }}>{rows.map((r,i)=>{
     const pct=total?Math.round(Number(r.count||0)/total*100):0;
-    return <div key={String(r.label??i)}><div style={{ display:"flex", justifyContent:"space-between", gap:12, fontSize:13, marginBottom:5 }}><span>{String(r.label??"Unknown").replaceAll("_"," ")}</span><strong>{num(r.count)} <span style={{ color:palette.muted,fontWeight:400 }}>({pct}%)</span></strong></div><div style={{ height:7, background:"#edf0f4", borderRadius:99, overflow:"hidden" }}><div style={{ width:pct+"%", height:"100%", background:"#3778c2", borderRadius:99 }} /></div></div>;
+    return <div key={String(r.label??i)}><div style={{ display:"flex", justifyContent:"space-between", gap:12, fontSize:13, marginBottom:5 }}><span>{String(r.label??"Unknown").replaceAll("_"," ")}</span><strong>{num(r.count)} <span style={{ color:palette.muted,fontWeight:400 }}>({pct}%)</span></strong></div><div style={{ height:7, background:"var(--ops-border)", borderRadius:99, overflow:"hidden" }}><div style={{ width:pct+"%", height:"100%", background:"var(--ops-blue)", borderRadius:99 }} /></div></div>;
   })}</div>;
 }
 function TrendBars({ rows, labelKey, valueKey, valueLabel }: { rows:Row[]; labelKey:string; valueKey:string; valueLabel:string }) {
@@ -43,7 +43,7 @@ function TrendBars({ rows, labelKey, valueKey, valueLabel }: { rows:Row[]; label
   if(!rows.length)return <p style={{color:palette.muted,fontSize:13}}>No trend data collected yet.</p>;
   return <div style={{display:"grid",gridTemplateColumns:"repeat("+Math.min(rows.length,12)+",minmax(0,1fr))",gap:5,alignItems:"end",minHeight:130}}>
     {rows.map((r,i)=>{const v=Number(r[valueKey]||0);const height=Math.max(v>0?4:1,Math.round(v/max*88));return <div key={String(r[labelKey]??i)} title={String(r[labelKey]??"")+": "+num(v)+" "+valueLabel} style={{display:"flex",height:130,flexDirection:"column",justifyContent:"end",alignItems:"stretch",gap:5,minWidth:0}}>
-      <span style={{fontSize:10,textAlign:"center",color:palette.muted,overflow:"hidden"}}>{v?num(v):""}</span><div style={{height:height+"px",background:"#3778c2",borderRadius:"4px 4px 0 0",minHeight:1}}/><span style={{fontSize:10,textAlign:"center",color:palette.muted,overflow:"hidden",whiteSpace:"nowrap"}}>{String(r[labelKey]??"").slice(5,10)||String(i+1)}</span>
+      <span style={{fontSize:10,textAlign:"center",color:palette.muted,overflow:"hidden"}}>{v?num(v):""}</span><div style={{height:height+"px",background:"var(--ops-blue)",borderRadius:"4px 4px 0 0",minHeight:1}}/><span style={{fontSize:10,textAlign:"center",color:palette.muted,overflow:"hidden",whiteSpace:"nowrap"}}>{String(r[labelKey]??"").slice(5,10)||String(i+1)}</span>
     </div>})}
   </div>;
 }
@@ -74,7 +74,7 @@ export default function PerformanceDashboard() {
   },[days]);
   useEffect(()=>{void load();},[load]);
   if(loading&&!data)return <p role="status">Loading performance metrics…</p>;
-  if(error&&!data)return <div role="alert" style={{ ...card,borderColor:"#d97706" }}><strong>Dashboard unavailable</strong><p>{error}</p><button onClick={()=>void load()}>Try again</button></div>;
+  if(error&&!data)return <div role="alert" style={{ ...card,borderColor:"var(--ops-amber)" }}><strong>Dashboard unavailable</strong><p>{error}</p><button onClick={()=>void load()}>Try again</button></div>;
   if(!data)return null;
   const o=data.overview||{};
   const latestRun=data.qaRuns?.[0];
@@ -86,18 +86,18 @@ export default function PerformanceDashboard() {
     {key:"p50Ms",label:"P50",render:(v:any)=>duration(v)},
     {key:"p95Ms",label:"P95",render:(v:any)=>duration(v)},
     {key:"maxMs",label:"Max",render:(v:any)=>duration(v)},
-    {key:"serverErrors",label:"5xx",render:(v:any,row:Row)=><span style={{color:Number(v)>0?"#b42318":"inherit",fontWeight:Number(v)>0?700:400}}>{num(v)}</span>},
+    {key:"serverErrors",label:"5xx",render:(v:any,row:Row)=><span style={{color:Number(v)>0?"var(--ops-red)":"inherit",fontWeight:Number(v)>0?700:400}}>{num(v)}</span>},
     {key:"clientErrors",label:"4xx",render:(v:any)=>num(v)},
   ];
   return <div>
     <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,flexWrap:"wrap",margin:"16px 0" }}>
       <div style={{ color:palette.muted,fontSize:12 }}>Last updated {date(data.generatedAt)} · {loading?"Refreshing…":"Live database snapshot"}</div>
       <div style={{ display:"flex",gap:6,flexWrap:"wrap" }}>
-        {[1,7,30].map(d=><button key={d} onClick={()=>setDays(d)} aria-pressed={days===d} style={{ border:"1px solid "+palette.border,borderRadius:8,padding:"8px 12px",background:days===d?"#e8f1ff":"white",fontWeight:days===d?700:500,cursor:"pointer" }}>{d===1?"24 hours":d+" days"}</button>)}
-        <button onClick={()=>void load()} style={{ border:"1px solid "+palette.border,borderRadius:8,padding:"8px 12px",background:"white",cursor:"pointer" }}>Refresh</button>
+        {[1,7,30].map(d=><button key={d} onClick={()=>setDays(d)} aria-pressed={days===d} style={{ border:"1px solid "+palette.border,borderRadius:8,padding:"8px 12px",background:days===d?"var(--ops-blue-soft)":"var(--ops-surface-raised)",color:"var(--ops-text)",fontWeight:days===d?700:500,cursor:"pointer" }}>{d===1?"24 hours":d+" days"}</button>)}
+        <button onClick={()=>void load()} style={{ border:"1px solid "+palette.border,borderRadius:8,padding:"8px 12px",background:"var(--ops-surface-raised)",color:"var(--ops-text)",cursor:"pointer" }}>Refresh</button>
       </div>
     </div>
-    {error?<p role="alert" style={{ color:"#b42318" }}>{error} — showing the last successfully loaded data.</p>:null}
+    {error?<p role="alert" style={{ color:"var(--ops-red)" }}>{error} — showing the last successfully loaded data.</p>:null}
     <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(155px,1fr))",gap:10,marginBottom:16 }}>
       <MetricCard label="Total accounts" value={o.totalAccounts} hint="Synthetic QA accounts excluded"/>
       <MetricCard label="Login users" value={o.totalUsers} hint="Registered user profiles"/>
@@ -151,9 +151,9 @@ export default function PerformanceDashboard() {
         <Table rows={[data.vehicleSummary||{}]} columns={[
           {key:"total",label:"Vehicles",render:(v:any)=>num(v)},
           {key:"verified",label:"Verified",render:(v:any)=>num(v)},
-          {key:"motExpired",label:"MOT expired",render:(v:any)=>num(v)},
+          {key:"motExpired",label:"Vehicle inspection expired (all markets)",render:(v:any)=>num(v)},
           {key:"insuranceExpired",label:"Insurance expired",render:(v:any)=>num(v)},
-          {key:"motExpiring30d",label:"MOT ≤30d",render:(v:any)=>num(v)},
+          {key:"motExpiring30d",label:"Vehicle inspection due within 30 days (all markets)",render:(v:any)=>num(v)},
           {key:"insuranceExpiring30d",label:"Insurance ≤30d",render:(v:any)=>num(v)}
         ]}/>
       </Section>
@@ -228,7 +228,7 @@ export default function PerformanceDashboard() {
         {key:"targetAccounts",label:"Target users",render:(v:any)=>num(v)},
         {key:"createdAccounts",label:"Created",render:(v:any)=>num(v)},
         {key:"successfulChecks",label:"Passed",render:(v:any)=>num(v)},
-        {key:"failedChecks",label:"Failed",render:(v:any,row:Row)=><span style={{color:Number(v)>0?"#b42318":"inherit",fontWeight:700}}>{num(v)}</span>},
+        {key:"failedChecks",label:"Failed",render:(v:any,row:Row)=><span style={{color:Number(v)>0?"var(--ops-red)":"inherit",fontWeight:700}}>{num(v)}</span>},
         {key:"durationMs",label:"Run time",render:(v:any)=>duration(v)}
       ]}/>
       <h3 style={{fontSize:15,margin:"18px 0 8px"}}>Failure patterns from latest QA run</h3>

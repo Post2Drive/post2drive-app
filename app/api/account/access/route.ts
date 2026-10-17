@@ -68,8 +68,8 @@ async function GETHandler() {
     price,
     currency: access.account.currency,
     marketLabel: market?.label ?? "Marketplace",
-    locale: market?.locale ?? "en-GB",
-    timeZone: market?.timeZone ?? "Europe/London",
+    locale: market?.locale ?? "en",
+    timeZone: market?.timeZone ?? "UTC",
     priceGbp: access.account.currency === "GBP" ? price : null,
     pendingPayment,
   });

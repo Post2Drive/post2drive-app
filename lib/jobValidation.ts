@@ -1,5 +1,6 @@
 import { VEHICLE_TYPES } from "@/lib/vehicles";
 import { marketForAccount, type MarketIdentity } from "@/lib/market";
+import { getTimeZoneOptions } from "@/lib/localisation";
 
 export type NormalizedJobInput = {
   pickup: string;
@@ -11,6 +12,8 @@ export type NormalizedJobInput = {
   jobDate: Date;
   pickupTime: string | null;
   dropoffTime: string | null;
+  pickupTimeZone: string;
+  dropoffTimeZone: string;
   vehicleType: string;
   weightKg: number | null;
   dimensions: string | null;
@@ -88,7 +91,7 @@ export function validateJobInput(body: unknown, expectedMarket?: MarketIdentity)
     if (!jobDate) return { ok: false, error: "Enter a valid calendar date." };
 
     const vehicleType = typeof input.vehicleType === "string" ? input.vehicleType.trim() : "";
-    if (!vehicleType || !VEHICLE_TYPES.includes(vehicleType)) return { ok: false, error: "Choose a valid vehicle type." };
+    if (!vehicleType || !(VEHICLE_TYPES as readonly string[]).includes(vehicleType)) return { ok: false, error: "Choose a valid vehicle type." };
 
     const price = optionalNumber(input.price, "Price", 0.01, 100000000);
     if (price === null) return { ok: false, error: "Price must be greater than zero." };
@@ -115,6 +118,19 @@ export function validateJobInput(body: unknown, expectedMarket?: MarketIdentity)
     if (input.crossBorder === true) return { ok: false, error: "Cross-border matching is not currently available. Jobs are limited to your selected market." };
 
     const currency = typeof input.currency === "string" ? input.currency.trim().toUpperCase() : "";
+    const country = expectedMarket?.country ?? "GB";
+    const defaultTimeZone = marketForAccount(expectedMarket ?? { country: "GB", currency: "GBP" })?.timeZone ?? "Europe/London";
+    const timeZoneOptions = getTimeZoneOptions(country, defaultTimeZone);
+    const requestedTimeZone = typeof input.pickupTimeZone === "string" ? input.pickupTimeZone.trim() : "";
+    const pickupTimeZone = requestedTimeZone || defaultTimeZone;
+    if (!timeZoneOptions.some((option) => option.value === pickupTimeZone)) {
+      return { ok: false, error: "Choose a pickup time zone valid for your market." };
+    }
+    const requestedDropoffTimeZone = typeof input.dropoffTimeZone === "string" ? input.dropoffTimeZone.trim() : "";
+    const dropoffTimeZone = requestedDropoffTimeZone || pickupTimeZone;
+    if (!timeZoneOptions.some((option) => option.value === dropoffTimeZone)) {
+      return { ok: false, error: "Choose a drop-off time zone valid for your market." };
+    }
     if (expectedMarket) {
       const market = marketForAccount(expectedMarket);
       if (!market) return { ok: false, error: "Your account's country and currency are not supported." };
@@ -125,7 +141,7 @@ export function validateJobInput(body: unknown, expectedMarket?: MarketIdentity)
 
     return { ok: true, data: {
       pickup, pickupLat, pickupLng, dropoff, dropoffLat, dropoffLng, jobDate,
-      pickupTime, dropoffTime, vehicleType, weightKg, dimensions, price,
+      pickupTime, dropoffTime, pickupTimeZone, dropoffTimeZone, vehicleType, weightKg, dimensions, price,
       pricePerMile, notes, priceMode, currency, crossBorder: false,
       pickupContactName, pickupContactPhone, dropoffContactName, dropoffContactPhone,
     }};

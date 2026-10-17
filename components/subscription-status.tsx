@@ -29,7 +29,7 @@ type AccessData = {
   } | null;
 };
 
-function formatDate(value: string | null, locale = "en-GB", timeZone = "Europe/London") {
+function formatDate(value: string | null, locale = "en", timeZone = "UTC") {
   if (!value) return null;
 
   return new Intl.DateTimeFormat(locale, {
@@ -88,7 +88,7 @@ export default function SubscriptionStatus() {
     data.locale,
     data.timeZone,
   );
-  const formattedPrice = data.price === null || !data.currency ? null : new Intl.NumberFormat(data.locale || "en-GB", { style: "currency", currency: data.currency }).format(data.price);
+  const formattedPrice = data.price === null || !data.currency ? null : new Intl.NumberFormat(data.locale || "en", { style: "currency", currency: data.currency }).format(data.price);
 
   const planName =
     data.planType === "fleet"

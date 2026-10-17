@@ -49,12 +49,22 @@ jobs:
         run: npm run qa:market-isolation
       - name: Validate country matrix across all supported markets
         run: npm run qa:country-matrix
+      - name: Validate country-aware UI localisation contracts
+        run: npm run qa:localisation
+      - name: Validate internal country-aware ops dashboard
+        run: |
+          node --check ops-dashboard/server.mjs
+          npm run qa:ops-dashboard
+      - name: Audit user-facing app copy for market assumptions
+        run: npm run qa:localisation-copy
       - name: Validate QA runner staging-only guard
         run: npm run qa:qa-runner-guard
       - name: Validate durable QA queue and worker lifecycle
         run: npm run qa:worker-contract
-      - name: Validate UK/India/euro-market pickup-time conversion and DST edges
+      - name: Validate all-market time zones, overseas destinations and DST edges
         run: npm run qa:market-timezone
+      - name: Validate independent drop-off time-zone wiring and legacy fallback
+        run: npm run qa:dropoff-timezone
       - name: Validate Prisma schema
         run: npx prisma validate --schema=prisma/schema.prisma
       - name: Generate Prisma client

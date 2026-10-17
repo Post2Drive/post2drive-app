@@ -133,7 +133,7 @@ export default function SignupPage() {
         <label>Choose your market<select required value={form.country} onChange={(e) => changeCountry(e.target.value)}><option value="" disabled>Choose a country</option>{COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}</select><small>This determines your marketplace, currency and local time zone. Cross-market matching is disabled.</small></label>
         <label>Account type<select value={form.isSoleTrader ? "sole" : "company"} onChange={(e) => update("isSoleTrader", e.target.value === "sole")}><option value="company">Registered business</option><option value="sole">Sole trader / individual operator</option></select></label>
         <label>{form.isSoleTrader ? "Trading name (optional)" : "Registered company name"}<input value={form.companyName} onChange={(e) => update("companyName", e.target.value)} required={!form.isSoleTrader} maxLength={120} placeholder={form.isSoleTrader ? "You can use your own name" : "Name registered to your business"} /></label>
-        <div className="signup-note"><strong>{form.country ? `${marketLabel} marketplace` : "Select a market"}</strong><p>{!form.country ? "Choose a country to see the correct marketplace, currency and access options." : isIndia ? "Browse India-only delivery opportunities using INR. A short optional market-research step helps shape the experience." : isUk ? "Use this country's marketplace with GBP pricing. Market-specific access and promotion rules are shown before you commit." : "Use this country's separate marketplace with its local currency and the same 7-day individual and fleet access model as the UK. UK-only promotions do not automatically apply."}</p></div>
+        <div className="signup-note"><strong>{form.country ? `${marketLabel} marketplace` : "Select a market"}</strong><p>{!form.country ? "Choose a country to see the correct marketplace, currency and access options." : isIndia ? "Browse India-only delivery opportunities using INR. A short optional market-research step helps shape the experience." : isUk ? "Use this country's marketplace with GBP pricing. Market-specific access and promotion rules are shown before you commit." : "Use this country's separate marketplace with local-currency pricing. The configured access model and promotions available in your country are shown before you commit."}</p></div>
       </div>}
 
       {step === 1 && <div className="signup-fields">
@@ -168,6 +168,7 @@ export default function SignupPage() {
       {error && <p className="signup-error" role="alert">{error}</p>}
       <div className="signup-actions">{step > 0 && <button className="signup-secondary" type="button" disabled={loading} onClick={() => { setError(""); setStep((current) => current - 1); }}>Back</button>}{step < steps.length - 1 ? <button type="submit">Continue</button> : <button type="submit" disabled={loading}>{loading ? "Creating account…" : "Create account"}</button>}</div>
       <p className="signup-login-link">Already registered? <a href="/login">Log in</a></p>
+      <p className="signup-login-link"><a href="/admin-access">Admin dashboard</a></p>
     </form>}
     <p className="signup-footnote">By continuing, you can review the plan details and terms before creating your account. Account creation itself does not take payment.</p>
   </section></main>;
