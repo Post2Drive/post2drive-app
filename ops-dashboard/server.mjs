@@ -54,6 +54,13 @@ const READINESS_GATES = [
   ["timezones","Time-zone handling"],["legalReview","Local legal review"],["stagingE2E","Authenticated staging E2E"],
   ["operationalRecovery","Monitoring & recovery"]
 ];
+function bridgeReady() {
+  if (!process.env.OPS_DASHBOARD_BRIDGE_SECRET || process.env.OPS_DASHBOARD_BRIDGE_SECRET.length < 32) return false;
+  try {
+    const target = new URL(process.env.POST2DRIVE_APP_URL || "");
+    return Boolean(target.hostname && !target.username && !target.password && (!IS_PRODUCTION || target.protocol === "https:"));
+  } catch { return false; }
+}
 function countryReadiness() {
   let configured = {};
   try {
@@ -293,7 +300,7 @@ async function metricsUncached(url) {
     apiHourly:normalise(apiHourly).map(r=>({hour:r.hour,requests:Number(r.requests||0),errors:Number(r.errors||0)})),
     routes:normalise(routes),recentErrors:normalise(recentErrors),qaRuns:normalise(qaRuns),qaFailures:normalise(qaFailures),
     paymentStatuses:normalise(paymentStatuses),activity:normalise(activityRows),bidSummary:normalise(bidRows),
-    testerApplications:normalise(testerApplications),testerCodes:normalise(testerCodes),incidentQueue:normalise(incidentQueue),researchResults:normalise(researchResults),notificationSummary:normalise(notificationSummary),auditEvents:normalise(auditEvents),adminAuditEvents:normalise(adminAuditEvents),countryReadiness:countryReadiness(),adminActionsEnabled:Boolean(process.env.POST2DRIVE_APP_URL && process.env.OPS_DASHBOARD_BRIDGE_SECRET && process.env.OPS_DASHBOARD_BRIDGE_SECRET.length>=32 && !warnings.some(w=>w.startsWith("Admin action audit"))),
+    testerApplications:normalise(testerApplications),testerCodes:normalise(testerCodes),incidentQueue:normalise(incidentQueue),researchResults:normalise(researchResults),notificationSummary:normalise(notificationSummary),auditEvents:normalise(auditEvents),adminAuditEvents:normalise(adminAuditEvents),countryReadiness:countryReadiness(),adminActionsEnabled:bridgeReady() && !warnings.some(w=>w.startsWith("Admin action audit")),
     sources:sourceList(code),patterns,warnings,
     dataCoverage:warnings.length?"Partial · some sources unavailable":"Database query coverage available; external industry feeds pending",
     externalCoverage:"Official source directory only; no live national logistics series yet",
