@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { VEHICLE_TYPES, vehicleTypeLabel } from "@/lib/vehicles";
+import { getLocalisationProfile } from "@/lib/localisation";
 
 type Job = {
   id: string;
@@ -49,6 +50,7 @@ export default function EditJobPage() {
   const params = useParams();
   const { data: session } = useSession();
   const country = (session?.user as any)?.country ?? "GB";
+  const marketProfile = getLocalisationProfile({ country, currency: (session?.user as any)?.currency ?? "GBP" });
   const router = useRouter();
 
   const jobId = useMemo(() => {
@@ -125,7 +127,7 @@ export default function EditJobPage() {
         setWeightKg(
           loadedJob.weightKg !== null &&
           loadedJob.weightKg !== undefined
-            ? String(loadedJob.weightKg)
+            ? String(country === "US" ? loadedJob.weightKg / 0.45359237 : loadedJob.weightKg)
             : "",
         );
         setDimensions(loadedJob.dimensions || "");
@@ -190,7 +192,7 @@ export default function EditJobPage() {
     }
 
     loadJob();
-  }, [jobId]);
+  }, [jobId, country]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -213,7 +215,7 @@ export default function EditJobPage() {
         dropoffTime: dropoffTime.trim() || undefined,
         vehicleType,
         weightKg: weightKg.trim()
-          ? Number(weightKg)
+          ? Number(weightKg) * (country === "US" ? 0.45359237 : 1)
           : undefined,
         dimensions: dimensions.trim() || undefined,
         crossBorder: false,
@@ -558,7 +560,7 @@ export default function EditJobPage() {
 
             <label>
               <div style={{ fontSize: 13, marginBottom: 6 }}>
-                Weight (kg)
+                Weight ({marketProfile?.weightUnit ?? "kg"})
               </div>
               <input
                 type="number"
