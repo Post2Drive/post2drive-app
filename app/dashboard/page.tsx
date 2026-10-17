@@ -224,7 +224,7 @@ export default async function DashboardPage() {
 
   return (
     <div
-      className="ops-theme-dashboard"
+      className="ops-theme-dashboard" data-market={account.country} data-currency={account.currency}
       style={{
         maxWidth: 1200,
         margin: "0 auto",
@@ -271,6 +271,7 @@ export default async function DashboardPage() {
       <NotificationCenter />
 
       <section
+        className="ops-section ops-section-overview"
         style={{
           marginTop: 28,
         }}
@@ -338,6 +339,7 @@ export default async function DashboardPage() {
       </section>
 
       <section
+        className="ops-section ops-section-pipeline"
         style={{
           marginTop: 28,
           border: "1px solid var(--color-border)",
@@ -415,6 +417,7 @@ export default async function DashboardPage() {
       </section>
 
       <section
+        className="ops-section ops-section-fulfilment"
         style={{
           marginTop: 28,
           border: "1px solid var(--color-border)",
@@ -475,6 +478,7 @@ export default async function DashboardPage() {
 
       {ukEligible && (
         <section
+          className="ops-section ops-section-promotion"
           style={{
             marginTop: 28,
             padding: 20,
@@ -554,6 +558,7 @@ export default async function DashboardPage() {
       )}
 
       <section
+        className="ops-section ops-section-access"
         style={{
           marginTop: 28,
           border: "1px solid var(--color-border)",
