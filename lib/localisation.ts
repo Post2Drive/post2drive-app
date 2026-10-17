@@ -22,6 +22,7 @@ export type LocalisationProfile = {
   authorityLabel: string;
   inspectionRequiredAtCountryLevel: boolean;
   jurisdictionSelectionRequired: boolean;
+  jurisdictionLabel: string;
   weightUnit: "kg" | "lb";
   vehicleMassLabel: string;
   distanceUnit: "km" | "mile";
@@ -171,6 +172,7 @@ export function getLocalisationProfile(identity: MarketIdentity): LocalisationPr
     dialingCode: market.dialingCode,
     marketplaceLabel: market.label,
     ...terms,
+    jurisdictionLabel: market.country === "IN" ? "State / Union Territory (RTO jurisdiction)" : market.country === "US" ? "Vehicle registration state" : market.country === "CA" ? "Vehicle registration province / territory" : market.country === "AU" ? "Vehicle registration state / territory" : market.country === "CH" ? "Vehicle registration canton" : market.country === "BE" ? "Vehicle registration region" : "Vehicle registration jurisdiction",
     weightUnit: market.country === "US" ? "lb" : "kg",
     distanceUnit: market.country === "US" || market.country === "GB" ? "mile" : "km",
     vehicleMassLabel: market.country === "US" ? "Gross Vehicle Weight Rating (GVWR, lb)" : market.country === "GB" ? "Maximum authorised mass (kg)" : market.country === "IN" ? "Gross vehicle weight (kg)" : "Maximum vehicle weight (kg)",
