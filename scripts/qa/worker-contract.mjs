@@ -17,7 +17,7 @@ assert.match(worker, /FOR UPDATE SKIP LOCKED/,"worker must atomically claim one 
 assert.match(worker, /SET status = 'running'/,"claim must transition queued to running");
 assert.match(worker, /workerHeartbeatAt/,"worker must persist liveness evidence");
 assert.match(worker, /runQaWorker\(job\.id, country\)/,"worker must execute the shared QA runner");
-assert.doesNotMatch(worker, /status\s*=\s*'queued'.*status\s*=\s*'running'/s,"worker must not automatically requeue a potentially live run");
+assert.doesNotMatch(worker, /SET status\s*=\s*'queued'/,"worker must never automatically requeue a potentially live run");
 
 assert.match(runner, /QA_ACCOUNT_COUNT !== "10000"/,"runner preflight must enforce 10k account target");
 assert.match(runner, /status='running' AND target_url=\$2 AND target_accounts=10000/,"runner must require a row claimed by the worker");
