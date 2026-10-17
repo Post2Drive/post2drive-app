@@ -25,6 +25,8 @@ Set these as Railway service secrets, never commit them or paste them into chat:
 - `OPS_DASHBOARD_USERNAME`: dedicated admin username of at least 3 characters. Do not reuse a customer login.
 - `OPS_DASHBOARD_PASSWORD`: strong random admin password of at least 16 characters.
 - `OPS_DASHBOARD_SESSION_SECRET`: independent random secret of at least 32 characters.
+- `POST2DRIVE_APP_URL`: HTTPS base URL for the staging Next.js app; the dashboard uses it only for signed admin actions.
+- `OPS_DASHBOARD_BRIDGE_SECRET`: independent random secret of at least 32 characters. Configure the same value in the dashboard service and the staging app environment. It is used to sign timestamped, nonce-protected requests; never expose it to browser JavaScript.
 - `NODE_ENV=production` for Secure cookies
 - Optional `COUNTRY_READINESS_JSON`: reviewed readiness evidence per country. Each market may define `localization`, `vehicleRules`, `payments`, `timezones`, `legalReview`, `stagingE2E`, and `operationalRecovery` objects with `status` (`verified`, `blocked`, or `in_progress`), `reviewedAt` (ISO timestamp), and `evidenceRef` (ticket/document reference). Missing fields stay `not_assessed`; a market is `ready` only when all seven gates are verified with dated evidence references. Do not put personal data or secrets in this value..
 
@@ -36,7 +38,7 @@ Do not deploy with a blank/default password or with a database role that can mod
 - Do not disable authentication to make the dashboard easier to open.
 - Keep the public domain private to authorised operators where Railway access controls or an approved access gateway are available. If a public domain is enabled, the operator password remains mandatory.
 - Use HTTPS in deployed environments. No secrets, emails, contact details or individual account rows are rendered in charts.
-- Query endpoints are read-only. The service does not run migrations or cleanup operations.
+- Query endpoints are read-only. The service does not run migrations or cleanup operations. Tester approval/rejection, access-code generation and incident resolution are proxied to the staging application through `POST /api/internal/admin-bridge`; the application validates HMAC signatures, a two-minute timestamp window, and one-time nonces. Mutations execute in the app-side Prisma layer, not through the dashboard database role. The `AdminAuditEvent` table migration must be applied to staging before admin actions are enabled. The bridge fails closed when its secret is absent or invalid.
 - Metrics responses are cached in-process for 30 seconds and concurrent identical requests share one in-flight query, reducing repeated database load. The cache is per service instance and is not a source of durable state.
 - Admin login is rate-limited to 10 failed attempts per 15 minutes per observed client IP. The service ignores forwarded-IP headers by default. Set `TRUST_PROXY_HEADERS=true` only after confirming the hosting proxy overwrites the header and strips user-supplied values. Tester approval/rejection, access-code generation, and incident resolution/notification are not executed by this reporting service: those operations must be routed through a secured application-side bridge that enforces existing business rules, transaction/audit requirements, and notification behaviour. Do not grant this service a write-capable database role to bypass that boundary.
 
@@ -54,15 +56,16 @@ The industry section currently provides official source links and platform-deriv
 
 Before allowing operators to rely on the dashboard:
 
-1. Create/provision the dedicated read-only database role.
-2. Configure secrets in Railway staging.
-3. Confirm `/health` returns HTTP 200 without exposing configuration.
-4. Confirm unauthenticated requests to `/` show the operator access screen and `/api/metrics` returns 401.
-5. Confirm an invalid password is rejected and a valid password establishes a secure session.
-6. Validate Global, GB, IN and at least one additional country filter against controlled records; confirm countries never bleed across the filter.
-7. Reconcile account/user/job/bid totals to documented SQL and exclude QA synthetic accounts from business totals.
-8. Confirm QA runs and failed scenario evidence remain read-only and intact.
-9. Validate API latency/error aggregations and label missing instrumentation as a coverage gap.
-10. Confirm source links and freshness metadata; do not represent source-directory links as imported data.
-11. Run `npm run qa:ops-dashboard`, `node --check ops-dashboard/server.mjs`, all existing QA contracts, and the staging deployment smoke test.
-12. Keep PR #12 draft and do not deploy production until separately approved.
+1. Apply the `AdminAuditEvent` migration to the staging application database using the authorised migration process.
+2. Create/provision the dedicated read-only database role, including SELECT access to `AdminAuditEvent`.
+3. Configure the dashboard and app-side bridge secrets in Railway staging.
+4. Confirm `/health` returns HTTP 200 without exposing configuration.
+5. Confirm unauthenticated requests to `/` show the operator access screen and `/api/metrics` returns 401.
+6. Confirm an invalid password is rejected and a valid password establishes a secure session.
+7. Validate Global, GB, IN and at least one additional country filter against controlled records; confirm countries never bleed across the filter.
+8. Reconcile account/user/job/bid totals to documented SQL and exclude QA synthetic accounts from business totals.
+9. Confirm QA runs and failed scenario evidence remain read-only and intact.
+10. Validate API latency/error aggregations and label missing instrumentation as a coverage gap.
+11. Confirm source links and freshness metadata; do not represent source-directory links as imported data.
+12. Run `npm run qa:ops-dashboard`, `node --check ops-dashboard/server.mjs`, all existing QA contracts, bridge authentication/replay tests, and the staging deployment smoke test.
+13. Keep PR #12 draft and do not deploy production until separately approved.
