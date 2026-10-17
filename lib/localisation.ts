@@ -6,7 +6,7 @@
  * Australian states/territories), so the UI must not imply that one national rule
  * or regulator applies everywhere.
  */
-import { marketForAccount, type MarketIdentity } from "./market.ts";
+import { getMarket, marketForAccount, type MarketIdentity } from "./market.ts";
 
 export type LocalisationProfile = {
   country: string;
@@ -164,7 +164,7 @@ export const TIME_ZONE_OPTIONS: Record<string, { value: string; label: string }[
 export function getTimeZoneOptions(country: string, defaultTimeZone?: string) {
   const configured = TIME_ZONE_OPTIONS[country];
   if (configured) return configured;
-  const fallback = defaultTimeZone ?? getLocalisationProfile({ country, currency: undefined })?.timeZone;
+  const fallback = defaultTimeZone ?? getMarket(country)?.timeZone;
   return fallback ? [{ value: fallback, label: fallback }] : [];
 }
 
