@@ -87,7 +87,7 @@ class ApiClient {
   }
 }
 
-async function runQA(countryOverride: string, runId: string) {
+async function runQA(countryOverride: string, runId: string, workerId: string) {
   const base = (process.env.QA_BASE_URL || "").replace(/\/+$/, "");
   const db = process.env.DATABASE_URL || "";
   const countryCode = (countryOverride || process.env.QA_MARKET_COUNTRY || "GB").trim().toUpperCase();
@@ -185,17 +185,20 @@ async function runQA(countryOverride: string, runId: string) {
       cohorts: { posterFocused: 100, driverFocused: 150, both: 9_749, restricted: 1 },
       endpoints, syntheticDataRetained: true, realMoneyPaymentsAttempted: false, emailDeliveryTested: false, ...extra,
     };
-    await prisma.$executeRawUnsafe(
-      "UPDATE qa_test_runs SET status=$2,finished_at=now(),created_accounts=$3,successful_checks=$4,failed_checks=$5,duration_ms=$6,summary=$7::jsonb WHERE id=$1",
-      runId, finalStatus, createdAccounts, passed, failed, Date.now() - started, JSON.stringify(summary),
+    const finalized = await prisma.$executeRawUnsafe(
+      "UPDATE qa_test_runs SET status=$2,finished_at=now(),created_accounts=$3,successful_checks=$4,failed_checks=$5,duration_ms=$6,summary=COALESCE(summary,'{}'::jsonb) || $7::jsonb WHERE id=$1 AND status='running' AND summary->>'workerId'=$8",
+      runId, finalStatus, createdAccounts, passed, failed, Date.now() - started, JSON.stringify(summary), workerId,
     );
+    if (Number(finalized) !== 1) {
+      throw new Error("QA worker lost ownership before run finalization; refusing to overwrite the current run state.");
+    }
     console.log("POST2DRIVE_QA_RESULT " + JSON.stringify(summary));
     return summary;
   }
 
   const claimed = await prisma.$queryRawUnsafe<Array<{ id: string }>>(
-    "SELECT id FROM qa_test_runs WHERE id=$1 AND status='running' AND target_url=$2 AND target_accounts=10000",
-    runId, base,
+    "SELECT id FROM qa_test_runs WHERE id=$1 AND status='running' AND target_url=$2 AND target_accounts=10000 AND summary->>'workerId'=$3",
+    runId, base, workerId,
   );
   if (claimed.length !== 1) {
     throw new Error("QA worker must claim an existing queued run for this exact staging target before execution.");
@@ -729,9 +732,12 @@ async function runQA(countryOverride: string, runId: string) {
 
 
 
-export async function runQaWorker(runId: string, countryOverride: string) {
+export async function runQaWorker(runId: string, countryOverride: string, workerId: string) {
   if (!/^[A-Za-z0-9._:-]{1,80}$/.test(runId)) {
     throw new Error("Invalid QA run identifier.");
   }
-  return runQA(countryOverride, runId);
+  if (!workerId || workerId.length > 160) {
+    throw new Error("Invalid QA worker identifier.");
+  }
+  return runQA(countryOverride, runId, workerId);
 }
