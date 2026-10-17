@@ -27,7 +27,14 @@ function safeJson(value: unknown) {
 
 class ApiClient {
   private cookies = new Map<string, string>();
-  constructor(private readonly account: AccountFixture, private readonly base: string, private readonly runId: string) {}
+  private readonly account: AccountFixture;
+  private readonly base: string;
+  private readonly runId: string;
+  constructor(account: AccountFixture, base: string, runId: string) {
+    this.account = account;
+    this.base = base;
+    this.runId = runId;
+  }
   private absorb(headers: Headers) {
     const h = headers as Headers & { getSetCookie?: () => string[] };
     const values = typeof h.getSetCookie === "function" ? h.getSetCookie() : (headers.get("set-cookie") ? [headers.get("set-cookie")!] : []);
@@ -78,61 +85,6 @@ class ApiClient {
     try { data = text ? JSON.parse(text) : null; } catch { data = { text: text.slice(0, 250) }; }
     return { status: response.status, data };
   }
-}
-
-async function cleanupSyntheticRuns(runIds: string[], base: string) {
-  return prisma.$transaction(async tx => {
-    const results: Array<Record<string, unknown>> = [];
-    for (const runId of runIds) {
-      const runs = await tx.$queryRawUnsafe<Array<{ id: string; target_url: string; status: string; target_accounts: number; created_accounts: number }>>(
-        "SELECT id,target_url,status,target_accounts,created_accounts FROM qa_test_runs WHERE id=$1",
-        runId
-      );
-      const run = runs[0];
-      const allowedStatuses = new Set(["completed", "failed", "aborted"]);
-      if (!run || !allowedStatuses.has(run.status) || run.target_url !== base || run.target_accounts !== 10_000) {
-        throw new Error("Cleanup refused: run must be a completed, failed, or aborted 10,000-account QA run for this exact staging target. Stop or confirm the run is no longer active before cleanup: " + runId);
-      }
-      const marker = "%QA-" + runId + "%";
-      const emailPattern = "qa-" + runId + "-%@post2drive.invalid";
-      const counts: Record<string, number> = {};
-      const exec = async (name: string, query: string, ...params: unknown[]) => {
-        counts[name] = Number(await tx.$executeRawUnsafe(query, ...params));
-      };
-      const qaAccounts = 'WITH qa_accounts AS (SELECT account_id FROM qa_test_accounts WHERE run_id=$1 UNION SELECT id FROM "Account" WHERE "companyName" LIKE $2 UNION SELECT "accountId" FROM "User" WHERE email LIKE $3) ';
-      const qaJobs = 'WITH qa_accounts AS (SELECT account_id FROM qa_test_accounts WHERE run_id=$1 UNION SELECT id FROM "Account" WHERE "companyName" LIKE $2 UNION SELECT "accountId" FROM "User" WHERE email LIKE $3), qa_jobs AS (SELECT j.id FROM "Job" j WHERE j."posterId" IN (SELECT account_id FROM qa_accounts) OR j."acceptedById" IN (SELECT account_id FROM qa_accounts) OR j.notes LIKE $2) ';
-      const accountRows = await tx.$queryRawUnsafe<Array<{ count: number }>>(
-        'WITH qa_accounts AS (SELECT account_id FROM qa_test_accounts WHERE run_id=$1 UNION SELECT id FROM "Account" WHERE "companyName" LIKE $2 UNION SELECT "accountId" FROM "User" WHERE email LIKE $3) SELECT COUNT(DISTINCT account_id)::int AS count FROM qa_accounts',
-        runId, marker, emailPattern
-      );
-      const recoveredAccounts = Number(accountRows[0]?.count || 0);
-      await exec("emailTokens", qaAccounts + 'DELETE FROM "EmailVerificationToken" e USING "User" u WHERE e."userId"=u.id AND u."accountId" IN (SELECT account_id FROM qa_accounts)', runId, marker, emailPattern);
-      await exec("passwordResetTokens", qaAccounts + 'DELETE FROM "PasswordResetToken" p USING "User" u WHERE p."userId"=u.id AND u."accountId" IN (SELECT account_id FROM qa_accounts)', runId, marker, emailPattern);
-      await exec("ratings", qaJobs + 'DELETE FROM "Rating" WHERE "raterId" IN (SELECT account_id FROM qa_accounts) OR "rateeId" IN (SELECT account_id FROM qa_accounts) OR "jobId" IN (SELECT id FROM qa_jobs)', runId, marker, emailPattern);
-      await exec("bids", qaJobs + 'DELETE FROM "Bid" WHERE "bidderId" IN (SELECT account_id FROM qa_accounts) OR "jobId" IN (SELECT id FROM qa_jobs)', runId, marker, emailPattern);
-      await exec("jobActivities", qaJobs + 'DELETE FROM "JobActivity" WHERE "actorId" IN (SELECT account_id FROM qa_accounts) OR "jobId" IN (SELECT id FROM qa_jobs)', runId, marker, emailPattern);
-      await exec("driverOpportunities", qaJobs + 'DELETE FROM "DriverOpportunity" WHERE "driverId" IN (SELECT account_id FROM qa_accounts) OR "jobId" IN (SELECT id FROM qa_jobs)', runId, marker, emailPattern);
-      await exec("usageEvents", qaAccounts + 'DELETE FROM "PlatformUsageEvent" WHERE "accountId" IN (SELECT account_id FROM qa_accounts)', runId, marker, emailPattern);
-      await exec("subscriptionPayments", qaAccounts + 'DELETE FROM "SubscriptionPayment" WHERE "accountId" IN (SELECT account_id FROM qa_accounts)', runId, marker, emailPattern);
-      await exec("verificationAttempts", qaAccounts + 'DELETE FROM "VerificationAttempt" WHERE "accountId" IN (SELECT account_id FROM qa_accounts)', runId, marker, emailPattern);
-      await exec("trialCycles", qaAccounts + 'DELETE FROM "TrialCycle" WHERE "accountId" IN (SELECT account_id FROM qa_accounts)', runId, marker, emailPattern);
-      await exec("qualificationSnapshots", qaAccounts + 'DELETE FROM "QualificationSnapshot" WHERE "accountId" IN (SELECT account_id FROM qa_accounts)', runId, marker, emailPattern);
-      await exec("referrals", qaAccounts + 'DELETE FROM "Referral" WHERE "referrerId" IN (SELECT account_id FROM qa_accounts) OR "referredAccountId" IN (SELECT account_id FROM qa_accounts)', runId, marker, emailPattern);
-      await exec("vehicles", qaAccounts + 'DELETE FROM "Vehicle" WHERE "accountId" IN (SELECT account_id FROM qa_accounts)', runId, marker, emailPattern);
-      await exec("jobs", qaJobs + 'DELETE FROM "Job" WHERE id IN (SELECT id FROM qa_jobs)', runId, marker, emailPattern);
-      await exec("users", qaAccounts + 'DELETE FROM "User" WHERE "accountId" IN (SELECT account_id FROM qa_accounts)', runId, marker, emailPattern);
-      await exec("accounts", qaAccounts + 'DELETE FROM "Account" WHERE id IN (SELECT account_id FROM qa_accounts)', runId, marker, emailPattern);
-      await exec("apiMetrics", 'DELETE FROM "ApiRequestMetric" WHERE "qaRunId"=$1', runId);
-      await exec("accountMappings", 'DELETE FROM qa_test_accounts WHERE run_id=$1', runId);
-      const finalStatus = run.status === "running" ? "aborted" : run.status;
-      await tx.$executeRawUnsafe(
-        "UPDATE qa_test_runs SET status=$2, finished_at=COALESCE(finished_at,now()), duration_ms=COALESCE(duration_ms,GREATEST(0,(EXTRACT(EPOCH FROM (now()-(SELECT started_at FROM qa_test_runs WHERE id=$1)))*1000)::bigint)), created_accounts=GREATEST(created_accounts,$3), summary=COALESCE(summary,'{}'::jsonb) || jsonb_build_object('status',$2,'cleanupReason','explicitly requested staging synthetic cleanup','recoveredSyntheticAccounts',$3,'syntheticDataRetained',false,'syntheticDataCleanedAt',now(),'cleanupCounts',$4::jsonb) WHERE id=$1",
-        runId, finalStatus, recoveredAccounts, JSON.stringify(counts)
-      );
-      results.push({ runId, priorStatus: run.status, finalStatus, recoveredSyntheticAccounts: recoveredAccounts, deleted: counts, preservedAuditEvents: true, preservedRunSummary: true });
-    }
-    return results;
-  }, { maxWait: 30000, timeout: 180000 });
 }
 
 async function runQA(countryOverride: string, runId: string) {
