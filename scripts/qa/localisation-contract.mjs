@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
 import { MARKETS } from "../../lib/market.ts";
-import { getLocalisationProfile, formatMarketDate, getJurisdictionOptions, getTimeZoneOptions } from "../../lib/localisation.ts";
+import { getLocalisationProfile, formatMarketDate, getJurisdictionOptions, getJurisdictionAuthority, getTimeZoneOptions } from "../../lib/localisation.ts";
 import { VEHICLE_TYPES, vehicleTypeLabel } from "../../lib/vehicles.ts";
 
 let assertions = 0;
@@ -49,6 +49,9 @@ for (const country of ["IN", "US", "CA", "AU", "BE", "CH"]) {
   const market = Object.values(MARKETS).find((item) => item.country === country);
   check(getLocalisationProfile({ country, currency: market?.currency })?.jurisdictionSelectionRequired === true, `${country}: jurisdiction should be required`);
 }
+check(getJurisdictionAuthority("US", "CA", "USD").includes("California DMV"), "US California authority should be specific");
+check(getJurisdictionAuthority("CA", "ON", "CAD").includes("ServiceOntario"), "Canada Ontario authority should be specific");
+check(getJurisdictionAuthority("AU", "NSW", "AUD").includes("Service NSW"), "Australia NSW authority should be specific");
 check(getLocalisationProfile({ country: "US", currency: "GBP" }) === null, "mismatched country/currency should not resolve a localisation profile");
 
 console.log(JSON.stringify({
