@@ -102,6 +102,7 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
   let routeMatrixExecuted = 0;
   const routeMatrixTarget = testType === "synthetic-accounts" ? 0 : 10_000;
   const fixtures: AccountFixture[] = [];
+  let accountPoolRunId: string | null = null;
 
   async function record(e: { index?: number; accountId?: string; cohort?: string; scenario: string; action: string; method: string; path: string; expected: number[]; actual: number | null; duration: number; details?: Record<string, unknown> }) {
     const passed = e.actual !== null && e.expected.includes(e.actual);
@@ -177,7 +178,7 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
       endpoints[path] = { count: row.count, failures: row.failures, p50Ms: row.durations[Math.floor((row.durations.length - 1) * 0.5)], p95Ms: row.durations[Math.floor((row.durations.length - 1) * 0.95)], maxMs: row.durations[row.durations.length - 1] };
     }
     const summary = {
-      runId, marker, status: finalStatus, testType, target: base, targetAccounts: 10_000, country: selectedMarket.country, currency: selectedMarket.currency, marketLabel: selectedMarket.label, createdAccounts, eventCount: events.length, routeMatrixTarget, routeMatrixExecuted,
+      runId, marker, status: finalStatus, testType, target: base, targetAccounts: 10_000, country: selectedMarket.country, currency: selectedMarket.currency, marketLabel: selectedMarket.label, createdAccounts, eventCount: events.length, routeMatrixTarget, routeMatrixExecuted, accountPoolSize: fixtures.length, accountPoolRunId,
       passed, failed, durationMs: Date.now() - started, p50Ms: percentile(0.5), p95Ms: percentile(0.95),
       cohorts: { posterFocused: 100, driverFocused: 150, both: 9_749, restricted: 1 },
       endpoints, syntheticDataRetained: true, realMoneyPaymentsAttempted: false, emailDeliveryTested: false, ...extra,
@@ -204,10 +205,10 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
 
   try {
     console.log("Starting staging QA run " + runId + " type=" + testType + " for " + market.country + "/" + market.currency + " at " + base);
-    await parallel(Array.from({ length: 10_000 }, (_, i) => i), 12, async i => {
+    await parallel(Array.from({ length: testType === "synthetic-accounts" ? 10_000 : 0 }, (_, i) => i), 12, async i => {
       const cohort: AccountFixture["cohort"] = i < 100 ? "poster-focused" : i < 250 ? "driver-focused" : i < 9_999 ? "both" : "restricted";
       const email = "qa-" + runId + "-" + String(i + 1).padStart(3, "0") + "@post2drive.invalid";
-      const password = "QA-" + crypto.randomUUID() + "-p2d";
+      const password = "QA-" + runId + "-" + String(i + 1).padStart(5, "0") + "-p2d";
       const payload = {
         name: "QA User " + (i + 1), email, phone: selectedMarket.dialingCode + "770090" + String(i).padStart(4, "0"),
         password, companyName: "[QA-" + runId + "] " + cohort + " " + String(i + 1).padStart(3, "0"),
