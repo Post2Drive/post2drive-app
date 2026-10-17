@@ -35,11 +35,15 @@ async function authenticateBridge(req: Request, rawBody: string) {
   const expected = createHmac("sha256", secret).update(timestamp + "." + nonce + "." + rawBody).digest("hex");
   if (!constantTimeHexEqual(signature, expected)) return { ok: false as const, status: 401, error: "Invalid admin request signature." };
   try {
+    const now = new Date();
+    await prisma.rateLimitBucket.deleteMany({
+      where: { key: { startsWith: "ops-admin-bridge:" }, expiresAt: { lt: now } },
+    });
     await prisma.rateLimitBucket.create({
       data: {
-        key: createHash("sha256").update("ops-admin-bridge:" + nonce).digest("hex"),
+        key: "ops-admin-bridge:" + createHash("sha256").update(nonce).digest("hex"),
         count: 1,
-        expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+        expiresAt: new Date(now.getTime() + 10 * 60 * 1000),
       },
     });
   } catch (error) {
