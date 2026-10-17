@@ -6,5 +6,5 @@ buildCommand = "npm ci && npx prisma generate --schema=prisma/schema.prisma"
 startCommand = "npm run ops:dashboard"
 healthcheckPath = "/health"
 healthcheckTimeout = 30
-restartPolicyType = "ON_FAILURE"
+restartPolicyType = "ALWAYS"
 restartPolicyMaxRetries = 10
