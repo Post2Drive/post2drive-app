@@ -8,7 +8,7 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import SignOutButton from "@/app/sign-out-button";
 import { symbolFor, COUNTRIES } from "@/lib/currency";
-import { formatMarketDate } from "@/lib/localisation";
+import { formatMarketDate, getLocalisationProfile } from "@/lib/localisation";
 import { vehicleTypeLabel } from "@/lib/vehicles";
 
 type Contact = {
@@ -918,7 +918,7 @@ export default function JobsPage() {
                       <span>·</span>
                       <span>
                         {symbolFor(job.currency)}
-                        {job.pricePerMile}/mile
+                        {(marketProfile?.distanceUnit === "km" ? job.pricePerMile * 0.621371 : job.pricePerMile).toFixed(2)}/{marketProfile?.distanceUnit ?? "mile"}
                       </span>
                     </>
                   )}
