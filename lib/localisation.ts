@@ -110,13 +110,16 @@ export function getLocalisationProfile(identity: MarketIdentity): LocalisationPr
 
 export function formatMarketDate(value: Date | string | number, identity: MarketIdentity, options?: Intl.DateTimeFormatOptions): string {
   const profile = getLocalisationProfile(identity);
+  const dateOnly = typeof value === "string" &&
+    (/^\d{4}-\d{2}-\d{2}$/.test(value) || /T00:00:00(?:\.000)?Z$/.test(value));
   const date = value instanceof Date ? value : new Date(value);
   if (!profile || Number.isNaN(date.getTime())) return "";
   return new Intl.DateTimeFormat(profile.locale, {
     day: "2-digit",
     month: "short",
     year: "numeric",
-    timeZone: profile.timeZone,
+    // Calendar dates (job dates / expiry dates) must not shift across time zones.
+    timeZone: dateOnly ? "UTC" : profile.timeZone,
     ...options,
   }).format(date);
 }
