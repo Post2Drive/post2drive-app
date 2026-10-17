@@ -28,6 +28,7 @@ function StatCard({
 }) {
   const content = (
     <div
+      className="ops-theme-card"
       style={{
         border: "1px solid var(--color-border)",
         borderRadius: 12,
@@ -223,6 +224,7 @@ export default async function DashboardPage() {
 
   return (
     <div
+      className="ops-theme-dashboard"
       style={{
         maxWidth: 1200,
         margin: "0 auto",
