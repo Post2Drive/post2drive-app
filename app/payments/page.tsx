@@ -511,7 +511,7 @@ function Empty({ text }: { text: string }) {
     <div
       style={{
         padding: 20,
-        color: "#777",
+        color: "var(--color-muted)",
         border: "1px dashed var(--color-border)",
         borderRadius: 8,
         marginTop: 12,
@@ -538,10 +538,10 @@ const summaryGrid: React.CSSProperties = {
 };
 
 const summaryCard: React.CSSProperties = {
-  border: "1px solid #e5e7eb",
+  border: "1px solid var(--color-border)",
   borderRadius: 10,
   padding: 16,
-  background: "#fff",
+  background: "var(--color-surface)",
 };
 
 const sectionStyle: React.CSSProperties = {
@@ -561,7 +561,7 @@ const summaryLine: React.CSSProperties = {
   display: "flex",
   gap: 14,
   flexWrap: "wrap",
-  color: "#555",
+  color: "var(--color-text)",
   fontSize: 14,
   paddingBottom: 14,
   borderBottom: "1px solid var(--color-border)",
@@ -603,10 +603,10 @@ const statusRow: React.CSSProperties = {
 
 const primaryButton: React.CSSProperties = {
   padding: "8px 12px",
-  border: "1px solid #111",
+  border: "1px solid var(--color-primary-action)",
   borderRadius: 7,
-  background: "#111",
-  color: "#fff",
+  background: "var(--color-primary-action)",
+  color: "#081323",
   cursor: "pointer",
 };
 
@@ -615,15 +615,15 @@ const secondaryButton: React.CSSProperties = {
   border: "1px solid var(--color-border)",
   borderRadius: 7,
   background: "#fff",
-  color: "#111",
+  color: "var(--color-text)",
   cursor: "pointer",
 };
 
 const paidBadge: React.CSSProperties = {
   padding: "6px 9px",
   borderRadius: 12,
-  background: "#ecfdf5",
-  color: "#047857",
+  background: "var(--color-positive-soft)",
+  color: "var(--color-positive)",
   fontSize: 13,
 };
 
@@ -638,8 +638,8 @@ const receivedBadge: React.CSSProperties = {
 const pendingBadge: React.CSSProperties = {
   padding: "6px 9px",
   borderRadius: 12,
-  background: "#fff7ed",
-  color: "#c2410c",
+  background: "var(--color-warning-soft)",
+  color: "var(--color-warning)",
   fontSize: 13,
 };
 
@@ -648,7 +648,7 @@ const successStyle: React.CSSProperties = {
   marginTop: 14,
   borderRadius: 8,
   background: "#ecfdf5",
-  border: "1px solid #a7f3d0",
+  border: "1px solid var(--color-positive)",
   color: "#047857",
 };
 
@@ -656,7 +656,7 @@ const errorStyle: React.CSSProperties = {
   padding: 11,
   marginTop: 14,
   borderRadius: 8,
-  background: "#fef2f2",
-  border: "1px solid #fecaca",
-  color: "#991b1b",
+  background: "var(--color-danger-soft)",
+  border: "1px solid var(--color-danger)",
+  color: "var(--color-danger)",
 };
