@@ -405,7 +405,7 @@ export default function PaymentsPage() {
                     </strong>
 
                     <div style={muted}>
-                      Completed job · {date(job.createdAt)}
+                      Completed job · {date(job.createdAt, data.country, data.currency)}
                     </div>
                   </div>
 
@@ -425,7 +425,7 @@ export default function PaymentsPage() {
                   {job.paidMarkedAt ? (
                     <span style={paidBadge}>
                       ✓ Poster marked paid ·{" "}
-                      {date(job.paidMarkedAt)}
+                      {date(job.paidMarkedAt, data.country, data.currency)}
                     </span>
                   ) : (
                     <span style={pendingBadge}>
