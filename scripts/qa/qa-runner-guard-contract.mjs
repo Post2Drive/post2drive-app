@@ -85,25 +85,34 @@ try {
   assert.ok(rateLimitSource.includes("isAuthorizedQaRunId(qaRunId)"), "network throttle bypass must verify the active run without relying on proxy-internal request origin");
 
   const qaRoute = readFileSync("app/api/qa/run/route.ts", "utf8");
-  assert.ok(qaRoute.includes('getMarket(countryCode)'), "QA runner must resolve the selected country from supported markets");
-  assert.ok(qaRoute.includes('process.env.QA_MARKET_COUNTRY || "GB"'), "QA runner must support an explicit per-country test selection");
-  assert.ok(qaRoute.includes("country: market.country, currency: market.currency"), "synthetic accounts must use the selected market currency");
-  assert.ok(qaRoute.includes("currency: market.currency"), "synthetic jobs must use the selected market currency");
+  const qaRunner = readFileSync("lib/qaRunner.ts", "utf8");
+  const qaWorker = readFileSync("scripts/qa/worker.ts", "utf8");
+  assert.ok(qaRunner.includes('getMarket(countryCode)'), "QA runner must resolve the selected country from supported markets");
+  assert.ok(qaRunner.includes('process.env.QA_MARKET_COUNTRY || "GB"'), "QA runner must support an explicit per-country test selection");
+  assert.ok(qaRunner.includes("country: market.country, currency: market.currency"), "synthetic accounts must use the selected market currency");
+  assert.ok(qaRunner.includes("currency: market.currency"), "synthetic jobs must use the selected market currency");
   assert.ok(qaRoute.includes('crypto.randomUUID();'), "QA run IDs must use high entropy");
-  assert.ok(qaRoute.includes("const routeMatrixTarget = 10_000"), "each country run must target 10,000 API route scenarios");
-  assert.ok(qaRoute.includes("Array.from({ length: 10_000 }, (_, i) => i)"), "each country run must provision 10,000 synthetic accounts");
-  assert.ok(qaRoute.includes("createdAccounts !== 10_000"), "the run must abort unless all 10,000 synthetic accounts are created");
+  assert.ok(qaRunner.includes("const routeMatrixTarget = 10_000"), "each country run must target 10,000 API route scenarios");
+  assert.ok(qaRunner.includes("Array.from({ length: 10_000 }, (_, i) => i)"), "each country run must provision 10,000 synthetic accounts");
+  assert.ok(qaRunner.includes("createdAccounts !== 10_000"), "the run must abort unless all 10,000 synthetic accounts are created");
   assert.ok(qaRoute.includes("target_accounts !== 10_000"), "cleanup must be bound to a recorded 10,000-account run");
   assert.ok(qaRoute.includes('accounts !== "10000"'), "the HTTP trigger must require explicit 10,000-account confirmation");
-  assert.ok(qaRoute.includes("routeMatrixExecuted !== routeMatrixTarget"), "a short route matrix must not be reported as completed");
+  assert.ok(qaRunner.includes("routeMatrixExecuted !== routeMatrixTarget"), "a short route matrix must not be reported as completed");
   assert.ok(qaRoute.includes("'syntheticDataRetained',false"), "cleanup must mark synthetic data as deleted in the preserved report");
   assert.ok(qaRoute.includes("preservedAuditEvents: true, preservedRunSummary: true"), "cleanup must retain findings and the run summary");
-  assert.ok(qaRoute.includes('process.env.QA_AUTO_CLEANUP === "true"'), "automatic cleanup must require explicit staging configuration");
-  assert.ok(qaRoute.includes("cleanupSyntheticRuns([String(summary.runId)], base)"), "a country run must clean its synthetic records before the next run");
-  assert.ok(qaRoute.includes('run.status === "running" ? "aborted" : run.status'), "cleanup must preserve failed-run status instead of hiding a failure");
-  assert.ok(qaRoute.includes('new Set(["completed", "failed", "aborted"])'), "cleanup must reject running runs to prevent deleting fixtures while the runner is active");
+  assert.ok(!qaRoute.includes("QA_AUTO_CLEANUP"), "automatic synthetic-data cleanup must not run when a worker finishes");
+  assert.ok(!qaRoute.includes("cleanupSyntheticRuns([String(summary.runId)], base)"), "cleanup must be explicit after results are reviewed");
+  assert.ok(qaRoute.includes("const finalStatus = run.status;"), "cleanup must preserve only a terminal status and must not convert a running job implicitly");
+  assert.ok(qaRoute.includes('new Set(["completed", "failed", "aborted"])'), "cleanup must reject queued and running runs");
   assert.ok(!qaRoute.includes('new Set(["completed", "running", "failed", "aborted"])'), "cleanup must never allow the running status");
   assert.ok(qaRoute.includes("finished_at=COALESCE(finished_at,now())") && qaRoute.includes("duration_ms=COALESCE(duration_ms,"), "cleanup must finalize interrupted run timestamps and duration");
+  assert.ok(qaRoute.includes("pg_advisory_xact_lock"), "enqueue requests must serialize across web replicas");
+  assert.ok(qaRoute.includes("VALUES($1,$2,10000,'queued'"), "HTTP requests must enqueue a durable run");
+  assert.ok(qaWorker.includes("FOR UPDATE SKIP LOCKED"), "worker claims must be atomic across replicas");
+  assert.ok(qaWorker.includes("workerHeartbeatAt"), "worker heartbeat must be persisted");
+  assert.ok(qaWorker.includes("runQaWorker(job.id, country)"), "worker must invoke the shared runner");
+  assert.ok(qaRunner.includes("status='running' AND target_url=$2 AND target_accounts=10000"), "runner must verify a worker-claimed staging row");
+  assert.ok(!qaRunner.includes("INSERT INTO qa_test_runs"), "runner must not create duplicate run records");
 
   console.log(JSON.stringify({
     status: "passed",
