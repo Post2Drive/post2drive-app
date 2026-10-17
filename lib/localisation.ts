@@ -125,6 +125,32 @@ IS: {"registrationLabel":"Registration number","registrationDocumentLabel":"Vehi
   TR: {"registrationLabel":"Plaka (registration plate)","registrationDocumentLabel":"Araç tescil belgesi (vehicle registration certificate)","inspectionLabel":"Vehicle inspection (TÜVTÜRK) valid until","inspectionHelp":"Inspection interval depends on vehicle category and use.","authorityLabel":"TÜVTÜRK inspection network / competent traffic registration authority","inspectionRequiredAtCountryLevel":false,"jurisdictionSelectionRequired":false}
 };
 
+
+export const REGION_OPTIONS: Record<string, { code: string; label: string }[]> = {
+  US: [
+    { code: "AL", label: "Alabama" }, { code: "AK", label: "Alaska" }, { code: "AZ", label: "Arizona" }, { code: "AR", label: "Arkansas" }, { code: "CA", label: "California" }, { code: "CO", label: "Colorado" }, { code: "CT", label: "Connecticut" }, { code: "DE", label: "Delaware" }, { code: "DC", label: "District of Columbia" }, { code: "FL", label: "Florida" }, { code: "GA", label: "Georgia" }, { code: "HI", label: "Hawaii" }, { code: "ID", label: "Idaho" }, { code: "IL", label: "Illinois" }, { code: "IN", label: "Indiana" }, { code: "IA", label: "Iowa" }, { code: "KS", label: "Kansas" }, { code: "KY", label: "Kentucky" }, { code: "LA", label: "Louisiana" }, { code: "ME", label: "Maine" }, { code: "MD", label: "Maryland" }, { code: "MA", label: "Massachusetts" }, { code: "MI", label: "Michigan" }, { code: "MN", label: "Minnesota" }, { code: "MS", label: "Mississippi" }, { code: "MO", label: "Missouri" }, { code: "MT", label: "Montana" }, { code: "NE", label: "Nebraska" }, { code: "NV", label: "Nevada" }, { code: "NH", label: "New Hampshire" }, { code: "NJ", label: "New Jersey" }, { code: "NM", label: "New Mexico" }, { code: "NY", label: "New York" }, { code: "NC", label: "North Carolina" }, { code: "ND", label: "North Dakota" }, { code: "OH", label: "Ohio" }, { code: "OK", label: "Oklahoma" }, { code: "OR", label: "Oregon" }, { code: "PA", label: "Pennsylvania" }, { code: "RI", label: "Rhode Island" }, { code: "SC", label: "South Carolina" }, { code: "SD", label: "South Dakota" }, { code: "TN", label: "Tennessee" }, { code: "TX", label: "Texas" }, { code: "UT", label: "Utah" }, { code: "VT", label: "Vermont" }, { code: "VA", label: "Virginia" }, { code: "WA", label: "Washington" }, { code: "WV", label: "West Virginia" }, { code: "WI", label: "Wisconsin" }, { code: "WY", label: "Wyoming" },
+  ],
+  CA: [
+    { code: "AB", label: "Alberta" }, { code: "BC", label: "British Columbia" }, { code: "MB", label: "Manitoba" }, { code: "NB", label: "New Brunswick" }, { code: "NL", label: "Newfoundland and Labrador" }, { code: "NS", label: "Nova Scotia" }, { code: "NT", label: "Northwest Territories" }, { code: "NU", label: "Nunavut" }, { code: "ON", label: "Ontario" }, { code: "PE", label: "Prince Edward Island" }, { code: "QC", label: "Quebec" }, { code: "SK", label: "Saskatchewan" }, { code: "YT", label: "Yukon" },
+  ],
+  AU: [
+    { code: "ACT", label: "Australian Capital Territory" }, { code: "NSW", label: "New South Wales" }, { code: "NT", label: "Northern Territory" }, { code: "QLD", label: "Queensland" }, { code: "SA", label: "South Australia" }, { code: "TAS", label: "Tasmania" }, { code: "VIC", label: "Victoria" }, { code: "WA", label: "Western Australia" },
+  ],
+  IN: [
+    { code: "AP", label: "Andhra Pradesh" }, { code: "AR", label: "Arunachal Pradesh" }, { code: "AS", label: "Assam" }, { code: "BR", label: "Bihar" }, { code: "CG", label: "Chhattisgarh" }, { code: "GA", label: "Goa" }, { code: "GJ", label: "Gujarat" }, { code: "HR", label: "Haryana" }, { code: "HP", label: "Himachal Pradesh" }, { code: "JH", label: "Jharkhand" }, { code: "KA", label: "Karnataka" }, { code: "KL", label: "Kerala" }, { code: "MP", label: "Madhya Pradesh" }, { code: "MH", label: "Maharashtra" }, { code: "MN", label: "Manipur" }, { code: "ML", label: "Meghalaya" }, { code: "MZ", label: "Mizoram" }, { code: "NL", label: "Nagaland" }, { code: "OD", label: "Odisha" }, { code: "PB", label: "Punjab" }, { code: "RJ", label: "Rajasthan" }, { code: "SK", label: "Sikkim" }, { code: "TN", label: "Tamil Nadu" }, { code: "TS", label: "Telangana" }, { code: "TR", label: "Tripura" }, { code: "UP", label: "Uttar Pradesh" }, { code: "UK", label: "Uttarakhand" }, { code: "WB", label: "West Bengal" }, { code: "AN", label: "Andaman and Nicobar Islands" }, { code: "CH", label: "Chandigarh" }, { code: "DH", label: "Dadra and Nagar Haveli and Daman and Diu" }, { code: "DL", label: "Delhi" }, { code: "JK", label: "Jammu and Kashmir" }, { code: "LA", label: "Ladakh" }, { code: "LD", label: "Lakshadweep" }, { code: "PY", label: "Puducherry" },
+  ],
+  BE: [
+    { code: "BRU", label: "Brussels-Capital Region" }, { code: "VLG", label: "Flemish Region" }, { code: "WAL", label: "Walloon Region" },
+  ],
+  CH: [
+    { code: "AG", label: "Aargau" }, { code: "AI", label: "Appenzell Innerrhoden" }, { code: "AR", label: "Appenzell Ausserrhoden" }, { code: "BE", label: "Bern" }, { code: "BL", label: "Basel-Landschaft" }, { code: "BS", label: "Basel-Stadt" }, { code: "FR", label: "Fribourg" }, { code: "GE", label: "Geneva" }, { code: "GL", label: "Glarus" }, { code: "GR", label: "Graubünden" }, { code: "JU", label: "Jura" }, { code: "LU", label: "Lucerne" }, { code: "NE", label: "Neuchâtel" }, { code: "NW", label: "Nidwalden" }, { code: "OW", label: "Obwalden" }, { code: "SG", label: "St. Gallen" }, { code: "SH", label: "Schaffhausen" }, { code: "SO", label: "Solothurn" }, { code: "SZ", label: "Schwyz" }, { code: "TG", label: "Thurgau" }, { code: "TI", label: "Ticino" }, { code: "UR", label: "Uri" }, { code: "VD", label: "Vaud" }, { code: "VS", label: "Valais" }, { code: "ZG", label: "Zug" }, { code: "ZH", label: "Zurich" },
+  ],
+};
+
+export function getJurisdictionOptions(country: string) {
+  return REGION_OPTIONS[country] ?? [];
+}
+
 export function getLocalisationProfile(identity: MarketIdentity): LocalisationProfile | null {
   const market = marketForAccount(identity);
   if (!market) return null;
