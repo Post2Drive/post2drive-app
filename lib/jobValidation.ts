@@ -88,7 +88,7 @@ export function validateJobInput(body: unknown, expectedMarket?: MarketIdentity)
     if (!jobDate) return { ok: false, error: "Enter a valid calendar date." };
 
     const vehicleType = typeof input.vehicleType === "string" ? input.vehicleType.trim() : "";
-    if (!vehicleType || !VEHICLE_TYPES.includes(vehicleType)) return { ok: false, error: "Choose a valid vehicle type." };
+    if (!vehicleType || !(VEHICLE_TYPES as readonly string[]).includes(vehicleType)) return { ok: false, error: "Choose a valid vehicle type." };
 
     const price = optionalNumber(input.price, "Price", 0.01, 100000000);
     if (price === null) return { ok: false, error: "Price must be greater than zero." };
