@@ -65,7 +65,9 @@ function countryReadiness() {
     const gates = READINESS_GATES.map(([key,label]) => {
       const supplied = raw[key] && typeof raw[key] === "object" ? raw[key] : {};
       const status = ["verified","blocked","in_progress"].includes(supplied.status) ? supplied.status : "not_assessed";
-      return {key,label,status,reviewedAt:typeof supplied.reviewedAt==="string"?supplied.reviewedAt:null,evidenceRef:typeof supplied.evidenceRef==="string"?supplied.evidenceRef:null};
+      const reviewedAt = typeof supplied.reviewedAt==="string" && !Number.isNaN(Date.parse(supplied.reviewedAt)) ? supplied.reviewedAt : null;
+      const evidenceRef = typeof supplied.evidenceRef==="string" && supplied.evidenceRef.trim() ? supplied.evidenceRef.trim().slice(0,500) : null;
+      return {key,label,status,reviewedAt,evidenceRef};
     });
     const ready = gates.every(g => g.status === "verified" && g.evidenceRef && g.reviewedAt);
     return {code:m.code,name:m.name,currency:m.currency,gates,verifiedGates:gates.filter(g=>g.status==="verified"&&g.evidenceRef&&g.reviewedAt).length,totalGates:gates.length,status:ready?"ready":gates.some(g=>g.status==="blocked")?"blocked":gates.some(g=>g.status==="in_progress")?"in_progress":"not_assessed"};
