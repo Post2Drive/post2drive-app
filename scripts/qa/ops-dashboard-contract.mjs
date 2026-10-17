@@ -38,6 +38,7 @@ for (const [name, pattern] of [
   ["tester approve and reject actions", /tester-approve/],
 
   ["no readiness without evidence", /g.evidenceRef && g.reviewedAt/],
+  ["ISO readiness timestamps use numeric date fields", /\/\^\\d\{4\}-\\d\{2\}-\\d\{2\}T/],
   ["categorized admin navigation", /class="section-nav"/],
   ["tester review queue", /Pending tester applications/],
   ["access-code history", /TesterAccessCode/],
