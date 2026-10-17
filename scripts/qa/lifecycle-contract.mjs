@@ -157,12 +157,34 @@ contains("components/notification-center.tsx", [
   "/api/notifications?limit=10",
   "Mark as read",
 ]);
-contains("app/admin/incidents/page.tsx", [
-  "isTesterAdmin()",
-  "<IncidentReview",
+for (const path of [
+  "app/admin/page.tsx",
+  "app/admin/performance/page.tsx",
+  "app/admin/testers/page.tsx",
+  "app/admin/incidents/page.tsx",
+]) {
+  contains(path, [
+    'redirect("/admin-access")',
+    "RetiredInternalAdminPage",
+  ]);
+}
+contains("app/api/internal/admin-bridge/route.ts", [
+  "authenticateBridge",
+  "x-p2d-admin-signature",
+  "rateLimitBucket.create",
+  "tester-approve",
+  "tester-reject",
+  "incident-resolve",
+  "adminAuditEvent.create",
 ]);
-contains("app/admin/page.tsx", [
-  'href="/admin/incidents"',
+contains("prisma/schema.prisma", [
+  "model AdminAuditEvent",
+  "entityType String",
+  "details    Json?",
+]);
+contains("prisma/migrations/20261017183000_admin_audit_events/migration.sql", [
+  'CREATE TABLE "AdminAuditEvent"',
+  '"AdminAuditEvent_createdAt_idx"',
 ]);
 contains("prisma/schema.prisma", [
   "model Notification",
