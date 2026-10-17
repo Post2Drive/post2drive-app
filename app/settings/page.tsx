@@ -148,7 +148,7 @@ export default function SettingsPage() {
         {account.country === "IN" ? "India access and pricing follow the India-market policy. Payment processing is not yet enabled in this rebuild." : `Access for ${marketProfile?.marketplaceLabel ?? "your market"} is currently configured in 7-day periods after any applicable promotional period. Payment processing is not yet enabled in this rebuild.`}
       </p>
 
-      <section style={{ marginTop: 36, padding: 18, border: "1px solid #E2B9B9", borderRadius: 12, background: "#FFF8F8" }}>
+      <section style={{ marginTop: 36, padding: 18, border: "1px solid var(--color-danger)", borderRadius: 12, background: "var(--color-danger-soft)" }}>
         <h3 style={{ marginTop: 0, color: "var(--color-danger)" }}>Delete account</h3>
         <p>You'll be signed out and your personal account details will be anonymised. Limited job, incident, payment and audit records may remain to protect other users and meet legal obligations. This cannot be undone through the app.</p>
         <form onSubmit={async (event) => {
