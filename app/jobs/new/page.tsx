@@ -124,7 +124,7 @@ export default function NewJobPage() {
       if (form.dropoffPin && !parseCoords(form.dropoffPin)) return 'Drop-off pin was not recognised. Enter latitude,longitude or paste a Google Maps link.';
     }
     if (step === 1) {
-      if (!VEHICLE_TYPES.includes(form.vehicleType)) return "Choose a supported vehicle type.";
+      if (!(VEHICLE_TYPES as readonly string[]).includes(form.vehicleType)) return "Choose a supported vehicle type.";
       const price = Number(form.price);
       if (!form.price.trim() || !Number.isFinite(price) || price <= 0) return "Enter a price greater than zero.";
       if (form.priceMode !== "fixed" && form.priceMode !== "bid") return "Choose fixed pricing or open bidding.";
