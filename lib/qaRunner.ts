@@ -1,12 +1,8 @@
 // Durable staging QA runner library. This module is shared by the web queue and the
 // separate Railway worker; it never creates or claims a run itself.
-// @ts-expect-error Node's native type-strip runtime needs explicit TypeScript extensions.
 import { isQaRunnerEnabled } from "./qaRunnerGuard.ts";
-// @ts-expect-error Node's native type-strip runtime needs explicit TypeScript extensions.
 import { prisma } from "./prisma.ts";
-// @ts-expect-error Node's native type-strip runtime needs explicit TypeScript extensions.
 import { VEHICLE_TYPES } from "./vehicles.ts";
-// @ts-expect-error Node's native type-strip runtime needs explicit TypeScript extensions.
 import { getMarket } from "./market.ts";
 
 type AccountFixture = {
