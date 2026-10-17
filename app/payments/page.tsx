@@ -546,7 +546,7 @@ const summaryCard: React.CSSProperties = {
 
 const sectionStyle: React.CSSProperties = {
   marginTop: 22,
-  border: "1px solid #e5e7eb",
+  border: "1px solid var(--color-border)",
   borderRadius: 12,
   padding: 18,
   background: "var(--color-surface)",
@@ -574,7 +574,7 @@ const listStyle: React.CSSProperties = {
 };
 
 const jobCard: React.CSSProperties = {
-  border: "1px solid #e5e7eb",
+  border: "1px solid var(--color-border)",
   borderRadius: 9,
   padding: 14,
 };
