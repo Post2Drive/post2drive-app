@@ -703,7 +703,7 @@ export default function JobsPage() {
           display: "flex",
           gap: 4,
           borderBottom:
-            "1px solid #ccc",
+            "1px solid var(--color-border)",
           marginBottom: 12,
         }}
       >
@@ -719,7 +719,7 @@ export default function JobsPage() {
               border: "none",
               borderBottom:
                 tab === t.key
-                  ? "2px solid #333"
+                  ? "2px solid var(--color-primary-action)"
                   : "2px solid transparent",
               background:
                 "none",
@@ -841,7 +841,7 @@ export default function JobsPage() {
                           marginTop: 7,
                           padding: "3px 8px",
                           borderRadius: 999,
-                          background: "#E8F1FB",
+                          background: "var(--color-primary-soft)",
                           color: "var(--color-primary-action)",
                           fontSize: 12,
                           fontWeight: 700,
@@ -866,12 +866,12 @@ export default function JobsPage() {
                           : "#FFF8E1",
                       color:
                         job.status === "open"
-                          ? "#2E7D32"
+                          ? "var(--color-positive)"
                           : job.status === "completed"
-                          ? "#00695C"
+                          ? "var(--color-positive)"
                           : job.status === "cancelled"
-                          ? "#C62828"
-                          : "#8D6E00",
+                          ? "var(--color-danger)"
+                          : "var(--color-warning)",
                       fontSize: 12,
                       fontWeight: 700,
                       textTransform: "capitalize",
@@ -1279,7 +1279,7 @@ export default function JobsPage() {
                     <div
                       style={{
                         marginTop: 18,
-                        background: "#F4F7FA",
+                        background: "var(--ops-surface-inset)",
                         border: "1px solid var(--color-border)",
                         padding: 16,
                         borderRadius: 12,
