@@ -60,6 +60,7 @@ assert.match(bridge, /authenticateBridge/);
 assert.match(bridge, /timingSafeEqual/);
 assert.match(bridge, /rateLimitBucket\.create/);
 assert.match(bridge, /adminAuditEvent\.create/);
+assert.match(bridge, /A review reason is required/);
 assert.match(bridge, /120_000/);
 assert.match(bridge, /Only an accepted or in-transit job can be terminated/);
 assert.match(bridge, /codeHash/);
