@@ -468,6 +468,33 @@ export default async function DashboardPage() {
         ) : (
           <div className="job-analytics-empty"><strong>No job data to chart yet.</strong><span>Your charts will populate automatically when you post jobs.</span></div>
         )}
+        <div className="job-pipeline-visual" aria-label="Job status distribution chart">
+          <h3>Job status distribution</h3>
+          <div className="pipeline-chart-rows">
+            {[
+              { label: "Open", value: postedOpen, color: "#2457D6" },
+              { label: "Accepted", value: postedAccepted, color: "#6D28D9" },
+              { label: "In transit", value: postedInTransit, color: "#E87500" },
+              { label: "Delivered", value: postedDelivered, color: "#18864B" },
+              { label: "Completed", value: postedCompleted, color: "#18864B" },
+              { label: "Cancelled", value: postedCancelled, color: "#D62828" },
+            ].map((item) => (
+              <div className="pipeline-chart-row" key={item.label}>
+                <span>{item.label}</span>
+                <div className="pipeline-chart-track" aria-label={`${item.label}: ${item.value}`}>
+                  <div className="pipeline-chart-bar" style={{ width: `${totalPosted > 0 ? (item.value / totalPosted) * 100 : 0}%`, backgroundColor: item.color }} />
+                </div>
+                <strong>{item.value}</strong>
+              </div>
+            ))}
+          </div>
+          <div className="pipeline-donut-row">
+            <div className="pipeline-donut" role="img" aria-label={`Job status distribution: ${totalPosted} total jobs`} style={{ background: `conic-gradient(#2457D6 0% ${totalPosted ? (postedOpen / totalPosted) * 100 : 0}%, #6D28D9 ${totalPosted ? (postedOpen / totalPosted) * 100 : 0}% ${totalPosted ? ((postedOpen + postedAccepted) / totalPosted) * 100 : 0}%, #E87500 ${totalPosted ? ((postedOpen + postedAccepted) / totalPosted) * 100 : 0}% ${totalPosted ? ((postedOpen + postedAccepted + postedInTransit) / totalPosted) * 100 : 0}%, #18864B ${totalPosted ? ((postedOpen + postedAccepted + postedInTransit) / totalPosted) * 100 : 0}% ${totalPosted ? ((postedOpen + postedAccepted + postedInTransit + postedDelivered + postedCompleted) / totalPosted) * 100 : 0}%, #D62828 ${totalPosted ? ((postedOpen + postedAccepted + postedInTransit + postedDelivered + postedCompleted) / totalPosted) * 100 : 0}% 100%, #D7DCE4 100% 100%)` }}>
+              <div><strong>{totalPosted}</strong><span>Total jobs</span></div>
+            </div>
+            <p>Live counts from your account. Chart segments and bars are based on actual job statuses; colours always retain the same meaning in every market.</p>
+          </div>
+        </div>
       </section>
 
       <section
