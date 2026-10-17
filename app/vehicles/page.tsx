@@ -184,7 +184,7 @@ export default function VehiclesPage() {
 
         {field("Make", "make")}
         {field("Model", "model")}
-        {field(marketProfile?.vehicleMassLabel ?? "Maximum vehicle weight (kg)", "mamKg", "number")}
+        {field(marketProfile?.vehicleMassLabel ?? "Maximum vehicle weight", "mamKg", "number")}
         {field(`${marketProfile?.registrationDocumentLabel ?? "Vehicle registration document"} URL (optional)`, "v5cDocumentUrl", "url")}
         {field("Insurance document URL (optional)", "insuranceDocumentUrl", "url")}
         {field("Operator licence number (if applicable)", "operatorLicenceNo")}
