@@ -84,12 +84,12 @@ export function marketForAccount(value: MarketIdentity) {
   return market;
 }
 
-/** All supported non-India markets use the UK 7-day access model; India remains separately configured. */
+/** Supported non-India markets share the configured 7-day access policy; India remains separately configured. */
 export function isWeeklyPricingMarket(value: MarketIdentity): boolean {
   const market = marketForAccount(value);
   return Boolean(market && market.country !== "IN");
 }
 
 export function marketTimeZone(value: MarketIdentity): string {
-  return marketForAccount(value)?.timeZone ?? MARKETS.GB.timeZone;
+  return marketForAccount(value)?.timeZone ?? "UTC";
 }
