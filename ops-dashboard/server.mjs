@@ -120,7 +120,7 @@ header .header-actions button{min-height:40px;padding:8px 12px;white-space:nowra
 .filter-drawer>summary{list-style:none;display:flex;align-items:center;gap:8px;min-height:40px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:#15243a;color:var(--text);white-space:nowrap;cursor:pointer}
 .filter-drawer>summary::-webkit-details-marker{display:none}.filter-drawer>summary:after{content:"⌄";color:var(--muted);font-size:14px}.filter-drawer[open]>summary{border-color:var(--blue)}
 .filter-panel{position:absolute;right:0;top:calc(100% + 8px);z-index:20;width:min(520px,calc(100vw - 28px));display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:15px;background:var(--panel);border:1px solid var(--border);border-radius:12px;box-shadow:0 18px 48px #0008}
-.filter-panel label{min-width:0;margin:0;gap:6px}.filter-panel label:first-child{grid-column:1/-1}.filter-panel select{width:100%;min-height:40px}.filter-hint{grid-column:1/-1;margin:0;color:var(--muted);font-size:11px}
+.filter-panel label{min-width:0;margin:0;gap:6px}.filter-panel label:first-child{grid-column:1/-1}.filter-panel select{width:100%;min-height:40px}.filter-hint{grid-column:1/-1;margin:0;color:var(--muted);font-size:11px}.filter-panel-actions{grid-column:1/-1;display:flex;justify-content:flex-end;gap:8px;margin-top:2px}.filter-panel-actions button{width:auto;min-height:38px;margin:0}.filter-panel-actions #applyFilters{min-width:126px}#refresh[disabled]{cursor:wait}#refresh.is-loading::before{content:"";display:inline-block;width:12px;height:12px;margin-right:8px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:dashboard-spin .8s linear infinite;vertical-align:-2px}@keyframes dashboard-spin{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){#refresh.is-loading::before{animation:none;border-right-color:currentColor}}
 .source-tools{display:flex;align-items:center;gap:10px;margin:12px 0}.source-tools input{width:100%;min-width:0;padding:9px 11px;border:1px solid var(--border);border-radius:8px;background:#0d1828;color:var(--text);font:inherit}.source-tools input:focus{outline:2px solid #70aaff55;border-color:var(--blue)}.source-tools .status{white-space:nowrap}
 .source-link-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr));gap:8px}.source-card{display:flex;flex-direction:column;gap:5px;min-width:0;padding:11px 12px;border:1px solid var(--border);border-radius:9px;background:#0e192a}
 .source-card a{font-size:12px;font-weight:700;text-decoration:none;line-height:1.4}.source-card a:hover{text-decoration:underline}.source-meta{color:var(--muted);font-size:10px;line-height:1.35}
@@ -129,7 +129,7 @@ header .header-actions button{min-height:40px;padding:8px 12px;white-space:nowra
 @media(max-width:900px){header.app-header{align-items:flex-start;flex-wrap:wrap}.brand-block{flex:1 1 100%}.header-actions{width:100%;justify-content:flex-start;flex-wrap:wrap}.filter-panel{left:0;right:auto}.section-nav{top:118px}}
 @media(max-width:650px){header.app-header{padding:10px 12px;gap:8px}.header-actions{gap:6px}.header-actions button{font-size:12px;padding:8px}.filter-panel{grid-template-columns:1fr}.filter-panel label:first-child,.filter-hint{grid-column:auto}.filter-drawer>summary{font-size:12px;padding:8px 9px}.source-tools{align-items:stretch;flex-direction:column}.source-tools .status{white-space:normal}.section-nav{top:118px;overflow-x:auto;flex-wrap:nowrap;white-space:nowrap}.section-nav a{flex:0 0 auto}}
 </style>
-<header class='app-header'><div class='brand-block'><div class='brand'>POST2DRIVE / ADMIN DASHBOARD</div><div class='sub'>Operations · marketplace analytics · country logistics signals</div></div><div class='header-actions'><details id='filterDrawer' class='filter-drawer'><summary id='filterSummary'>Filters · Global · 7 days</summary><div class='filter-panel'><label for='country'>Market<select id='country'><option value='ALL'>🌐 Global · all markets</option>${markets.map(m=>`<option value='${m.code}'>${m.name} · ${m.currency}</option>`).join('')}</select></label><label for='compare'>Compare market<select id='compare'><option value=''>No comparison</option>${markets.map(m=>`<option value='${m.code}'>${m.name}</option>`).join('')}</select></label><label for='days'>Time window<select id='days'><option value='1'>24 hours</option><option value='7' selected>7 days</option><option value='30'>30 days</option><option value='90'>90 days</option></select></label><p class='filter-hint'>Filters affect reporting only; they do not change customer or marketplace records.</p></div></details><button id='refresh' class='primary' type='button'>↻ Refresh data</button><form method="post" action="/logout" class="header-signout"><button type='submit'>Sign out</button></form></div></header><nav class="section-nav" aria-label="Admin sections"><a href="#overview">Command Centre</a><a href="#marketplace">Marketplace</a><a href="#people">Trust & Operations</a><a href="#quality">QA & Engineering</a><a href="#countries">Countries & Research</a><a href="#audit">Admin & Audit</a><a href="#catalogue-section">Data Catalogue</a></nav><main><div id="overview" class="section"><div><h1 id="title">Global operations overview</h1><p id="subtitle">Loading country-aware metrics…</p></div><div class="status" id="updated">Connecting to reporting database…</div></div><div id="warning"></div>
+<header class='app-header'><div class='brand-block'><div class='brand'>POST2DRIVE / ADMIN DASHBOARD</div><div class='sub'>Operations · marketplace analytics · country logistics signals</div></div><div class='header-actions'><details id='filterDrawer' class='filter-drawer'><summary id='filterSummary'>Filters · Global · 7 days</summary><div class='filter-panel'><label for='country'>Market<select id='country'><option value='ALL'>🌐 Global · all markets</option>${markets.map(m=>`<option value='${m.code}'>${m.name} · ${m.currency}</option>`).join('')}</select></label><label for='compare'>Compare market<select id='compare'><option value=''>No comparison</option>${markets.map(m=>`<option value='${m.code}'>${m.name}</option>`).join('')}</select></label><label for='days'>Time window<select id='days'><option value='1'>24 hours</option><option value='7' selected>7 days</option><option value='30'>30 days</option><option value='90'>90 days</option></select></label><p class='filter-hint'>Filters only change reporting. Nothing in the marketplace is modified.</p><div class='filter-panel-actions'><button id='resetFilters' type='button'>Reset &amp; apply</button><button id='applyFilters' class='primary' type='button'>Apply filters</button></div></div></details><button id='refresh' class='primary' type='button'>↻ Refresh data</button><form method="post" action="/logout" class="header-signout"><button type='submit'>Sign out</button></form></div></header><nav class="section-nav" aria-label="Admin sections"><a href="#overview">Command Centre</a><a href="#marketplace">Marketplace</a><a href="#people">Trust & Operations</a><a href="#quality">QA & Engineering</a><a href="#countries">Countries & Research</a><a href="#audit">Admin & Audit</a><a href="#catalogue-section">Data Catalogue</a></nav><main><div id="overview" class="section"><div><h1 id="title">Global operations overview</h1><p id="subtitle">Loading country-aware metrics…</p></div><div class="status" id="updated">Connecting to reporting database…</div></div><div id="warning"></div>
 <div class="grid kpis" id="kpis"></div><div class="section"><div><h2>Needs attention</h2><p>Prioritized operational exceptions; recommendations are advisory and do not perform changes.</p></div><div class="status" id="attentionCount">Building queue…</div></div><section class="panel"><div class="scroll" id="attentionQueue"></div></section>
 <div id="marketplace" class="section"><div><h2>Marketplace health & demand</h2><p>First-party Post2Drive data, filtered by account market. Synthetic QA accounts excluded from business totals.</p></div></div>
 <div class="grid two"><section class="panel"><h2>Account growth</h2><p class="muted">New account profiles by day</p><div id="growth"></div></section><section class="panel"><h2>Job lifecycle mix</h2><p class="muted">Current job status distribution</p><div id="jobs"></div></section><section class="panel"><h2>Supply vs demand</h2><p class="muted">Poster/driver accounts, jobs, bids and conversion where available</p><div id="supply"></div></section><section class="panel"><h2>Account & verification status</h2><p class="muted">Account type and verification distribution</p><div id="accounts"></div></section></div>
@@ -158,7 +158,15 @@ header .header-actions button{min-height:40px;padding:8px 12px;white-space:nowra
 <script>
 window.addEventListener("error",event=>{console.error("Ops dashboard browser error:",event.message);const warning=document.getElementById("warning");if(warning){warning.className="notice";warning.textContent="Dashboard script error: "+String(event.message||"Unknown browser error");}});
 window.addEventListener("unhandledrejection",event=>{console.error("Ops dashboard unhandled promise:",event.reason);const warning=document.getElementById("warning");if(warning){warning.className="notice";warning.textContent="Dashboard error: "+String(event.reason?.message||event.reason||"Unknown error");}});
-const $=id=>document.getElementById(id);let current=null;const fmt=n=>Number(n||0).toLocaleString("en-GB");const pct=(n,d)=>d?((n/d)*100).toFixed(1)+"%":"—";const dur=n=>Number(n||0)>=1000?(Number(n)/1000).toFixed(2)+" s":Math.round(Number(n||0))+" ms";const safe=s=>String(s??"—").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));const codeName=c=>c==="ALL"?"Global":((markets.find(x=>x.code===c)||{}).name||c);function table(rows,cols){if(!rows||!rows.length)return '<div class="empty">No records available for this window.</div>';return '<table><thead><tr>'+cols.map(c=>'<th>'+safe(c[1])+'</th>').join("")+'</tr></thead><tbody>'+rows.map(r=>'<tr>'+cols.map(c=>'<td class="'+(c[2]&&c[2](r[c[0]],r)?"bad":"")+'">'+safe(c[3]?c[3](r[c[0]],r):r[c[0]])+'</td>').join("")+'</tr>').join("")+'</tbody></table>'}function bars(rows,label="label",value="count"){if(!rows||!rows.length)return '<div class="empty">No data yet.</div>';let max=Math.max(1,...rows.map(r=>Number(r[value]||0)));return '<div class="barlist">'+rows.map(r=>'<div class="barrow"><span>'+safe(String(r[label]||"Unknown").replaceAll("_"," "))+'</span><div class="bartrack"><div class="bar" style="width:'+Math.max(0,Math.min(100,Number(r[value]||0)/max*100))+'%"></div></div><strong>'+fmt(r[value])+'</strong></div>').join("")+'</div>'}function kpi(label,value,hint){return '<div class="kpi"><label>'+safe(label)+'</label><strong>'+safe(value)+'</strong><small>'+safe(hint||"")+'</small></div>'}function lineChart(rows,label,value){if(!rows||rows.length<2)return '<div class="empty">Not enough observations yet to draw a trend.</div>';let w=700,h=200,p=28,vals=rows.map(r=>Number(r[value]||0)),max=Math.max(1,...vals),min=Math.min(0,...vals),pts=vals.map((v,i)=>(p+i*(w-p*2)/(vals.length-1))+','+(h-p-(v-min)/(max-min||1)*(h-p*2)));let grid=[0.25,0.5,0.75].map(q=>'<line class="gridline" x1="'+p+'" x2="'+(w-p)+'" y1="'+(p+(h-p*2)*q)+'" y2="'+(p+(h-p*2)*q)+'"/>').join("");return '<svg class="chart" viewBox="0 0 '+w+' '+h+'" role="img" aria-label="'+safe(label)+'">'+grid+'<polygon class="area" points="'+p+','+(h-p)+' '+pts.join(" ")+' '+(w-p)+','+(h-p)+'"/><polyline class="line" points="'+pts.join(" ")+'"/><text x="'+p+'" y="'+(h-5)+'">'+safe(String(rows[0][label]).slice(0,10))+'</text><text x="'+(w-p)+'" y="'+(h-5)+'" text-anchor="end">'+safe(String(rows[rows.length-1][label]).slice(0,10))+'</text><text x="'+p+'" y="15">'+fmt(max)+'</text></svg>'}async function getData(country,days,forceRefresh=false){const params={country,days:String(days)};if(forceRefresh)params.refresh="1";const q=new URLSearchParams(params);const r=await fetch('/admin-access/api/metrics?'+q,{cache:'no-store',headers:{"cache-control":"no-cache"}});const j=await r.json().catch(()=>({error:"Invalid reporting response"}));if(!r.ok)throw Error(j.error||("Metrics request failed ("+r.status+")"));return j}function renderSeasonality(market) {
+const $=id=>document.getElementById(id);let current=null;const fmt=n=>Number(n||0).toLocaleString("en-GB");const pct=(n,d)=>d?((n/d)*100).toFixed(1)+"%":"—";const dur=n=>Number(n||0)>=1000?(Number(n)/1000).toFixed(2)+" s":Math.round(Number(n||0))+" ms";const safe=s=>String(s??"—").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));const codeName=c=>c==="ALL"?"Global":((markets.find(x=>x.code===c)||{}).name||c);function table(rows,cols){if(!rows||!rows.length)return '<div class="empty">No records available for this window.</div>';return '<table><thead><tr>'+cols.map(c=>'<th>'+safe(c[1])+'</th>').join("")+'</tr></thead><tbody>'+rows.map(r=>'<tr>'+cols.map(c=>'<td class="'+(c[2]&&c[2](r[c[0]],r)?"bad":"")+'">'+safe(c[3]?c[3](r[c[0]],r):r[c[0]])+'</td>').join("")+'</tr>').join("")+'</tbody></table>'}function bars(rows,label="label",value="count"){if(!rows||!rows.length)return '<div class="empty">No data yet.</div>';let max=Math.max(1,...rows.map(r=>Number(r[value]||0)));return '<div class="barlist">'+rows.map(r=>'<div class="barrow"><span>'+safe(String(r[label]||"Unknown").replaceAll("_"," "))+'</span><div class="bartrack"><div class="bar" style="width:'+Math.max(0,Math.min(100,Number(r[value]||0)/max*100))+'%"></div></div><strong>'+fmt(r[value])+'</strong></div>').join("")+'</div>'}function kpi(label,value,hint){return '<div class="kpi"><label>'+safe(label)+'</label><strong>'+safe(value)+'</strong><small>'+safe(hint||"")+'</small></div>'}function lineChart(rows,label,value){if(!rows||rows.length<2)return '<div class="empty">Not enough observations yet to draw a trend.</div>';let w=700,h=200,p=28,vals=rows.map(r=>Number(r[value]||0)),max=Math.max(1,...vals),min=Math.min(0,...vals),pts=vals.map((v,i)=>(p+i*(w-p*2)/(vals.length-1))+','+(h-p-(v-min)/(max-min||1)*(h-p*2)));let grid=[0.25,0.5,0.75].map(q=>'<line class="gridline" x1="'+p+'" x2="'+(w-p)+'" y1="'+(p+(h-p*2)*q)+'" y2="'+(p+(h-p*2)*q)+'"/>').join("");return '<svg class="chart" viewBox="0 0 '+w+' '+h+'" role="img" aria-label="'+safe(label)+'">'+grid+'<polygon class="area" points="'+p+','+(h-p)+' '+pts.join(" ")+' '+(w-p)+','+(h-p)+'"/><polyline class="line" points="'+pts.join(" ")+'"/><text x="'+p+'" y="'+(h-5)+'">'+safe(String(rows[0][label]).slice(0,10))+'</text><text x="'+(w-p)+'" y="'+(h-5)+'" text-anchor="end">'+safe(String(rows[rows.length-1][label]).slice(0,10))+'</text><text x="'+p+'" y="15">'+fmt(max)+'</text></svg>'}async function getData(country,days,forceRefresh=false,signal){
+  const params={country,days:String(days)};
+  if(forceRefresh){params.refresh="1";params._ts=String(Date.now())}
+  const q=new URLSearchParams(params);
+  const r=await fetch('/admin-access/api/metrics?'+q,{cache:'no-store',signal,headers:{"cache-control":"no-cache","pragma":"no-cache"}});
+  const j=await r.json().catch(()=>({error:"Invalid reporting response"}));
+  if(!r.ok)throw Error(j.error||("Metrics request failed ("+r.status+")"));
+  return j;
+}function renderSeasonality(market) {
   const code = market?.code || "ALL";
   const calendars = {
     IN: [
@@ -272,7 +280,42 @@ $("readinessDetail").innerHTML=m.code==="ALL"?'<div class="empty">Choose a count
 $("notificationHealth").innerHTML=table(d.notificationSummary,[["label","Notification type"],["count","Created"],["unread","Unread"],["latestAt","Latest record",null,v=>v?new Date(v).toLocaleString():"—"]]);
 $("auditEvents").innerHTML=table((d.auditEvents||[]).map(x=>({...x,market:x.market||"Unknown"})),[["createdAt","Time",null,v=>v?new Date(v).toLocaleString():"—"],["action","Event"],["market","Actor market"],["jobId","Job"],["description","Description"]]);$("adminAuditEvents").innerHTML=table((d.adminAuditEvents||[]).map(x=>({...x,market:x.market||"Global",entity:String(x.entityType||"")+" · "+String(x.entityId||"—"),details:x.details?JSON.stringify(x.details):"—"})),[["createdAt","Time",null,v=>v?new Date(v).toLocaleString():"—"],["actor","Admin"],["action","Action"],["entity","Affected record"],["market","Market"],["details","Audit details"]]);
 }
-async function load(forceRefresh=false){const country=$("country").value,days=Number($("days").value),compare=$("compare").value,button=$("refresh");button.disabled=true;button.classList.add("is-loading");button.textContent=forceRefresh?"Refreshing…":"Loading…";$("updated").textContent=forceRefresh?"Requesting a fresh database read…":"Loading metrics…";try{const [d,c]=await Promise.all([getData(country,days,forceRefresh),compare&&compare!==country?getData(compare,days,forceRefresh):Promise.resolve(null)]);if(c){d.comparison=[{market:d.market.name,accounts:d.overview.totalAccounts,jobs:d.overview.jobs,bids:d.overview.bids,completed:d.overview.completedJobs,api5xx:d.overview.api5xx},{market:c.market.name,accounts:c.overview.totalAccounts,jobs:c.overview.jobs,bids:c.overview.bids,completed:c.overview.completedJobs,api5xx:c.overview.api5xx}]}render(d)}catch(e){$("warning").innerHTML='<div class="notice">Could not load data: '+safe(e.message)+'. Check read-only database connectivity and reporting-schema access, then retry Refresh.</div>';$("updated").textContent="Metrics unavailable"}finally{button.disabled=false;button.classList.remove("is-loading");button.textContent="↻ Refresh data"}}
+let loadSequence = 0;
+let activeLoadController = null;
+async function load(forceRefresh=false){
+  const requestId=++loadSequence;
+  if(activeLoadController)activeLoadController.abort();
+  const controller=new AbortController();
+  activeLoadController=controller;
+  const country=$("country").value||"ALL",days=Number($("days").value||7),compare=$("compare").value;
+  const button=$("refresh"),applyButton=$("applyFilters"),resetButton=$("resetFilters");
+  button.disabled=true;button.setAttribute("aria-busy","true");button.classList.add("is-loading");button.textContent=forceRefresh?"Refreshing…":"Loading…";
+  if(applyButton)applyButton.disabled=true;if(resetButton)resetButton.disabled=true;
+  $("warning").innerHTML="";
+  $("updated").textContent=forceRefresh?"Refreshing current reporting data…":"Loading selected-market metrics…";
+  try{
+    const [d,c]=await Promise.all([
+      getData(country,days,forceRefresh,controller.signal),
+      compare&&compare!==country?getData(compare,days,forceRefresh,controller.signal):Promise.resolve(null)
+    ]);
+    if(requestId!==loadSequence)return;
+    if(c)d.comparison=[
+      {market:d.market.name,accounts:d.overview.totalAccounts,jobs:d.overview.jobs,bids:d.overview.bids,completed:d.overview.completedJobs,api5xx:d.overview.api5xx},
+      {market:c.market.name,accounts:c.overview.totalAccounts,jobs:c.overview.jobs,bids:c.overview.bids,completed:c.overview.completedJobs,api5xx:c.overview.api5xx}
+    ];
+    render(d);
+  }catch(e){
+    if(requestId!==loadSequence||e?.name==="AbortError")return;
+    $("warning").innerHTML='<div class="notice" role="alert">Could not '+(forceRefresh?'refresh':'load')+' current metrics: '+safe(e.message)+'. Try again in a moment.</div>';
+    $("updated").textContent=forceRefresh?"Refresh failed · no fresh result returned":"Metrics unavailable";
+  }finally{
+    if(requestId===loadSequence){
+      activeLoadController=null;
+      button.disabled=false;button.removeAttribute("aria-busy");button.classList.remove("is-loading");button.textContent="↻ Refresh data";
+      if(applyButton)applyButton.disabled=false;if(resetButton)resetButton.disabled=false;
+    }
+  }
+}
 async function adminAction(payload) {
   const response = await fetch("/api/admin-action",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(payload),cache:"no-store"});
   const data = await response.json().catch(()=>({error:"Invalid action response"}));
@@ -341,8 +384,8 @@ $("exportAudit").addEventListener("click",()=>{
 try {
   $("updated").textContent="Dashboard script started; requesting metrics…";
   $("refresh").addEventListener("click",()=>void load(true));
-  const filtersChanged=()=>{$("filterDrawer").open=false;void load(false)};
-  $("country").addEventListener("change",filtersChanged);$("days").addEventListener("change",filtersChanged);$("compare").addEventListener("change",filtersChanged);
+  $("applyFilters").addEventListener("click",()=>{$("filterDrawer").open=false;void load(false)});
+  $("resetFilters").addEventListener("click",()=>{$("country").value="ALL";$("compare").value="";$("days").value="7";$("filterDrawer").open=false;void load(false)});
   console.info("Post2Drive Ops dashboard script initialized");void load();
 } catch(error) {
   console.error("Ops dashboard initialisation failed:",error);
@@ -463,10 +506,16 @@ async function metrics(url) {
   }
   if (!forceRefresh && metricsInflight.has(key)) return metricsInflight.get(key);
   const pending = metricsUncached(url).then(data => {
-    metricsCache.set(key,{createdAt:Date.now(),data});
-    while (metricsCache.size > 20) metricsCache.delete(metricsCache.keys().next().value);
+    // A superseded request may finish after a forced refresh. Only the current
+    // in-flight owner may publish into the cache or remove its ownership token.
+    if (metricsInflight.get(key) === pending) {
+      metricsCache.set(key,{createdAt:Date.now(),data});
+      while (metricsCache.size > 20) metricsCache.delete(metricsCache.keys().next().value);
+    }
     return {...data,cache:{ageSeconds:0,ttlSeconds:Math.ceil(METRICS_CACHE_TTL_MS/1000)}};
-  }).finally(() => metricsInflight.delete(key));
+  }).finally(() => {
+    if (metricsInflight.get(key) === pending) metricsInflight.delete(key);
+  });
   metricsInflight.set(key,pending);
   return pending;
 }
