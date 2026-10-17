@@ -161,6 +161,33 @@ export const TIME_ZONE_OPTIONS: Record<string, { value: string; label: string }[
   ],
 };
 
+
+const REGIONAL_AUTHORITIES: Record<string, Record<string, string>> = {
+  US: {
+    AL: "Alabama Law Enforcement Agency (ALEA)", AK: "Alaska DMV", AZ: "Arizona Motor Vehicle Division (MVD)", AR: "Arkansas DFA Revenue Office", CA: "California DMV", CO: "Colorado DMV", CT: "Connecticut DMV", DE: "Delaware DMV", DC: "District of Columbia DMV", FL: "Florida DHSMV", GA: "Georgia Department of Driver Services / Motor Vehicle Division", HI: "County DMV", ID: "Idaho Transportation Department / DMV", IL: "Illinois Secretary of State", IN: "Indiana Bureau of Motor Vehicles (BMV)", IA: "Iowa DOT", KS: "Kansas Division of Vehicles", KY: "Kentucky Transportation Cabinet", LA: "Louisiana Office of Motor Vehicles", ME: "Maine Bureau of Motor Vehicles", MD: "Maryland Motor Vehicle Administration (MVA)", MA: "Massachusetts Registry of Motor Vehicles (RMV)", MI: "Michigan Secretary of State", MN: "Minnesota Driver and Vehicle Services", MS: "Mississippi Department of Revenue", MO: "Missouri Department of Revenue", MT: "Montana Motor Vehicle Division", NE: "Nebraska DMV", NV: "Nevada DMV", NH: "New Hampshire DMV", NJ: "New Jersey Motor Vehicle Commission (MVC)", NM: "New Mexico Motor Vehicle Division", NY: "New York DMV", NC: "North Carolina DMV", ND: "North Dakota Department of Transportation", OH: "Ohio Bureau of Motor Vehicles (BMV)", OK: "Service Oklahoma", OR: "Oregon DMV", PA: "PennDOT", RI: "Rhode Island DMV", SC: "South Carolina DMV", SD: "South Dakota Department of Public Safety", TN: "Tennessee Department of Revenue / Driver Services", TX: "Texas DMV", UT: "Utah DMV", VT: "Vermont DMV", VA: "Virginia DMV", WA: "Washington State Department of Licensing", WV: "West Virginia DMV", WI: "Wisconsin DMV", WY: "Wyoming Department of Transportation",
+  },
+  CA: {
+    AB: "Alberta registry agents / Service Alberta", BC: "ICBC (Insurance Corporation of British Columbia)", MB: "Manitoba Public Insurance (MPI)", NB: "Service New Brunswick", NL: "Newfoundland and Labrador Motor Registration Division", NS: "Nova Scotia Registry of Motor Vehicles", NT: "Northwest Territories Department of Infrastructure", NU: "Nunavut vehicle registration authority", ON: "ServiceOntario", PE: "Access PEI", QC: "Société de l’assurance automobile du Québec (SAAQ)", SK: "SGI (Saskatchewan Government Insurance)", YT: "Yukon Motor Vehicles",
+  },
+  AU: {
+    ACT: "Access Canberra", NSW: "Service NSW", NT: "Northern Territory Motor Vehicle Registry", QLD: "Queensland Department of Transport and Main Roads", SA: "Service SA", TAS: "Service Tasmania", VIC: "VicRoads", WA: "Western Australia Department of Transport",
+  },
+  BE: { BRU: "Brussels-Capital Region vehicle inspection service / DIV", VLG: "Flemish vehicle inspection service / DIV", WAL: "Walloon vehicle inspection service / DIV" },
+  CH: {
+    AG: "Strassenverkehrsamt Aargau", BE: "Strassenverkehrsamt Bern", GE: "Office cantonal des véhicules (Geneva)", VD: "Service des automobiles et de la navigation (Vaud)", ZH: "Strassenverkehrsamt Zürich",
+  },
+};
+
+export function getJurisdictionAuthority(country: string, region?: string | null, currency?: string) {
+  if (region && REGIONAL_AUTHORITIES[country]?.[region]) return REGIONAL_AUTHORITIES[country][region];
+  if (country === "IN" && region) {
+    const state = getJurisdictionOptions(country).find((item) => item.code === region)?.label;
+    return state ? `${state} Transport Department / Regional Transport Office (RTO)` : "State Transport Department / Regional Transport Office (RTO)";
+  }
+  const market = getMarket(country);
+  return market ? getLocalisationProfile({ country, currency: currency ?? market.currency })?.authorityLabel ?? "Relevant local vehicle authority" : "Relevant local vehicle authority";
+}
+
 export function getTimeZoneOptions(country: string, defaultTimeZone?: string) {
   const configured = TIME_ZONE_OPTIONS[country];
   if (configured) return configured;
