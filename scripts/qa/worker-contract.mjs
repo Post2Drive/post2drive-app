@@ -13,6 +13,7 @@ assert.match(route, /VALUES\(\$1,\$2,10000,'queued'/,"route must persist a queue
 assert.match(route, /status: "queued"/,"API must report the durable queued state");
 assert.doesNotMatch(route, /void runAndCleanup|void runQA|active = true/,"web handlers must not launch process-local background work");
 
+assert.match(worker, /ORDER BY started_at ASC\s+LIMIT 1\s+FOR UPDATE SKIP LOCKED/,"PostgreSQL locking clause must follow LIMIT");
 assert.match(worker, /FOR UPDATE SKIP LOCKED/,"worker must atomically claim one queued row");
 assert.match(worker, /SET status = 'running'/,"claim must transition queued to running");
 assert.match(worker, /workerHeartbeatAt/,"worker must persist liveness evidence");
