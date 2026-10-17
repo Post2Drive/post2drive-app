@@ -393,7 +393,7 @@ export default function NewJobPage() {
             <label>Phone<input maxLength={50} value={form.dropoffContactPhone} disabled={form.dropoffSameAsAccount || form.dropoffSameAsPickup} onChange={(e) => update("dropoffContactPhone", e.target.value)} placeholder="Site contact phone" /></label>
           </fieldset>
           <label>Delivery instructions (optional)<textarea maxLength={5000} rows={4} value={form.notes} onChange={(e) => update("notes", e.target.value)} placeholder="Access information, loading details, timing constraints…" /><small>{form.notes.length}/5,000 characters</small></label>
-          {country === "IN" && <div style={{ borderTop: "1px solid var(--color-border)", paddingTop: 14 }}><h3 style={{ margin: "0 0 10px" }}>Review your requirement</h3><ReviewSummary form={form} currency={currency} symbol={symbol} date={form.jobDate} timeZoneLabel={timeZoneLabel} /></div>}
+          {country === "IN" && <div style={{ borderTop: "1px solid var(--color-border)", paddingTop: 14 }}><h3 style={{ margin: "0 0 10px" }}>Review your requirement</h3><ReviewSummary form={form} currency={currency} symbol={symbol} date={form.jobDate} timeZoneLabel={timeZoneLabel} country={country} /></div>}
         </section>}
 
         {step === 3 && country !== "IN" && <section style={{ display: "grid", gap: 16 }}>
@@ -412,13 +412,13 @@ export default function NewJobPage() {
   );
 }
 
-function ReviewSummary({ form, currency, symbol, date, timeZoneLabel }: { form: { pickup: string; pickupPin: string; dropoff: string; dropoffPin: string; pickupTime: string; dropoffTime: string; vehicleType: string; weightKg: string; dimensions: string; price: string; priceMode: string; pickupContactName: string; pickupContactPhone: string; dropoffContactName: string; dropoffContactPhone: string; notes: string }; currency: string; symbol: string; date: string; timeZoneLabel: string }) {
+function ReviewSummary({ form, currency, symbol, date, timeZoneLabel, country }: { country: string; form: { pickup: string; pickupPin: string; dropoff: string; dropoffPin: string; pickupTime: string; dropoffTime: string; vehicleType: string; weightKg: string; dimensions: string; price: string; priceMode: string; pickupContactName: string; pickupContactPhone: string; dropoffContactName: string; dropoffContactPhone: string; notes: string }; currency: string; symbol: string; date: string; timeZoneLabel: string }) {
   const entries: [string, string][] = [
     ["Route", `${form.pickup} → ${form.dropoff}`],
     ["Date", date || "Not selected"],
     ["Pickup", `${form.pickupTime || "Not selected"} (${timeZoneLabel})`],
     ["Drop-off", form.dropoffTime ? `${form.dropoffTime} (${timeZoneLabel})` : "Not specified"],
-    ["Vehicle", form.vehicleType],
+    ["Vehicle", vehicleTypeLabel(form.vehicleType, country)],
     ["Weight", form.weightKg ? `${form.weightKg} kg` : "Not specified"],
     ["Dimensions", form.dimensions || "Not specified"],
     ["Pricing", `${symbol}${Number(form.price || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency} · ${form.priceMode === "bid" ? "Guide price / open to bids" : "Fixed price"}`],
