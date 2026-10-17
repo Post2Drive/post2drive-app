@@ -15,4 +15,112 @@ export const VEHICLE_TYPES = [
   "Refrigerated van/truck",
   "Pickup truck",
   "Other (specify in notes)",
-];
+] as const;
+
+/**
+ * Stored vehicle type values remain stable for existing jobs and database records.
+ * Only their display labels change by market; compliance still needs region/vehicle-class rules.
+ */
+const GENERIC_LABELS: Record<string, string> = {
+  "Motorcycle courier": "Motorcycle / motorbike courier",
+  "Car": "Car",
+  "Small van (SWB)": "Small van",
+  "Medium van (MWB)": "Medium van",
+  "Large van (LWB)": "Large van",
+  "Luton van": "Box van / moving truck",
+  "7.5t box truck": "Light box truck (up to 7.5 tonnes)",
+  "12t rigid": "Medium rigid / straight truck",
+  "18t rigid": "Heavy rigid / straight truck",
+  "26t rigid": "Heavy rigid truck",
+  "32t HGV artic": "Articulated truck / tractor-trailer",
+  "Flatbed": "Flatbed truck",
+  "Tipper": "Tipper / dump truck",
+  "Refrigerated van/truck": "Refrigerated van / truck",
+  "Pickup truck": "Pickup truck",
+  "Other (specify in notes)": "Other (specify in notes)",
+};
+
+const MARKET_LABELS: Record<string, Record<string, string>> = {
+  GB: {
+    "Motorcycle courier": "Motorcycle courier",
+    "Small van (SWB)": "Small van (SWB)",
+    "Medium van (MWB)": "Medium van (MWB)",
+    "Large van (LWB)": "Large van (LWB)",
+    "Luton van": "Luton van",
+    "7.5t box truck": "7.5t box truck",
+    "12t rigid": "12t rigid",
+    "18t rigid": "18t rigid",
+    "26t rigid": "26t rigid",
+    "32t HGV artic": "32t HGV artic",
+    "Tipper": "Tipper",
+  },
+  IN: {
+    "Motorcycle courier": "Two-wheeler delivery",
+    "Small van (SWB)": "Small commercial van",
+    "Medium van (MWB)": "Medium commercial van",
+    "Large van (LWB)": "Large commercial van",
+    "Luton van": "Closed-body goods truck",
+    "7.5t box truck": "Light goods truck",
+    "12t rigid": "Medium goods truck",
+    "18t rigid": "Heavy goods truck",
+    "26t rigid": "Heavy goods truck",
+    "32t HGV artic": "Multi-axle / articulated goods truck",
+    "Tipper": "Tipper truck",
+  },
+  US: {
+    "Motorcycle courier": "Motorcycle courier",
+    "Small van (SWB)": "Small cargo van",
+    "Medium van (MWB)": "Medium cargo van",
+    "Large van (LWB)": "Large cargo van",
+    "Luton van": "Box truck",
+    "7.5t box truck": "Light box truck",
+    "12t rigid": "Medium straight truck",
+    "18t rigid": "Heavy straight truck",
+    "26t rigid": "Heavy straight truck",
+    "32t HGV artic": "Tractor-trailer / semi-truck",
+    "Tipper": "Dump truck",
+  },
+  CA: {
+    "Motorcycle courier": "Motorcycle courier",
+    "Small van (SWB)": "Small cargo van",
+    "Medium van (MWB)": "Medium cargo van",
+    "Large van (LWB)": "Large cargo van",
+    "Luton van": "Box truck",
+    "7.5t box truck": "Light box truck",
+    "12t rigid": "Medium straight truck",
+    "18t rigid": "Heavy straight truck",
+    "26t rigid": "Heavy straight truck",
+    "32t HGV artic": "Tractor-trailer / semi-truck",
+    "Tipper": "Dump truck",
+  },
+  AU: {
+    "Motorcycle courier": "Motorbike courier",
+    "Small van (SWB)": "Small van",
+    "Medium van (MWB)": "Medium van",
+    "Large van (LWB)": "Large van",
+    "Luton van": "Pantech / box truck",
+    "7.5t box truck": "Light rigid truck",
+    "12t rigid": "Medium rigid truck",
+    "18t rigid": "Heavy rigid truck",
+    "26t rigid": "Heavy rigid truck",
+    "32t HGV artic": "Articulated truck",
+    "Tipper": "Tipper truck",
+  },
+  NZ: {
+    "Motorcycle courier": "Motorbike courier",
+    "Small van (SWB)": "Small van",
+    "Medium van (MWB)": "Medium van",
+    "Large van (LWB)": "Large van",
+    "Luton van": "Box truck",
+    "7.5t box truck": "Light truck",
+    "12t rigid": "Medium rigid truck",
+    "18t rigid": "Heavy rigid truck",
+    "26t rigid": "Heavy rigid truck",
+    "32t HGV artic": "Articulated truck",
+    "Tipper": "Tipper truck",
+  },
+};
+
+export function vehicleTypeLabel(type: string, country?: string | null): string {
+  return MARKET_LABELS[country ?? ""]?.[type] ?? GENERIC_LABELS[type] ?? type;
+}
