@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { VEHICLE_TYPES } from "@/lib/vehicles";
+import { getLocalisationProfile } from "@/lib/localisation";
 
 async function currentAccount() {
   const session = await getServerSession(authOptions);
@@ -24,7 +25,7 @@ async function GETHandler() {
       orderBy: { createdAt: "desc" },
     });
 
-    return NextResponse.json({ vehicles, isTester: account.isTester, testerApprovalStatus: account.testerApprovalStatus });
+    return NextResponse.json({ vehicles, isTester: account.isTester, testerApprovalStatus: account.testerApprovalStatus, market: { country: account.country, currency: account.currency } });
   } catch (error) {
     console.error("Vehicle list error:", error);
     return NextResponse.json({ error: "Could not load vehicles." }, { status: 500 });
@@ -42,6 +43,7 @@ async function POSTHandler(req: Request) {
       return NextResponse.json({ error: "Your account is not registered for driving." }, { status: 403 });
     }
 
+    const marketProfile = getLocalisationProfile({ country: account.country, currency: account.currency });
     const body = await req.json();
     const vehicleType = String(body.vehicleType ?? "").trim();
     const regPlate = String(body.regPlate ?? "").trim().toUpperCase();
@@ -68,7 +70,7 @@ async function POSTHandler(req: Request) {
       return NextResponse.json({ error: "MAM must be a valid weight in kilograms." }, { status: 400 });
     }
 
-    for (const [name, value] of [["V5C document URL", v5cDocumentUrl], ["Insurance document URL", insuranceDocumentUrl]] as const) {
+    for (const [name, value] of [[marketProfile?.registrationDocumentLabel ?? "Vehicle registration document", v5cDocumentUrl], ["Insurance document", insuranceDocumentUrl]] as const) {
       if (value) {
         try {
           const url = new URL(value);
@@ -84,8 +86,8 @@ async function POSTHandler(req: Request) {
       if (!insuranceValidUntil || Number.isNaN(insuranceValidUntil.getTime()) || insuranceValidUntil <= now) {
         return NextResponse.json({ error: "Enter an insurance expiry date in the future." }, { status: 400 });
       }
-      if (!motValidUntil || Number.isNaN(motValidUntil.getTime()) || motValidUntil <= now) {
-        return NextResponse.json({ error: "Enter an MOT expiry date in the future. If exempt, contact support for review." }, { status: 400 });
+      if (marketProfile?.inspectionRequiredAtCountryLevel && (!motValidUntil || Number.isNaN(motValidUntil.getTime()) || motValidUntil <= now)) {
+        return NextResponse.json({ error: `Enter a valid future ${marketProfile.inspectionLabel} date. If the vehicle is exempt, contact support for review.` }, { status: 400 });
       }
     }
 
