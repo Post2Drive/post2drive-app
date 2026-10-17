@@ -107,6 +107,8 @@ export function getLocalisationProfile(identity: MarketIdentity): LocalisationPr
     dialingCode: market.dialingCode,
     marketplaceLabel: market.label,
     ...terms,
+    weightUnit: market.country === "US" ? "lb" : "kg",
+    vehicleMassLabel: market.country === "US" ? "Gross Vehicle Weight Rating (GVWR, lb)" : market.country === "GB" ? "Maximum authorised mass (kg)" : market.country === "IN" ? "Gross vehicle weight (kg)" : "Maximum vehicle weight (kg)",
   };
 }
 
