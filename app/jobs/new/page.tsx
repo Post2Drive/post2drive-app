@@ -78,7 +78,7 @@ export default function NewJobPage() {
       jobDate: "",
       pickupTime: "",
       dropoffTime: "",
-      pickupTimeZone: "Europe/London",
+      pickupTimeZone: marketProfile?.timeZone ?? "UTC",
       vehicleType:
         "Car",
       weightKg: "",
