@@ -105,7 +105,8 @@ try {
   assert.ok(qaRoute.includes("const finalStatus = run.status;"), "cleanup must preserve only a terminal status and must not convert a running job implicitly");
   assert.ok(qaRoute.includes('new Set(["completed", "failed", "aborted"])'), "cleanup must reject queued and running runs");
   assert.ok(!qaRoute.includes('new Set(["completed", "running", "failed", "aborted"])'), "cleanup must never allow the running status");
-  assert.ok(qaRoute.includes("finished_at=COALESCE(finished_at,now())") && qaRoute.includes("duration_ms=COALESCE(duration_ms,"), "cleanup must finalize interrupted run timestamps and duration");
+  assert.ok(qaRoute.includes("if (!run.finished_at || run.duration_ms === null)"), "cleanup must reject legacy terminal rows without finish metadata rather than masking interrupted runs");
+  assert.ok(!qaRoute.includes("finished_at=COALESCE(finished_at,now())"), "cleanup must not invent finish metadata for interrupted runs");
   assert.ok(qaRoute.includes("pg_advisory_xact_lock"), "enqueue requests must serialize across web replicas");
   assert.ok(qaRoute.includes("VALUES($1,$2,10000,'queued'"), "HTTP requests must enqueue a durable run");
   assert.ok(qaWorker.includes("FOR UPDATE SKIP LOCKED"), "worker claims must be atomic across replicas");
