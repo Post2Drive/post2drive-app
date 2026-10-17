@@ -549,7 +549,7 @@ const sectionStyle: React.CSSProperties = {
   border: "1px solid #e5e7eb",
   borderRadius: 12,
   padding: 18,
-  background: "#fff",
+  background: "var(--color-surface)",
 };
 
 const sectionHeading: React.CSSProperties = {
@@ -614,7 +614,7 @@ const secondaryButton: React.CSSProperties = {
   padding: "8px 12px",
   border: "1px solid var(--color-border)",
   borderRadius: 7,
-  background: "#fff",
+  background: "var(--color-surface)",
   color: "var(--color-text)",
   cursor: "pointer",
 };
@@ -630,8 +630,8 @@ const paidBadge: React.CSSProperties = {
 const receivedBadge: React.CSSProperties = {
   padding: "6px 9px",
   borderRadius: 12,
-  background: "#ecfdf5",
-  color: "#047857",
+  background: "var(--color-positive-soft)",
+  color: "var(--color-positive)",
   fontSize: 13,
 };
 
@@ -647,9 +647,9 @@ const successStyle: React.CSSProperties = {
   padding: 11,
   marginTop: 14,
   borderRadius: 8,
-  background: "#ecfdf5",
+  background: "var(--color-positive-soft)",
   border: "1px solid var(--color-positive)",
-  color: "#047857",
+  color: "var(--color-positive)",
 };
 
 const errorStyle: React.CSSProperties = {
