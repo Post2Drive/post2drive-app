@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { symbolFor } from "@/lib/currency";
-import { VEHICLE_TYPES } from "@/lib/vehicles";
+import { VEHICLE_TYPES, vehicleTypeLabel } from "@/lib/vehicles";
 import { getLocalisationProfile } from "@/lib/localisation";
 
 function parseCoords(
@@ -367,7 +367,7 @@ export default function NewJobPage() {
 
         {step === 1 && <section style={{ display: "grid", gap: 16 }}>
           <div><h2 style={{ margin: "0 0 5px", fontSize: 20 }}>What needs moving?</h2><p style={{ margin: 0, color: "var(--color-muted)", fontSize: 14 }}>Choose the vehicle capacity and explain the price clearly.</p></div>
-          <label>Required vehicle type *<select value={form.vehicleType} onChange={(e) => update("vehicleType", e.target.value)}>{VEHICLE_TYPES.map((vehicle) => <option key={vehicle} value={vehicle}>{vehicle}</option>)}</select></label>
+          <label>Required vehicle type *<select value={form.vehicleType} onChange={(e) => update("vehicleType", e.target.value)}>{VEHICLE_TYPES.map((vehicle) => <option key={vehicle} value={vehicle}>{vehicleTypeLabel(vehicle, country)}</option>)}</select></label>
           <div className="signup-fields">
             <label>Estimated weight (kg)<input type="number" min="0" max="1000000" step="0.01" value={form.weightKg} onChange={(e) => update("weightKg", e.target.value)} placeholder="Optional" /></label>
             <label>Dimensions<input maxLength={150} value={form.dimensions} onChange={(e) => update("dimensions", e.target.value)} placeholder="e.g. 4.2m × 2.1m × 2.4m" /></label>
