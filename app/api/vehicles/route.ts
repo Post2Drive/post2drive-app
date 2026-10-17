@@ -75,7 +75,7 @@ async function POSTHandler(req: Request) {
       return NextResponse.json({ error: "Select the vehicle ownership type." }, { status: 400 });
     }
     if (mamKg !== null && (!Number.isInteger(mamKg) || mamKg < 1 || mamKg > 100000)) {
-      return NextResponse.json({ error: "MAM must be a valid weight in kilograms." }, { status: 400 });
+      return NextResponse.json({ error: "Enter a valid vehicle weight using the unit shown in the form." }, { status: 400 });
     }
 
     for (const [name, value] of [[marketProfile?.registrationDocumentLabel ?? "Vehicle registration document", v5cDocumentUrl], ["Insurance document", insuranceDocumentUrl]] as const) {
