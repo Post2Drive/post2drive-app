@@ -57,7 +57,7 @@ jobs:
         run: npm run qa:qa-runner-guard
       - name: Validate durable QA queue and worker lifecycle
         run: npm run qa:worker-contract
-      - name: Validate UK/India/euro-market pickup-time conversion and DST edges
+      - name: Validate all-market time zones, overseas destinations and DST edges
         run: npm run qa:market-timezone
       - name: Validate independent drop-off time-zone wiring and legacy fallback
         run: npm run qa:dropoff-timezone
