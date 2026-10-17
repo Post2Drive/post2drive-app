@@ -310,17 +310,6 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
 
     if (testType === "api-load") {
       const loadPaths = ["/api/account", "/api/account/access", "/api/jobs", "/api/vehicles", "/api/payments", "/api/promotion/status", "/api/promotion/referrals/progress"];
-      await parallel(Array.from({ length: routeMatrixTarget }, (_, i) => i), 12, async i => {
-        const account = signed.length ? signed[i % signed.length] : null;
-        const path = loadPaths[i % loadPaths.length];
-        await check(account?.client ?? null, account, "api-load", "authenticated-read-" + i, "GET", path, undefined, [200]);
-        routeMatrixExecuted++;
-      });
-      return await finish("completed", { testType, loadRequestCount: routeMatrixExecuted, authenticatedAccountsUsed: signed.length, syntheticDataRetained: true, limitations: ["This is a 10,000-request authenticated API load test, not a browser performance test; no cleanup was performed."] });
-    }
-
-    if (testType === "api-load") {
-      const loadPaths = ["/api/account", "/api/account/access", "/api/jobs", "/api/vehicles", "/api/payments", "/api/promotion/status", "/api/promotion/referrals/progress"];
       const loadAccounts = signed.filter((account) => account.index < 499);
       await parallel(Array.from({ length: routeMatrixTarget }, (_, i) => i), 12, async i => {
         const account = loadAccounts.length ? loadAccounts[i % loadAccounts.length] : null;
