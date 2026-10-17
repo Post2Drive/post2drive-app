@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { formatMarketDate } from "@/lib/localisation";
+import { formatMarketCurrency, formatMarketDate, getLocalisationProfile } from "@/lib/localisation";
 import { getTrialCycleStatus } from "@/lib/trialCycles";
 import {
   getPlanDisplay,
@@ -13,7 +13,7 @@ import {
   isUkAccount,
 } from "@/lib/uk";
 import { isWeeklyPricingEligible } from "@/lib/pricing";
-import { symbolFor } from "@/lib/currency";
+
 import SignOutButton from "@/app/sign-out-button";
 import NotificationCenter from "@/components/notification-center";
 
@@ -100,6 +100,7 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
+  const marketProfile = getLocalisationProfile({ country: account.country, currency: account.currency });
   const ukEligible =
     isUkAccount(account);
   const weeklyPricingEligible = isWeeklyPricingEligible(account);
@@ -257,7 +258,7 @@ export default async function DashboardPage() {
             {account.planType === "fleet"
               ? "Fleet plan"
               : "Individual plan"}{" "}
-            · {account.country} ·{" "}
+            · {marketProfile?.marketplaceLabel ?? account.country} ·{" "}
             {account.currency}
           </p>
         </div>
@@ -572,7 +573,7 @@ export default async function DashboardPage() {
               <p>
                 Paid plan:{" "}
                 <strong>
-                  {symbolFor(plan.currency ?? account.currency)}{plan.price.toFixed(2)}
+                  {formatMarketCurrency(plan.price, { country: account.country, currency: account.currency })}
                   /7 days
                 </strong>
               </p>
