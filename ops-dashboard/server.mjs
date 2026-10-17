@@ -154,8 +154,10 @@ document.addEventListener("click",async event=>{
       const action=button.dataset.adminAction;
       const accountId=button.dataset.accountId;
       if(!confirm((action==="tester-approve"?"Approve":"Reject")+" this pending tester application?"))return;
+      const reason=prompt("Enter the review reason for the permanent audit log:");
+      if(reason===null||!reason.trim()){alert("A review reason is required; no action was taken.");return;}
       button.disabled=true;
-      await adminAction({action,accountId});
+      await adminAction({action,accountId,reason:reason.trim()});
       alert("Tester application "+(action==="tester-approve"?"approved.":"rejected."));
       await load();
       return;
