@@ -25,7 +25,7 @@ The existing registry provides a country label, currency, symbol, locale, time z
 - Vehicle onboarding used V5C and MOT labels and the API required an MOT date for every non-tester account. This incorrectly applies UK assumptions to countries with different rules.
 - The job and vehicle forms use UK-oriented vehicle categories/abbreviations (for example Luton van, SWB/MWB/LWB and HGV artic). These are not universally familiar.
 - The vehicle data model stores UK-named fields (`v5cDocumentUrl`, `motValidUntil`) even when the user is outside the UK. UI labels can be localised, but storage/API semantics remain technical debt.
-- US vehicle rules vary by state; Canadian rules vary by province/territory; Australian rules vary by state/territory. The current account model has no state/province/territory field, so a country code alone cannot safely determine the correct compliance authority or inspection requirement.
+- US vehicle rules vary by state; Canadian rules vary by province/territory; Australian rules vary by state/territory. The current account model has no state/province/territory field, so a country code alone cannot safely determine the correct compliance authority or inspection requirement. These countries also span multiple time zones, so a single country-default time zone is not enough for every pickup location.
 - The signup/pricing pages describe the non-India access policy as the “UK” model even where the actual intended policy is a shared commercial model, not a UK marketplace.
 - Some other pages use browser-default dates, and some account/subscription code defaults to UK locale/time zone when market data is unavailable.
 - Terms and Privacy pages are explicitly draft testing documents and mention review by UK and India counsel only. That is not sufficient for the full set of supported markets.
@@ -58,7 +58,7 @@ The existing registry provides a country label, currency, symbol, locale, time z
 - [ ] Remove false UK/India defaults in all shared screens and APIs.
 - [ ] Use account-market locale, currency, time zone, decimal/date format and phone dialling code consistently.
 - [ ] Decide whether the UI language is English-only or translated per market; if English-only, keep the language consistent but use locally correct terms.
-- [ ] Add state/province/territory where compliance rules depend on it (at minimum US, Canada and Australia); persist and validate it server-side.
+- [ ] Add state/province/territory where compliance rules depend on it (at minimum US, Canada and Australia); persist and validate it server-side. Use the pickup location or an explicit region/time-zone selection for multi-time-zone countries.
 - [ ] Replace UK-named vehicle fields with jurisdiction-neutral fields and migrate safely; keep backward compatibility for existing GB records.
 - [ ] Define local vehicle classes/units and their canonical stored values separately from display labels. Avoid silently converting kg, miles/km or vehicle weight thresholds.
 - [ ] Define document and inspection requirements by country + region + vehicle class; handle exemptions and “not applicable” safely.
