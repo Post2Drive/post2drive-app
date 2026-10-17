@@ -772,3 +772,18 @@ model ModerationReport {
   @@index([reportedAccountId, createdAt])
   @@index([jobId, createdAt])
 }
+
+model AdminAuditEvent {
+  id         String   @id @default(cuid())
+  actor      String
+  action     String
+  entityType String
+  entityId   String?
+  market     String?
+  details    Json?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([entityType, entityId])
+  @@index([market, createdAt])
+}
