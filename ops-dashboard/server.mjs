@@ -739,3 +739,8 @@ button.primary:hover{background:#173FA8;color:#FFFFFF}
 .notice{background:#FFF6CC;color:#171717;border-color:#F2C300}
 .insight{background:#E8F6ED;border-left-color:#18864B;color:#171717}
 .source-tools input{background:#FFFFFF;color:#171717}
+
+/* Flat, solid chart colours (no gradient fills); keep each series unmistakable. */
+.bar{background:#2457D6}
+.chart .area{fill:#2457D61A}
+.kpi,.panel,.watch-card,.source-card{background:#FFFFFF!important}
