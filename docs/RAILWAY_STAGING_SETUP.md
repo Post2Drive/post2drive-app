@@ -46,6 +46,28 @@ The `Post2Drive Web` service has these settings ready for the source import:
 
 Do not set `POST2DRIVE_QA_MODE=true` unless you are explicitly preparing the isolated, deployment-ID-gated QA runner. Do not set any live payment or email-provider credentials in this environment.
 
+## Separate QA worker service (required before a 10,000-account run)
+
+The QA endpoint now enqueues a run in the PostgreSQL-backed `qa_test_runs` ledger. The web request does not execute the load test. A separate worker must run the same tested source revision and use the same isolated staging database.
+
+Create a private Railway service named `Post2Drive QA Worker` in the **staging** environment. Connect it to the same repository and exact commit used by `Post2Drive Web`; set its build command to `npx prisma generate --schema=prisma/schema.prisma` (after dependency installation) and its start command to `npm run qa:worker`; do not assign it a public domain. Use Node.js 22.6 or newer. The worker imports Prisma Client directly, so the generate step is required before startup. Configure these values in the staging environment only:
+
+- `DATABASE_URL`: the same staging Postgres connection as the web service.
+- `POST2DRIVE_QA_MODE=true`
+- `POST2DRIVE_QA_ENVIRONMENT=staging`
+- `POST2DRIVE_QA_DATABASE_ISOLATED=true`
+- Verify Railway's automatically supplied `RAILWAY_ENVIRONMENT_ID` equals the staging environment ID; do not manually override this platform variable.
+- `POST2DRIVE_QA_ALLOWED_ENVIRONMENT_ID`: set this to the exact staging environment ID.
+- `QA_BASE_URL=https://post2drive-web-staging.up.railway.app`
+- `QA_ACCOUNT_COUNT=10000`
+- `QA_MARKET_COUNTRY=GB` for a UK run or `IN` for an India run.
+
+The web service requires the same isolation and allow-list settings plus `QA_RUN_TOKEN` (at least 32 characters); the worker does not need that trigger token. Keep cleanup disabled by default. Enable `QA_ALLOW_CLEANUP=true` only for a separately confirmed, explicit cleanup request. Do not set these QA variables in production and do not use a production database.
+
+The queue uses a PostgreSQL advisory lock for unique enqueue and `FOR UPDATE SKIP LOCKED` for atomic worker claim. Worker heartbeats and phase are stored in the run summary. If a worker dies, its row stays `running` with its last heartbeat; it is **not automatically re-queued**, because a replacement could otherwise duplicate account creation while the previous process is still alive. Confirm the previous worker process has stopped before any manual recovery. Clean up only after terminal state, and preserve run results before cleanup.
+
+Deployment gate: the web service and this worker must both be deployed from the same validated commit. Verify the web build, health endpoint, worker startup log, database migration, and the current commit/revision from Railway before submitting the 10,000-account trigger.
+
 ## Why no further services are enabled
 
 - PostgreSQL is required by Prisma and currently stores all app data, including incident evidence bytes.

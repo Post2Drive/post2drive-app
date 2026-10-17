@@ -51,6 +51,8 @@ jobs:
         run: npm run qa:country-matrix
       - name: Validate QA runner staging-only guard
         run: npm run qa:qa-runner-guard
+      - name: Validate durable QA queue and worker lifecycle
+        run: npm run qa:worker-contract
       - name: Validate UK/India/euro-market pickup-time conversion and DST edges
         run: npm run qa:market-timezone
       - name: Validate Prisma schema
@@ -59,6 +61,8 @@ jobs:
         run: npx prisma generate --schema=prisma/schema.prisma
       - name: Apply all migrations to a clean PostgreSQL database
         run: npx prisma migrate deploy --schema=prisma/schema.prisma
+      - name: Validate worker boot and atomic claim against local PostgreSQL
+        run: npm run qa:worker-boot-contract
       - name: Validate migrations in isolated staging schema
         run: |
           DATABASE_URL="postgresql://postgres:postgres@localhost:5432/post2drive?schema=staging" npx prisma migrate deploy --schema=prisma/schema.prisma
