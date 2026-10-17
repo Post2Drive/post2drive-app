@@ -34,6 +34,7 @@ type Job = {
   pickupTime: string | null;
   dropoffTime: string | null;
   pickupTimeZone?: string | null;
+  dropoffTimeZone?: string | null;
   vehicleType: string;
   weightKg: number | null;
   dimensions: string | null;
@@ -940,7 +941,7 @@ export default function JobsPage() {
                   {job.dropoffTime && (
                     <>
                       <span>·</span>
-                      <span>Drop-off {job.dropoffTime} (pickup time zone)</span>
+                      <span>Drop-off {job.dropoffTime} ({getTimeZoneOptions(accountCountry || "GB", marketProfile?.timeZone).find((zone) => zone.value === job.dropoffTimeZone)?.label ?? job.dropoffTimeZone ?? job.pickupTimeZone ?? marketProfile?.timeZone})</span>
                     </>
                   )}
                 </div>
