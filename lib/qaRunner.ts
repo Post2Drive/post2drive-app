@@ -269,17 +269,18 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
       "SELECT id FROM qa_test_runs WHERE status='completed' AND summary->>'testType'='synthetic-accounts' AND summary->>'country'=$1 ORDER BY finished_at DESC LIMIT 1",
       selectedMarket.country,
     );
-    accountPoolRunId = pools[0]?.id ?? null;
-    if (!accountPoolRunId) throw new Error("Run the 10,000 synthetic-accounts test for this market before API-load or workflow-e2e.");
+    const sourceRunId = pools[0]?.id ?? null;
+    if (!sourceRunId) throw new Error("Run the 10,000 synthetic-accounts test for this market before API-load or workflow-e2e.");
+    accountPoolRunId = sourceRunId;
     const poolRows = await prisma.$queryRawUnsafe<Array<{ account_id: string; email: string; cohort: string; account_index: number }>>(
       "SELECT account_id,email,cohort,account_index FROM qa_test_accounts WHERE run_id=$1 ORDER BY account_index",
-      accountPoolRunId,
+      sourceRunId,
     );
     if (poolRows.length !== 10_000) throw new Error("The preserved synthetic-account pool is incomplete; expected exactly 10,000 accounts.");
     fixtures.push(...poolRows.map((row) => ({
       index: Number(row.account_index) - 1,
       email: row.email,
-      password: "QA-" + accountPoolRunId + "-" + String(row.account_index).padStart(5, "0") + "-p2d",
+      password: "QA-" + sourceRunId + "-" + String(row.account_index).padStart(5, "0") + "-p2d",
       accountId: row.account_id,
       cohort: row.cohort as AccountFixture["cohort"],
     })));
