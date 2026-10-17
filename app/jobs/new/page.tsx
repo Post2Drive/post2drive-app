@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { symbolFor } from "@/lib/currency";
 import { VEHICLE_TYPES, vehicleTypeLabel } from "@/lib/vehicles";
-import { getLocalisationProfile, getTimeZoneOptions } from "@/lib/localisation";
+import { formatMarketCurrency, getLocalisationProfile, getTimeZoneOptions } from "@/lib/localisation";
 
 function parseCoords(
   input: string
@@ -409,7 +409,7 @@ export default function NewJobPage() {
             <label>Phone<input maxLength={50} value={form.dropoffContactPhone} disabled={form.dropoffSameAsAccount || form.dropoffSameAsPickup} onChange={(e) => update("dropoffContactPhone", e.target.value)} placeholder="Site contact phone" /></label>
           </fieldset>
           <label>Delivery instructions (optional)<textarea maxLength={5000} rows={4} value={form.notes} onChange={(e) => update("notes", e.target.value)} placeholder="Access information, loading details, timing constraints…" /><small>{form.notes.length}/5,000 characters</small></label>
-          {country === "IN" && <div style={{ borderTop: "1px solid var(--color-border)", paddingTop: 14 }}><h3 style={{ margin: "0 0 10px" }}>Review your requirement</h3><ReviewSummary form={form} currency={currency} symbol={symbol} date={form.jobDate} timeZoneLabel={form.pickupTimeZone || timeZoneLabel} country={country} /></div>}
+          {country === "IN" && <div style={{ borderTop: "1px solid var(--color-border)", paddingTop: 14 }}><h3 style={{ margin: "0 0 10px" }}>Review your requirement</h3><ReviewSummary form={form} currency={currency} date={form.jobDate} timeZoneLabel={form.pickupTimeZone || timeZoneLabel} country={country} /></div>}
         </section>}
 
         {step === 3 && country !== "IN" && <section style={{ display: "grid", gap: 16 }}>
@@ -428,7 +428,7 @@ export default function NewJobPage() {
   );
 }
 
-function ReviewSummary({ form, currency, symbol, date, timeZoneLabel, country }: { country: string; form: { pickup: string; pickupPin: string; dropoff: string; dropoffPin: string; pickupTime: string; dropoffTime: string; vehicleType: string; weightKg: string; dimensions: string; price: string; priceMode: string; pickupContactName: string; pickupContactPhone: string; dropoffContactName: string; dropoffContactPhone: string; notes: string }; currency: string; symbol: string; date: string; timeZoneLabel: string }) {
+function ReviewSummary({ form, currency, date, timeZoneLabel, country }: { country: string; form: { pickup: string; pickupPin: string; dropoff: string; dropoffPin: string; pickupTime: string; dropoffTime: string; vehicleType: string; weightKg: string; dimensions: string; price: string; priceMode: string; pickupContactName: string; pickupContactPhone: string; dropoffContactName: string; dropoffContactPhone: string; notes: string }; currency: string; date: string; timeZoneLabel: string }) {
   const profile = getLocalisationProfile({ country, currency });
   const entries: [string, string][] = [
     ["Route", `${form.pickup} → ${form.dropoff}`],
@@ -438,7 +438,7 @@ function ReviewSummary({ form, currency, symbol, date, timeZoneLabel, country }:
     ["Vehicle", vehicleTypeLabel(form.vehicleType, country)],
     ["Weight", form.weightKg ? `${form.weightKg} ${profile?.weightUnit ?? "kg"}` : "Not specified"],
     ["Dimensions", form.dimensions || "Not specified"],
-    ["Pricing", `${symbol}${Number(form.price || 0).toLocaleString(profile?.locale ?? "en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency} · ${form.priceMode === "bid" ? "Guide price / open to bids" : "Fixed price"}`],
+    ["Pricing", `${formatMarketCurrency(Number(form.price || 0), { country, currency })} · ${form.priceMode === "bid" ? "Guide price / open to bids" : "Fixed price"}`],
     ["Pickup contact", form.pickupContactName || "Not specified"],
     ["Drop-off contact", form.dropoffContactName || "Not specified"],
     ["Instructions", form.notes || "None"],
