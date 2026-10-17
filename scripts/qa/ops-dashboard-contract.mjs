@@ -38,7 +38,7 @@ for (const [name, pattern] of [
   ["tester review queue", /Pending tester applications/],
   ["access-code history", /TesterAccessCode/],
   ["incident review queue", /INCIDENT_REPORTED/],
-  ["incident decisions remain behind secure bridge", /secured application-side action bridge/],
+  ["incident decisions fail closed without bridge configuration", /Secure application action bridge is not configured/],
   ["aggregated market research", /Aggregated market research/],
   ["small research groups suppressed", /HAVING count\(\) >= 3/],
   ["accounts and users metrics", /"totalAccounts"/],
@@ -48,7 +48,7 @@ for (const [name, pattern] of [
   ["retained QA failure history", /qa_test_events/],
   ["vehicle compliance metrics", /"motExpired"/],
   ["source provenance and limitations", /External logistics industry trends/],
-  ["no destructive QA cleanup", !/DELETE FROM|TRUNCATE TABLE|prisma\.[a-zA-Z]+\.deleteMany/.test(server) && /read-only reporting/.test(server)),
+  ["no destructive QA cleanup", !/DELETE FROM|TRUNCATE TABLE|prisma\.[a-zA-Z]+\.deleteMany/.test(server) && /dedicated read-only database role/.test(server)),
   ["health endpoint", /url\.pathname === "\/health"/],
   ["metrics endpoint", /url\.pathname === "\/api\/metrics"/],
 ]) {
