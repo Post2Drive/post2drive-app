@@ -81,7 +81,7 @@ Before accepting real subscription payments, select a provider and implement/tes
 - **Authentication:** NextAuth credentials provider with JWT sessions
 - **Password hashing:** bcryptjs
 - **Optional email:** Resend
-- **Hosting/deployment:** A private Railway staging project now contains persistent PostgreSQL and Redis services plus a preconfigured, not-yet-deployed web service. See `docs/RAILWAY_STAGING_SETUP.md` for the current service inventory and URL status.
+- **Hosting/deployment:** Railway staging currently runs the web application from `feature/country-localisation-audit`; this is a test environment, not production approval. See `docs/RAILWAY_STAGING_SETUP.md` for the live service and database map.
 - **Mobile tooling dependencies:** Capacitor Android tooling is present in the project dependencies
 
 ## Local development
@@ -180,23 +180,36 @@ Before enabling the flow in production:
 
 ## Deployment and environments
 
-This repository is a clean-start rebuild. A private `Post2Drive Staging` Railway project now has a persistent PostgreSQL database, a persistent Redis service, and a preconfigured web service with a reserved test hostname. The web service is still empty and has no deployment because the complete source bundle has not been pushed to GitHub yet. See `docs/RAILWAY_STAGING_SETUP.md` for service IDs and the current URL state. The previous Railway project and old repository were retired during the reset; do not reuse their credentials or infrastructure.
+As of 18 October 2026, the private Railway project `Post2Drive Staging` has a deployed Next.js application at [`post2drive-web-staging.up.railway.app`](https://post2drive-web-staging.up.railway.app). Railway's latest previously completed web deployment used commit `b15e0ff754860c564db6fc26930a024d85234938` from `Post2Drive/post2drive-app`, branch `feature/country-localisation-audit`. The current source branch is not `main`; do not assume a main-branch commit is what Railway is running.
 
-Before creating a new deployment:
+### Staging database ownership
 
-1. Create a fresh PostgreSQL database dedicated to this project and environment. Do not import the retired database or its credentials.
-2. Configure secrets in the new host's secret manager, never in source control.
-3. Run Prisma migrations against the intended development/test database first; review generated SQL and rollback implications before production.
-4. Deploy a non-production environment and verify signup, account-market isolation, job creation/search, bids, lifecycle transitions, incident evidence, notifications and account deletion.
-5. Only after launch gates pass should a production environment be created and promoted.
+The latest web deployment's Prisma migration logs identify database `post2drive_qa` on `postgres-j8xl.railway.internal`, corresponding to the Railway service `Postgres-J8xl`. Treat that as the active staging application's database unless a deliberate, backed-up migration is approved.
 
-Do not configure Android remote-server mode until a deliberate non-production HTTPS deployment exists. `CAPACITOR_SERVER_URL` must be provided explicitly at build time; there is no default URL embedded in the app.
+A separate PostgreSQL service named `Postgres` and its own persistent volume also exist. Its contents and any remaining consumer have not been established. Do not delete, migrate, or repoint it until its tables/data and every connection string—including `OPS_DASHBOARD_DATABASE_URL`—have been checked. The operations-dashboard connection is intended to use a dedicated read-only database role; verify its actual target and read-only access independently.
+
+### Other staging services
+
+The Railway service still displayed as `Post2Drive Infra Smoke Test` is configured to run `npm run qa:worker`; it is a durable QA worker, not an HTTP smoke-test service. It has no public domain. Rename the service in Railway when convenient so its display name reflects its real purpose.
+
+Redis was provisioned but no Redis client/dependency or runtime usage was found in the application, operations dashboard, or QA worker. It has been removed from the active staging services; its persistent volume is retained unattached rather than deleting its data. The `REDIS_URL` value has been blanked in the web and worker service configurations. The application dashboard cache is process-local, and the QA queue is PostgreSQL-backed; do not claim Redis is improving performance.
+
+### Deployment rules
+
+- Keep staging and production credentials/data isolated. Use synthetic data only in staging.
+- Keep email verification and real payments disabled until provider configuration and end-to-end tests are complete.
+- Apply Prisma migrations only to the intended environment/database after checking the target and reviewing the migration.
+- Verify signup/login, market isolation, jobs, bids, delivery transitions, incidents/evidence, notifications, account deletion, browser/mobile UX, backup/restore, and operational alerting before any public release.
+- Keep destructive QA cleanup disabled by default; require the explicit staging allow-list and safeguards.
+- Do not promote the currently deployed feature branch to production without reviewed CI results and the remaining launch gates.
+
+`CAPACITOR_SERVER_URL` must be supplied explicitly at build time for any remote-server mobile build; do not embed an implicit production target.
 
 ## QA, staging, and data safety
 
 The project includes a synthetic QA runner and guarded cleanup. Keep QA mode and destructive cleanup disabled unless the target is a newly provisioned, isolated non-production database.
 
-The latest recorded launch-readiness review documented ten staging runs with 500 synthetic accounts each, and 5,457 of 5,457 checks passing per run. The tests exercised API workflows including authentication, accounts, jobs, bids, vehicles, ratings, subscription-related API paths, and job lifecycle transitions.
+The 17 October 2026 staging report records final successful GB/IN sessions covering 20,000 synthetic accounts, 28,000 API-load checks, and 29,914 workflow/E2E checks. It also preserves earlier failures and reports 555 raw HTTP 5xx responses in the sampled 24-hour window; 552 were attributed to the intentionally unconfigured verification-start webhook, while three remained unattributed in that analysis. These figures are staging evidence only and do not certify production reliability or launch readiness.
 
 These results are useful repeatable synthetic-test evidence, but they are **not** browser-based usability tests, real email delivery tests, real payment-settlement tests, or proof of a one-in-a-million failure rate. See [Launch Readiness](docs/LAUNCH_READINESS.md) for limitations and the latest release gates.
 
