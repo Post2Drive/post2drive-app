@@ -75,7 +75,7 @@ export default function EditJobPage() {
   const [jobDate, setJobDate] = useState("");
   const [pickupTime, setPickupTime] = useState("");
   const [dropoffTime, setDropoffTime] = useState("");
-  const [pickupTimeZone, setPickupTimeZone] = useState("Europe/London");
+  const [pickupTimeZone, setPickupTimeZone] = useState(marketProfile?.timeZone ?? "UTC");
   const [vehicleType, setVehicleType] = useState("");
   const [weightKg, setWeightKg] = useState("");
   const [dimensions, setDimensions] = useState("");
@@ -125,7 +125,7 @@ export default function EditJobPage() {
         setJobDate(inputDate(loadedJob.jobDate));
         setPickupTime(loadedJob.pickupTime || "");
         setDropoffTime(loadedJob.dropoffTime || "");
-        setPickupTimeZone(loadedJob.pickupTimeZone || marketProfile?.timeZone || "Europe/London");
+        setPickupTimeZone(loadedJob.pickupTimeZone || marketProfile?.timeZone || "UTC");
         setVehicleType(loadedJob.vehicleType || "");
         setWeightKg(
           loadedJob.weightKg !== null &&
