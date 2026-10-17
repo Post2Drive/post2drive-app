@@ -93,7 +93,7 @@ export default function ActivityHistory({
           style={{
             marginTop: 8,
             padding: 8,
-            background: "#fafafa",
+            background: "var(--ops-surface-inset)",
             borderRadius: 4,
           }}
         >
