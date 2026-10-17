@@ -148,6 +148,26 @@ export const REGION_OPTIONS: Record<string, { code: string; label: string }[]> =
   ],
 };
 
+
+export const TIME_ZONE_OPTIONS: Record<string, { value: string; label: string }[]> = {
+  US: [
+    { value: "America/New_York", label: "Eastern Time" }, { value: "America/Chicago", label: "Central Time" }, { value: "America/Denver", label: "Mountain Time" }, { value: "America/Phoenix", label: "Arizona (no seasonal clock change in most areas)" }, { value: "America/Los_Angeles", label: "Pacific Time" }, { value: "America/Anchorage", label: "Alaska Time" }, { value: "Pacific/Honolulu", label: "Hawaii Time" },
+  ],
+  CA: [
+    { value: "America/St_Johns", label: "Newfoundland Time" }, { value: "America/Halifax", label: "Atlantic Time" }, { value: "America/Toronto", label: "Eastern Time" }, { value: "America/Winnipeg", label: "Central Time" }, { value: "America/Edmonton", label: "Mountain Time" }, { value: "America/Vancouver", label: "Pacific Time" }, { value: "America/Whitehorse", label: "Yukon Time" },
+  ],
+  AU: [
+    { value: "Australia/Perth", label: "Western Australia Time" }, { value: "Australia/Darwin", label: "Northern Territory Time" }, { value: "Australia/Adelaide", label: "South Australia Time" }, { value: "Australia/Brisbane", label: "Queensland Time" }, { value: "Australia/Sydney", label: "New South Wales / ACT Time" }, { value: "Australia/Hobart", label: "Tasmania Time" },
+  ],
+};
+
+export function getTimeZoneOptions(country: string, defaultTimeZone?: string) {
+  const configured = TIME_ZONE_OPTIONS[country];
+  if (configured) return configured;
+  const fallback = defaultTimeZone ?? getLocalisationProfile({ country, currency: undefined })?.timeZone;
+  return fallback ? [{ value: fallback, label: fallback }] : [];
+}
+
 export function getJurisdictionOptions(country: string) {
   return REGION_OPTIONS[country] ?? [];
 }
