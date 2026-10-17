@@ -398,7 +398,7 @@ export default function NewJobPage() {
 
         {step === 3 && country !== "IN" && <section style={{ display: "grid", gap: 16 }}>
           <div><h2 style={{ margin: "0 0 5px", fontSize: 20 }}>Review before publishing</h2><p style={{ margin: 0, color: "var(--color-muted)", fontSize: 14 }}>Confirm the details before this job becomes visible to eligible users in your market.</p></div>
-          <ReviewSummary form={form} currency={currency} symbol={symbol} date={form.jobDate} timeZoneLabel={timeZoneLabel} />
+          <ReviewSummary form={form} currency={currency} symbol={symbol} date={form.jobDate} timeZoneLabel={timeZoneLabel} country={country} />
           <div style={{ borderRadius: 10, padding: 12, background: "var(--color-primary-soft)", fontSize: 13 }}>Your listing is confined to {marketProfile?.marketplaceLabel ?? "your selected market"} ({currency}). Cross-market matching is disabled.</div>
         </section>}
 
