@@ -51,6 +51,7 @@ try {
   const postStart = route.indexOf("export async function POST");
   assert.ok(getStart >= 0 && postStart > getStart, "QA GET and POST handlers must exist");
   const getHandler = route.slice(getStart, postStart);
+  assert.ok(!getHandler.includes('url.searchParams.get("token")'), "QA GET authentication must never accept bearer tokens in query strings");
   const guardPosition = getHandler.indexOf("if (!isQaRunnerEnabled())");
   const reportPosition = getHandler.indexOf("if (report)");
   assert.ok(guardPosition >= 0 && reportPosition > guardPosition, "GET staging guard must execute before report/status/run actions");
