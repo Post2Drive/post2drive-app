@@ -22,7 +22,7 @@ type Vehicle = {
 };
 
 const initialForm = {
-  vehicleType: VEHICLE_TYPES[0],
+  vehicleType: VEHICLE_TYPES[0] as string,
   regPlate: "",
   ownershipType: "owned",
   make: "",
