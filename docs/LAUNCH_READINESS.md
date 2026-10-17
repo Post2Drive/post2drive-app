@@ -1,16 +1,19 @@
-# Post2Drive Launch Readiness — Clean Start
+# Post2Drive Launch Readiness — Staging Verification
 
-**Review date:** 16 October 2026  
+**Review date:** 18 October 2026  
 **Repository:** `Post2Drive/post2drive-app`  
-**Release posture:** **Not cleared for public launch. Railway staging infrastructure exists, but the web application source is not connected and no app deployment has succeeded.**
+**Release posture:** **Not cleared for public launch. The staging web application is deployed from `feature/country-localisation-audit`; its current successful deployment does not waive the remaining production launch gates.**
 
-## 1. Clean-start state
+## 1. Current staging state
 
-- The new public repository is the intended source of truth.
-- The old `Ganesh0297/freight-app` repository and old Railway project were retired during the reset. Do not reuse their URLs, credentials, databases, volumes or deployment configuration.
-- The prior source archive was used as input and has been updated in a local working copy. This is not proof of a successful production build; dependency installation was not completed in the current environment.
-- The local lifecycle contract checks and reliability-budget calculations pass. They are static/regression checks, not substitutes for type-checking, a production build, integration tests, browser tests or live payment/email tests.
-- A private Railway staging environment is provisioned with persistent PostgreSQL and Redis services, and an empty web service is preconfigured with a reserved staging hostname. No app deployment has succeeded, and no production database, production email sender, or live payment provider is configured.
+- The canonical application repository is `Post2Drive/post2drive-app`. Railway staging is currently connected to branch `feature/country-localisation-audit`, not `main`.
+- Railway's latest previously completed web deployment used commit `b15e0ff754860c564db6fc26930a024d85234938` and was marked `SUCCESS`. The app starts on port 3000 and uses `/api/health` as its health check. Railway also shows four recent failed deployment attempts; at least one failure was a syntax error in the operations dashboard followed by health-check failures. The later successful deployment corrected the runtime failure, but keep these events in the audit trail.
+- The latest successful web migration log identifies database `post2drive_qa` via `postgres-j8xl.railway.internal`, Railway service `Postgres-J8xl`. This is the observed current staging database for the deployed application.
+- A second independent service, `Postgres`, has a separate 500 MB persistent volume. Its contents and consumers have not been verified. Do not delete, migrate, or repoint it until data ownership and all live connection strings (especially `OPS_DASHBOARD_DATABASE_URL`) are checked.
+- The operations dashboard is designed to use a dedicated read-only PostgreSQL role. The deployment's pre-deploy script provisions that role on the database referenced by `DATABASE_URL`; because Railway's connected interface redacts environment-variable values, independently confirm that `OPS_DASHBOARD_DATABASE_URL` targets the same intended staging database with that read-only role.
+- Redis was unused in the inspected app/dashboard/worker runtime and has been removed as an active staging service. Its volume remains detached and retained. No production data or service has been changed.
+- Railway's service still named `Post2Drive Infra Smoke Test` currently runs `npm run qa:worker` and has no public domain. Treat it as the QA worker; the previous public-smoke-test documentation was stale.
+- The staging project is not cleared for public launch. Production email delivery, payment settlement, end-to-end browser/mobile flows, operational recovery and market-specific legal checks remain release gates.
 
 ## 2. Current market and timezone rules
 
@@ -20,7 +23,7 @@
 - Pickup date/time is interpreted in the account's stored market timezone. UK daylight-saving gaps and ambiguous repeated times must be rejected instead of silently shifted.
 - Country/currency are immutable after signup; a user wanting another market needs a separate account.
 
-## 3. Required before a first deployment
+## 3. Required before any production deployment or public launch
 
 ### A. Source integrity and build
 
@@ -28,7 +31,7 @@
 2. Run `npm run qa:market-isolation`, `npm run qa:market-timezone`, `npx prisma validate --schema=prisma/schema.prisma` and `npx prisma generate --schema=prisma/schema.prisma`.
 3. Run `npx tsc --noEmit`, `npm run qa:lifecycle-contract`, `node scripts/qa/reliability-budget.mjs`, and `npm run build`.
 4. Apply every migration to a fresh PostgreSQL database in CI and confirm there is no dependency on prior database state.
-5. Check the generated Android wrapper only after a safe non-production HTTPS target exists.
+5. If using the Android wrapper, test its remote-server configuration against the deliberate staging HTTPS URL; do not embed a production URL by default.
 
 ### B. Authentication and account security — BLOCKED
 
@@ -63,19 +66,21 @@ Test both markets independently with separate test accounts and currency values.
 
 ## 4. Verification evidence currently available
 
-- `npm run qa:lifecycle-contract` — **PASS** in the working copy.
-- `npm run qa:market-isolation` — **PASS** in the working copy.
-- `npm run qa:market-timezone` — **PASS** in the working copy.
-- `node scripts/qa/reliability-budget.mjs` — **PASS** in the working copy.
-- Market-guard presence and source structure checks — **PASS** in the working copy.
-- TypeScript check and production build — **NOT VERIFIED** because a complete dependency install could not be obtained in this environment. The existing partial `node_modules` directory is not trusted; run `npm ci` in CI or another network-enabled clean environment.
-- Railway PostgreSQL and Redis service deployment status — **SUCCEEDED**, with persistent volumes; this does not verify the app.
-- App URL `https://post2drive-web-staging.up.railway.app` is reserved but not yet serving the app because the web service has no source/deployment.
-- End-to-end email, payment, browser, mobile and deployed-application tests — **NOT RUN**.
+- Latest Railway web redeploy — **SUCCESS**, commit `b15e0ff754860c564db6fc26930a024d85234938`, branch `feature/country-localisation-audit`. The configuration redeploy after clearing the unused Redis reference built successfully, reported no pending Prisma migrations on `post2drive_qa`, and started Next.js successfully.
+- Web process startup and Railway's `/api/health` check — **PASSED** on the previously completed deployment. The health route checks PostgreSQL connectivity only; it does not prove all application workflows or the operations-dashboard read-only connection.
+- Prisma migration — **PASSED** on the current app database; the log reported no pending migrations on `post2drive_qa` at `postgres-j8xl.railway.internal`.
+- Current app database and QA worker both use PostgreSQL-backed storage/queueing. No Redis runtime integration was found in the package dependencies, dashboard, rate limiter or worker.
+- Final successful staging campaign sessions in the 17 October report: **20,000** synthetic accounts; **28,000** API-load checks; **29,914** workflow/E2E checks. Earlier failures remain preserved separately; the final-run counts are not a production failure-rate claim.
+- Railway's 24-hour staging report recorded **555 raw HTTP 5xx** responses. The previous report attributed 552 to the deliberately unconfigured verification-start webhook and left three unattributed. Recheck the latest route-level 5xx metrics before clearing the error gate.
+- PostgreSQL service `Postgres` — **ownership/contents not verified**. Do not remove it or repoint any service until its contents and connection consumers are reviewed.
+- The current draft localisation PR is not merged. Review CI status on the precise proposed head; do not infer GitHub CI success merely from a successful Railway deployment.
+- End-to-end real email delivery, real payment settlement/refund flows, full browser/mobile tests, deletion/restore, concurrency/recovery, legal review and public-launch readiness — **NOT CLEARED**.
 
 ## 5. Release decision
 
-**Safe next step:** publish the complete source, pass clean CI, then connect the existing Railway staging web service and test with synthetic data.  
-**Not justified:** public production launch, real payment collection, or claiming email verification works end-to-end.
+**Safe next step:** continue staging-only verification, reconcile the unverified PostgreSQL service and read-only dashboard database target, and keep the launch gates below closed until evidence is recorded.
 
-Do not connect the retired production database or recreate old Railway deployment URLs as a shortcut. Use the new repository, new secrets and newly provisioned infrastructure only.
+**Not justified:** public production launch, live payment collection, claiming email verification works end-to-end, deleting the second PostgreSQL service, or assuming Redis was improving runtime performance.
+
+Do not connect retired production infrastructure or reuse old credentials. Preserve staging data, failed QA records and deployment evidence. Keep the retained Redis volume until its data-retention decision is made; it is detached from active service use.
+
