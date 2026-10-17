@@ -1,5 +1,8 @@
 "use client";
 
+import { formatMarketDate, formatMarketDateTime, getLocalisationProfile } from "@/lib/localisation";
+import { vehicleTypeLabel } from "@/lib/vehicles";
+
 import { useCallback, useEffect, useState } from "react";
 
 type AccessCode = {
@@ -147,7 +150,7 @@ export default function TesterReview() {
     {!loading && applications.length === 0 && <p>No pending tester applications.</p>}
     {applications.map((app) => <article key={app.id} style={panel}>
       <h2 style={{ marginTop: 0 }}>{app.companyName}</h2>
-      <p><strong>Submitted:</strong> {new Date(app.createdAt).toLocaleString("en-GB")} · <strong>Plan:</strong> {app.planType}{app.fleetVehicleCount ? ` (${app.fleetVehicleCount} vehicles)` : ""}</p>
+      <p><strong>Submitted:</strong> {formatMarketDateTime(app.createdAt, { country: app.country, currency: app.currency })} · <strong>Plan:</strong> {app.planType}{app.fleetVehicleCount ? ` (${app.fleetVehicleCount} vehicles)` : ""}</p>
       <p><strong>Company number:</strong> {app.companyNumber || "Not supplied"} · <strong>Sole trader:</strong> {app.isSoleTrader ? "Yes" : "No"}</p>
       <p><strong>Location/currency:</strong> {app.country} / {app.currency} · <strong>Account verification:</strong> {app.verificationStatus}</p>
       <h3>Contact details</h3>
@@ -155,10 +158,10 @@ export default function TesterReview() {
       <h3>Vehicles</h3>
       {app.vehicles.length === 0 && <p>No vehicle submitted yet.</p>}
       {app.vehicles.map((v) => <div key={v.id} style={{ borderTop: "1px solid var(--color-border)", paddingTop: 10, marginTop: 10 }}>
-        <p><strong>{v.vehicleType} — {v.regPlate}</strong> · {v.ownershipType || "Ownership not specified"} · Status: {v.verificationStatus}</p>
-        <p>{[v.make, v.model, v.mamKg ? `${v.mamKg} kg MAM` : null].filter(Boolean).join(" · ") || "No extra details"}</p>
-        <p>MOT: {v.motValidUntil ? new Date(v.motValidUntil).toLocaleDateString("en-GB") : "Not supplied"} · Insurance: {v.insuranceValidUntil ? new Date(v.insuranceValidUntil).toLocaleDateString("en-GB") : "Not supplied"}</p>
-        {v.v5cDocumentUrl && <p><a href={v.v5cDocumentUrl} target="_blank" rel="noreferrer">Open V5C document</a></p>}
+        <p><strong>{vehicleTypeLabel(v.vehicleType, app.country)} — {v.regPlate}</strong> · {v.ownershipType || "Ownership not specified"} · Status: {v.verificationStatus}</p>
+        <p>{[v.make, v.model, v.mamKg ? `${app.country === "US" ? Math.round(v.mamKg / 0.45359237).toLocaleString("en-US") + " lb GVWR" : v.mamKg + " kg"}` : null].filter(Boolean).join(" · ") || "No extra details"}</p>
+        <p>{getLocalisationProfile({ country: app.country, currency: app.currency })?.inspectionLabel ?? "Inspection"}: {v.motValidUntil ? formatMarketDate(v.motValidUntil, { country: app.country, currency: app.currency }) : "Not supplied"} · Insurance: {v.insuranceValidUntil ? new Date(v.insuranceValidUntil).toLocaleDateString("en-GB") : "Not supplied"}</p>
+        {v.v5cDocumentUrl && <p><a href={v.v5cDocumentUrl} target="_blank" rel="noreferrer">Open registration document</a></p>}
         {v.insuranceDocumentUrl && <p><a href={v.insuranceDocumentUrl} target="_blank" rel="noreferrer">Open insurance document</a></p>}
         {v.operatorLicenceNo && <p>Operator licence: {v.operatorLicenceNo}</p>}
       </div>)}
