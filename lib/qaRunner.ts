@@ -4,6 +4,7 @@ import { isQaRunnerEnabled } from "./qaRunnerGuard.ts";
 import { prisma } from "./prisma.ts";
 import { VEHICLE_TYPES } from "./vehicles.ts";
 import { getMarket } from "./market.ts";
+import { getJurisdictionOptions } from "./localisation.ts";
 
 type AccountFixture = {
   index: number;
@@ -620,6 +621,7 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
     await parallel(drivers.slice(0, 20), 2, async (a, i) => {
       const payload = {
         vehicleType: VEHICLE_TYPES[i % VEHICLE_TYPES.length], regPlate: "QA" + runId.replace(/\D/g, "").slice(-5) + String(i).padStart(3, "0"),
+        registrationRegion: getJurisdictionOptions(market.country)[0]?.code,
         ownershipType: ["owned", "leased", "rented", "other"][i % 4], make: "QA Make", model: "QA Model", mamKg: [350, 1800, 3500, 3500, 3500, 3500, 7500, 12000, 18000, 32000, 7500, 18000, 18000, 3500, 3500, 3500][i % VEHICLE_TYPES.length],
         v5cDocumentUrl: "https://example.invalid/qa-v5c.pdf", insuranceDocumentUrl: "https://example.invalid/qa-insurance.pdf",
         operatorLicenceNo: "QA-" + runId, motValidUntil: new Date(Date.now() + 180 * 86400000).toISOString(),
@@ -631,7 +633,7 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
 
     if (signed[0]) {
       await check(signed[0].client!, signed[0], "admin-access", "ordinary-user-cannot-read-admin", "GET", "/api/admin/testers", undefined, [403]);
-      await check(signed[0].client!, signed[0], "payments", "pending-payment-record-without-real-charge", "POST", "/api/subscription/create-payment", {}, [200]);
+      await check(signed[0].client!, signed[0], "payments", market.country === "IN" ? "india-weekly-subscription-blocked" : "pending-payment-record-without-real-charge", "POST", "/api/subscription/create-payment", {}, market.country === "IN" ? [400] : [200]);
     }
     const restricted = fixtures.find(a => a.index === 9_999);
     if (restricted?.client && posters[0]) {
