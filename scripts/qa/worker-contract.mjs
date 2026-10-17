@@ -26,5 +26,6 @@ assert.doesNotMatch(runner, /INSERT INTO qa_test_runs/,"runner must not create a
 assert.match(runner, /routeMatrixTarget = 10_000/,"full API route matrix target must remain exactly 10k");
 
 assert.match(route, /new Set\(\["completed", "failed", "aborted"\]\)/,"cleanup must refuse queued/running active jobs");
-assert.match(route, /COALESCE\(finished_at,now\(\)\)/,"cleanup must finalize missing end timestamps");
+assert.match(route, /if \(!run\.finished_at \|\| run\.duration_ms === null\)/,"cleanup must reject interrupted legacy rows without finish metadata");
+assert.match(route, /finished_at IS NOT NULL AND duration_ms IS NOT NULL/,"cleanup update must recheck completion metadata in SQL");
 console.log("QA durable-worker contract checks passed (static source checks; database concurrency still requires integration testing).");
