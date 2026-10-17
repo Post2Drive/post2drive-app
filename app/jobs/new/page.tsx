@@ -371,7 +371,7 @@ export default function NewJobPage() {
           <label>Required vehicle type *<select value={form.vehicleType} onChange={(e) => update("vehicleType", e.target.value)}>{VEHICLE_TYPES.map((vehicle) => <option key={vehicle} value={vehicle}>{vehicleTypeLabel(vehicle, country)}</option>)}</select></label>
           <div className="signup-fields">
             <label>Estimated weight ({marketProfile?.weightUnit ?? "kg"})<input type="number" min="0" max="1000000" step="0.01" value={form.weightKg} onChange={(e) => update("weightKg", e.target.value)} placeholder="Optional" /></label>
-            <label>Dimensions<input maxLength={150} value={form.dimensions} onChange={(e) => update("dimensions", e.target.value)} placeholder="e.g. 4.2m × 2.1m × 2.4m" /></label>
+            <label>Dimensions<input maxLength={150} value={form.dimensions} onChange={(e) => update("dimensions", e.target.value)} placeholder={country === "US" ? "e.g. 14 ft × 7 ft × 8 ft" : "e.g. 4.2 m × 2.1 m × 2.4 m"} /></label>
           </div>
           <label>How will you set the price? *<select value={form.priceMode} onChange={(e) => update("priceMode", e.target.value)}><option value="fixed">Fixed price — the amount shown is the offer</option><option value="bid">Open to bids — drivers can submit offers</option></select></label>
           <label>{form.priceMode === "bid" ? `Guide price (${symbol.trim()}) *` : `Total job price (${symbol.trim()}) *`}<input required inputMode="decimal" type="number" min="0.01" max="100000000" step="0.01" value={form.price} onChange={(e) => update("price", e.target.value)} placeholder={country === "IN" ? "e.g. 2500" : "e.g. 85.00"} /><small>Currency is fixed to {currency}; jobs are not shared between markets.</small></label>
@@ -423,7 +423,7 @@ function ReviewSummary({ form, currency, symbol, date, timeZoneLabel, country }:
     ["Vehicle", vehicleTypeLabel(form.vehicleType, country)],
     ["Weight", form.weightKg ? `${form.weightKg} ${profile?.weightUnit ?? "kg"}` : "Not specified"],
     ["Dimensions", form.dimensions || "Not specified"],
-    ["Pricing", `${symbol}${Number(form.price || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency} · ${form.priceMode === "bid" ? "Guide price / open to bids" : "Fixed price"}`],
+    ["Pricing", `${symbol}${Number(form.price || 0).toLocaleString(profile?.locale ?? "en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency} · ${form.priceMode === "bid" ? "Guide price / open to bids" : "Fixed price"}`],
     ["Pickup contact", form.pickupContactName || "Not specified"],
     ["Drop-off contact", form.dropoffContactName || "Not specified"],
     ["Instructions", form.notes || "None"],
