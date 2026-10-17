@@ -14,7 +14,10 @@
     "qa:health-contract": "node scripts/qa/health-contract.mjs",
     "qa:country-matrix": "node --experimental-strip-types scripts/qa/country-matrix-contract.mjs",
     "qa:qa-runner-guard": "node --experimental-strip-types scripts/qa/qa-runner-guard-contract.mjs",
-    "qa:all": "npm run qa:health-contract && npm run qa:market-timezone && npm run qa:market-isolation && npm run qa:country-matrix && npm run qa:qa-runner-guard && npm run qa:lifecycle-contract"
+    "qa:all": "npm run qa:health-contract && npm run qa:market-timezone && npm run qa:market-isolation && npm run qa:country-matrix && npm run qa:qa-runner-guard && npm run qa:lifecycle-contract && npm run qa:worker-contract",
+    "qa:worker": "node --experimental-default-type=module --experimental-strip-types scripts/qa/worker.ts",
+    "qa:worker-contract": "node scripts/qa/worker-contract.mjs",
+    "qa:worker-boot-contract": "node scripts/qa/worker-boot-contract.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.2",
@@ -39,5 +42,8 @@
     "xcode": {
       "uuid": "^11.1.1"
     }
+  },
+  "engines": {
+    "node": ">=22.6.0"
   }
 }
