@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { VEHICLE_TYPES } from "@/lib/vehicles";
+import { VEHICLE_TYPES, vehicleTypeLabel } from "@/lib/vehicles";
 import { getLocalisationProfile, formatMarketDate } from "@/lib/localisation";
 
 type Vehicle = {
@@ -150,7 +150,7 @@ export default function VehiclesPage() {
             onChange={(event) => setForm((current) => ({ ...current, vehicleType: event.target.value }))}
           >
             {VEHICLE_TYPES.filter((type) => type !== "Other (specify in notes)").map((type) => (
-              <option key={type} value={type}>{type}</option>
+              <option key={type} value={type}>{vehicleTypeLabel(type, market.country)}</option>
             ))}
           </select>
         </label>
@@ -192,7 +192,7 @@ export default function VehiclesPage() {
       <div style={{ display: "grid", gap: 12 }}>
         {vehicles.map((vehicle) => (
           <section key={vehicle.id} style={{ border: "1px solid var(--color-border)", borderRadius: 10, padding: 16 }}>
-            <strong>{vehicle.vehicleType} — {vehicle.regPlate}</strong>
+            <strong>{vehicleTypeLabel(vehicle.vehicleType, market.country)} — {vehicle.regPlate}</strong>
             <p>Status: <strong>{vehicle.verificationStatus}</strong></p>
             <p>{[vehicle.make, vehicle.model, vehicle.mamKg ? `${vehicle.mamKg} kg MAM` : null].filter(Boolean).join(" · ") || "No additional vehicle details"}</p>
             <p>{marketProfile?.inspectionLabel ?? "Inspection expiry"}: {vehicle.motValidUntil ? formatMarketDate(vehicle.motValidUntil, market) : "Not recorded"}</p>
