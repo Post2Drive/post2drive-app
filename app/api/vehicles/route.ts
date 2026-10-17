@@ -57,7 +57,7 @@ async function POSTHandler(req: Request) {
     const motValidUntil = body.motValidUntil ? new Date(body.motValidUntil) : null;
     const insuranceValidUntil = body.insuranceValidUntil ? new Date(body.insuranceValidUntil) : null;
 
-    if (!VEHICLE_TYPES.includes(vehicleType)) {
+    if (!(VEHICLE_TYPES as readonly string[]).includes(vehicleType)) {
       return NextResponse.json({ error: "Select a valid vehicle type." }, { status: 400 });
     }
     if (!regPlate || regPlate.length > 20 || !/^[A-Z0-9 -]+$/.test(regPlate)) {
