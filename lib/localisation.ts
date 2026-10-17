@@ -6,7 +6,7 @@
  * Australian states/territories), so the UI must not imply that one national rule
  * or regulator applies everywhere.
  */
-import { marketForAccount, type MarketIdentity } from "@/lib/market";
+import { marketForAccount, type MarketIdentity } from "./market";
 
 export type LocalisationProfile = {
   country: string;
