@@ -89,6 +89,19 @@ The 555 5xx responses were bursty in the telemetry buckets: 141 in one bucket, t
 
 The peak CPU sample was approximately 86.6% of the 2-unit current CPU cap; peak memory usage was about 0.323 GB, below the reported roughly 1 GB current memory cap. This is a time-aggregated staging snapshot, not a resource-per-request benchmark or evidence of production capacity. It should be correlated with individual test-run windows and route latency before making capacity decisions.
 
+## Sampled route-level latency (not a full request export)
+
+A limited Railway HTTP-log sample returned 501 requests over **2026-10-17 13:40–14:30 UTC**. These are log-sample statistics, not a full population percentile:
+
+| Sample group | n | p50 | p95 | p99 | Maximum |
+|---|---:|---:|---:|---:|---:|
+| All sampled responses | 501 | 12 ms | 80 ms | 91 ms | 112 ms |
+| 2xx/3xx | 84 | 30 ms | 89 ms | 112 ms | 112 ms |
+| 4xx | 411 | 11 ms | 75 ms | 87 ms | 91 ms |
+| 5xx | 6 | 5 ms | 46 ms | 46 ms | 46 ms |
+
+The six 5xx samples were all `503` responses to `POST /api/verification/start/webhook`. The sample includes a large share of intentionally negative/authentication cases and is capped/limited by the log API. Therefore these percentiles must not be compared directly with the QA runner's **83 ms p95** from the corrected India workflow/E2E run, and must not be represented as public-user latency.
+
 ## Statistical gaps and next actions
 
 1. Preserve the raw QA run summaries and per-event records; continue to keep cleanup disabled.
