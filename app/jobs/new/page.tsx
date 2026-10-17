@@ -271,6 +271,7 @@ export default function NewJobPage() {
 
     const payload = {
       ...form,
+      weightKg: form.weightKg ? Number(form.weightKg) * (marketProfile?.weightUnit === "lb" ? 0.45359237 : 1) : "",
       crossBorder: false,
       pickupLat:
         pickupCoords?.lat,
@@ -369,7 +370,7 @@ export default function NewJobPage() {
           <div><h2 style={{ margin: "0 0 5px", fontSize: 20 }}>What needs moving?</h2><p style={{ margin: 0, color: "var(--color-muted)", fontSize: 14 }}>Choose the vehicle capacity and explain the price clearly.</p></div>
           <label>Required vehicle type *<select value={form.vehicleType} onChange={(e) => update("vehicleType", e.target.value)}>{VEHICLE_TYPES.map((vehicle) => <option key={vehicle} value={vehicle}>{vehicleTypeLabel(vehicle, country)}</option>)}</select></label>
           <div className="signup-fields">
-            <label>Estimated weight (kg)<input type="number" min="0" max="1000000" step="0.01" value={form.weightKg} onChange={(e) => update("weightKg", e.target.value)} placeholder="Optional" /></label>
+            <label>Estimated weight ({marketProfile?.weightUnit ?? "kg"})<input type="number" min="0" max="1000000" step="0.01" value={form.weightKg} onChange={(e) => update("weightKg", e.target.value)} placeholder="Optional" /></label>
             <label>Dimensions<input maxLength={150} value={form.dimensions} onChange={(e) => update("dimensions", e.target.value)} placeholder="e.g. 4.2m × 2.1m × 2.4m" /></label>
           </div>
           <label>How will you set the price? *<select value={form.priceMode} onChange={(e) => update("priceMode", e.target.value)}><option value="fixed">Fixed price — the amount shown is the offer</option><option value="bid">Open to bids — drivers can submit offers</option></select></label>
@@ -413,13 +414,14 @@ export default function NewJobPage() {
 }
 
 function ReviewSummary({ form, currency, symbol, date, timeZoneLabel, country }: { country: string; form: { pickup: string; pickupPin: string; dropoff: string; dropoffPin: string; pickupTime: string; dropoffTime: string; vehicleType: string; weightKg: string; dimensions: string; price: string; priceMode: string; pickupContactName: string; pickupContactPhone: string; dropoffContactName: string; dropoffContactPhone: string; notes: string }; currency: string; symbol: string; date: string; timeZoneLabel: string }) {
+  const profile = getLocalisationProfile({ country, currency });
   const entries: [string, string][] = [
     ["Route", `${form.pickup} → ${form.dropoff}`],
     ["Date", date || "Not selected"],
     ["Pickup", `${form.pickupTime || "Not selected"} (${timeZoneLabel})`],
     ["Drop-off", form.dropoffTime ? `${form.dropoffTime} (${timeZoneLabel})` : "Not specified"],
     ["Vehicle", vehicleTypeLabel(form.vehicleType, country)],
-    ["Weight", form.weightKg ? `${form.weightKg} kg` : "Not specified"],
+    ["Weight", form.weightKg ? `${form.weightKg} ${profile?.weightUnit ?? "kg"}` : "Not specified"],
     ["Dimensions", form.dimensions || "Not specified"],
     ["Pricing", `${symbol}${Number(form.price || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency} · ${form.priceMode === "bid" ? "Guide price / open to bids" : "Fixed price"}`],
     ["Pickup contact", form.pickupContactName || "Not specified"],
