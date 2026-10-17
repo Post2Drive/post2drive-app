@@ -199,6 +199,8 @@ async function PATCHHandler(
       data.pickupTimeZone ||
     job.dropoffTime !==
       data.dropoffTime ||
+    job.dropoffTimeZone !==
+      data.dropoffTimeZone ||
     job.vehicleType !==
       data.vehicleType ||
     job.weightKg !==
@@ -236,6 +238,7 @@ async function PATCHHandler(
         pickupTime: data.pickupTime,
         dropoffTime: data.dropoffTime,
         pickupTimeZone: data.pickupTimeZone,
+        dropoffTimeZone: data.dropoffTimeZone,
         vehicleType: data.vehicleType,
         weightKg: data.weightKg,
         dimensions: data.dimensions,
