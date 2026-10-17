@@ -120,7 +120,7 @@ async function body(req) {
   for await (const chunk of req) { chunks.push(chunk); if (Buffer.concat(chunks).length > 16384) throw new Error("Request too large"); }
   return Buffer.concat(chunks).toString("utf8");
 }
-async function metrics(url) {
+async function metricsUncached(url) {
   const requested = url.searchParams.get("country") || "ALL";
   const code = requested === "ALL" ? "ALL" : market(requested)?.code;
   if (!code) throw Object.assign(new Error("Unsupported country code"), { status:400 });
@@ -213,11 +213,37 @@ async function metrics(url) {
   };
 }
 
+async function metrics(url) {
+  const country = url.searchParams.get("country") || "ALL";
+  const days = url.searchParams.get("days") || "7";
+  const key = country + ":" + days;
+  const now = Date.now();
+  const cached = metricsCache.get(key);
+  if (cached && now - cached.createdAt < METRICS_CACHE_TTL_MS) {
+    return {...cached.data, cache:{ageSeconds:Math.floor((now-cached.createdAt)/1000),ttlSeconds:Math.ceil((METRICS_CACHE_TTL_MS-(now-cached.createdAt))/1000)}};
+  }
+  if (metricsInflight.has(key)) return metricsInflight.get(key);
+  const pending = metricsUncached(url).then(data => {
+    metricsCache.set(key,{createdAt:Date.now(),data});
+    while (metricsCache.size > 20) metricsCache.delete(metricsCache.keys().next().value);
+    return {...data,cache:{ageSeconds:0,ttlSeconds:Math.ceil(METRICS_CACHE_TTL_MS/1000)}};
+  }).finally(() => metricsInflight.delete(key));
+  metricsInflight.set(key,pending);
+  return pending;
+}
+
 const server = http.createServer(async (req,res) => {
   const url = new URL(req.url || "/", "http://localhost");
   try {
     if (req.method === "GET" && url.pathname === "/health") return send(res,200,JSON.stringify({ok:true,service:"post2drive-ops-dashboard"}),"application/json");
     if (req.method === "POST" && url.pathname === "/login") {
+      const ip = String(req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown").split(",")[0].trim();
+      const now = Date.now();
+      const attempt = loginAttempts.get(ip);
+      if (attempt && now - attempt.startedAt < LOGIN_WINDOW_MS && attempt.count >= LOGIN_MAX_ATTEMPTS) {
+        return send(res,429,pageLogin("Too many sign-in attempts. Wait 15 minutes and try again."),"text/html; charset=utf-8",{"retry-after":"900"});
+      }
+      if (!attempt || now - attempt.startedAt >= LOGIN_WINDOW_MS) loginAttempts.set(ip,{startedAt:now,count:0});
       const form = new URLSearchParams(await body(req));
       const submittedUser = Buffer.from(form.get("username") || "");
       const expectedUser = Buffer.from(USERNAME);
@@ -225,7 +251,13 @@ const server = http.createServer(async (req,res) => {
       const expected = Buffer.from(PASSWORD);
       const usernameValid = submittedUser.length === expectedUser.length && crypto.timingSafeEqual(submittedUser, expectedUser);
       const passwordValid = submitted.length === expected.length && crypto.timingSafeEqual(submitted, expected);
-      if (!usernameValid || !passwordValid) return send(res,401,pageLogin("Access denied. Check the admin credentials."));
+      if (!usernameValid || !passwordValid) {
+        const entry=loginAttempts.get(ip)||{startedAt:now,count:0};
+        entry.count+=1;loginAttempts.set(ip,entry);
+        if (loginAttempts.size > 5000) for (const [key,value] of loginAttempts) if (now-value.startedAt>=LOGIN_WINDOW_MS) loginAttempts.delete(key);
+        return send(res,401,pageLogin("Access denied. Check the admin credentials."));
+      }
+      loginAttempts.delete(ip);
       const stamp = String(Date.now());
       const cookie = `ops_session=${stamp}.${sign(stamp)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${SESSION_TTL_MS/1000}${IS_PRODUCTION ? "; Secure" : ""}`;
       res.writeHead(303,{Location:"/", "Set-Cookie":cookie,"Cache-Control":"no-store"}); return res.end();
