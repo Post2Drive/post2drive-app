@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { symbolFor } from "@/lib/currency";
-import { formatMarketDate } from "@/lib/localisation";
+import { formatMarketDate, formatMarketCurrency } from "@/lib/localisation";
 
 type PaymentJob = {
   id: string;
@@ -52,8 +52,8 @@ type PaymentData = {
   };
 };
 
-function money(value: number, currency: string) {
-  return `${symbolFor(currency)}${Number(value || 0).toFixed(2)}`;
+function money(value: number, currency: string, country: string) {
+  return formatMarketCurrency(Number(value || 0), { country, currency });
 }
 
 function date(value: string | null | undefined, country: string, currency: string) {
@@ -251,13 +251,13 @@ export default function PaymentsPage() {
           value={String(
             data.posterSummary.jobsPaymentPending,
           )}
-          subtext={money(data.posterSummary.awaitingPayment, data.currency)}
+          subtext={money(data.posterSummary.awaitingPayment, data.currency, data.country)}
         />
 
         <SummaryCard
           label="Driver payments received"
           value={String(data.driverSummary.jobsReceived)}
-          subtext={money(data.driverSummary.confirmedReceived, data.currency)}
+          subtext={money(data.driverSummary.confirmedReceived, data.currency, data.country)}
         />
 
         <SummaryCard
@@ -265,7 +265,7 @@ export default function PaymentsPage() {
           value={String(
             data.driverSummary.jobsAwaitingReceipt,
           )}
-          subtext={money(data.driverSummary.awaitingReceiptConfirmation, data.currency)}
+          subtext={money(data.driverSummary.awaitingReceiptConfirmation, data.currency, data.country)}
         />
       </section>
 
@@ -280,21 +280,21 @@ export default function PaymentsPage() {
           <span>
             Total value:{" "}
             <strong>
-              {money(data.posterSummary.totalValue, data.currency)}
+              {money(data.posterSummary.totalValue, data.currency, data.country)}
             </strong>
           </span>
 
           <span>
             Marked paid:{" "}
             <strong>
-              {money(data.posterSummary.markedPaid, data.currency)}
+              {money(data.posterSummary.markedPaid, data.currency, data.country)}
             </strong>
           </span>
 
           <span>
             Payment pending:{" "}
             <strong>
-              {money(data.posterSummary.awaitingPayment, data.currency)}
+              {money(data.posterSummary.awaitingPayment, data.currency, data.country)}
             </strong>
           </span>
         </div>
@@ -317,7 +317,7 @@ export default function PaymentsPage() {
                   </div>
 
                   <strong>
-                    {money(job.price, job.currency)}
+                    {money(job.price, job.currency, data.country)}
                   </strong>
                 </div>
 
@@ -373,21 +373,21 @@ export default function PaymentsPage() {
           <span>
             Total receivable:{" "}
             <strong>
-              {money(data.driverSummary.totalReceivable, data.currency)}
+              {money(data.driverSummary.totalReceivable, data.currency, data.country)}
             </strong>
           </span>
 
           <span>
             Received confirmed:{" "}
             <strong>
-              {money(data.driverSummary.confirmedReceived, data.currency)}
+              {money(data.driverSummary.confirmedReceived, data.currency, data.country)}
             </strong>
           </span>
 
           <span>
             Awaiting poster payment:{" "}
             <strong>
-              {money(data.driverSummary.awaitingPaymentFromPoster, data.currency)}
+              {money(data.driverSummary.awaitingPaymentFromPoster, data.currency, data.country)}
             </strong>
           </span>
         </div>
@@ -410,7 +410,7 @@ export default function PaymentsPage() {
                   </div>
 
                   <strong>
-                    {money(job.price, job.currency)}
+                    {money(job.price, job.currency, data.country)}
                   </strong>
                 </div>
 
