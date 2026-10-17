@@ -5,14 +5,16 @@ export const dynamic = "force-dynamic";
 
 export default function AdminAccessPage() {
   const configured = process.env.OPS_DASHBOARD_URL;
+  let dashboardUrl: string | null = null;
   if (configured) {
     try {
       const url = new URL(configured);
-      if (url.protocol === "https:") redirect(url.toString());
+      if (url.protocol === "https:") dashboardUrl = url.toString();
     } catch {
       // Do not redirect to malformed or insecure configured destinations.
     }
   }
+  if (dashboardUrl) redirect(dashboardUrl);
   return <main style={{ minHeight: "calc(100vh - 64px)", display: "grid", placeItems: "center", padding: 24 }}>
     <section style={{ maxWidth: 560, width: "100%", padding: 28, border: "1px solid var(--color-border)", borderRadius: 16, background: "var(--color-surface)" }}>
       <p style={{ color: "var(--color-muted)", fontWeight: 700, letterSpacing: ".12em", fontSize: 12 }}>POST2DRIVE · ADMIN ACCESS</p>
