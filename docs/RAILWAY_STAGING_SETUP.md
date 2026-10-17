@@ -50,7 +50,7 @@ Do not set `POST2DRIVE_QA_MODE=true` unless you are explicitly preparing the iso
 
 The QA endpoint now enqueues a run in the PostgreSQL-backed `qa_test_runs` ledger. The web request does not execute the load test. A separate worker must run the same tested source revision and use the same isolated staging database.
 
-Create a private Railway service named `Post2Drive QA Worker` in the **staging** environment. Connect it to the same repository and exact commit used by `Post2Drive Web`; set its start command to `npm run qa:worker`; do not assign it a public domain. Use Node.js 22.6 or newer. Configure these values in the staging environment only:
+Create a private Railway service named `Post2Drive QA Worker` in the **staging** environment. Connect it to the same repository and exact commit used by `Post2Drive Web`; set its build command to `npx prisma generate --schema=prisma/schema.prisma` (after dependency installation) and its start command to `npm run qa:worker`; do not assign it a public domain. Use Node.js 22.6 or newer. The worker imports Prisma Client directly, so the generate step is required before startup. Configure these values in the staging environment only:
 
 - `DATABASE_URL`: the same staging Postgres connection as the web service.
 - `POST2DRIVE_QA_MODE=true`
