@@ -689,3 +689,24 @@ main .button-link-secondary:hover {
     background: var(--ops-panel);
   }
 }
+
+/* Normalize legacy inline light surfaces so older sections inherit the same theme. */
+main [style*="background:"],
+main [style*="background-color:"] {
+  background-color: var(--ops-panel) !important;
+  color: var(--ops-text);
+}
+main [style*="#fff"],
+main [style*="#FFF"],
+main [style*="#ffffff"],
+main [style*="#FFFFFF"],
+main [style*="white"] {
+  color: var(--ops-text);
+}
+header {
+  background: var(--ops-panel) !important;
+  border-color: var(--ops-border) !important;
+}
+.main-nav-link[style*="#EAF3FF"] {
+  background: #1a2b42 !important;
+}
