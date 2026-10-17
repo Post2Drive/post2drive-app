@@ -194,7 +194,7 @@ export default function VehiclesPage() {
           <section key={vehicle.id} style={{ border: "1px solid var(--color-border)", borderRadius: 10, padding: 16 }}>
             <strong>{vehicleTypeLabel(vehicle.vehicleType, market.country)} — {vehicle.regPlate}</strong>
             <p>Status: <strong>{vehicle.verificationStatus}</strong></p>
-            <p>{[vehicle.make, vehicle.model, vehicle.mamKg ? `${market.weightUnit === "lb" ? Math.round(vehicle.mamKg / 0.45359237).toLocaleString("en-US") + " lb GVWR" : vehicle.mamKg + " kg"}` : null].filter(Boolean).join(" · ") || "No additional vehicle details"}</p>
+            <p>{[vehicle.make, vehicle.model, vehicle.mamKg ? `${marketProfile?.weightUnit === "lb" ? Math.round(vehicle.mamKg / 0.45359237).toLocaleString("en-US") + " lb GVWR" : vehicle.mamKg + " kg"}` : null].filter(Boolean).join(" · ") || "No additional vehicle details"}</p>
             <p>{marketProfile?.inspectionLabel ?? "Inspection expiry"}: {vehicle.motValidUntil ? formatMarketDate(vehicle.motValidUntil, market) : "Not recorded"}</p>
             <p>Insurance expiry: {vehicle.insuranceValidUntil ? new Date(vehicle.insuranceValidUntil).toLocaleDateString() : "Not recorded"}</p>
           </section>
