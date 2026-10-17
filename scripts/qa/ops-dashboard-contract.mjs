@@ -40,7 +40,7 @@ for (const [name, pattern] of [
   ["incident review queue", /INCIDENT_REPORTED/],
   ["incident decisions fail closed without bridge configuration", /Secure application action bridge is not configured/],
   ["aggregated market research", /Aggregated market research/],
-  ["small research groups suppressed", /HAVING count\(\) >= 3/],
+  ["small research groups suppressed", /HAVING count\(\*\) >= 3/],
   ["accounts and users metrics", /"totalAccounts"/],
   ["jobs and bids metrics", /"jobsWithBids"/],
   ["API performance metrics", /ApiRequestMetric/],
