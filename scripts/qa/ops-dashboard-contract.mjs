@@ -33,6 +33,7 @@ for (const [name, pattern] of [
   ["forwarded IP opt-in only", /TRUST_PROXY_HEADERS === "true"/],
   ["signed admin-action proxy", /api\/admin-action/],
   ["application-side signed bridge", /x-p2d-admin-signature/],
+  ["HTTPS bridge configuration gate", /function bridgeReady\(\)/],
   ["tester approve and reject actions", /tester-approve/],
 
   ["no readiness without evidence", /g.evidenceRef && g.reviewedAt/],
