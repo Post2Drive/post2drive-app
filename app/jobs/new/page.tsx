@@ -106,7 +106,7 @@ export default function NewJobPage() {
 
   useEffect(() => {
     if (marketProfile?.timeZone) {
-      setForm((current) => ({ ...current, pickupTimeZone: marketProfile.timeZone, dropoffTimeZone: current.dropoffTimeZone || marketProfile.timeZone }));
+      setForm((current) => ({ ...current, pickupTimeZone: marketProfile.timeZone, dropoffTimeZone: marketProfile.timeZone }));
     }
   }, [country, marketProfile?.timeZone]);
 
