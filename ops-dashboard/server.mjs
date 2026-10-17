@@ -182,7 +182,7 @@ document.addEventListener("click",async event=>{
 });
 function csvCell(value) {
   let text=String(value??"");
-  if(/^[=+\\-@]/.test(text))text="'"+text;
+  if(/^[=+@-]/.test(text))text="'"+text;
   return '"'+text.replace(/"/g,'""')+'"';
 }
 $("exportAudit").addEventListener("click",()=>{
@@ -192,7 +192,7 @@ $("exportAudit").addEventListener("click",()=>{
     ...(current.adminAuditEvents||[]).map(x=>[x.createdAt,x.actor,x.action,x.entityType,x.entityId,x.market,JSON.stringify(x.details??{})]),
     ...(current.auditEvents||[]).map(x=>[x.createdAt,"application workflow",x.action,"incident",x.jobId,x.market,x.description])
   ];
-  const csv=rows.map(row=>row.map(csvCell).join(",")).join("\\r\\n");
+  const csv=rows.map(row=>row.map(csvCell).join(",")).join("\r\n");
   const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
   const href=URL.createObjectURL(blob);
   const link=document.createElement("a");
