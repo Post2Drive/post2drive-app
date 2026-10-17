@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { VEHICLE_TYPES, vehicleTypeLabel } from "@/lib/vehicles";
-import { getLocalisationProfile } from "@/lib/localisation";
+import { getLocalisationProfile, getTimeZoneOptions } from "@/lib/localisation";
 
 type Job = {
   id: string;
@@ -18,6 +18,7 @@ type Job = {
   jobDate: string;
   pickupTime?: string | null;
   dropoffTime?: string | null;
+  pickupTimeZone?: string | null;
   vehicleType: string;
   weightKg?: number | null;
   dimensions?: string | null;
@@ -74,6 +75,7 @@ export default function EditJobPage() {
   const [jobDate, setJobDate] = useState("");
   const [pickupTime, setPickupTime] = useState("");
   const [dropoffTime, setDropoffTime] = useState("");
+  const [pickupTimeZone, setPickupTimeZone] = useState("Europe/London");
   const [vehicleType, setVehicleType] = useState("");
   const [weightKg, setWeightKg] = useState("");
   const [dimensions, setDimensions] = useState("");
@@ -123,6 +125,7 @@ export default function EditJobPage() {
         setJobDate(inputDate(loadedJob.jobDate));
         setPickupTime(loadedJob.pickupTime || "");
         setDropoffTime(loadedJob.dropoffTime || "");
+        setPickupTimeZone(loadedJob.pickupTimeZone || marketProfile?.timeZone || "Europe/London");
         setVehicleType(loadedJob.vehicleType || "");
         setWeightKg(
           loadedJob.weightKg !== null &&
@@ -213,6 +216,7 @@ export default function EditJobPage() {
         jobDate,
         pickupTime: pickupTime.trim() || undefined,
         dropoffTime: dropoffTime.trim() || undefined,
+        pickupTimeZone,
         vehicleType,
         weightKg: weightKg.trim()
           ? Number(weightKg) * (country === "US" ? 0.45359237 : 1)
@@ -501,6 +505,14 @@ export default function EditJobPage() {
               />
             </label>
 
+            {getTimeZoneOptions(country, marketProfile?.timeZone).length > 1 && (
+              <label>
+                <div style={{ fontSize: 13, marginBottom: 6 }}>Pickup time zone</div>
+                <select value={pickupTimeZone} onChange={(event) => setPickupTimeZone(event.target.value)} style={inputStyle} required>
+                  {getTimeZoneOptions(country, marketProfile?.timeZone).map((zone) => <option key={zone.value} value={zone.value}>{zone.label}</option>)}
+                </select>
+              </label>
+            )}
             <label>
               <div style={{ fontSize: 13, marginBottom: 6 }}>
                 Drop-off time
