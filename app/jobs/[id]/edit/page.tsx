@@ -140,7 +140,7 @@ export default function EditJobPage() {
         setPricePerMile(
           loadedJob.pricePerMile !== null &&
           loadedJob.pricePerMile !== undefined
-            ? String(loadedJob.pricePerMile)
+            ? String(marketProfile?.distanceUnit === "km" ? loadedJob.pricePerMile * 0.621371 : loadedJob.pricePerMile)
             : "",
         );
         setCurrency(loadedJob.currency || "GBP");
@@ -221,7 +221,7 @@ export default function EditJobPage() {
         crossBorder: false,
         price: Number(price),
         pricePerMile: pricePerMile.trim()
-          ? Number(pricePerMile)
+          ? Number(pricePerMile) * (marketProfile?.distanceUnit === "km" ? 1.609344 : 1)
           : undefined,
         currency: currency.trim().toUpperCase(),
         priceMode,
@@ -664,7 +664,7 @@ export default function EditJobPage() {
 
             <label>
               <div style={{ fontSize: 13, marginBottom: 6 }}>
-                Price per mile
+                Price per {marketProfile?.distanceUnit ?? "mile"}
               </div>
               <input
                 type="number"
