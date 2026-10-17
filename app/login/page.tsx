@@ -72,7 +72,7 @@ export default function LoginPage() {
             onChange={(e) => setPassword(e.target.value)}
           />
         </label>
-        {error && <p role="alert" style={{ color: "red" }}>{error}</p>}
+        {error && <p role="alert" style={{ color: "var(--color-danger)" }}>{error}</p>}
         {error && <div>
           <button type="button" onClick={() => void resendVerification()} disabled={resending || !email.trim()}>
             {resending ? "Requesting…" : "Resend verification email"}
