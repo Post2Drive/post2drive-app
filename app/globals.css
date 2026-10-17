@@ -652,3 +652,31 @@ tbody tr:hover td{background:#EFF4FF}
   *,*::before,*::after{transition-duration:.01ms!important;scroll-behavior:auto!important}
 }
 
+/* Marketplace listings: status colour is derived from the actual lifecycle value. */
+.marketplace-job-card{
+  border-left:5px solid var(--ops-blue)!important;
+  background:linear-gradient(135deg,#EDF1FF 0%,#FFFFFF 38%)!important;
+  transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease;
+}
+.marketplace-job-card[data-status="open"]{--job-accent:var(--ops-blue);border-left-color:var(--ops-blue)!important;background:linear-gradient(135deg,#EDF1FF 0%,#FFFFFF 44%)!important}
+.marketplace-job-card[data-status="accepted"]{--job-accent:var(--ops-violet);border-left-color:var(--ops-violet)!important;background:linear-gradient(135deg,#F0EBFF 0%,#FFFFFF 44%)!important}
+.marketplace-job-card[data-status="in_transit"]{--job-accent:var(--ops-cyan);border-left-color:var(--ops-cyan)!important;background:linear-gradient(135deg,#E5F7FC 0%,#FFFFFF 44%)!important}
+.marketplace-job-card[data-status="delivered"]{--job-accent:var(--ops-teal);border-left-color:var(--ops-teal)!important;background:linear-gradient(135deg,#E3F8F2 0%,#FFFFFF 44%)!important}
+.marketplace-job-card[data-status="completed"]{--job-accent:var(--ops-green);border-left-color:var(--ops-green)!important;background:linear-gradient(135deg,#E8F8ED 0%,#FFFFFF 44%)!important}
+.marketplace-job-card[data-status="cancelled"]{--job-accent:var(--ops-red);border-left-color:var(--ops-red)!important;background:linear-gradient(135deg,#FFE9ED 0%,#FFFFFF 44%)!important}
+.marketplace-job-card:hover{transform:translateY(-2px);box-shadow:0 12px 28px rgba(34,55,104,.10)!important}
+.marketplace-job-card>[style*="display: flex"]>div:first-child>div:first-child{color:var(--ops-text)!important}
+.marketplace-job-card strong{color:var(--job-accent,var(--ops-blue))}
+.marketplace-job-card a{transition:color .15s ease,border-color .15s ease}
+
+/* New-job flow: blue current step, teal completed steps, neutral upcoming steps. */
+.job-create-form{border-top:4px solid var(--ops-blue)!important;box-shadow:0 10px 30px rgba(34,55,104,.075)}
+.job-create-form .job-step-complete{background:var(--ops-teal)!important}
+.job-create-form .job-step-active{background:var(--ops-blue)!important;box-shadow:0 0 0 2px rgba(49,92,255,.12)}
+.job-create-form .job-step-upcoming{background:#DCE5F2!important}
+.job-create-form fieldset{background:linear-gradient(135deg,#F8FAFF,#FFFFFF)}
+.job-create-form legend{color:var(--ops-violet)}
+.job-create-form [style*="background: var(--color-primary-soft)"]{background:linear-gradient(90deg,#EDF1FF,#E3F8F2)!important;border:1px solid #D5E4F7}
+.job-create-form .button-link:not(.button-link-secondary){box-shadow:0 5px 14px rgba(49,92,255,.16)}
+@media(prefers-reduced-motion:reduce){.marketplace-job-card{transition:none}}
+
