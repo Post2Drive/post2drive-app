@@ -10,7 +10,7 @@ This runbook reflects the connected Railway configuration and runtime logs, not 
 
 | Service | ID | Purpose / state |
 |---|---|---|
-| `Post2Drive Web` | `561c5355-867e-49fc-84bf-e519e1ac8ef0` | Next.js marketplace + embedded operations dashboard; repository `Post2Drive/post2drive-app`, branch `feature/country-localisation-audit`; port 3000; health path `/api/health`. Latest previously completed commit `b15e0ff754860c564db6fc26930a024d85234938` succeeded; verify the later configuration redeploy before releases. |
+| `Post2Drive Web` | `561c5355-867e-49fc-84bf-e519e1ac8ef0` | Next.js marketplace + embedded operations dashboard; repository `Post2Drive/post2drive-app`, branch `feature/country-localisation-audit`; port 3000; health path `/api/health`. Commit `b15e0ff754860c564db6fc26930a024d85234938` and the subsequent configuration redeploy after clearing the unused Redis reference completed successfully; build, Prisma pre-deploy and Next.js startup passed. |
 | `Postgres-J8xl` | `ef2d67df-d9c9-4851-bb12-0728cf40c5da` | Current app/QA database service; 500 MB persistent volume. |
 | `Postgres` | `4fb4f66a-9869-4976-bc29-217efe0104f4` | Separate PostgreSQL service and separate 500 MB persistent volume; data owner/consumer not yet verified. Do not delete or repoint it until audited. |
 | `Post2Drive Infra Smoke Test` | `04107a5c-3b23-4d89-8864-af75355530a3` | **Actually runs `npm run qa:worker`**; it is a durable QA worker, not an HTTP smoke-test service. It has no public domain and its display name is stale. Rename it in Railway when convenient. |
@@ -58,5 +58,5 @@ The health route executes PostgreSQL `SELECT 1`; it does not prove every feature
 - Verify the effective `OPS_DASHBOARD_DATABASE_URL` target and fetch a report with the read-only role.
 - Audit tables/data and consumers of the separate `Postgres` service before deciding whether to keep it.
 - Rename `Post2Drive Infra Smoke Test` to `Post2Drive QA Worker` in Railway.
-- Verify final status of the redeploy initiated after blanking the unused Redis reference.
+- Check route-level 5xx metrics after the successful redeploy and confirm the operations-dashboard report data is correct.
 - Reconcile the currently deployed branch with `main` through normal review; PR #12 remains draft and unmerged.
