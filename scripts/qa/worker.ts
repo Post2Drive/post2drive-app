@@ -7,11 +7,8 @@
 import { hostname } from "node:os";
 import { randomUUID } from "node:crypto";
 import { setTimeout as sleep } from "node:timers/promises";
-// @ts-expect-error Native Node type stripping needs explicit TypeScript extensions.
 import { prisma } from "../../lib/prisma.ts";
-// @ts-expect-error Native Node type stripping needs explicit TypeScript extensions.
 import { isQaRunnerEnabled } from "../../lib/qaRunnerGuard.ts";
-// @ts-expect-error Native Node type stripping needs explicit TypeScript extensions.
 import { runQaWorker } from "../../lib/qaRunner.ts";
 
 const POLL_MS = Number(process.env.QA_WORKER_POLL_MS || 5000);
