@@ -356,13 +356,13 @@ export default function NewJobPage() {
       <nav aria-label="Job posting progress" style={{ display: "grid", gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))`, gap: 8, marginBottom: 22 }}>
         {steps.map((label, index) => (
           <div key={label} aria-current={index === step ? "step" : undefined} style={{ minWidth: 0 }}>
-            <div style={{ height: 5, borderRadius: 999, background: index <= step ? "var(--color-primary)" : "var(--color-border)", marginBottom: 7 }} />
+            <div className={index < step ? "job-step-complete" : index === step ? "job-step-active" : "job-step-upcoming"} style={{ height: 5, borderRadius: 999, background: index < step ? "var(--ops-teal)" : index === step ? "var(--ops-blue)" : "var(--color-border)", marginBottom: 7 }} />
             <p style={{ margin: 0, fontSize: 12, color: index === step ? "var(--color-text)" : "var(--color-muted)", fontWeight: index === step ? 800 : 500 }}>{index + 1}. {label}</p>
           </div>
         ))}
       </nav>
 
-      <form onSubmit={handleSubmit} noValidate style={{ display: "flex", flexDirection: "column", gap: 18, border: "1px solid var(--color-border)", borderRadius: 16, padding: 20, background: "var(--color-surface)" }}>
+      <form className="job-create-form" onSubmit={handleSubmit} noValidate style={{ display: "flex", flexDirection: "column", gap: 18, border: "1px solid var(--color-border)", borderRadius: 16, padding: 20, background: "var(--color-surface)" }}>
         {step === 0 && <section style={{ display: "grid", gap: 16 }}>
           <div><h2 style={{ margin: "0 0 5px", fontSize: 20 }}>Where and when?</h2><p style={{ margin: 0, color: "var(--color-muted)", fontSize: 14 }}>Use an address or place name. Map pins are optional, but help drivers find the exact entrance.</p></div>
           <label>Pickup location *<input required maxLength={300} value={form.pickup} onChange={(e) => update("pickup", e.target.value)} placeholder={country === "IN" ? "e.g. Gachibowli, Hyderabad" : "e.g. pickup address or business park"} /></label>
