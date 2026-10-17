@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 import { strict as assert } from "node:assert";
 
 const server = readFileSync(new URL("../../ops-dashboard/server.mjs", import.meta.url), "utf8");
+const bridge = readFileSync(new URL("../../app/api/internal/admin-bridge/route.ts", import.meta.url), "utf8");
+const migration = readFileSync(new URL("../../prisma/migrations/20261017183000_admin_audit_events/migration.sql", import.meta.url), "utf8");
 const pkg = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8"));
 
 for (const [name, pattern] of [
@@ -27,6 +29,15 @@ for (const [name, pattern] of [
   ["duplicate metrics requests coalesced", /metricsInflight/],
   ["login brute-force rate limit", /LOGIN_MAX_ATTEMPTS = 10/],
   ["forwarded IP opt-in only", /TRUST_PROXY_HEADERS === "true"/],
+  ["signed admin-action proxy", /api\/admin-action/],
+  ["application-side signed bridge", /x-p2d-admin-signature/],
+  ["timestamp window and replay nonce", /120_000/],
+  ["durable admin audit writes", /adminAuditEvent\.create/],
+  ["tester approve and reject actions", /tester-approve/],
+  ["incident lifecycle guard", /Only an accepted or in-transit job can be terminated/],
+  ["one-time code stores only hash", /codeHash/],
+  ["audit migration table", /CREATE TABLE "AdminAuditEvent"/],
+
   ["no readiness without evidence", /g.evidenceRef && g.reviewedAt/],
   ["categorized admin navigation", /class="section-nav"/],
   ["tester review queue", /Pending tester applications/],
@@ -50,4 +61,9 @@ for (const [name, pattern] of [
   else assert.match(server, pattern, name);
 }
 assert.equal(pkg.scripts["qa:ops-dashboard"], "node scripts/qa/ops-dashboard-contract.mjs");
+assert.match(bridge, /authenticateBridge/);
+assert.match(bridge, /timingSafeEqual/);
+assert.match(bridge, /rateLimitBucket\.create/);
+assert.match(bridge, /adminAuditEvent\.create/);
+assert.match(migration, /AdminAuditEvent_createdAt_idx/);
 console.log("Ops dashboard contract checks passed.");
