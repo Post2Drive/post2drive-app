@@ -24,6 +24,7 @@ export type LocalisationProfile = {
   jurisdictionSelectionRequired: boolean;
   weightUnit: "kg" | "lb";
   vehicleMassLabel: string;
+  distanceUnit: "km" | "mile";
 };
 
 const VEHICLE_TERMS: Record<string, Pick<LocalisationProfile,
@@ -37,7 +38,7 @@ const VEHICLE_TERMS: Record<string, Pick<LocalisationProfile,
     inspectionLabel: "MOT valid until",
     inspectionHelp: "Enter the MOT expiry date where an MOT is required. Exempt vehicles need manual review.",
     authorityLabel: "DVLA",
-    inspectionRequiredAtCountryLevel: true,
+    inspectionRequiredAtCountryLevel: false,
     jurisdictionSelectionRequired: false,
   },
   IN: {
@@ -108,6 +109,7 @@ export function getLocalisationProfile(identity: MarketIdentity): LocalisationPr
     marketplaceLabel: market.label,
     ...terms,
     weightUnit: market.country === "US" ? "lb" : "kg",
+    distanceUnit: market.country === "US" || market.country === "GB" ? "mile" : "km",
     vehicleMassLabel: market.country === "US" ? "Gross Vehicle Weight Rating (GVWR, lb)" : market.country === "GB" ? "Maximum authorised mass (kg)" : market.country === "IN" ? "Gross vehicle weight (kg)" : "Maximum vehicle weight (kg)",
   };
 }
