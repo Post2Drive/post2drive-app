@@ -163,7 +163,7 @@ document.addEventListener("click",async event=>{
       button.disabled=true;
       const result=await adminAction({action:"tester-generate-code"});
       await load();
-      alert("New tester access code (shown once):\n\n"+result.code+"\n\nCopy it now; the raw code is not stored.");
+      alert("New tester access code (shown once):\\n\\n"+result.code+"\\n\\nCopy it now; the raw code is not stored.");
       return;
     }
     if(button.dataset.adminAction) {
@@ -206,7 +206,7 @@ $("exportAudit").addEventListener("click",()=>{
     ...(current.adminAuditEvents||[]).map(x=>[x.createdAt,x.actor,x.action,x.entityType,x.entityId,x.market,JSON.stringify(x.details??{})]),
     ...(current.auditEvents||[]).map(x=>[x.createdAt,"application workflow",x.action,"incident",x.jobId,x.market,x.description])
   ];
-  const csv=rows.map(row=>row.map(csvCell).join(",")).join("\r\n");
+  const csv=rows.map(row=>row.map(csvCell).join(",")).join("\\r\\n");
   const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
   const href=URL.createObjectURL(blob);
   const link=document.createElement("a");
