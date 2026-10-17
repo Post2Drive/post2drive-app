@@ -62,19 +62,19 @@ For the repository's aspirational statistical target of no more than **1 failure
 
 ## Railway staging HTTP telemetry (24-hour window)
 
-Snapshot for Post2Drive Web in the Railway `staging` environment:
+Snapshot for Post2Drive Web in the Railway `staging` environment, refreshed 2026-10-17 around 17:02 UTC:
 
-| HTTP class | Count | Share of 143,913 requests |
+| HTTP class | Count | Share of 143,917 requests |
 |---|---:|---:|
-| 2xx | 89,806 | 62.40% |
+| 2xx | 89,810 | 62.40% |
 | 3xx | 0 | 0.00% |
 | 4xx | 53,552 | 37.21% |
 | 5xx | 555 | 0.386% |
-| **Total** | **143,913** | **100%** |
+| **Total** | **143,917** | **100%** |
 
 These are proxy-level counts, not QA-run pass/fail totals. The high 4xx proportion is consistent with large volumes of intentional negative/authentication/invalid-input tests in the campaign; 4xx still needs route-aware expected-versus-unexpected classification before a user-facing rate is reported.
 
-The 555 5xx responses were bursty in the telemetry buckets: 141 in one bucket, then 138 in each of three other high-traffic buckets; the other reported buckets had zero 5xx. A limited sampled log window showed six 503 responses on `POST /api/verification/start/webhook`. The route-matrix contract explicitly allows `401` or `503` for an unsigned webhook, and the handler returns 503 when `VERIFICATION_WEBHOOK_SECRET` is not configured. This is an expected disabled-integration response in staging, but it is still counted as HTTP 5xx by the platform metric. The sampled log window is not a complete exhaustive enumeration of all 555 responses, so attribution of every 5xx to this endpoint remains unconfirmed.
+The 555 5xx responses were bursty in the refreshed telemetry buckets: 141, 276 and 138 in the three non-zero buckets; the other returned buckets had zero 5xx. Route-filtered Railway metrics for the same rolling 24-hour window attribute **552 of the 555 5xx responses** to `POST /api/verification/start/webhook` (552 requests to that route, all counted as 5xx). The route-matrix contract allows `401` or `503` for an unsigned webhook, and the handler returns 503 when `VERIFICATION_WEBHOOK_SECRET` is not configured. A sampled HTTP-log review confirms 503s on that route, but the log sample is not exhaustive. **Three 5xx responses remain unattributed** by the available route-filtered metrics and must be identified before the 5xx gate is cleared.
 
 **Action for monitoring:** keep raw 5xx visible, but distinguish expected test-only disabled-integration responses from unexpected 5xx by route and test-run correlation. Do not silently subtract or relabel them without retaining the raw count. Investigate any 5xx on unrelated routes and report both raw and classified rates.
 
