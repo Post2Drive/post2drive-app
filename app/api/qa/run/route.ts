@@ -75,7 +75,7 @@ async function enqueueQaRun(country: string) {
   const runId = new Date().toISOString().replace(/[^0-9]/g, "").slice(0, 14) + "-" + crypto.randomUUID();
   return prisma.$transaction(async tx => {
     // Serialize request-side checks across web replicas, then enforce one global active run.
-    await tx.$queryRawUnsafe("SELECT pg_advisory_xact_lock(hashtext($1))", "post2drive-qa-run-queue");
+    await tx.$queryRawUnsafe<Array<{ locked: number }>>("SELECT 1 AS locked FROM (SELECT pg_advisory_xact_lock(hashtext($1))) AS lock_guard", "post2drive-qa-run-queue");
     const existing = await tx.$queryRawUnsafe<Array<{ id: string; status: string }>>(
       "SELECT id,status FROM qa_test_runs WHERE status IN ('queued','running') ORDER BY started_at DESC LIMIT 1"
     );
