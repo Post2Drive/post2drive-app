@@ -81,7 +81,9 @@ async function handler(req: Request) {
 
   if (action === "tester-approve" || action === "tester-reject") {
     const accountId = typeof body?.accountId === "string" ? body.accountId : "";
+    const decisionReason = typeof body?.reason === "string" ? body.reason.trim() : "";
     if (!accountId || accountId.length > 128) return NextResponse.json({ error: "A valid account ID is required." }, { status: 400 });
+    if (!decisionReason || decisionReason.length > 1000) return NextResponse.json({ error: "A review reason is required and must be at most 1000 characters." }, { status: 400 });
     const account = await prisma.account.findUnique({
       where: { id: accountId },
       include: { vehicles: { select: { id: true } }, users: { select: { emailVerifiedAt: true } } },
@@ -95,7 +97,7 @@ async function handler(req: Request) {
           data: { testerApprovalStatus: "rejected", isTester: false },
         });
         if (changed.count !== 1) return false;
-        await tx.adminAuditEvent.create({ data: { actor, action: "tester_application_rejected", entityType: "account", entityId: accountId, market, details: { decision: "rejected" } } });
+        await tx.adminAuditEvent.create({ data: { actor, action: "tester_application_rejected", entityType: "account", entityId: accountId, market, details: { decision: "rejected", reason: decisionReason } } });
         return true;
       });
       if (!result) return NextResponse.json({ error: "This application has already been reviewed." }, { status: 409 });
@@ -122,7 +124,7 @@ async function handler(req: Request) {
         },
       });
       if (changed.count !== 1) return false;
-      await tx.adminAuditEvent.create({ data: { actor, action: "tester_application_approved", entityType: "account", entityId: accountId, market, details: { decision: "approved", trialEndsAt: freeEndsAt.toISOString() } } });
+      await tx.adminAuditEvent.create({ data: { actor, action: "tester_application_approved", entityType: "account", entityId: accountId, market, details: { decision: "approved", reason: decisionReason, trialEndsAt: freeEndsAt.toISOString() } } });
       return true;
     });
     if (!result) return NextResponse.json({ error: "This application has already been reviewed." }, { status: 409 });
@@ -192,7 +194,7 @@ async function handler(req: Request) {
           },
         });
       }
-      await tx.adminAuditEvent.create({ data: { actor, action: "incident_resolution_recorded", entityType: "incident", entityId: incidentId, market: job.poster.country, details: { jobId, outcome, lifecycleChanged, finalStatus, notificationRecipients: recipients.length } } });
+      await tx.adminAuditEvent.create({ data: { actor, action: "incident_resolution_recorded", entityType: "incident", entityId: incidentId, market: job.poster.country, details: { jobId, outcome, notes, lifecycleChanged, finalStatus, notificationRecipients: recipients.length } } });
       return { resolution, finalStatus, lifecycleChanged };
     });
     if (!result) return NextResponse.json({ error: "The job status changed while this decision was being processed. Refresh and review before retrying." }, { status: 409 });
