@@ -26,6 +26,7 @@ for (const [name, pattern] of [
   ["short-lived metrics cache", /METRICS_CACHE_TTL_MS = 30_000/],
   ["duplicate metrics requests coalesced", /metricsInflight/],
   ["login brute-force rate limit", /LOGIN_MAX_ATTEMPTS = 10/],
+  ["forwarded IP opt-in only", /TRUST_PROXY_HEADERS === "true"/],
   ["no readiness without evidence", /g.evidenceRef && g.reviewedAt/],
   ["categorized admin navigation", /class="section-nav"/],
   ["tester review queue", /Pending tester applications/],
