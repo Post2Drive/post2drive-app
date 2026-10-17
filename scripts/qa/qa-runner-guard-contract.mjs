@@ -112,7 +112,9 @@ try {
   assert.ok(qaWorker.includes("FOR UPDATE SKIP LOCKED"), "worker claims must be atomic across replicas");
   assert.ok(qaWorker.includes("workerHeartbeatAt"), "worker heartbeat must be persisted");
   assert.ok(qaWorker.includes("runQaWorker(job.id, country)"), "worker must invoke the shared runner");
-  assert.ok(qaRunner.includes("status='running' AND target_url=$2 AND target_accounts=10000"), "runner must verify a worker-claimed staging row");
+  assert.ok(qaRunner.includes("status='running' AND target_url=$2 AND target_accounts=10000 AND summary->>'workerId'=$3"), "runner must verify the exact worker-owned staging row");
+  assert.ok(qaRunner.includes("summary=COALESCE(summary,'{}'::jsonb) || $7::jsonb"), "run finalization must preserve worker metadata");
+  assert.ok(qaRunner.includes("summary->>'workerId'=$8"), "only the claiming worker may finalize a run");
   assert.ok(!qaRunner.includes("INSERT INTO qa_test_runs"), "runner must not create duplicate run records");
 
   console.log(JSON.stringify({
