@@ -8,7 +8,7 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import SignOutButton from "@/app/sign-out-button";
 import { symbolFor, COUNTRIES } from "@/lib/currency";
-import { formatMarketDate, getLocalisationProfile, getTimeZoneOptions } from "@/lib/localisation";
+import { formatMarketDate, formatMarketCurrency, getLocalisationProfile, getTimeZoneOptions } from "@/lib/localisation";
 import { vehicleTypeLabel } from "@/lib/vehicles";
 
 type Contact = {
@@ -912,16 +912,14 @@ export default function JobsPage() {
                   <span>{vehicleTypeLabel(job.vehicleType, accountCountry)}</span>
                   <span>·</span>
                   <strong>
-                    {symbolFor(job.currency)}
-                    {job.price}
+                    {formatMarketCurrency(job.price, { country: accountCountry || "GB", currency: job.currency })}
                   </strong>
 
                   {job.pricePerMile && (
                     <>
                       <span>·</span>
                       <span>
-                        {symbolFor(job.currency)}
-                        {(marketProfile?.distanceUnit === "km" ? job.pricePerMile * 0.621371 : job.pricePerMile).toFixed(2)}/{marketProfile?.distanceUnit ?? "mile"}
+                        {formatMarketCurrency(marketProfile?.distanceUnit === "km" ? job.pricePerMile * 0.621371 : job.pricePerMile, { country: accountCountry || "GB", currency: job.currency })}/{marketProfile?.distanceUnit ?? "mile"}
                       </span>
                     </>
                   )}
@@ -1243,12 +1241,7 @@ export default function JobsPage() {
                                     .displayId
                                 }
                                 ) —{" "}
-                                {symbolFor(
-                                  job.currency
-                                )}
-                                {
-                                  bid.amount
-                                }
+                                {formatMarketCurrency(bid.amount, { country: accountCountry || "GB", currency: job.currency })}
 
                                 {ageText(
                                   bid
