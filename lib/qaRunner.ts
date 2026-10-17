@@ -750,14 +750,15 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
       const rows = await prisma.$queryRawUnsafe<Array<{ count: bigint | number }>>(query, ...params);
       return Number(rows[0]?.count ?? 0);
     };
+    const poolRunId = accountPoolRunId ?? runId;
     const persistedDataSummary = {
-      qaMappedAccounts: await count("SELECT count(*)::int AS count FROM qa_test_accounts WHERE run_id=$1", runId),
-      matchingAccounts: await count('SELECT count(*)::int AS count FROM "Account" a JOIN qa_test_accounts q ON q.account_id=a.id WHERE q.run_id=$1', runId),
-      matchingUsers: await count('SELECT count(*)::int AS count FROM "User" u JOIN qa_test_accounts q ON q.account_id=u."accountId" WHERE q.run_id=$1', runId),
+      qaMappedAccounts: await count("SELECT count(*)::int AS count FROM qa_test_accounts WHERE run_id=$1", poolRunId),
+      matchingAccounts: await count('SELECT count(*)::int AS count FROM "Account" a JOIN qa_test_accounts q ON q.account_id=a.id WHERE q.run_id=$1', poolRunId),
+      matchingUsers: await count('SELECT count(*)::int AS count FROM "User" u JOIN qa_test_accounts q ON q.account_id=u."accountId" WHERE q.run_id=$1', poolRunId),
       syntheticJobs: await count('SELECT count(*)::int AS count FROM "Job" WHERE notes LIKE $1', "%" + marker + "%"),
       syntheticBids: await count('SELECT count(*)::int AS count FROM "Bid" b JOIN "Job" j ON j.id=b."jobId" WHERE j.notes LIKE $1', "%" + marker + "%"),
       syntheticRatings: await count('SELECT count(*)::int AS count FROM "Rating" r JOIN "Job" j ON j.id=r."jobId" WHERE j.notes LIKE $1', "%" + marker + "%"),
-      syntheticVehicles: await count('SELECT count(*)::int AS count FROM "Vehicle" v JOIN qa_test_accounts q ON q.account_id=v."accountId" WHERE q.run_id=$1', runId),
+      syntheticVehicles: await count('SELECT count(*)::int AS count FROM "Vehicle" v JOIN qa_test_accounts q ON q.account_id=v."accountId" WHERE q.run_id=$1', poolRunId),
       syntheticJobActivities: await count('SELECT count(*)::int AS count FROM "JobActivity" a JOIN "Job" j ON j.id=a."jobId" WHERE j.notes LIKE $1', "%" + marker + "%"),
       loggedInteractions: await count("SELECT count(*)::int AS count FROM qa_test_events WHERE run_id=$1", runId),
     };
