@@ -19,6 +19,7 @@ type Job = {
   pickupTime?: string | null;
   dropoffTime?: string | null;
   pickupTimeZone?: string | null;
+  dropoffTimeZone?: string | null;
   vehicleType: string;
   weightKg?: number | null;
   dimensions?: string | null;
@@ -76,6 +77,7 @@ export default function EditJobPage() {
   const [pickupTime, setPickupTime] = useState("");
   const [dropoffTime, setDropoffTime] = useState("");
   const [pickupTimeZone, setPickupTimeZone] = useState(marketProfile?.timeZone ?? "UTC");
+  const [dropoffTimeZone, setDropoffTimeZone] = useState(marketProfile?.timeZone ?? "UTC");
   const [vehicleType, setVehicleType] = useState("");
   const [weightKg, setWeightKg] = useState("");
   const [dimensions, setDimensions] = useState("");
@@ -126,6 +128,7 @@ export default function EditJobPage() {
         setPickupTime(loadedJob.pickupTime || "");
         setDropoffTime(loadedJob.dropoffTime || "");
         setPickupTimeZone(loadedJob.pickupTimeZone || marketProfile?.timeZone || "UTC");
+        setDropoffTimeZone(loadedJob.dropoffTimeZone || loadedJob.pickupTimeZone || marketProfile?.timeZone || "UTC");
         setVehicleType(loadedJob.vehicleType || "");
         setWeightKg(
           loadedJob.weightKg !== null &&
@@ -217,6 +220,7 @@ export default function EditJobPage() {
         pickupTime: pickupTime.trim() || undefined,
         dropoffTime: dropoffTime.trim() || undefined,
         pickupTimeZone,
+        dropoffTimeZone,
         vehicleType,
         weightKg: weightKg.trim()
           ? Number(weightKg) * (country === "US" ? 0.45359237 : 1)
@@ -509,6 +513,14 @@ export default function EditJobPage() {
               <label>
                 <div style={{ fontSize: 13, marginBottom: 6 }}>Pickup time zone</div>
                 <select value={pickupTimeZone} onChange={(event) => setPickupTimeZone(event.target.value)} style={inputStyle} required>
+                  {getTimeZoneOptions(country, marketProfile?.timeZone).map((zone) => <option key={zone.value} value={zone.value}>{zone.label}</option>)}
+                </select>
+              </label>
+            )}
+            {getTimeZoneOptions(country, marketProfile?.timeZone).length > 1 && (
+              <label>
+                <div style={{ fontSize: 13, marginBottom: 6 }}>Drop-off time zone</div>
+                <select value={dropoffTimeZone} onChange={(event) => setDropoffTimeZone(event.target.value)} style={inputStyle} required>
                   {getTimeZoneOptions(country, marketProfile?.timeZone).map((zone) => <option key={zone.value} value={zone.value}>{zone.label}</option>)}
                 </select>
               </label>
