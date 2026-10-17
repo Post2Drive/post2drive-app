@@ -65,6 +65,7 @@ export default function NewJobPage() {
 
   const marketProfile = getLocalisationProfile({ country, currency });
   const timeZoneLabel = marketProfile?.timeZone ?? "your market time zone";
+  const selectedTimeZoneLabel = getTimeZoneOptions(country, marketProfile?.timeZone).find((zone) => zone.value === form.pickupTimeZone)?.label ?? form.pickupTimeZone ?? timeZoneLabel;
   const steps = country === "IN"
     ? ["Route & schedule", "Vehicle & pricing", "Contacts & review"]
     : ["Route & schedule", "Vehicle & pricing", "Contacts & instructions", "Review & post"];
@@ -368,7 +369,7 @@ export default function NewJobPage() {
           <label>Drop-off map pin (optional)<input value={form.dropoffPin} onChange={(e) => update("dropoffPin", e.target.value)} placeholder="Latitude,longitude or Google Maps link" /></label>
           <div className="signup-fields">
             <label>Pickup date *<input required type="date" value={form.jobDate} onChange={(e) => update("jobDate", e.target.value)} /></label>
-            <label>Pickup time *<input required type="time" value={form.pickupTime} onChange={(e) => update("pickupTime", e.target.value)} /><small>Enter the time at the pickup location ({form.pickupTimeZone || timeZoneLabel}).</small></label>
+            <label>Pickup time *<input required type="time" value={form.pickupTime} onChange={(e) => update("pickupTime", e.target.value)} /><small>Enter the time at the pickup location ({selectedTimeZoneLabel}).</small></label>
             {getTimeZoneOptions(country, marketProfile?.timeZone).length > 1 && (
               <label>Pickup time zone
                 <select value={form.pickupTimeZone} onChange={(e) => update("pickupTimeZone", e.target.value)} required>
@@ -409,7 +410,7 @@ export default function NewJobPage() {
             <label>Phone<input maxLength={50} value={form.dropoffContactPhone} disabled={form.dropoffSameAsAccount || form.dropoffSameAsPickup} onChange={(e) => update("dropoffContactPhone", e.target.value)} placeholder="Site contact phone" /></label>
           </fieldset>
           <label>Delivery instructions (optional)<textarea maxLength={5000} rows={4} value={form.notes} onChange={(e) => update("notes", e.target.value)} placeholder="Access information, loading details, timing constraints…" /><small>{form.notes.length}/5,000 characters</small></label>
-          {country === "IN" && <div style={{ borderTop: "1px solid var(--color-border)", paddingTop: 14 }}><h3 style={{ margin: "0 0 10px" }}>Review your requirement</h3><ReviewSummary form={form} currency={currency} date={form.jobDate} timeZoneLabel={form.pickupTimeZone || timeZoneLabel} country={country} /></div>}
+          {country === "IN" && <div style={{ borderTop: "1px solid var(--color-border)", paddingTop: 14 }}><h3 style={{ margin: "0 0 10px" }}>Review your requirement</h3><ReviewSummary form={form} currency={currency} date={form.jobDate} timeZoneLabel={selectedTimeZoneLabel} country={country} /></div>}
         </section>}
 
         {step === 3 && country !== "IN" && <section style={{ display: "grid", gap: 16 }}>
