@@ -17,7 +17,7 @@ assert.match(worker, /ORDER BY started_at ASC\s+LIMIT 1\s+FOR UPDATE SKIP LOCKED
 assert.match(worker, /FOR UPDATE SKIP LOCKED/,"worker must atomically claim one queued row");
 assert.match(worker, /SET status = 'running'/,"claim must transition queued to running");
 assert.match(worker, /workerHeartbeatAt/,"worker must persist liveness evidence");
-assert.match(worker, /runQaWorker\(job\.id, country, workerId\)/,"worker must execute the shared QA runner with the claim owner ID");
+assert.match(worker, /runQaWorker\(job\.id, country, workerId, testType\)/,"worker must execute the shared QA runner with the claim owner ID");
 assert.doesNotMatch(worker, /SET status\s*=\s*'queued'/,"worker must never automatically requeue a potentially live run");
 
 assert.match(runner, /QA_ACCOUNT_COUNT !== "10000"/,"runner preflight must enforce 10k account target");
@@ -25,7 +25,11 @@ assert.match(runner, /status='running' AND target_url=\$2 AND target_accounts=10
 assert.match(runner, /summary=COALESCE\(summary,'\{\}'::jsonb\) \|\| \$7::jsonb/,"run finalization must preserve worker ownership and heartbeat metadata");
 assert.match(runner, /summary->>'workerId'=\$8/,"only the worker that claimed the run may finalize it");
 assert.doesNotMatch(runner, /INSERT INTO qa_test_runs/,"runner must not create a duplicate run record");
-assert.match(runner, /routeMatrixTarget = 10_000/,"full API route matrix target must remain exactly 10k");
+assert.match(runner, /routeMatrixTarget = testType === "synthetic-accounts" \? 0 : 10_000/,"API-load and workflow runs must target 10k requests; account-only run must not require a route matrix");
+assert.match(route, /"api-load", "synthetic-accounts", "workflow-e2e"/,"queue must accept three distinct QA workload types");
+assert.match(runner, /accountProvisioningOnly/,"synthetic-account test must stop after account provisioning");
+assert.match(runner, /loadRequestCount/,"API-load test must record its 10k request count");
+assert.match(runner, /workflow-e2e/,"workflow test mode must remain separately identifiable");
 
 assert.match(route, /WHERE id=\$1 FOR UPDATE/,"cleanup must lock the run row to serialize repeat requests");
 assert.match(route, /persistedSummary\.syntheticDataRetained === false/,"cleanup must be idempotent and preserve the first deletion counts");
