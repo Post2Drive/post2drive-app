@@ -225,7 +225,7 @@ async function metricsUncached(url) {
     apiHourly:normalise(apiHourly).map(r=>({hour:r.hour,requests:Number(r.requests||0),errors:Number(r.errors||0)})),
     routes:normalise(routes),recentErrors:normalise(recentErrors),qaRuns:normalise(qaRuns),qaFailures:normalise(qaFailures),
     paymentStatuses:normalise(paymentStatuses),activity:normalise(activityRows),bidSummary:normalise(bidRows),
-    testerApplications:normalise(testerApplications),testerCodes:normalise(testerCodes),incidentQueue:normalise(incidentQueue),researchResults:normalise(researchResults),notificationSummary:normalise(notificationSummary),auditEvents:normalise(auditEvents),countryReadiness:countryReadiness(),
+    testerApplications:normalise(testerApplications),testerCodes:normalise(testerCodes),incidentQueue:normalise(incidentQueue),researchResults:normalise(researchResults),notificationSummary:normalise(notificationSummary),auditEvents:normalise(auditEvents),countryReadiness:countryReadiness(),adminActionsEnabled:Boolean(process.env.POST2DRIVE_APP_URL && process.env.OPS_DASHBOARD_BRIDGE_SECRET && process.env.OPS_DASHBOARD_BRIDGE_SECRET.length>=32),
     sources:sourceList(code),patterns,warnings,
     dataCoverage:warnings.length?"Partial · some sources unavailable":"Database query coverage available; external industry feeds pending",
     externalCoverage:"Official source directory only; no live national logistics series yet",
@@ -289,6 +289,29 @@ const server = http.createServer(async (req,res) => {
     if (!validSession(req)) {
       if (url.pathname.startsWith("/api/")) return send(res,401,JSON.stringify({error:"Operations access required"}),"application/json");
       return send(res,200,pageLogin());
+    }
+    if (req.method === "POST" && url.pathname === "/api/admin-action") {
+      const raw = await body(req);
+      let actionBody;
+      try { actionBody = JSON.parse(raw); } catch { return send(res,400,JSON.stringify({error:"Request body must be valid JSON"}),"application/json"); }
+      const allowed = new Set(["tester-approve","tester-reject","tester-generate-code","incident-resolve"]);
+      if (!allowed.has(actionBody?.action)) return send(res,400,JSON.stringify({error:"Unsupported admin action"}),"application/json");
+      const base = process.env.POST2DRIVE_APP_URL;
+      const bridgeSecret = process.env.OPS_DASHBOARD_BRIDGE_SECRET;
+      if (!base || !bridgeSecret || bridgeSecret.length < 32) return send(res,503,JSON.stringify({error:"Secure application action bridge is not configured"}),"application/json");
+      let target;
+      try { target = new URL("/api/internal/admin-bridge",base); } catch { return send(res,503,JSON.stringify({error:"Application bridge URL is invalid"}),"application/json"); }
+      if (IS_PRODUCTION && target.protocol !== "https:") return send(res,503,JSON.stringify({error:"Application bridge must use HTTPS"}),"application/json");
+      actionBody.actor = USERNAME;
+      const payload = JSON.stringify(actionBody);
+      const timestamp = String(Date.now());
+      const nonce = crypto.randomBytes(16).toString("hex");
+      const signature = crypto.createHmac("sha256",bridgeSecret).update(timestamp+"."+nonce+"."+payload).digest("hex");
+      const response = await fetch(target,{method:"POST",headers:{"content-type":"application/json","x-p2d-admin-timestamp":timestamp,"x-p2d-admin-nonce":nonce,"x-p2d-admin-signature":signature},body:payload,signal:AbortSignal.timeout(10_000)});
+      const responseText = await response.text();
+      let responseBody;
+      try { responseBody = JSON.parse(responseText); } catch { responseBody = {error:"Application bridge returned an invalid response"}; }
+      return send(res,response.status,JSON.stringify(responseBody),"application/json");
     }
     if (req.method === "GET" && url.pathname === "/") return send(res,200,dashboard);
     if (req.method === "GET" && url.pathname === "/api/metrics") {
