@@ -99,10 +99,10 @@ export default function SubscriptionStatus() {
     <section
       style={{
         background: "var(--color-surface)",
-        border: "1px solid #D9E2EC",
+        border: "1px solid var(--color-border)",
         borderRadius: 14,
         padding: 20,
-        boxShadow: "0 1px 3px rgba(16,42,67,0.08)",
+        boxShadow: "var(--shadow-card)",
       }}
     >
       <div
@@ -173,7 +173,7 @@ export default function SubscriptionStatus() {
         <div
           style={{
             marginTop: 17,
-            borderTop: "1px solid #D9E2EC",
+            borderTop: "1px solid var(--color-border)",
             paddingTop: 15,
             display: "flex",
             alignItems: "center",
