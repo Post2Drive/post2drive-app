@@ -8,7 +8,7 @@ export const MARKETS = {
   BE: { country: "BE", currency: "EUR", label: "Belgium", timeZone: "Europe/Brussels", symbol: "€", locale: "fr-BE", dialingCode: "+32" },
   BG: { country: "BG", currency: "EUR", label: "Bulgaria", timeZone: "Europe/Sofia", symbol: "€", locale: "bg-BG", dialingCode: "+359" },
   HR: { country: "HR", currency: "EUR", label: "Croatia", timeZone: "Europe/Zagreb", symbol: "€", locale: "hr-HR", dialingCode: "+385" },
-  CY: { country: "CY", currency: "EUR", label: "Cyprus", timeZone: "Asia/Nicosia", symbol: "€", locale: "el-CY", dialingCode: "+357" },
+  CY: { country: "CY", currency: "EUR", label: "Cyprus", timeZone: "Europe/Nicosia", symbol: "€", locale: "el-CY", dialingCode: "+357" },
   EE: { country: "EE", currency: "EUR", label: "Estonia", timeZone: "Europe/Tallinn", symbol: "€", locale: "et-EE", dialingCode: "+372" },
   FI: { country: "FI", currency: "EUR", label: "Finland", timeZone: "Europe/Helsinki", symbol: "€", locale: "fi-FI", dialingCode: "+358" },
   FR: { country: "FR", currency: "EUR", label: "France", timeZone: "Europe/Paris", symbol: "€", locale: "fr-FR", dialingCode: "+33" },
