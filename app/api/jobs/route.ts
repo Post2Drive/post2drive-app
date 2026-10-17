@@ -376,7 +376,7 @@ async function POSTHandler(req: Request) {
   const marketplaceAccessCheck = await getAccountAccess(accountId);
   let pickupAt: Date;
   try {
-    pickupAt = getJobPickupAt(validation.data.jobDate, validation.data.pickupTime, account);
+    pickupAt = getJobPickupAt(validation.data.jobDate, validation.data.pickupTime, account, validation.data.pickupTimeZone);
   } catch (error) {
     const code = error instanceof Error ? error.message : "";
     const marketName = `${marketForAccount(account)?.label ?? "Selected market"} local time`;
