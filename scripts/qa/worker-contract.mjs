@@ -21,7 +21,9 @@ assert.match(worker, /runQaWorker\(job\.id, country\)/,"worker must execute the 
 assert.doesNotMatch(worker, /SET status\s*=\s*'queued'/,"worker must never automatically requeue a potentially live run");
 
 assert.match(runner, /QA_ACCOUNT_COUNT !== "10000"/,"runner preflight must enforce 10k account target");
-assert.match(runner, /status='running' AND target_url=\$2 AND target_accounts=10000/,"runner must require a row claimed by the worker");
+assert.match(runner, /status='running' AND target_url=\$2 AND target_accounts=10000 AND summary->>'workerId'=\$3/,"runner must verify the exact worker-owned row");
+assert.match(runner, /summary=COALESCE\(summary,'\{\}'::jsonb\) \|\| \$7::jsonb/,"run finalization must preserve worker ownership and heartbeat metadata");
+assert.match(runner, /summary->>'workerId'=\$8/,"only the worker that claimed the run may finalize it");
 assert.doesNotMatch(runner, /INSERT INTO qa_test_runs/,"runner must not create a duplicate run record");
 assert.match(runner, /routeMatrixTarget = 10_000/,"full API route matrix target must remain exactly 10k");
 
