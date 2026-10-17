@@ -17,6 +17,8 @@ Use a clean white interface with solid, saturated, professional corporate colour
 | Yellow | `#F2C300` | Warnings, review-needed states, highlights; use black text |
 | Purple | `#6D28D9` | Analytics, accepted work, insights and secondary data series |
 | Orange | `#E87500` | In-transit, attention items, onboarding and operational activity |
+| Cyan (supplementary) | `#0096C7` | Extra chart series, vehicle/route datasets when more than seven categories are visible |
+| Magenta (supplementary) | `#C0268D` | Additional distinct data series in dense analytics; not used for success/error states |
 
 ## Interface rules
 
@@ -25,7 +27,7 @@ Use a clean white interface with solid, saturated, professional corporate colour
 - **Buttons:** blue is the primary action. Use outline/white surfaces for secondary actions; red is reserved for destructive actions.
 - **KPI cards:** white cards with strong coloured top rules and black labels/values. Rotate through all seven colours without reducing contrast.
 - **Status semantics:** open = blue; accepted = purple; in transit = orange; delivered/completed = green; cancelled = red; review/warning = yellow; unknown/neutral = black or outlined.
-- **Charts:** use actual data only. Use labelled horizontal bars for status counts, pie/donut charts for part-to-whole breakdowns, and line charts for time-series data. Include visible legends, values, accessible descriptions and readable axes. Never use colour as the only signal.
+- **Charts:** use actual data only. Use labelled horizontal bars for status counts, pie/donut charts for part-to-whole breakdowns, and line charts for time-series data. Include visible legends, values, accessible descriptions and readable axes. Never use colour as the only signal. The core seven colours cover normal UI states; add cyan and magenta only when a graph has enough distinct categories to benefit from the extra separation.
 - **Country consistency:** same colour semantics for every market. Country, locale and currency can change labels and formatting only; they do not alter status colours or business logic.
 - **Accessibility:** high contrast, visible keyboard focus, responsive chart layouts and reduced-motion support.
 
