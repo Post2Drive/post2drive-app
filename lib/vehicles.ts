@@ -121,6 +121,61 @@ const MARKET_LABELS: Record<string, Record<string, string>> = {
   },
 };
 
+
+const EUROPEAN_LABEL_TERMS: Record<string, [string, string, string, string, string, string, string]> = {
+  AT: ["Kastenwagen (small)", "Kastenwagen (medium)", "Kastenwagen (large)", "Koffer-Lkw", "Mittlerer / schwerer Lkw", "Sattelzug", "Kipper"],
+  BE: ["Petite camionnette / bestelwagen", "Camionnette moyenne / bestelwagen", "Grande camionnette / bestelwagen", "Camion fourgon / bakwagen", "Camion porteur", "Camion articulé / trekker-oplegger", "Camion benne / kiepwagen"],
+  BG: ["Small goods van", "Medium goods van", "Large goods van", "Box goods truck", "Medium / heavy goods truck", "Articulated goods truck", "Tipper truck"],
+  HR: ["Mali dostavni kombi", "Srednji dostavni kombi", "Veliki dostavni kombi", "Kamion s kutijom", "Srednji / teški kamion", "Tegljač s poluprikolicom", "Kiper kamion"],
+  CY: ["Small cargo van", "Medium cargo van", "Large cargo van", "Box truck", "Medium / heavy rigid truck", "Articulated truck", "Tipper truck"],
+  EE: ["Väike kaubik", "Keskmine kaubik", "Suur kaubik", "Kastiga veoauto", "Keskmine / raske veoauto", "Poolhaagisega veok", "Kallur"],
+  FI: ["Pieni pakettiauto", "Keskikokoinen pakettiauto", "Suuri pakettiauto", "Kuorma-auto", "Keskiraskas / raskas kuorma-auto", "Puoliperävaunuyhdistelmä", "Kippiauto"],
+  FR: ["Petite camionnette", "Camionnette moyenne", "Grande camionnette", "Camion fourgon", "Camion porteur moyen / lourd", "Tracteur avec semi-remorque", "Camion-benne"],
+  DE: ["Kleiner Kastenwagen", "Mittlerer Kastenwagen", "Großer Kastenwagen", "Koffer-Lkw", "Mittlerer / schwerer Lkw", "Sattelzug", "Kipper"],
+  GR: ["Μικρό επαγγελματικό βαν", "Μεσαίο επαγγελματικό βαν", "Μεγάλο επαγγελματικό βαν", "Κλειστό φορτηγό", "Μεσαίο / βαρύ φορτηγό", "Αρθρωτό φορτηγό", "Ανατρεπόμενο φορτηγό"],
+  IE: ["Small panel van", "Medium panel van", "Large panel van", "Box truck", "Rigid truck", "Articulated truck", "Tipper truck"],
+  IT: ["Furgone piccolo", "Furgone medio", "Furgone grande", "Autocarro con cassone chiuso", "Autocarro rigido medio / pesante", "Autoarticolato", "Autocarro ribaltabile"],
+  LV: ["Mazs kravas furgons", "Vidējs kravas furgons", "Liels kravas furgons", "Kravas auto ar kasti", "Vidēja / smaga kravas automašīna", "Vilcējs ar puspiekabi", "Pašizgāzējs"],
+  LT: ["Mažas krovininis furgonas", "Vidutinis krovininis furgonas", "Didelis krovininis furgonas", "Krovininis sunkvežimis", "Vidutinis / sunkus sunkvežimis", "Vilkikas su puspriekabe", "Savivartis"],
+  LU: ["Petite camionnette", "Camionnette moyenne", "Grande camionnette", "Camion fourgon", "Camion porteur moyen / lourd", "Tracteur avec semi-remorque", "Camion-benne"],
+  MT: ["Small delivery van", "Medium delivery van", "Large delivery van", "Box truck", "Rigid truck", "Articulated truck", "Tipper truck"],
+  NL: ["Kleine bestelbus", "Middelgrote bestelbus", "Grote bestelbus", "Bakwagen", "Middelzware / zware vrachtwagen", "Trekker-oplegger", "Kiepwagen"],
+  PT: ["Carrinha pequena", "Carrinha média", "Carrinha grande", "Camião fechado", "Camião rígido médio / pesado", "Trator com semirreboque", "Camião basculante"],
+  SK: ["Malá dodávka", "Stredná dodávka", "Veľká dodávka", "Skriňové nákladné vozidlo", "Stredné / ťažké nákladné vozidlo", "Ťahač s návesom", "Sklápač"],
+  SI: ["Mali dostavni kombi", "Srednji dostavni kombi", "Veliki dostavni kombi", "Tovornjak s kesonom", "Srednji / težki tovornjak", "Vlačilec s polpriklopnikom", "Prekucnik"],
+  ES: ["Furgoneta pequeña", "Furgoneta mediana", "Furgoneta grande", "Camión caja", "Camión rígido medio / pesado", "Cabeza tractora con semirremolque", "Camión volquete"],
+  AD: ["Furgoneta petita", "Furgoneta mitjana", "Furgoneta gran", "Camió caixa", "Camió rígid mitjà / pesant", "Tractora amb semiremolc", "Dúmper"],
+  MC: ["Petite camionnette", "Camionnette moyenne", "Grande camionnette", "Camion fourgon", "Camion porteur moyen / lourd", "Tracteur avec semi-remorque", "Camion-benne"],
+  SM: ["Furgone piccolo", "Furgone medio", "Furgone grande", "Autocarro con cassone chiuso", "Autocarro rigido medio / pesante", "Autoarticolato", "Autocarro ribaltabile"],
+  VA: ["Furgone piccolo", "Furgone medio", "Furgone grande", "Autocarro con cassone chiuso", "Autocarro rigido medio / pesante", "Autoarticolato", "Autocarro ribaltabile"],
+  XK: ["Furgon i vogël", "Furgon i mesëm", "Furgon i madh", "Kamion me kuti", "Kamion i mesëm / i rëndë", "Kamion me gjysmërimorkio", "Kamion vetëshkarkues"],
+  ME: ["Mali dostavni kombi", "Srednji dostavni kombi", "Veliki dostavni kombi", "Kamion sa sandukom", "Srednji / teški kamion", "Tegljač sa poluprikolicom", "Kiper kamion"],
+  CZ: ["Malá dodávka", "Střední dodávka", "Velká dodávka", "Skříňový nákladní vůz", "Střední / těžký nákladní vůz", "Tahač s návěsem", "Sklápěč"],
+  DK: ["Lille varebil", "Mellemstor varebil", "Stor varebil", "Kassevogn", "Mellemstor / tung lastbil", "Sættevognstog", "Tipbil"],
+  HU: ["Kisáruszállító", "Közepes áruszállító", "Nagy áruszállító", "Dobozos teherautó", "Közepes / nehéz teherautó", "Nyerges vontató", "Billenőplatós teherautó"],
+  IS: ["Lítill sendibíll", "Meðalstór sendibíll", "Stór sendibíll", "Kassabíll", "Meðalstór / þungur vörubíll", "Dráttarbíll með festivagni", "Tippbíll"],
+  NO: ["Liten varebil", "Mellomstor varebil", "Stor varebil", "Skapbil", "Middels / tung lastebil", "Trekkvogn med semitrailer", "Tippbil"],
+  PL: ["Mały samochód dostawczy", "Średni samochód dostawczy", "Duży samochód dostawczy", "Ciężarówka skrzyniowa", "Średnia / ciężka ciężarówka", "Ciągnik siodłowy z naczepą", "Wywrotka"],
+  RO: ["Autoutilitară mică", "Autoutilitară medie", "Autoutilitară mare", "Camion cu caroserie închisă", "Camion rigid mediu / greu", "Cap tractor cu semiremorcă", "Basculantă"],
+  SE: ["Liten skåpbil", "Mellanstor skåpbil", "Stor skåpbil", "Skåplastbil", "Medeltung / tung lastbil", "Dragbil med semitrailer", "Tippbil"],
+  CH: ["Kleiner Kastenwagen / fourgonnette", "Mittlerer Kastenwagen / fourgonnette", "Großer Kastenwagen / fourgonnette", "Koffer-Lkw", "Mittlerer / schwerer Lastwagen", "Sattelzug", "Kipper"],
+  TR: ["Küçük panelvan", "Orta panelvan", "Büyük panelvan", "Kapalı kasa kamyon", "Orta / ağır kamyon", "Çekici ve yarı römork", "Damperli kamyon"]
+};
+for (const [country, labels] of Object.entries(EUROPEAN_LABEL_TERMS)) {
+  MARKET_LABELS[country] = {
+    "Small van (SWB)": labels[0],
+    "Medium van (MWB)": labels[1],
+    "Large van (LWB)": labels[2],
+    "Luton van": labels[3],
+    "7.5t box truck": labels[3],
+    "12t rigid": labels[4],
+    "18t rigid": labels[4],
+    "26t rigid": labels[4],
+    "32t HGV artic": labels[5],
+    "Tipper": labels[6],
+  };
+}
+
 export function vehicleTypeLabel(type: string, country?: string | null): string {
   return MARKET_LABELS[country ?? ""]?.[type] ?? GENERIC_LABELS[type] ?? type;
 }
