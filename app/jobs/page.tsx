@@ -722,7 +722,8 @@ export default function JobsPage() {
                   ? "2px solid var(--color-primary-action)"
                   : "2px solid transparent",
               background:
-                "none",
+                "transparent",
+              color: "var(--color-text)",
               fontWeight:
                 tab === t.key
                   ? 700
@@ -858,12 +859,12 @@ export default function JobsPage() {
                       borderRadius: 999,
                       background:
                         job.status === "open"
-                          ? "#E8F5E9"
+                          ? "var(--color-positive-soft)"
                           : job.status === "completed"
-                          ? "#E0F2F1"
+                          ? "var(--color-positive-soft)"
                           : job.status === "cancelled"
-                          ? "#FFEBEE"
-                          : "#FFF8E1",
+                          ? "var(--color-danger-soft)"
+                          : "var(--color-warning-soft)",
                       color:
                         job.status === "open"
                           ? "var(--color-positive)"
