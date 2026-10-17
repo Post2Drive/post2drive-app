@@ -20,10 +20,6 @@ type AccountFixture = {
 type EventResult = { path: string; duration: number; passed: boolean };
 
 let active = false;
-let activeRunId: string | null = null;
-let lastRunId: string | null = null;
-let lastFinishedAt: string | null = null;
-let lastError: string | null = null;
 
 function safeJson(value: unknown) {
   try { return JSON.parse(JSON.stringify(value)); } catch { return {}; }
