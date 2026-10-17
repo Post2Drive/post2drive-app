@@ -38,8 +38,8 @@ async function claimNextRun() {
        FROM qa_test_runs
        WHERE status = 'queued' AND target_accounts = 10000
        ORDER BY started_at ASC
-       FOR UPDATE SKIP LOCKED
        LIMIT 1
+       FOR UPDATE SKIP LOCKED
      )
      UPDATE qa_test_runs AS run
      SET status = 'running',
