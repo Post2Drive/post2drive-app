@@ -489,13 +489,13 @@ main table tr:hover td {
    One shared brand; colour follows meaning and workflow, not random decoration. */
 :root {
   color-scheme: light;
-  --ops-bg:#F4F7FF; --ops-surface:#FFFFFF; --ops-surface-raised:#F9FAFF; --ops-surface-inset:#F2F6FC;
-  --ops-border:#DCE5F2; --ops-border-strong:#B9C8DF; --ops-text:#172543; --ops-text-secondary:#45546B; --ops-muted:#66758D;
-  --ops-blue:#315CFF; --ops-blue-hover:#2449E8; --ops-blue-soft:#EDF1FF;
-  --ops-teal:#008B78; --ops-teal-soft:#E3F8F2; --ops-green:#24884D; --ops-green-soft:#E8F8ED;
-  --ops-amber:#A95D00; --ops-amber-soft:#FFF3D9; --ops-red:#C9324F; --ops-red-soft:#FFE9ED;
-  --ops-violet:#7850D4; --ops-violet-soft:#F0EBFF; --ops-cyan:#087EA4; --ops-cyan-soft:#E5F7FC;
-  --ops-orange:#D75F1A; --ops-orange-soft:#FFF0E4; --ops-pink:#BC367B; --ops-pink-soft:#FCEAF4;
+  --ops-bg:#FFFFFF; --ops-surface:#FFFFFF; --ops-surface-raised:#FFFFFF; --ops-surface-inset:#FFFFFF;
+  --ops-border:#D7DCE4; --ops-border-strong:#AEB6C2; --ops-text:#171717; --ops-text-secondary:#30343B; --ops-muted:#454B55;
+  --ops-blue:#2457D6; --ops-blue-hover:#173FA8; --ops-blue-soft:#FFFFFF;
+  --ops-teal:#18864B; --ops-teal-soft:#FFFFFF; --ops-green:#18864B; --ops-green-soft:#FFFFFF;
+  --ops-amber:#F2C300; --ops-amber-soft:#FFF6CC; --ops-red:#D62828; --ops-red-soft:#FCE8E8;
+  --ops-violet:#6D28D9; --ops-violet-soft:#FFFFFF; --ops-cyan:#2457D6; --ops-cyan-soft:#FFFFFF;
+  --ops-orange:#E87500; --ops-orange-soft:#FFFFFF; --ops-pink:#6D28D9; --ops-pink-soft:#FFFFFF;
   --color-primary:var(--ops-text); --color-primary-action:var(--ops-blue); --color-primary-action-hover:var(--ops-blue-hover);
   --color-positive:var(--ops-teal); --color-warning:var(--ops-amber); --color-danger:var(--ops-red);
   --color-background:var(--ops-bg); --color-surface:var(--ops-surface); --color-text:var(--ops-text); --color-muted:var(--ops-muted);
@@ -841,3 +841,10 @@ tbody tr:hover td{background:#EEF3FF}
 .pipeline-donut span{font-size:10px;color:#454B55}
 .pipeline-donut-row p{margin:0;color:#454B55;font-size:12px;line-height:1.55}
 @media(max-width:520px){.pipeline-chart-row{grid-template-columns:82px minmax(40px,1fr) 28px;gap:8px}.pipeline-donut-row{align-items:flex-start;flex-wrap:wrap}.pipeline-donut{width:104px;height:104px;flex-basis:104px}.pipeline-donut>div{width:66px;height:66px}}
+
+/* Remove pastel/gradient legacy treatments so the whole app reads as solid, crisp corporate UI. */
+.pricing-tier-card,.marketplace-job-card,.job-create-form fieldset,.ops-theme-card,.ops-section{background:#FFFFFF!important}
+.pricing-tier-card:nth-child(5n+1),.pricing-tier-card:nth-child(5n+2),.pricing-tier-card:nth-child(5n+3),.pricing-tier-card:nth-child(5n+4),.pricing-tier-card:nth-child(5n){background:#FFFFFF!important}
+.job-create-form fieldset{border:1px solid #D7DCE4!important}
+.main-nav-link[aria-current="page"],.mobile-nav-link[aria-current="page"]{background:#2457D6!important;color:#FFFFFF!important;border-color:#2457D6!important}
+.signup-progress>span{background:#2457D6!important}
