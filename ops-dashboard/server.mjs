@@ -65,7 +65,7 @@ function countryReadiness() {
     const gates = READINESS_GATES.map(([key,label]) => {
       const supplied = raw[key] && typeof raw[key] === "object" ? raw[key] : {};
       const status = ["verified","blocked","in_progress"].includes(supplied.status) ? supplied.status : "not_assessed";
-      const reviewedAt = typeof supplied.reviewedAt==="string" && !Number.isNaN(Date.parse(supplied.reviewedAt)) ? supplied.reviewedAt : null;
+      const reviewedAt = typeof supplied.reviewedAt==="string" && /^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$/.test(supplied.reviewedAt) && !Number.isNaN(Date.parse(supplied.reviewedAt)) ? supplied.reviewedAt : null;
       const evidenceRef = typeof supplied.evidenceRef==="string" && supplied.evidenceRef.trim() ? supplied.evidenceRef.trim().slice(0,500) : null;
       return {key,label,status,reviewedAt,evidenceRef};
     });
