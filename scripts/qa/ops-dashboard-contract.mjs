@@ -1,10 +1,16 @@
 import { readFileSync } from "node:fs";
 import { strict as assert } from "node:assert";
+import { Script } from "node:vm";
 
 const server = readFileSync(new URL("../../ops-dashboard/server.mjs", import.meta.url), "utf8");
 const bridge = readFileSync(new URL("../../app/api/internal/admin-bridge/route.ts", import.meta.url), "utf8");
 const migration = readFileSync(new URL("../../prisma/migrations/20261017183000_admin_audit_events/migration.sql", import.meta.url), "utf8");
 const pkg = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8"));
+
+const inlineScript = server.match(/<script>\n([\s\S]*?)\n<\/script>/)?.[1];
+assert.ok(inlineScript, "Operations dashboard inline browser script exists");
+const browserScript = inlineScript.replace(/\\\$\{/g, "${");
+assert.doesNotThrow(() => new Script(browserScript), "Operations dashboard browser script must parse before deployment");
 
 for (const [name, pattern] of [
   ["separate operations service", /post2drive-ops-dashboard/],
