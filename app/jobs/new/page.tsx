@@ -79,6 +79,7 @@ export default function NewJobPage() {
       pickupTime: "",
       dropoffTime: "",
       pickupTimeZone: marketProfile?.timeZone ?? "UTC",
+      dropoffTimeZone: marketProfile?.timeZone ?? "UTC",
       vehicleType:
         "Car",
       weightKg: "",
@@ -105,7 +106,7 @@ export default function NewJobPage() {
 
   useEffect(() => {
     if (marketProfile?.timeZone) {
-      setForm((current) => ({ ...current, pickupTimeZone: marketProfile.timeZone }));
+      setForm((current) => ({ ...current, pickupTimeZone: marketProfile.timeZone, dropoffTimeZone: current.dropoffTimeZone || marketProfile.timeZone }));
     }
   }, [country, marketProfile?.timeZone]);
 
@@ -379,7 +380,15 @@ export default function NewJobPage() {
                 <small>Choose the time zone where the pickup takes place.</small>
               </label>
             )}
-            <label>Estimated drop-off time (optional)<input type="time" value={form.dropoffTime} onChange={(e) => update("dropoffTime", e.target.value)} /><small>Drop-off time uses the pickup time zone; add a note if delivery scheduling uses another zone.</small></label>
+            {getTimeZoneOptions(country, marketProfile?.timeZone).length > 1 && (
+              <label>Drop-off time zone
+                <select value={form.dropoffTimeZone} onChange={(e) => update("dropoffTimeZone", e.target.value)} required>
+                  {getTimeZoneOptions(country, marketProfile?.timeZone).map((zone) => <option key={zone.value} value={zone.value}>{zone.label}</option>)}
+                </select>
+                <small>Choose the time zone where delivery takes place.</small>
+              </label>
+            )}
+            <label>Estimated drop-off time (optional)<input type="time" value={form.dropoffTime} onChange={(e) => update("dropoffTime", e.target.value)} /><small>Time is interpreted in the selected drop-off time zone.</small></label>
           </div>
         </section>}
 
