@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">Post2Drive</title>
+  <defs>
+    <linearGradient id="blue" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0754e8"/>
+      <stop offset="1" stop-color="#079cff"/>
+    </linearGradient>
+    <linearGradient id="navy" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#071b48"/>
+      <stop offset="1" stop-color="#020c27"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="#fff"/>
+  <path fill="url(#blue)" d="M153 92h187c74 0 121 49 121 116 0 67-48 114-120 114h-67l-56 70h-91l91-116h119c31 0 51-22 51-53 0-30-21-51-52-51H105z"/>
+  <path fill="url(#navy)" d="M107 199h224l-37 48c-6 8-14 12-25 12h-54c-12 0-21 5-28 15L119 379H44l54-71H40c-12 0-18-9-11-19l20-29c6-8 13-12 24-12h54l19-25H48c-10 0-15-8-9-17l19-27c7-9 15-12 26-12z"/>
+  <path fill="#0875ff" d="M58 160h111c9 0 13 7 7 15l-16 22c-5 7-11 10-20 10H30c-9 0-13-7-7-15l16-22c5-7 11-10 19-10z"/>
+</svg>
