@@ -54,7 +54,8 @@ export default function LoginPage() {
   }
 
   return (
-    <div>
+    <div className="auth-page">
+      <div>
       <h1>Log in</h1>
       <p>Sign in to post transport jobs, find delivery work and manage your activity in your selected market.</p>
       <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -83,6 +84,7 @@ export default function LoginPage() {
         </button>
       </form>
       <p style={{ marginTop: 18 }}><a href="/signup">Create an account</a> · <a href="/admin-access">Admin dashboard</a></p>
+      </div>
     </div>
   );
 }
