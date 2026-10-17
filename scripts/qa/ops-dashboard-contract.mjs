@@ -31,12 +31,7 @@ for (const [name, pattern] of [
   ["forwarded IP opt-in only", /TRUST_PROXY_HEADERS === "true"/],
   ["signed admin-action proxy", /api\/admin-action/],
   ["application-side signed bridge", /x-p2d-admin-signature/],
-  ["timestamp window and replay nonce", /120_000/],
-  ["durable admin audit writes", /adminAuditEvent\.create/],
   ["tester approve and reject actions", /tester-approve/],
-  ["incident lifecycle guard", /Only an accepted or in-transit job can be terminated/],
-  ["one-time code stores only hash", /codeHash/],
-  ["audit migration table", /CREATE TABLE "AdminAuditEvent"/],
 
   ["no readiness without evidence", /g.evidenceRef && g.reviewedAt/],
   ["categorized admin navigation", /class="section-nav"/],
@@ -65,5 +60,9 @@ assert.match(bridge, /authenticateBridge/);
 assert.match(bridge, /timingSafeEqual/);
 assert.match(bridge, /rateLimitBucket\.create/);
 assert.match(bridge, /adminAuditEvent\.create/);
+assert.match(bridge, /120_000/);
+assert.match(bridge, /Only an accepted or in-transit job can be terminated/);
+assert.match(bridge, /codeHash/);
+assert.match(migration, /CREATE TABLE "AdminAuditEvent"/);
 assert.match(migration, /AdminAuditEvent_createdAt_idx/);
 console.log("Ops dashboard contract checks passed.");
