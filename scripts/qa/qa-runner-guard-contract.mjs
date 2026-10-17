@@ -101,11 +101,14 @@ try {
   assert.ok(qaRoute.includes('process.env.QA_AUTO_CLEANUP === "true"'), "automatic cleanup must require explicit staging configuration");
   assert.ok(qaRoute.includes("cleanupSyntheticRuns([String(summary.runId)], base)"), "a country run must clean its synthetic records before the next run");
   assert.ok(qaRoute.includes('run.status === "running" ? "aborted" : run.status'), "cleanup must preserve failed-run status instead of hiding a failure");
+  assert.ok(qaRoute.includes('new Set(["completed", "failed", "aborted"])'), "cleanup must reject running runs to prevent deleting fixtures while the runner is active");
+  assert.ok(!qaRoute.includes('new Set(["completed", "running", "failed", "aborted"])'), "cleanup must never allow the running status");
+  assert.ok(qaRoute.includes("finished_at=COALESCE(finished_at,now())") && qaRoute.includes("duration_ms=COALESCE(duration_ms,"), "cleanup must finalize interrupted run timestamps and duration");
 
   console.log(JSON.stringify({
     status: "passed",
-    checks: rejected.length + 28,
-    covered: ["valid Railway staging allow-list", ...rejected.map(([label]) => label), "GET guard before sensitive operations", "raw QA errors not returned", "GET and POST handlers present", "resend endpoint rate-limited", "verification token endpoint rate-limited", "login network/email rate limits", "login throttling fails closed", "QA throttle bypass requires an active run, target and origin", "QA runner is market-parameterized", "synthetic fixtures use market currency", "high-entropy QA run IDs", "10,000 API route scenarios required per country", "cleanup preserves findings, marks data deleted and preserves failure status"]
+    checks: rejected.length + 31,
+    covered: ["valid Railway staging allow-list", ...rejected.map(([label]) => label), "GET guard before sensitive operations", "raw QA errors not returned", "GET and POST handlers present", "resend endpoint rate-limited", "verification token endpoint rate-limited", "login network/email rate limits", "login throttling fails closed", "QA throttle bypass requires an active run, target and origin", "QA runner is market-parameterized", "synthetic fixtures use market currency", "high-entropy QA run IDs", "10,000 API route scenarios required per country", "cleanup preserves findings, marks data deleted and preserves failure status", "cleanup rejects active runs", "interrupted run finalization timestamps"]
   }, null, 2));
 } finally {
   for (const [key, value] of Object.entries(original)) {
