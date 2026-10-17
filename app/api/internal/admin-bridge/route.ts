@@ -159,7 +159,7 @@ async function handler(req: Request) {
       if (outcome === "terminate_with_incident") {
         const transition = await tx.job.updateMany({
           where: { id: jobId, status: job.status, posterId: job.posterId, acceptedById: job.acceptedById },
-          data: { status: "cancelled", cancelledById: "standalone-admin", cancelledAt: resolvedAt },
+          data: { status: "cancelled", cancelledById: null, cancelledAt: resolvedAt },
         });
         if (transition.count !== 1) return null;
         await tx.bid.updateMany({ where: { jobId, status: "active" }, data: { status: "invalidated" } });
