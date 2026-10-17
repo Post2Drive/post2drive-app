@@ -8,7 +8,7 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import SignOutButton from "@/app/sign-out-button";
 import { symbolFor, COUNTRIES } from "@/lib/currency";
-import { formatMarketDate, getLocalisationProfile } from "@/lib/localisation";
+import { formatMarketDate, getLocalisationProfile, getTimeZoneOptions } from "@/lib/localisation";
 import { vehicleTypeLabel } from "@/lib/vehicles";
 
 type Contact = {
@@ -33,6 +33,7 @@ type Job = {
   jobDate: string;
   pickupTime: string | null;
   dropoffTime: string | null;
+  pickupTimeZone?: string | null;
   vehicleType: string;
   weightKg: number | null;
   dimensions: string | null;
@@ -934,14 +935,14 @@ export default function JobsPage() {
                   {job.pickupTime && (
                     <>
                       <span>·</span>
-                      <span>Pickup {job.pickupTime}</span>
+                      <span>Pickup {job.pickupTime} ({getTimeZoneOptions(accountCountry || "GB", marketProfile?.timeZone).find((zone) => zone.value === job.pickupTimeZone)?.label ?? job.pickupTimeZone ?? marketProfile?.timeZone})</span>
                     </>
                   )}
 
                   {job.dropoffTime && (
                     <>
                       <span>·</span>
-                      <span>Drop-off {job.dropoffTime}</span>
+                      <span>Drop-off {job.dropoffTime} (pickup time zone)</span>
                     </>
                   )}
                 </div>
