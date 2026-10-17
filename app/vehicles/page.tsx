@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { VEHICLE_TYPES, vehicleTypeLabel } from "@/lib/vehicles";
-import { getLocalisationProfile, formatMarketDate, getJurisdictionOptions } from "@/lib/localisation";
+import { getLocalisationProfile, formatMarketDate, getJurisdictionOptions, getJurisdictionAuthority } from "@/lib/localisation";
 
 type Vehicle = {
   id: string;
@@ -190,6 +190,7 @@ export default function VehiclesPage() {
         {field("Operator licence number (if applicable)", "operatorLicenceNo")}
         {field(marketProfile?.inspectionLabel ?? "Inspection valid until (if required)", "motValidUntil", "date", !expiryDatesOptional && Boolean(marketProfile?.inspectionRequiredAtCountryLevel))}
         <small>{marketProfile?.inspectionHelp}</small>
+        <small>Relevant authority: {getJurisdictionAuthority(market.country, form.registrationRegion, market.currency)}.</small>
         {field("Insurance valid until", "insuranceValidUntil", "date", !expiryDatesOptional)}
 
         <button type="submit" disabled={saving} style={{ padding: "11px 18px", minHeight: 42, borderRadius: 8, fontWeight: 650, cursor: saving ? "wait" : "pointer" }}>
