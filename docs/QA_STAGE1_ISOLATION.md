@@ -21,6 +21,6 @@ A Railway staging project and staging environment now exist for controlled verif
 - All migrations apply from scratch; TypeScript and production-build checks pass.
 - QA flags and the runtime allow-list match the staging deployment only.
 - Email and payment providers use sandbox/test credentials or remain disabled.
-- The test run has an explicit target, account count, token authorization, and pre-run read-only inventory review. Run distinct test types, not three repeats of the same workload: (1) 10,000-request API/load test, (2) 10,000 synthetic-account provisioning test, and (3) workflow/end-to-end scenario workload at a 10,000-scale request/event volume. Document the workload denominator for each test.
+- The test run has an explicit target, account count, token authorization, and pre-run read-only inventory review. Run distinct test types, not three repeats of the same workload. Execute in this order, one at a time: (1) `synthetic-accounts` provisions 10,000 accounts and retains them; (2) `api-load` performs 10,000 authenticated read requests using the preserved account pool; (3) `workflow-e2e` exercises marketplace lifecycle/concurrency flows and a 10,000-request route matrix using that same pool. Do not re-provision accounts for the latter two runs. Document the request/event denominator for each test.
 
 Until these criteria are satisfied, synthetic account creation remains disabled. For this campaign, cleanup remains disabled even after a run; preserve the synthetic data and all QA evidence.
