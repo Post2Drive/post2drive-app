@@ -9,6 +9,7 @@ import Link from "next/link";
 import SignOutButton from "@/app/sign-out-button";
 import { symbolFor, COUNTRIES } from "@/lib/currency";
 import { formatMarketDate } from "@/lib/localisation";
+import { vehicleTypeLabel } from "@/lib/vehicles";
 
 type Contact = {
   companyName: string;
@@ -905,7 +906,7 @@ export default function JobsPage() {
                     fontSize: 14,
                   }}
                 >
-                  <span>{job.vehicleType}</span>
+                  <span>{vehicleTypeLabel(job.vehicleType, accountCountry)}</span>
                   <span>·</span>
                   <strong>
                     {symbolFor(job.currency)}
