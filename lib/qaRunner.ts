@@ -742,7 +742,7 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
       const rows = await prisma.$queryRawUnsafe<Array<{ count: bigint | number }>>(query, ...params);
       return Number(rows[0]?.count ?? 0);
     };
-    const poolRunId = accountPoolRunId ?? runId;
+    const poolRunId = sourceRunId;
     const persistedDataSummary = {
       qaMappedAccounts: await count("SELECT count(*)::int AS count FROM qa_test_accounts WHERE run_id=$1", poolRunId),
       matchingAccounts: await count('SELECT count(*)::int AS count FROM "Account" a JOIN qa_test_accounts q ON q.account_id=a.id WHERE q.run_id=$1', poolRunId),
