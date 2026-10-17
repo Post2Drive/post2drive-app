@@ -372,9 +372,10 @@ model Job {
   dropoffLat Float?
   dropoffLng Float?
 
-  jobDate     DateTime
-  pickupTime  String?
-  dropoffTime String?
+  jobDate       DateTime
+  pickupTime    String?
+  dropoffTime   String?
+  pickupTimeZone String?
 
   vehicleType String
 
