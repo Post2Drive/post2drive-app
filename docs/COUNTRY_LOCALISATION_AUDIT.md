@@ -32,11 +32,11 @@ The existing registry provides a country label, currency, symbol, locale, time z
 
 ### Changes started on this branch
 
-- Added `lib/localisation.ts` with market-aware profile/date helpers and initial vehicle terminology for GB, IN, US, CA, AU and NZ. For markets where a national authority cannot safely be inferred, it uses a generic local-authority label.
+- Added `lib/localisation.ts` with a market profile for all 43 supported markets, market-specific registration/inspection terminology and authority references, locale-aware date/currency formatting, distance units, region options and time-zone options. These strings are implementation guidance and still need local legal/transport-authority verification before launch.
 - Settings now displays the account's configured country, currency and time zone.
 - Job creation and the job marketplace now use the market name/currency and account locale/time zone rather than labelling every non-India market as UK.
-- Vehicle labels now adapt for GB, IN, US, CA, AU and NZ; inspection-date enforcement is no longer universally based on MOT.
-- Payment and marketplace job dates now use market-aware formatting.
+- Vehicle category labels now adapt across the supported markets. Registration jurisdiction is captured for India, US, Canada, Australia, Belgium and Switzerland; the API validates the selected jurisdiction. Blanket MOT/inspection expiry enforcement was removed because exemptions and vehicle classes vary.
+- Payment and marketplace job dates/currency values now use market-aware formatting. Notification, activity and incident timestamps use the account market time zone. Multi-time-zone job posting supports explicit pickup time-zone selection for the US, Canada and Australia, and persists the chosen IANA time zone for access-window checks.
 - Signup/pricing wording no longer presents the shared non-India access policy as a UK marketplace.
 
 ## Country and jurisdiction-specific terms to implement and verify
@@ -58,11 +58,11 @@ The existing registry provides a country label, currency, symbol, locale, time z
 - [ ] Remove false UK/India defaults in all shared screens and APIs.
 - [ ] Use account-market locale, currency, time zone, decimal/date format and phone dialling code consistently.
 - [ ] Decide whether the UI language is English-only or translated per market; if English-only, keep the language consistent but use locally correct terms.
-- [ ] Add state/province/territory where compliance rules depend on it (at minimum US, Canada and Australia); persist and validate it server-side. Use the pickup location or an explicit region/time-zone selection for multi-time-zone countries.
+- [x] Add registration jurisdiction fields and validated state/province/territory/canton options for US, Canada, Australia, India, Belgium and Switzerland. [ ] Expand region-specific compliance rules after confirming official requirements by vehicle class.
 - [ ] Replace UK-named vehicle fields with jurisdiction-neutral fields and migrate safely; keep backward compatibility for existing GB records.
 - [ ] Define local vehicle classes/units and their canonical stored values separately from display labels. Avoid silently converting kg, miles/km or vehicle weight thresholds.
 - [ ] Define document and inspection requirements by country + region + vehicle class; handle exemptions and “not applicable” safely.
-- [ ] Localise dates in dashboard, jobs, payment history, profiles, incident history and subscription status; use the correct market time zone for wall-clock job times.
+- [x] Localise dates in dashboard, jobs, payment history, profiles, notification centre and incident/activity history. [x] Add explicit pickup time-zone selection for multi-time-zone markets. [ ] Add a separate drop-off time zone for jobs where pickup and delivery locations differ in time zone.
 - [ ] Verify pricing and tax wording separately from actual payment-provider capability; checkout is currently not connected.
 - [ ] Review Terms and Privacy for every launch market with qualified local counsel; do not imply legal compliance based on translation alone.
 - [ ] Add tests for every supported country and subnational jurisdiction, and ensure a non-GB account never sees UK-only copy or requirements unless the feature is explicitly GB-only.
@@ -70,4 +70,4 @@ The existing registry provides a country label, currency, symbol, locale, time z
 
 ## Completion status
 
-**In progress — not yet safe to call fully localised.** The branch fixes several confirmed high-visibility defects, but region-level compliance, vehicle taxonomy/storage, the full-string scan, legal review and automated verification remain required before launch.
+**In progress — code-level localisation is substantially broader, but not yet launch-certified.** All supported markets now have explicit registration/inspection terminology and market-aware vehicle labels; key UI surfaces use local date, currency, weight, distance and time-zone conventions. Region selection is persisted for vehicles and pickup time zones are persisted for jobs. Remaining gates: CI/build and staging verification, full app-wide string review, subnational vehicle-class compliance rules, drop-off time-zone support, and qualified legal review in each launch market.
