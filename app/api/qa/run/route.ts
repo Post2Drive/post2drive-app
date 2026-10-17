@@ -51,7 +51,7 @@ async function cleanupSyntheticRuns(runIds: string[], base: string) {
       await exec("accounts", qaAccounts + 'DELETE FROM "Account" WHERE id IN (SELECT account_id FROM qa_accounts)', runId, marker, emailPattern);
       await exec("apiMetrics", 'DELETE FROM "ApiRequestMetric" WHERE "qaRunId"=$1', runId);
       await exec("accountMappings", 'DELETE FROM qa_test_accounts WHERE run_id=$1', runId);
-      const finalStatus = run.status === "running" ? "aborted" : run.status;
+      const finalStatus = run.status;
       await tx.$executeRawUnsafe(
         "UPDATE qa_test_runs SET status=$2, finished_at=COALESCE(finished_at,now()), duration_ms=COALESCE(duration_ms,GREATEST(0,(EXTRACT(EPOCH FROM (now()-(SELECT started_at FROM qa_test_runs WHERE id=$1)))*1000)::bigint)), created_accounts=GREATEST(created_accounts,$3), summary=COALESCE(summary,'{}'::jsonb) || jsonb_build_object('status',$2,'cleanupReason','explicitly requested staging synthetic cleanup','recoveredSyntheticAccounts',$3,'syntheticDataRetained',false,'syntheticDataCleanedAt',now(),'cleanupCounts',$4::jsonb) WHERE id=$1",
         runId, finalStatus, recoveredAccounts, JSON.stringify(counts)
