@@ -318,9 +318,9 @@ export default function EditJobPage() {
           style={{
             padding: 14,
             borderRadius: 8,
-            background: "#fef2f2",
-            border: "1px solid #fecaca",
-            color: "#991b1b",
+            background: "var(--color-danger-soft)",
+            border: "1px solid var(--color-danger)",
+            color: "var(--color-danger)",
             marginBottom: 16,
           }}
         >
@@ -386,8 +386,8 @@ export default function EditJobPage() {
             border: "1px solid var(--color-border)",
             borderRadius: 8,
             textDecoration: "none",
-            color: "#111",
-            background: "#fff",
+            color: "var(--color-text)",
+            background: "var(--ops-surface-raised)",
           }}
          className="button-link button-link-secondary">
           Back to jobs
@@ -400,9 +400,9 @@ export default function EditJobPage() {
             padding: 12,
             marginBottom: 16,
             borderRadius: 8,
-            background: "#fef2f2",
-            border: "1px solid #fecaca",
-            color: "#991b1b",
+            background: "var(--color-danger-soft)",
+            border: "1px solid var(--color-danger)",
+            color: "var(--color-danger)",
           }}
         >
           {error}
@@ -415,9 +415,9 @@ export default function EditJobPage() {
             padding: 12,
             marginBottom: 16,
             borderRadius: 8,
-            background: "#ecfdf5",
-            border: "1px solid #a7f3d0",
-            color: "#047857",
+            background: "var(--color-positive-soft)",
+            border: "1px solid var(--color-positive)",
+            color: "var(--color-positive)",
           }}
         >
           {success}
@@ -433,7 +433,7 @@ export default function EditJobPage() {
       >
         <section
           style={{
-            border: "1px solid #e5e7eb",
+            border: "1px solid var(--color-border)",
             borderRadius: 12,
             padding: 18,
           }}
@@ -543,7 +543,7 @@ export default function EditJobPage() {
 
         <section
           style={{
-            border: "1px solid #e5e7eb",
+            border: "1px solid var(--color-border)",
             borderRadius: 12,
             padding: 18,
           }}
@@ -619,7 +619,7 @@ export default function EditJobPage() {
 
         <section
           style={{
-            border: "1px solid #e5e7eb",
+            border: "1px solid var(--color-border)",
             borderRadius: 12,
             padding: 18,
           }}
@@ -706,7 +706,7 @@ export default function EditJobPage() {
 
         <section
           style={{
-            border: "1px solid #e5e7eb",
+            border: "1px solid var(--color-border)",
             borderRadius: 12,
             padding: 18,
           }}
@@ -793,7 +793,7 @@ export default function EditJobPage() {
 
         <section
           style={{
-            border: "1px solid #e5e7eb",
+            border: "1px solid var(--color-border)",
             borderRadius: 12,
             padding: 18,
           }}
@@ -885,7 +885,7 @@ export default function EditJobPage() {
 
         <section
           style={{
-            border: "1px solid #e5e7eb",
+            border: "1px solid var(--color-border)",
             borderRadius: 12,
             padding: 18,
           }}
@@ -925,8 +925,8 @@ export default function EditJobPage() {
               border: "1px solid var(--color-border)",
               borderRadius: 8,
               textDecoration: "none",
-              color: "#111",
-              background: "#fff",
+              color: "var(--color-text)",
+              background: "var(--ops-surface-raised)",
             }}
           >
             Cancel
@@ -937,10 +937,10 @@ export default function EditJobPage() {
             disabled={saving}
             style={{
               padding: "11px 18px",
-              border: "1px solid #111",
+              border: "1px solid var(--color-primary-action)",
               borderRadius: 8,
-              color: "#fff",
-              background: "#111",
+              color: "#081323",
+              background: "var(--color-primary-action)",
               cursor: saving ? "not-allowed" : "pointer",
               opacity: saving ? 0.7 : 1,
             }}
@@ -957,8 +957,8 @@ const inputStyle: React.CSSProperties = {
   width: "100%",
   boxSizing: "border-box",
   padding: "10px 11px",
-  border: "1px solid #d1d5db",
+  border: "1px solid var(--ops-border-strong)",
   borderRadius: 8,
-  background: "#fff",
+  background: "var(--ops-surface-inset)",
   fontSize: 14,
 };
