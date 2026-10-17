@@ -132,7 +132,8 @@ async function POSTHandler(
             pickupAt = await getJobPickupAtForAccount(
               accountId,
               job.jobDate,
-              job.pickupTime
+              job.pickupTime,
+              job.pickupTimeZone
             );
           } catch {
             throw new Error(
