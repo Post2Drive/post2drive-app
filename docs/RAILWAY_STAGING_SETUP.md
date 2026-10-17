@@ -1,93 +1,62 @@
-# Railway staging setup and current state
+# Railway staging runbook
 
-**Last checked: 16 October 2026**
+**Last checked:** 18 October 2026  
+**Project:** `Post2Drive Staging` (`074d55f7-6a58-4c46-86aa-a2c7b0079859`)  
+**Environment:** `staging` (`293eb264-dd1d-4eef-87ca-016943459edf`)
 
-## Railway project and services
+This runbook reflects the connected Railway configuration and runtime logs, not the older bootstrap plan.
 
-- Project: `Post2Drive Staging` (private project)
-- Project ID: `074d55f7-6a58-4c46-86aa-a2c7b0079859`
-- Environment: `staging`
-- Environment ID: `293eb264-dd1d-4eef-87ca-016943459edf`
+## Service inventory
 
-| Service | ID | Purpose | Current status |
-|---|---|---|---|
-| `Postgres` | `4fb4f66a-9869-4976-bc29-217efe0104f4` | Primary transactional database for Prisma | Deployment succeeded; 500 MB persistent volume |
-| `Redis` | `47efbd4e-f432-4fa1-91eb-a809c26d9f80` | Staging cache/queue infrastructure reservation | Deployment succeeded; 500 MB persistent volume; app code does not yet use Redis |
-| `Post2Drive Web` | `561c5355-867e-49fc-84bf-e519e1ac8ef0` | Next.js marketplace application | Empty service configured; no source or deployment yet |
-| `Post2Drive Infra Smoke Test` | `04107a5c-3b23-4d89-8864-af75355530a3` | Temporary infra-only HTTP/status page | Deployment succeeded; public domain assigned; GET health route checks PostgreSQL and Redis |
+| Service | ID | Purpose / state |
+|---|---|---|
+| `Post2Drive Web` | `561c5355-867e-49fc-84bf-e519e1ac8ef0` | Next.js marketplace + embedded operations dashboard; repository `Post2Drive/post2drive-app`, branch `feature/country-localisation-audit`; port 3000; health path `/api/health`. Latest previously completed commit `b15e0ff754860c564db6fc26930a024d85234938` succeeded; verify the later configuration redeploy before releases. |
+| `Postgres-J8xl` | `ef2d67df-d9c9-4851-bb12-0728cf40c5da` | Current app/QA database service; 500 MB persistent volume. |
+| `Postgres` | `4fb4f66a-9869-4976-bc29-217efe0104f4` | Separate PostgreSQL service and separate 500 MB persistent volume; data owner/consumer not yet verified. Do not delete or repoint it until audited. |
+| `Post2Drive Infra Smoke Test` | `04107a5c-3b23-4d89-8864-af75355530a3` | **Actually runs `npm run qa:worker`**; it is a durable QA worker, not an HTTP smoke-test service. It has no public domain and its display name is stale. Rename it in Railway when convenient. |
 
-### Staging URL
+Redis service `47efbd4e-f432-4fa1-91eb-a809c26d9f80` was removed from active staging service use because no runtime consumer was found. Its 500 MB volume `redis-volume` (`8a301634-90d4-457f-8259-f71bdfdbe5fb`) remains detached and retained; the data volume has not been deleted. `REDIS_URL` was blanked on the web and QA-worker service configurations.
 
-`https://post2drive-web-staging.up.railway.app`
+## Database ownership
 
-The Railway domain is reserved and targets port 3000. **It is not yet a working marketplace URL**: the web service has no application source or deployment, so app testing must wait until the source is published and a deployment succeeds.
+The latest previously successful web deployment's Prisma logs identify:
 
-## Immediate infrastructure smoke-test URL
+- Database: `post2drive_qa`
+- Host: `postgres-j8xl.railway.internal:5432`
+- Migration result: 21 migrations found; no pending migrations
 
-`https://post2drive-infra-smoke-test-staging.up.railway.app`
+Therefore `Postgres-J8xl` is the observed active staging database for the deployed app. The separate `Postgres` service has its own data volume. Do not assume replication, identical contents, or emptiness. Before retirement, inspect its schemas and data, review all service references, and preserve any required backup.
 
-This is a separate small Railway Function deployed successfully to verify platform routing and the two data services. Its home page explicitly says it is an infrastructure check, not the marketplace. `GET /api/health` (also `/health`) runs `SELECT 1` on Postgres and `PING` on Redis, returning HTTP 200 only if both checks pass, and 503 otherwise. It never returns raw errors or credentials. The latest Railway HTTP probe reached this public endpoint and returned HTTP 200 for POST /api/health. That handler only returns 200 when PostgreSQL SELECT 1 and Redis PING both succeed, so this confirms live routing plus connectivity to both services. Browser GET /api/health is also supported.
+The web service runs `node ops-dashboard/provision-readonly-role.mjs && npx prisma migrate deploy` before start. The provisioning script configures `post2drive_ops_readonly` with SELECT-only table permissions on the database named by `DATABASE_URL`. The dashboard uses a separate `OPS_DASHBOARD_DATABASE_URL`. The connected Railway interface redacts variable values, so that URL's actual target could not be independently read. Confirm it points to `post2drive_qa` on `Postgres-J8xl` with the restricted role, then verify a successful report fetch and no permission warnings. Do not replace it with primary database credentials.
 
-## Application configuration already set
+## Redis finding
 
-The `Post2Drive Web` service has these settings ready for the source import:
+No Redis client dependency was found in `package.json`, and no Redis usage was found in the inspected operations dashboard, rate limiter, QA worker, or QA-runner paths. The dashboard's 30-second cache is a process-local `Map`; the QA queue uses PostgreSQL. Redis was not improving current application cache, queue or latency behaviour. It was removed as an active service while its volume was retained to avoid deleting unknown data.
 
-- Builder: Railpack
-- Build command: `npm run build`
-- Start command: `npm run start`
-- Pre-deploy command: `npx prisma migrate deploy`
-- Healthcheck: `/api/health` (added to the prepared source bundle)
-- Restart policy: `ON_FAILURE`, up to five retries
-- `DATABASE_URL` references `${{Postgres.DATABASE_URL}}` over Railway private networking
-- `REDIS_URL` references `${{Redis.REDIS_URL}}`; no code currently consumes this value
-- `NEXTAUTH_URL` points to the staging URL; `NEXTAUTH_SECRET` is a strong staging-only secret
-- `NODE_ENV=production`, `PORT=3000`, `DEPLOYMENT_ENVIRONMENT=staging`, `NEXT_TELEMETRY_DISABLED=1`
-- `EMAIL_VERIFICATION_ENABLED=false` to permit isolated staging signup without an email-provider key. This is for testing only; do not copy to production.
+If Redis is reintroduced, implement a specific adapter, test failure behaviour and connection limits, and measure performance before claiming a gain.
 
-Do not set `POST2DRIVE_QA_MODE=true` unless you are explicitly preparing the isolated, deployment-ID-gated QA runner. Do not set any live payment or email-provider credentials in this environment.
+## Current URLs
 
-## Separate QA worker service (required before a 10,000-account run)
+- Marketplace: https://post2drive-web-staging.up.railway.app
+- Health: https://post2drive-web-staging.up.railway.app/api/health
 
-The QA endpoint now enqueues a run in the PostgreSQL-backed `qa_test_runs` ledger. The web request does not execute the load test. A separate worker must run the same tested source revision and use the same isolated staging database.
+The health route executes PostgreSQL `SELECT 1`; it does not prove every feature, payment/email delivery, or the dashboard's separate read-only connection is healthy. The previously documented public `post2drive-infra-smoke-test-staging.up.railway.app` URL is not part of the current service inventory.
 
-Create a private Railway service named `Post2Drive QA Worker` in the **staging** environment. Connect it to the same repository and exact commit used by `Post2Drive Web`; set its build command to `npx prisma generate --schema=prisma/schema.prisma` (after dependency installation) and its start command to `npm run qa:worker`; do not assign it a public domain. Use Node.js 22.6 or newer. The worker imports Prisma Client directly, so the generate step is required before startup. Configure these values in the staging environment only:
+## Release discipline
 
-- `DATABASE_URL`: the same staging Postgres connection as the web service.
-- `POST2DRIVE_QA_MODE=true`
-- `POST2DRIVE_QA_ENVIRONMENT=staging`
-- `POST2DRIVE_QA_DATABASE_ISOLATED=true`
-- Verify Railway's automatically supplied `RAILWAY_ENVIRONMENT_ID` equals the staging environment ID; do not manually override this platform variable.
-- `POST2DRIVE_QA_ALLOWED_ENVIRONMENT_ID`: set this to the exact staging environment ID.
-- `QA_BASE_URL=https://post2drive-web-staging.up.railway.app`
-- `QA_ACCOUNT_COUNT=10000`
-- `QA_MARKET_COUNTRY=GB` for a UK run or `IN` for an India run.
+1. Verify the exact branch and commit running in Railway.
+2. Check GitHub Actions on the exact proposed commit; a successful Railway deployment is not a substitute for CI or end-to-end tests.
+3. Use synthetic data only. Keep staging and production databases/credentials isolated.
+4. Do not enable real payments or email verification until provider signatures, idempotency/replay handling, failure/refund paths and real delivery tests pass.
+5. Preserve historical failed deployments and QA attempts. A 17 October staging snapshot showed 555 raw HTTP 5xx responses; 552 were attributed to the intentionally unconfigured verification-start webhook, while three remained unattributed. Recheck current route-level metrics.
+6. Keep QA cleanup disabled unless explicitly authorised and the staging allow-list checks pass.
+7. Before any database migration or retirement, confirm the exact target, review the migration, and verify backup/restore.
+8. Do not promote the feature branch into production without independent review, complete browser/mobile workflows, security and market-isolation tests, recovery testing, and country-specific legal readiness.
 
-The web service requires the same isolation and allow-list settings plus `QA_RUN_TOKEN` (at least 32 characters); the worker does not need that trigger token. Keep cleanup disabled by default. Enable `QA_ALLOW_CLEANUP=true` only for a separately confirmed, explicit cleanup request. Do not set these QA variables in production and do not use a production database.
+## Outstanding checks
 
-The queue uses a PostgreSQL advisory lock for unique enqueue and `FOR UPDATE SKIP LOCKED` for atomic worker claim. Worker heartbeats and phase are stored in the run summary. If a worker dies, its row stays `running` with its last heartbeat; it is **not automatically re-queued**, because a replacement could otherwise duplicate account creation while the previous process is still alive. Confirm the previous worker process has stopped before any manual recovery. Clean up only after terminal state, and preserve run results before cleanup.
-
-Deployment gate: the web service and this worker must both be deployed from the same validated commit. Verify the web build, health endpoint, worker startup log, database migration, and the current commit/revision from Railway before submitting the 10,000-account trigger.
-
-## Why no further services are enabled
-
-- PostgreSQL is required by Prisma and currently stores all app data, including incident evidence bytes.
-- Redis is provisioned at the user's request but is currently unused by the code. Do not claim it improves performance until an adapter is implemented and tested; avoid routing rate-limit decisions through Redis without preserving the current database-backed safety guarantees.
-- An S3-compatible bucket is not needed by the current source because evidence content is stored in PostgreSQL. Revisit object storage only as part of a designed upload migration.
-- Email uses Resend only when a real API key and verified sender are provided; do not invent credentials.
-- A payment provider adapter, verified webhook settlement, and refund/reconciliation flow are not implemented; never accept live payments.
-
-## Steps to make the app URL live
-
-1. Publish the complete source from `post2drive-clean-start.zip` into `Post2Drive/post2drive-app`, preserving the documentation commits on `main`. Use `docs/PUBLISH_CLEAN_START.md` for instructions.
-2. Confirm GitHub Actions validates dependency installation, Prisma schema/migrations, TypeScript, and the Next.js production build. Targeted local contract tests alone are insufficient.
-3. Only after CI passes, connect the existing `Post2Drive Web` service to `Post2Drive/post2drive-app` branch `main`, scoped to this `staging` environment. Do not create a second app service or connect any production environment.
-4. Wait for `npx prisma migrate deploy`, build, healthcheck, and deployment to pass. The expected health response is `GET /api/health` returning HTTP 200 with `{"status":"ok","service":"post2drive-web","checks":{"database":"ok"}}`.
-5. Test using synthetic data only: signup/login, both markets, UK/India boundary checks, DST/timezone handling, job posting/bidding/acceptance, cancellation/incidents/evidence, notifications and account deletion.
-6. Email delivery stays off until Resend credentials and a verified sender are configured. Payment collection stays blocked until a real provider adapter and signed-webhook tests exist.
-
-## Safety rules
-
-- The staging domain is publicly reachable after a deployment; use synthetic accounts and data only.
-- Do not use production credentials, real personal data, live payment credentials, or production database backups.
-- Never force-push or attach Railway to a documentation-only commit.
-- Keep production deployment separate and blocked until launch-readiness gates are reviewed.
+- Verify the effective `OPS_DASHBOARD_DATABASE_URL` target and fetch a report with the read-only role.
+- Audit tables/data and consumers of the separate `Postgres` service before deciding whether to keep it.
+- Rename `Post2Drive Infra Smoke Test` to `Post2Drive QA Worker` in Railway.
+- Verify final status of the redeploy initiated after blanking the unused Redis reference.
+- Reconcile the currently deployed branch with `main` through normal review; PR #12 remains draft and unmerged.
