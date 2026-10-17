@@ -475,38 +475,46 @@ main table tr:hover td {
 @media (max-width: 560px) { .signup-review-grid { grid-template-columns: 1fr; } .signup-step-header h2 { font-size: 21px; } }
 
 
-/* Unified Post2Drive operations theme.
-   Applied across every app section and every country/market; localisation, pricing,
-   currency and account permissions remain data-driven and unchanged. */
+/* Post2Drive operations-inspired design system.
+   Global across app routes and countries. Market rules/data are untouched.
+   Use layered surfaces and restrained accents; avoid blanket recolouring of all elements. */
 :root {
   --ops-bg: #0b1220;
-  --ops-panel: #121d30;
-  --ops-panel-raised: #17263c;
-  --ops-border: #293a53;
-  --ops-muted: #9bacbf;
-  --ops-text: #eaf1fa;
-  --ops-blue: #70aaff;
-  --ops-teal: #56d6c2;
-  --ops-red: #ff8b91;
-  --ops-amber: #ffc96b;
+  --ops-surface: #111c2d;
+  --ops-surface-raised: #17263a;
+  --ops-surface-inset: #0e1828;
+  --ops-border: #2a3a50;
+  --ops-border-strong: #3b506c;
+  --ops-text: #edf3fb;
+  --ops-text-secondary: #c0ccdb;
+  --ops-muted: #93a4b9;
+  --ops-blue: #79adff;
+  --ops-blue-hover: #a1c6ff;
+  --ops-blue-soft: #1b304b;
+  --ops-teal: #65d5c1;
+  --ops-teal-soft: #153a3b;
+  --ops-amber: #f4c36c;
+  --ops-amber-soft: #3b3020;
+  --ops-red: #ff929a;
+  --ops-red-soft: #40252e;
 
-  --color-primary: var(--ops-blue);
+  --color-primary: var(--ops-text);
   --color-primary-action: var(--ops-blue);
-  --color-primary-action-hover: #91bdff;
+  --color-primary-action-hover: var(--ops-blue-hover);
   --color-positive: var(--ops-teal);
   --color-warning: var(--ops-amber);
   --color-danger: var(--ops-red);
   --color-background: var(--ops-bg);
-  --color-surface: var(--ops-panel);
+  --color-surface: var(--ops-surface);
   --color-text: var(--ops-text);
   --color-muted: var(--ops-muted);
   --color-border: var(--ops-border);
-  --color-primary-soft: #1a2b42;
-  --color-action-soft: #1b304a;
-  --color-positive-soft: #123a3a;
-  --color-warning-soft: #3a3020;
-  --color-danger-soft: #3d252e;
-  --shadow-card: 0 8px 24px rgba(0,0,0,.18);
+  --color-primary-soft: var(--ops-blue-soft);
+  --color-action-soft: #1a2d45;
+  --color-positive-soft: var(--ops-teal-soft);
+  --color-warning-soft: var(--ops-amber-soft);
+  --color-danger-soft: var(--ops-red-soft);
+  --shadow-card: 0 10px 28px rgba(0, 0, 0, .2);
 }
 
 html,
@@ -527,6 +535,7 @@ main h1,
 main h2,
 main h3,
 main h4,
+main h5,
 main strong,
 .auth-page h1,
 .auth-page h2,
@@ -539,23 +548,68 @@ main small,
 main label,
 .auth-page p,
 .auth-page label {
+  color: var(--ops-text-secondary);
+}
+
+main p[style*="color: var(--color-muted)"],
+main p[style*="color:var(--color-muted)"],
+main small,
+.signup-muted {
   color: var(--ops-muted);
 }
 
+main a,
+.auth-page a {
+  color: var(--ops-blue);
+  text-underline-offset: 3px;
+}
+
+main a:hover,
+.auth-page a:hover {
+  color: var(--ops-blue-hover);
+}
+
+/* Panel hierarchy: page canvas -> cards -> inset content. */
 main section,
 main article,
-main aside,
+main form,
+main .signup-note,
+main .signup-plan-card,
+main .signup-alert {
+  color: var(--ops-text);
+  border-color: var(--ops-border);
+}
+
+main section[style*="border"],
+main article[style*="border"],
+main form,
+main .signup-note,
+main .signup-plan-card,
+main .signup-alert {
+  background-color: var(--ops-surface);
+}
+
+main section section,
+main article article,
+main section article,
+main article section,
 main [class*="card"],
+main [class*="Card"],
 main [class*="panel"],
+main [class*="Panel"],
 main [class*="tile"],
+main [class*="Tile"],
 main [class*="stat"] {
   border-color: var(--ops-border);
 }
 
-main section,
-main article,
-main aside {
-  background-color: var(--ops-panel);
+main [class*="card"],
+main [class*="Card"],
+main [class*="panel"],
+main [class*="Panel"],
+main [class*="tile"],
+main [class*="Tile"],
+main [class*="stat"] {
   color: var(--ops-text);
 }
 
@@ -565,26 +619,43 @@ main textarea,
 .auth-page input,
 .auth-page select,
 .auth-page textarea {
-  background: var(--ops-panel-raised);
+  background: var(--ops-surface-inset);
   color: var(--ops-text);
-  border-color: var(--ops-border);
+  border: 1px solid var(--ops-border-strong);
+  border-radius: 8px;
 }
 
 main input::placeholder,
 main textarea::placeholder,
 .auth-page input::placeholder,
 .auth-page textarea::placeholder {
-  color: #8093ab;
+  color: #8294aa;
+  opacity: 1;
+}
+
+main input:focus,
+main select:focus,
+main textarea:focus,
+.auth-page input:focus,
+.auth-page select:focus,
+.auth-page textarea:focus {
+  border-color: var(--ops-blue);
+  outline: 3px solid rgba(121, 173, 255, .13);
+  outline-offset: 1px;
 }
 
 main table {
-  background: var(--ops-panel);
+  width: 100%;
+  background: var(--ops-surface);
   color: var(--ops-text);
+  border-collapse: separate;
+  border-spacing: 0;
 }
 
 main table th {
-  background: var(--ops-panel-raised);
+  background: var(--ops-surface-raised);
   color: var(--ops-text);
+  font-weight: 700;
 }
 
 main table td,
@@ -593,59 +664,88 @@ main table th {
 }
 
 main table tr:hover td {
-  background: #1a2b42;
+  background: rgba(121, 173, 255, .055);
 }
 
 main button,
-.auth-page button[type="submit"],
-.button-link-secondary {
-  background: var(--ops-panel-raised);
-  color: var(--ops-text);
-  border-color: #354862;
+.auth-page button[type="submit"] {
+  min-height: 40px;
+  background: var(--ops-blue);
+  color: #081323;
+  border: 1px solid var(--ops-blue);
+  border-radius: 8px;
+  font-weight: 700;
+  transition: background-color .15s ease, border-color .15s ease, transform .15s ease;
 }
 
 main button:not(:disabled):hover,
 .auth-page button[type="submit"]:hover {
-  background: #223753;
-  border-color: var(--ops-blue);
-  filter: none;
+  background: var(--ops-blue-hover);
+  border-color: var(--ops-blue-hover);
 }
 
 main button:disabled {
   color: #8292a7;
   background: #202d40;
   border-color: var(--ops-border);
+  cursor: not-allowed;
 }
 
-main a,
-.auth-page a,
-.button-link-secondary {
-  color: var(--ops-blue);
+/* Secondary actions should read as secondary, not compete with primary actions. */
+.button-link {
+  border-radius: 8px;
 }
 
-.main-nav-link:hover,
-.mobile-nav-link:hover,
-.button-link-secondary:hover {
-  background: #1a2b42 !important;
+.button-link-secondary,
+.auth-page .signup-actions .signup-secondary {
+  background: var(--ops-surface-raised);
+  color: var(--ops-text) !important;
+  border: 1px solid var(--ops-border-strong);
+}
+
+.button-link-secondary:hover,
+.auth-page .signup-actions .signup-secondary:hover {
+  background: var(--ops-blue-soft);
   border-color: var(--ops-blue);
 }
 
+.dashboard-stat-link:hover > div {
+  background: var(--ops-surface-raised);
+  border-color: var(--ops-blue) !important;
+}
+
+.main-nav-link {
+  color: var(--ops-text-secondary);
+}
+
+.main-nav-link:hover,
+.mobile-nav-link:hover {
+  background: var(--ops-blue-soft) !important;
+  border-color: var(--ops-border-strong);
+}
+
 .mobile-bottom-nav {
-  background: var(--ops-panel);
+  background: var(--ops-surface);
   border-color: var(--ops-border);
 }
 
+header {
+  background: var(--ops-surface);
+  border-color: var(--ops-border);
+}
+
+/* Sign-up surfaces use distinct layers, not the same colour as the page canvas. */
 .auth-page form,
 .signup-note,
-.signup-plan-card,
 .signup-review-grid > div,
 .signup-alert {
-  background: var(--ops-panel);
+  background: var(--ops-surface);
   border-color: var(--ops-border);
   color: var(--ops-text);
 }
 
 .signup-plan-card {
+  background: #15283d;
   border-color: #355577;
 }
 
@@ -655,9 +755,20 @@ main a,
   color: var(--ops-text) !important;
 }
 
-.signup-step-market,
+.signup-plan-label,
+.signup-review-grid span,
+.signup-fields small,
+.signup-muted {
+  color: var(--ops-muted);
+}
+
+.signup-step-market {
+  background: var(--ops-blue-soft);
+  color: var(--ops-text);
+}
+
 .signup-progress {
-  background: #1a2b42;
+  background: var(--ops-border);
 }
 
 .signup-progress > span {
@@ -665,18 +776,20 @@ main a,
 }
 
 .signup-error {
-  background: #3d252e;
+  background: var(--ops-red-soft);
   color: var(--ops-red) !important;
+  border: 1px solid rgba(255, 146, 154, .25);
 }
 
-.dashboard-stat-link:hover > div,
-main .button-link-secondary:hover {
-  background: #1a2b42;
-  border-color: var(--ops-blue);
+/* Preserve semantic colour cues for success, warning, and error states. */
+[role="alert"],
+[aria-invalid="true"] {
+  border-color: rgba(255, 146, 154, .45);
 }
 
 :focus-visible {
-  outline-color: rgba(112,170,255,.5);
+  outline: 3px solid rgba(121, 173, 255, .48);
+  outline-offset: 2px;
 }
 
 @media (max-width: 700px) {
@@ -686,27 +799,6 @@ main .button-link-secondary:hover {
   }
 
   .mobile-bottom-nav {
-    background: var(--ops-panel);
+    background: var(--ops-surface);
   }
-}
-
-/* Normalize legacy inline light surfaces so older sections inherit the same theme. */
-main [style*="background:"],
-main [style*="background-color:"] {
-  background-color: var(--ops-panel) !important;
-  color: var(--ops-text);
-}
-main [style*="#fff"],
-main [style*="#FFF"],
-main [style*="#ffffff"],
-main [style*="#FFFFFF"],
-main [style*="white"] {
-  color: var(--ops-text);
-}
-header {
-  background: var(--ops-panel) !important;
-  border-color: var(--ops-border) !important;
-}
-.main-nav-link[style*="#EAF3FF"] {
-  background: #1a2b42 !important;
 }
