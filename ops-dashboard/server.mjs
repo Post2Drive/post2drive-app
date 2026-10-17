@@ -366,6 +366,11 @@ const server = http.createServer(async (req,res) => {
       return send(res,200,pageLogin());
     }
     if (req.method === "POST" && url.pathname === "/api/admin-action") {
+      let origin;
+      try { origin = new URL(req.headers.origin || ""); } catch { return send(res,403,JSON.stringify({error:"Same-origin admin request required"}),"application/json"); }
+      if (!req.headers.host || origin.host !== req.headers.host || (IS_PRODUCTION && origin.protocol !== "https:")) {
+        return send(res,403,JSON.stringify({error:"Same-origin admin request required"}),"application/json");
+      }
       const raw = await body(req);
       let actionBody;
       try { actionBody = JSON.parse(raw); } catch { return send(res,400,JSON.stringify({error:"Request body must be valid JSON"}),"application/json"); }
