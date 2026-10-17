@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { symbolFor } from "@/lib/currency";
 import { formatMarketDate, formatMarketCurrency } from "@/lib/localisation";
 
 type PaymentJob = {
