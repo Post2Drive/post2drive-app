@@ -11,14 +11,35 @@ async function cleanupSyntheticRuns(runIds: string[], base: string) {
   return prisma.$transaction(async tx => {
     const results: Array<Record<string, unknown>> = [];
     for (const runId of runIds) {
-      const runs = await tx.$queryRawUnsafe<Array<{ id: string; target_url: string; status: string; target_accounts: number; created_accounts: number; finished_at: Date | null; duration_ms: bigint | null }>>(
-        "SELECT id,target_url,status,target_accounts,created_accounts,finished_at,duration_ms FROM qa_test_runs WHERE id=$1",
+      const runs = await tx.$queryRawUnsafe<Array<{ id: string; target_url: string; status: string; target_accounts: number; created_accounts: number; finished_at: Date | null; duration_ms: bigint | null; summary: unknown }>>(
+        "SELECT id,target_url,status,target_accounts,created_accounts,finished_at,duration_ms,summary FROM qa_test_runs WHERE id=$1 FOR UPDATE",
         runId
       );
       const run = runs[0];
+      const persistedSummary = run?.summary && typeof run.summary === "object" && !Array.isArray(run.summary)
+        ? run.summary as Record<string, unknown>
+        : {};
       const allowedStatuses = new Set(["completed", "failed", "aborted"]);
-      if (!run || !allowedStatuses.has(run.status) || run.target_url !== base || run.target_accounts !== 10_000) {
-        throw new Error("Cleanup refused: run must be a completed, failed, or aborted 10,000-account QA run for this exact staging target. Stop or confirm the run is no longer active before cleanup: " + runId);
+      if (!run || run.target_url !== base || run.target_accounts !== 10_000) {
+        throw new Error("Cleanup refused: run must be a named 10,000-account QA run for this exact staging target: " + runId);
+      }
+      // Locking the ledger row serializes repeated cleanup requests. If an earlier
+      // cleanup committed, report its stored counts rather than overwriting them.
+      if (persistedSummary.syntheticDataRetained === false && persistedSummary.syntheticDataCleanedAt) {
+        results.push({
+          runId,
+          priorStatus: run.status,
+          finalStatus: run.status,
+          alreadyCleaned: true,
+          recoveredSyntheticAccounts: Number(persistedSummary.recoveredSyntheticAccounts ?? run.created_accounts),
+          deleted: persistedSummary.cleanupCounts ?? {},
+          preservedAuditEvents: true,
+          preservedRunSummary: true,
+        });
+        continue;
+      }
+      if (!allowedStatuses.has(run.status)) {
+        throw new Error("Cleanup refused: run must be completed, failed, or aborted; queued/running runs are never cleanup eligible: " + runId);
       }
       // A legacy cleanup could change a live run to aborted without finalizing it.
       // Never infer that such a row is safe to delete: require durable completion markers.
