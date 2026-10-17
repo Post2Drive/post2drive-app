@@ -32,6 +32,7 @@ for (const [name, pattern] of [
   ["login brute-force rate limit", /LOGIN_MAX_ATTEMPTS = 10/],
   ["forwarded IP opt-in only", /TRUST_PROXY_HEADERS === "true"/],
   ["signed admin-action proxy", /api\/admin-action/],
+  ["same-origin mutation protection", /Same-origin admin request required/],
   ["application-side signed bridge", /x-p2d-admin-signature/],
   ["HTTPS bridge configuration gate", /function bridgeReady\(\)/],
   ["tester approve and reject actions", /tester-approve/],
