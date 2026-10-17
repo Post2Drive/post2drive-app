@@ -52,7 +52,7 @@ for (const [name, pattern] of [
   ["retained QA failure history", /qa_test_events/],
   ["vehicle compliance metrics", /"motExpired"/],
   ["source provenance and limitations", /External logistics industry trends/],
-  ["no destructive QA cleanup", !/DELETE FROM|TRUNCATE TABLE|prisma\.[a-zA-Z]+\.deleteMany/.test(server) && /dedicated read-only database role/.test(server)),
+  ["no destructive QA cleanup", !/DELETE FROM|TRUNCATE TABLE|prisma\.[a-zA-Z]+\.deleteMany/.test(server) && /dedicated read-only database role/.test(server)],
   ["health endpoint", /url\.pathname === "\/health"/],
   ["metrics endpoint", /url\.pathname === "\/api\/metrics"/],
 ]) {
