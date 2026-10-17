@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "rm -rf node_modules/.prisma/client && prisma generate --schema=prisma/schema.prisma && next build",
-    "start": "next start",
+    "start": "node ops-dashboard/start-staging.mjs",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "qa:lifecycle-contract": "node scripts/qa/lifecycle-contract.mjs",
