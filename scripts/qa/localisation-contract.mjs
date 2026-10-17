@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
 import { MARKETS } from "../../lib/market.ts";
-import { getLocalisationProfile, formatMarketDate, getJurisdictionOptions } from "../../lib/localisation.ts";
+import { getLocalisationProfile, formatMarketDate, getJurisdictionOptions, getTimeZoneOptions } from "../../lib/localisation.ts";
 import { VEHICLE_TYPES, vehicleTypeLabel } from "../../lib/vehicles.ts";
 
 let assertions = 0;
@@ -20,6 +20,8 @@ for (const market of Object.values(MARKETS)) {
   check(profile?.dialingCode === market.dialingCode, `${market.country}: dialing code mismatch`);
   check(profile?.authorityLabel !== "Local vehicle registration / transport authority", `${market.country}: market-specific authority terminology missing`);
   check(profile?.distanceUnit === (market.country === "GB" || market.country === "US" ? "mile" : "km"), `${market.country}: distance unit mismatch`);
+  const zoneOptions = getTimeZoneOptions(market.country, market.timeZone);
+  check(zoneOptions.some((zone) => zone.value === market.timeZone), `${market.country}: market default time zone is not selectable`);
   check(profile?.inspectionRequiredAtCountryLevel === false, `${market.country}: blanket inspection rule is unsafe without vehicle class/jurisdiction`);
   check(Boolean(formatMarketDate("2026-10-17", { country: market.country, currency: market.currency })), `${market.country}: calendar date formatting failed`);
 
