@@ -13,6 +13,7 @@ export type NormalizedJobInput = {
   pickupTime: string | null;
   dropoffTime: string | null;
   pickupTimeZone: string;
+  dropoffTimeZone: string;
   vehicleType: string;
   weightKg: number | null;
   dimensions: string | null;
@@ -125,6 +126,11 @@ export function validateJobInput(body: unknown, expectedMarket?: MarketIdentity)
     if (!timeZoneOptions.some((option) => option.value === pickupTimeZone)) {
       return { ok: false, error: "Choose a pickup time zone valid for your market." };
     }
+    const requestedDropoffTimeZone = typeof input.dropoffTimeZone === "string" ? input.dropoffTimeZone.trim() : "";
+    const dropoffTimeZone = requestedDropoffTimeZone || pickupTimeZone;
+    if (!timeZoneOptions.some((option) => option.value === dropoffTimeZone)) {
+      return { ok: false, error: "Choose a drop-off time zone valid for your market." };
+    }
     if (expectedMarket) {
       const market = marketForAccount(expectedMarket);
       if (!market) return { ok: false, error: "Your account's country and currency are not supported." };
@@ -135,7 +141,7 @@ export function validateJobInput(body: unknown, expectedMarket?: MarketIdentity)
 
     return { ok: true, data: {
       pickup, pickupLat, pickupLng, dropoff, dropoffLat, dropoffLng, jobDate,
-      pickupTime, dropoffTime, pickupTimeZone, vehicleType, weightKg, dimensions, price,
+      pickupTime, dropoffTime, pickupTimeZone, dropoffTimeZone, vehicleType, weightKg, dimensions, price,
       pricePerMile, notes, priceMode, currency, crossBorder: false,
       pickupContactName, pickupContactPhone, dropoffContactName, dropoffContactPhone,
     }};
