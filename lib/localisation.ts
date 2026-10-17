@@ -159,6 +159,38 @@ export const TIME_ZONE_OPTIONS: Record<string, { value: string; label: string }[
   AU: [
     { value: "Australia/Perth", label: "Western Australia Time" }, { value: "Australia/Darwin", label: "Northern Territory Time" }, { value: "Australia/Adelaide", label: "South Australia Time" }, { value: "Australia/Brisbane", label: "Queensland Time" }, { value: "Australia/Sydney", label: "New South Wales / ACT Time" }, { value: "Australia/Hobart", label: "Tasmania Time" },
   ],
+  NZ: [
+    { value: "Pacific/Auckland", label: "New Zealand mainland time" },
+    { value: "Pacific/Chatham", label: "Chatham Islands time" },
+  ],
+  ES: [
+    { value: "Europe/Madrid", label: "Mainland Spain / Balearic Islands" },
+    { value: "Atlantic/Canary", label: "Canary Islands" },
+  ],
+  PT: [
+    { value: "Europe/Lisbon", label: "Mainland Portugal" },
+    { value: "Atlantic/Madeira", label: "Madeira" },
+    { value: "Atlantic/Azores", label: "Azores" },
+  ],
+  FR: [
+    { value: "Europe/Paris", label: "Metropolitan France" },
+    { value: "America/Guadeloupe", label: "Guadeloupe / Saint Martin / Saint Barthélemy" },
+    { value: "America/Martinique", label: "Martinique" },
+    { value: "America/Cayenne", label: "French Guiana" },
+    { value: "Indian/Reunion", label: "Réunion" },
+    { value: "Indian/Mayotte", label: "Mayotte" },
+    { value: "Pacific/Noumea", label: "New Caledonia" },
+    { value: "Pacific/Tahiti", label: "French Polynesia (Tahiti)" },
+    { value: "Pacific/Marquesas", label: "Marquesas Islands" },
+    { value: "Pacific/Gambier", label: "Gambier Islands" },
+    { value: "Indian/Kerguelen", label: "French Southern Territories" },
+  ],
+  DK: [
+    { value: "Europe/Copenhagen", label: "Denmark proper" },
+    { value: "Atlantic/Faroe", label: "Faroe Islands" },
+    { value: "America/Nuuk", label: "Greenland (Nuuk)" },
+    { value: "America/Danmarkshavn", label: "Greenland (Danmarkshavn)" },
+  ],
 };
 
 
