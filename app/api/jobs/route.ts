@@ -10,6 +10,7 @@ import { validateJobInput } from "@/lib/jobValidation";
 import { buildJobFilters } from "@/lib/jobSearch";
 import { getSyntheticAccountIdsForUser } from "@/lib/qaIsolation";
 import { isSupportedMarket, marketForAccount } from "@/lib/market";
+import { getTimeZoneOptions } from "@/lib/localisation";
 import { enforceRateLimit } from "@/lib/rateLimit";
 
 async function GETHandler(req: Request) {
@@ -379,13 +380,14 @@ async function POSTHandler(req: Request) {
     pickupAt = getJobPickupAt(validation.data.jobDate, validation.data.pickupTime, account, validation.data.pickupTimeZone);
   } catch (error) {
     const code = error instanceof Error ? error.message : "";
-    const marketName = `${marketForAccount(account)?.label ?? "Selected market"} local time`;
+    const market = marketForAccount(account);
+    const timeZoneName = getTimeZoneOptions(account.country, market?.timeZone).find((zone) => zone.value === validation.data.pickupTimeZone)?.label ?? validation.data.pickupTimeZone;
     return NextResponse.json({
       error: code === "AMBIGUOUS_PICKUP_TIME_DST"
         ? "The selected pickup time is ambiguous because of the daylight-saving clock change. Please choose another time."
         : code === "INVALID_PICKUP_TIME_DST"
           ? "The selected pickup time does not exist because of the daylight-saving clock change. Please choose another time."
-          : `Invalid pickup time for ${marketName}.`,
+          : `Invalid pickup time for ${timeZoneName}.`,
     }, { status: 400 });
   }
 
