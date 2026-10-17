@@ -965,7 +965,7 @@ export default function JobsPage() {
                       fontSize: 13,
                     }}
                   >
-                    {job.weightKg ? `${job.weightKg} kg` : ""}
+                    {job.weightKg ? `${accountCountry === "US" ? (job.weightKg / 0.45359237).toLocaleString("en-US", { maximumFractionDigits: 1 }) + " lb" : job.weightKg + " kg"}` : ""}
                     {job.weightKg && job.dimensions ? " · " : ""}
                     {job.dimensions || ""}
                   </p>
