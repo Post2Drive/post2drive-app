@@ -1,6 +1,6 @@
 "use client";
 
-import { formatMarketDate, formatMarketDateTime, getLocalisationProfile } from "@/lib/localisation";
+import { formatMarketDate, formatMarketDateTime, getLocalisationProfile, getJurisdictionOptions } from "@/lib/localisation";
 import { vehicleTypeLabel } from "@/lib/vehicles";
 
 import { useCallback, useEffect, useState } from "react";
@@ -27,7 +27,7 @@ type Application = {
   verificationStatus: string;
   users: { name: string; email: string; phone: string; role: string; emailVerifiedAt: string | null }[];
   vehicles: {
-    id: string; vehicleType: string; regPlate: string; ownershipType: string | null;
+    id: string; vehicleType: string; regPlate: string; registrationRegion: string | null; ownershipType: string | null;
     make: string | null; model: string | null; mamKg: number | null;
     v5cDocumentUrl: string | null; insuranceDocumentUrl: string | null;
     operatorLicenceNo: string | null; motValidUntil: string | null;
@@ -158,7 +158,7 @@ export default function TesterReview() {
       <h3>Vehicles</h3>
       {app.vehicles.length === 0 && <p>No vehicle submitted yet.</p>}
       {app.vehicles.map((v) => <div key={v.id} style={{ borderTop: "1px solid var(--color-border)", paddingTop: 10, marginTop: 10 }}>
-        <p><strong>{vehicleTypeLabel(v.vehicleType, app.country)} — {v.regPlate}</strong> · {v.ownershipType || "Ownership not specified"} · Status: {v.verificationStatus}</p>
+        <p><strong>{vehicleTypeLabel(v.vehicleType, app.country)} — {v.regPlate}</strong>{v.registrationRegion ? ` · ${getJurisdictionOptions(app.country).find((region) => region.code === v.registrationRegion)?.label ?? v.registrationRegion}` : ""} · {v.ownershipType || "Ownership not specified"} · Status: {v.verificationStatus}</p>
         <p>{[v.make, v.model, v.mamKg ? `${app.country === "US" ? Math.round(v.mamKg / 0.45359237).toLocaleString("en-US") + " lb GVWR" : v.mamKg + " kg"}` : null].filter(Boolean).join(" · ") || "No extra details"}</p>
         <p>{getLocalisationProfile({ country: app.country, currency: app.currency })?.inspectionLabel ?? "Inspection"}: {v.motValidUntil ? formatMarketDate(v.motValidUntil, { country: app.country, currency: app.currency }) : "Not supplied"} · Insurance: {v.insuranceValidUntil ? formatMarketDate(v.insuranceValidUntil, { country: app.country, currency: app.currency }) : "Not supplied"}</p>
         {v.v5cDocumentUrl && <p><a href={v.v5cDocumentUrl} target="_blank" rel="noreferrer">Open registration document</a></p>}
