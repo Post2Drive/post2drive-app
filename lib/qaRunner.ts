@@ -319,6 +319,18 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
       return await finish("completed", { testType, loadRequestCount: routeMatrixExecuted, authenticatedAccountsUsed: signed.length, syntheticDataRetained: true, limitations: ["This is a 10,000-request authenticated API load test, not a browser performance test; no cleanup was performed."] });
     }
 
+    if (testType === "api-load") {
+      const loadPaths = ["/api/account", "/api/account/access", "/api/jobs", "/api/vehicles", "/api/payments", "/api/promotion/status", "/api/promotion/referrals/progress"];
+      const loadAccounts = signed.filter((account) => account.index < 499);
+      await parallel(Array.from({ length: routeMatrixTarget }, (_, i) => i), 12, async i => {
+        const account = loadAccounts.length ? loadAccounts[i % loadAccounts.length] : null;
+        const path = loadPaths[i % loadPaths.length];
+        await check(account?.client ?? null, account, "api-load", "authenticated-read-" + i, "GET", path, undefined, [200]);
+        routeMatrixExecuted++;
+      });
+      return await finish("completed", { testType, loadRequestCount: routeMatrixExecuted, authenticatedAccountsUsed: loadAccounts.length, accountPoolRunId, syntheticDataRetained: true, limitations: ["This is a 10,000-request authenticated API load test, not a browser performance test; no cleanup was performed."] });
+    }
+
     const posters = signed.filter(a => a.index < 100);
     const drivers = signed.filter(a => a.index >= 100 && a.index < 250);
     const both = signed.filter(a => a.index >= 250 && a.index < 499);
@@ -732,12 +744,7 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
       routeMatrixExecuted++;
     });
 
-    // Delete one synthetic account through the real account-deletion flow only after
-    // its route-matrix checks; the QA cleanup can still recover it by run mapping.
-    const deleteFixture = fixtures.find(account => account.index === 498 && account.client);
-    if (deleteFixture?.client) {
-      await check(deleteFixture.client, deleteFixture, "account-lifecycle", "synthetic-account-delete-confirmation", "DELETE", "/api/account", { confirm: "DELETE", currentPassword: deleteFixture.password }, [200, 202]);
-    }
+    // Account deletion is intentionally not exercised so all synthetic records remain available for review.
 
     const count = async (query: string, ...params: unknown[]) => {
       const rows = await prisma.$queryRawUnsafe<Array<{ count: bigint | number }>>(query, ...params);
@@ -754,7 +761,7 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
       syntheticJobActivities: await count('SELECT count(*)::int AS count FROM "JobActivity" a JOIN "Job" j ON j.id=a."jobId" WHERE j.notes LIKE $1', "%" + marker + "%"),
       loggedInteractions: await count("SELECT count(*)::int AS count FROM qa_test_events WHERE run_id=$1", runId),
     };
-    return await finish("completed", { successfulLogins: signed.length, persistedDataSummary, limitations: ["Email delivery and real provider settlements were not attempted.", "This is API-driven lifecycle simulation, not browser-based usability testing.", "Route distances and prices are deterministic synthetic estimates, not live routing results or market quotes."] });
+    return await finish("completed", { testType, successfulLogins: signed.length, accountPoolRunId, persistedDataSummary, limitations: ["Email delivery and real provider settlements were not attempted.", "This is API-driven lifecycle simulation, not browser-based usability testing.", "Route distances and prices are deterministic synthetic estimates, not live routing results or market quotes.", "Account deletion and cleanup were intentionally not run; synthetic data is retained."] });
   } catch (error) {
     const failureMessage = error instanceof Error ? error.message : String(error);
     console.error("Staging QA runner exception", error);
