@@ -20,6 +20,8 @@
   --brand-yellow: #F2C300;
   --brand-purple: #6D28D9;
   --brand-orange: #E87500;
+  --brand-cyan: #0096C7;
+  --brand-magenta: #C0268D;
   --brand-yellow-text: #171717;
 
   --radius-sm: 6px;
@@ -494,8 +496,8 @@ main table tr:hover td {
   --ops-blue:#2457D6; --ops-blue-hover:#173FA8; --ops-blue-soft:#FFFFFF;
   --ops-teal:#18864B; --ops-teal-soft:#FFFFFF; --ops-green:#18864B; --ops-green-soft:#FFFFFF;
   --ops-amber:#F2C300; --ops-amber-soft:#FFF6CC; --ops-red:#D62828; --ops-red-soft:#FCE8E8;
-  --ops-violet:#6D28D9; --ops-violet-soft:#FFFFFF; --ops-cyan:#2457D6; --ops-cyan-soft:#FFFFFF;
-  --ops-orange:#E87500; --ops-orange-soft:#FFFFFF; --ops-pink:#6D28D9; --ops-pink-soft:#FFFFFF;
+  --ops-violet:#6D28D9; --ops-violet-soft:#FFFFFF; --ops-cyan:#0096C7; --ops-cyan-soft:#FFFFFF;
+  --ops-orange:#E87500; --ops-orange-soft:#FFFFFF; --ops-pink:#C0268D; --ops-pink-soft:#FFFFFF;
   --color-primary:var(--ops-text); --color-primary-action:var(--ops-blue); --color-primary-action-hover:var(--ops-blue-hover);
   --color-positive:var(--ops-teal); --color-warning:var(--ops-amber); --color-danger:var(--ops-red);
   --color-background:var(--ops-bg); --color-surface:var(--ops-surface); --color-text:var(--ops-text); --color-muted:var(--ops-muted);
@@ -848,3 +850,11 @@ tbody tr:hover td{background:#EEF3FF}
 .job-create-form fieldset{border:1px solid #D7DCE4!important}
 .main-nav-link[aria-current="page"],.mobile-nav-link[aria-current="page"]{background:#2457D6!important;color:#FFFFFF!important;border-color:#2457D6!important}
 .signup-progress>span{background:#2457D6!important}
+
+/* Supplemental chart colours: reserve cyan and magenta for extra data series. */
+.ops-section-overview .dashboard-stat-link:nth-child(9n+8) .ops-theme-card{border-top-color:#0096C7!important}
+.ops-section-overview .dashboard-stat-link:nth-child(9n) .ops-theme-card{border-top-color:#C0268D!important}
+.ops-section-overview .dashboard-stat-link:nth-child(9n+8) .ops-theme-card>div:first-child,
+.ops-section-overview .dashboard-stat-link:nth-child(9n+8) .ops-theme-card>div:nth-child(2){color:#0096C7!important}
+.ops-section-overview .dashboard-stat-link:nth-child(9n) .ops-theme-card>div:first-child,
+.ops-section-overview .dashboard-stat-link:nth-child(9n) .ops-theme-card>div:nth-child(2){color:#C0268D!important}
