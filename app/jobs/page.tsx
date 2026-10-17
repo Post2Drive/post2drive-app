@@ -257,6 +257,8 @@ export default function JobsPage() {
     (session?.user as any)
       ?.country;
 
+  const marketProfile = getLocalisationProfile({ country: accountCountry || "GB", currency: (session?.user as any)?.currency || "GBP" });
+
   const countryName =
     COUNTRIES.find(
       (c) =>
