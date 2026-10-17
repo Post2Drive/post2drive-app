@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { symbolFor } from "@/lib/currency";
 import { VEHICLE_TYPES } from "@/lib/vehicles";
+import { getLocalisationProfile } from "@/lib/localisation";
 
 function parseCoords(
   input: string
@@ -62,7 +63,8 @@ export default function NewJobPage() {
   const symbol =
     symbolFor(currency);
 
-  const timeZoneLabel = country === "IN" ? "India Standard Time (IST)" : "UK local time (GMT/BST)";
+  const marketProfile = getLocalisationProfile({ country, currency });
+  const timeZoneLabel = marketProfile?.timeZone ?? "your market time zone";
   const steps = country === "IN"
     ? ["Route & schedule", "Vehicle & pricing", "Contacts & review"]
     : ["Route & schedule", "Vehicle & pricing", "Contacts & instructions", "Review & post"];
@@ -332,11 +334,11 @@ export default function NewJobPage() {
     <main style={{ maxWidth: 840, margin: "0 auto", padding: "28px 16px 64px" }}>
       <header style={{ marginBottom: 22 }}>
         <p style={{ color: "var(--color-positive)", fontWeight: 800, fontSize: 12, letterSpacing: ".09em", marginBottom: 6 }}>
-          {country === "IN" ? "INDIA MARKETPLACE · INR" : "UK MARKETPLACE · GBP"}
+          {`${marketProfile?.marketplaceLabel ?? "LOCAL"} MARKETPLACE · ${currency}`}
         </p>
         <h1 style={{ margin: "0 0 8px" }}>Post a delivery job</h1>
         <p style={{ margin: 0, color: "var(--color-muted)" }}>
-          Add the essentials, review the details, then publish to the {country === "IN" ? "India" : "UK"} marketplace.
+          Add the essentials, review the details, then publish to the {marketProfile?.marketplaceLabel ?? "selected"} marketplace.
         </p>
       </header>
 
@@ -371,7 +373,7 @@ export default function NewJobPage() {
             <label>Dimensions<input maxLength={150} value={form.dimensions} onChange={(e) => update("dimensions", e.target.value)} placeholder="e.g. 4.2m × 2.1m × 2.4m" /></label>
           </div>
           <label>How will you set the price? *<select value={form.priceMode} onChange={(e) => update("priceMode", e.target.value)}><option value="fixed">Fixed price — the amount shown is the offer</option><option value="bid">Open to bids — drivers can submit offers</option></select></label>
-          <label>{form.priceMode === "bid" ? `Guide price (${symbol.trim()}) *` : `Total job price (${symbol.trim()}) *`}<input required inputMode="decimal" type="number" min="0.01" max="100000000" step="0.01" value={form.price} onChange={(e) => update("price", e.target.value)} placeholder={country === "IN" ? "e.g. 2500" : "e.g. 85.00"} /><small>Currency is fixed to {currency}; jobs are not shared between UK and India.</small></label>
+          <label>{form.priceMode === "bid" ? `Guide price (${symbol.trim()}) *` : `Total job price (${symbol.trim()}) *`}<input required inputMode="decimal" type="number" min="0.01" max="100000000" step="0.01" value={form.price} onChange={(e) => update("price", e.target.value)} placeholder={country === "IN" ? "e.g. 2500" : "e.g. 85.00"} /><small>Currency is fixed to {currency}; jobs are not shared between markets.</small></label>
           {form.priceMode === "bid" && <p style={{ margin: 0, borderRadius: 10, padding: 12, background: "var(--color-primary-soft)", fontSize: 13 }}>This is a guide price, not a guaranteed final payment. You'll review driver bids before accepting one.</p>}
         </section>}
 
@@ -395,9 +397,9 @@ export default function NewJobPage() {
         </section>}
 
         {step === 3 && country !== "IN" && <section style={{ display: "grid", gap: 16 }}>
-          <div><h2 style={{ margin: "0 0 5px", fontSize: 20 }}>Review before publishing</h2><p style={{ margin: 0, color: "var(--color-muted)", fontSize: 14 }}>Confirm the details before this job becomes visible to eligible UK users.</p></div>
+          <div><h2 style={{ margin: "0 0 5px", fontSize: 20 }}>Review before publishing</h2><p style={{ margin: 0, color: "var(--color-muted)", fontSize: 14 }}>Confirm the details before this job becomes visible to eligible users in your market.</p></div>
           <ReviewSummary form={form} currency={currency} symbol={symbol} date={form.jobDate} timeZoneLabel={timeZoneLabel} />
-          <div style={{ borderRadius: 10, padding: 12, background: "var(--color-primary-soft)", fontSize: 13 }}>Your listing is confined to {country === "IN" ? "India (INR)" : "the United Kingdom (GBP)"}. Cross-border matching is disabled.</div>
+          <div style={{ borderRadius: 10, padding: 12, background: "var(--color-primary-soft)", fontSize: 13 }}>Your listing is confined to {marketProfile?.marketplaceLabel ?? "your selected market"} ({currency}). Cross-market matching is disabled.</div>
         </section>}
 
         {error && <p role="alert" style={{ margin: 0, color: "var(--color-danger, #b42318)", fontWeight: 650 }}>{error}</p>}
