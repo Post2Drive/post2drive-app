@@ -257,7 +257,8 @@ const server = http.createServer(async (req,res) => {
   try {
     if (req.method === "GET" && url.pathname === "/health") return send(res,200,JSON.stringify({ok:true,service:"post2drive-ops-dashboard"}),"application/json");
     if (req.method === "POST" && url.pathname === "/login") {
-      const ip = String(req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown").split(",")[0].trim();
+      const forwardedIp = process.env.TRUST_PROXY_HEADERS === "true" ? String(req.headers["x-forwarded-for"] || "").split(",")[0].trim() : "";
+      const ip = forwardedIp || String(req.socket.remoteAddress || "unknown");
       const now = Date.now();
       const attempt = loginAttempts.get(ip);
       if (attempt && now - attempt.startedAt < LOGIN_WINDOW_MS && attempt.count >= LOGIN_MAX_ATTEMPTS) {
