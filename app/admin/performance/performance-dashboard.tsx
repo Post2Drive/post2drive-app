@@ -151,9 +151,9 @@ export default function PerformanceDashboard() {
         <Table rows={[data.vehicleSummary||{}]} columns={[
           {key:"total",label:"Vehicles",render:(v:any)=>num(v)},
           {key:"verified",label:"Verified",render:(v:any)=>num(v)},
-          {key:"motExpired",label:"MOT expired",render:(v:any)=>num(v)},
+          {key:"motExpired",label:"Vehicle inspection expired (all markets)",render:(v:any)=>num(v)},
           {key:"insuranceExpired",label:"Insurance expired",render:(v:any)=>num(v)},
-          {key:"motExpiring30d",label:"MOT ≤30d",render:(v:any)=>num(v)},
+          {key:"motExpiring30d",label:"Vehicle inspection due within 30 days (all markets)",render:(v:any)=>num(v)},
           {key:"insuranceExpiring30d",label:"Insurance ≤30d",render:(v:any)=>num(v)}
         ]}/>
       </Section>
