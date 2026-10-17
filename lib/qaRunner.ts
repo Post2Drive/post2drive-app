@@ -14,6 +14,7 @@ type AccountFixture = {
   client?: ApiClient;
 };
 type EventResult = { path: string; duration: number; passed: boolean };
+type QaTestType = "api-load" | "synthetic-accounts" | "workflow-e2e";
 
 let active = false;
 
@@ -83,7 +84,7 @@ class ApiClient {
   }
 }
 
-async function runQA(countryOverride: string, runId: string, workerId: string) {
+async function runQA(countryOverride: string, runId: string, workerId: string, testType: QaTestType) {
   const base = (process.env.QA_BASE_URL || "").replace(/\/+$/, "");
   const db = process.env.DATABASE_URL || "";
   const countryCode = (countryOverride || process.env.QA_MARKET_COUNTRY || "GB").trim().toUpperCase();
@@ -99,7 +100,7 @@ async function runQA(countryOverride: string, runId: string, workerId: string) {
   const events: EventResult[] = [];
   let createdAccounts = 0;
   let routeMatrixExecuted = 0;
-  const routeMatrixTarget = 10_000;
+  const routeMatrixTarget = testType === "synthetic-accounts" ? 0 : 10_000;
   const fixtures: AccountFixture[] = [];
 
   async function record(e: { index?: number; accountId?: string; cohort?: string; scenario: string; action: string; method: string; path: string; expected: number[]; actual: number | null; duration: number; details?: Record<string, unknown> }) {
@@ -176,7 +177,7 @@ async function runQA(countryOverride: string, runId: string, workerId: string) {
       endpoints[path] = { count: row.count, failures: row.failures, p50Ms: row.durations[Math.floor((row.durations.length - 1) * 0.5)], p95Ms: row.durations[Math.floor((row.durations.length - 1) * 0.95)], maxMs: row.durations[row.durations.length - 1] };
     }
     const summary = {
-      runId, marker, status: finalStatus, target: base, targetAccounts: 10_000, country: selectedMarket.country, currency: selectedMarket.currency, marketLabel: selectedMarket.label, createdAccounts, eventCount: events.length, routeMatrixTarget, routeMatrixExecuted,
+      runId, marker, status: finalStatus, testType, target: base, targetAccounts: 10_000, country: selectedMarket.country, currency: selectedMarket.currency, marketLabel: selectedMarket.label, createdAccounts, eventCount: events.length, routeMatrixTarget, routeMatrixExecuted,
       passed, failed, durationMs: Date.now() - started, p50Ms: percentile(0.5), p95Ms: percentile(0.95),
       cohorts: { posterFocused: 100, driverFocused: 150, both: 9_749, restricted: 1 },
       endpoints, syntheticDataRetained: true, realMoneyPaymentsAttempted: false, emailDeliveryTested: false, ...extra,
@@ -202,7 +203,7 @@ async function runQA(countryOverride: string, runId: string, workerId: string) {
 
 
   try {
-    console.log("Starting staging QA run " + runId + " for " + market.country + "/" + market.currency + " with 10,000 synthetic accounts at " + base);
+    console.log("Starting staging QA run " + runId + " type=" + testType + " for " + market.country + "/" + market.currency + " at " + base);
     await parallel(Array.from({ length: 10_000 }, (_, i) => i), 12, async i => {
       const cohort: AccountFixture["cohort"] = i < 100 ? "poster-focused" : i < 250 ? "driver-focused" : i < 9_999 ? "both" : "restricted";
       const email = "qa-" + runId + "-" + String(i + 1).padStart(3, "0") + "@post2drive.invalid";
@@ -257,7 +258,10 @@ async function runQA(countryOverride: string, runId: string, workerId: string) {
     });
 
     await prisma.$executeRawUnsafe("UPDATE qa_test_runs SET created_accounts=$2 WHERE id=$1", runId, createdAccounts);
-    if (createdAccounts !== 10_000) return await finish("aborted", { reason: "Stopped before workflows because signup did not create exactly 10,000 accounts.", createdAccounts });
+    if (createdAccounts !== 10_000) return await finish("aborted", { reason: "Stopped before follow-on checks because signup did not create exactly 10,000 accounts.", createdAccounts });
+    if (testType === "synthetic-accounts") {
+      return await finish("completed", { testType, accountProvisioningOnly: true, syntheticDataRetained: true, limitations: ["Only synthetic-account creation and fixture persistence were tested; no cleanup was performed."] });
+    }
 
     await parallel(fixtures.filter(account => account.index < 499 || account.index === 9_999), 16, async account => {
       const client = new ApiClient(account, base, runId);
@@ -282,6 +286,17 @@ async function runQA(countryOverride: string, runId: string, workerId: string) {
         ["/api/promotion/referrals/progress", "referral-progress"],
       ] as const) await check(a.client!, a, "authenticated-baseline", action, "GET", path, undefined, [200]);
     });
+
+    if (testType === "api-load") {
+      const loadPaths = ["/api/account", "/api/account/access", "/api/jobs", "/api/vehicles", "/api/payments", "/api/promotion/status", "/api/promotion/referrals/progress"];
+      await parallel(Array.from({ length: routeMatrixTarget }, (_, i) => i), 12, async i => {
+        const account = signed.length ? signed[i % signed.length] : null;
+        const path = loadPaths[i % loadPaths.length];
+        await check(account?.client ?? null, account, "api-load", "authenticated-read-" + i, "GET", path, undefined, [200]);
+        routeMatrixExecuted++;
+      });
+      return await finish("completed", { testType, loadRequestCount: routeMatrixExecuted, authenticatedAccountsUsed: signed.length, syntheticDataRetained: true, limitations: ["This is a 10,000-request authenticated API load test, not a browser performance test; no cleanup was performed."] });
+    }
 
     const posters = signed.filter(a => a.index < 100);
     const drivers = signed.filter(a => a.index >= 100 && a.index < 250);
@@ -728,12 +743,13 @@ async function runQA(countryOverride: string, runId: string, workerId: string) {
 
 
 
-export async function runQaWorker(runId: string, countryOverride: string, workerId: string) {
+export async function runQaWorker(runId: string, countryOverride: string, workerId: string, testType: QaTestType = "workflow-e2e") {
   if (!/^[A-Za-z0-9._:-]{1,80}$/.test(runId)) {
     throw new Error("Invalid QA run identifier.");
   }
   if (!workerId || workerId.length > 160) {
     throw new Error("Invalid QA worker identifier.");
   }
-  return runQA(countryOverride, runId, workerId);
+  if (!["api-load", "synthetic-accounts", "workflow-e2e"].includes(testType)) throw new Error("Invalid QA test type.");
+  return runQA(countryOverride, runId, workerId, testType);
 }
