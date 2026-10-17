@@ -744,9 +744,14 @@ header {
   color: var(--ops-text);
 }
 
-.signup-plan-card {
-  background: #15283d;
+main .signup-plan-card {
+  background: var(--ops-surface-raised);
   border-color: #355577;
+}
+
+main section section,
+main article article {
+  background-color: var(--ops-surface-raised);
 }
 
 .signup-plan-card h3,
