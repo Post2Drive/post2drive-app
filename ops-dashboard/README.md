@@ -25,7 +25,8 @@ Set these as Railway service secrets, never commit them or paste them into chat:
 - `OPS_DASHBOARD_USERNAME`: dedicated admin username of at least 3 characters. Do not reuse a customer login.
 - `OPS_DASHBOARD_PASSWORD`: strong random admin password of at least 16 characters.
 - `OPS_DASHBOARD_SESSION_SECRET`: independent random secret of at least 32 characters.
-- `NODE_ENV=production` for Secure cookies.
+- `NODE_ENV=production` for Secure cookies
+- Optional `COUNTRY_READINESS_JSON`: reviewed readiness evidence per country. Each market may define `localization`, `vehicleRules`, `payments`, `timezones`, `legalReview`, `stagingE2E`, and `operationalRecovery` objects with `status` (`verified`, `blocked`, or `in_progress`), `reviewedAt` (ISO timestamp), and `evidenceRef` (ticket/document reference). Missing fields stay `not_assessed`; a market is `ready` only when all seven gates are verified with dated evidence references. Do not put personal data or secrets in this value..
 
 Do not deploy with a blank/default password or with a database role that can modify marketplace or QA data. If a read-only database role is not yet available, stop before deployment and provision one through the authorised database administration process.
 
@@ -35,13 +36,15 @@ Do not deploy with a blank/default password or with a database role that can mod
 - Do not disable authentication to make the dashboard easier to open.
 - Keep the public domain private to authorised operators where Railway access controls or an approved access gateway are available. If a public domain is enabled, the operator password remains mandatory.
 - Use HTTPS in deployed environments. No secrets, emails, contact details or individual account rows are rendered in charts.
-- Query endpoints are read-only. The service does not run migrations or cleanup operations. Tester approval/rejection, access-code generation, and incident resolution/notification are not executed by this reporting service: those operations must be routed through a secured application-side bridge that enforces existing business rules, transaction/audit requirements, and notification behaviour. Do not grant this service a write-capable database role to bypass that boundary.
+- Query endpoints are read-only. The service does not run migrations or cleanup operations.
+- Metrics responses are cached in-process for 30 seconds and concurrent identical requests share one in-flight query, reducing repeated database load. The cache is per service instance and is not a source of durable state.
+- Admin login is rate-limited to 10 failed attempts per 15 minutes per observed client IP. Confirm Railway proxy header behavior before enabling trusted forwarded-IP headers; do not assume arbitrary client-supplied forwarding headers are trustworthy. Tester approval/rejection, access-code generation, and incident resolution/notification are not executed by this reporting service: those operations must be routed through a secured application-side bridge that enforces existing business rules, transaction/audit requirements, and notification behaviour. Do not grant this service a write-capable database role to bypass that boundary.
 
 ## Data and limitations
 
 First-party account, job, bid, vehicle, API telemetry and QA-history metrics are sourced from PostgreSQL. Synthetic QA accounts are excluded from business totals where the QA attribution table is available. QA runs and failed scenarios remain visible in a separate section. If a query/table is unavailable, the UI must surface a coverage warning.
 
-The dashboard is organized into Overview, Marketplace, API & Reliability, QA & Incidents, Tester Operations, Market Research, Logistics Intelligence, and Data Catalogue sections. Tester applications, aggregate access-code history, incident review rows, and market-research aggregates are included in the standalone portal. Market-research answer groups with fewer than three responses are suppressed.
+The dashboard is organized into Command Centre, Marketplace, Trust & Operations, QA & Engineering, Countries & Research, Admin & Audit, and Data Catalogue. The command centre ranks an advisory queue from observed API errors, unresolved incidents, retained QA failures, pending tester applications, recorded vehicle-expiry signals and source-coverage warnings. Tester applications, aggregate access-code history, incident review rows, notification activity and incident workflow audit events are included in the standalone portal. Market-research answer groups with fewer than three responses are suppressed. Country launch readiness is evidence-based: without configured dated evidence, each gate remains Not assessed and no market is labelled Ready.
 
 The country selector filters first-party data by the poster/account country; it does not mutate account country or currency. Job metrics are attributed to the posting account's country. This is a product analytics convention, not a representation of national freight-market size.
 
