@@ -600,3 +600,55 @@ main [role="alert"],.auth-page [role="alert"]{background:var(--ops-red-soft);bor
 .dashboard-stat-link:focus-visible,.button-link:focus-visible,.main-nav-link:focus-visible,.mobile-nav-link:focus-visible{outline:3px solid rgba(49,92,255,.35);outline-offset:3px}
 @media(max-width:700px){.auth-page{align-items:flex-start;padding:24px 14px 80px}.auth-page h1{font-size:28px}.auth-page form{padding:22px 18px}.ops-theme-dashboard{padding:18px 12px 48px!important}.ops-theme-dashboard>div:first-child{padding:16px;border-radius:14px}.ops-theme-dashboard>section.ops-section{padding:15px;border-radius:14px}.ops-theme-dashboard .dashboard-stat-link{flex:1 1 calc(50% - 10px);min-width:125px}.ops-theme-dashboard .ops-theme-card{padding:14px!important}main{padding-left:16px;padding-right:16px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{transition-duration:.01ms!important;scroll-behavior:auto!important}}
+
+/* Route-agnostic controls and surfaces: covers pages wrapped in either main or div. */
+body{color:var(--ops-text)}
+h1,h2,h3,h4,h5{color:var(--ops-text)}
+p,label{color:var(--ops-text-secondary)}
+input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]),
+select,textarea{
+  background:var(--ops-surface-inset);
+  color:var(--ops-text);
+  border:1px solid var(--ops-border-strong);
+  border-radius:9px;
+}
+input:not([type="checkbox"]):not([type="radio"]):focus-visible,
+select:focus-visible,textarea:focus-visible{
+  border-color:var(--ops-blue);
+  outline:3px solid rgba(49,92,255,.16);
+  outline-offset:1px;
+}
+button,input[type="submit"],input[type="button"]{
+  background:var(--ops-blue);
+  color:#FFFFFF;
+  border:1px solid var(--ops-blue);
+  border-radius:9px;
+  font-weight:750;
+}
+button:not(:disabled):hover,input[type="submit"]:not(:disabled):hover,input[type="button"]:not(:disabled):hover{
+  background:var(--ops-blue-hover);
+  border-color:var(--ops-blue-hover);
+}
+button:disabled,input[type="submit"]:disabled,input[type="button"]:disabled{
+  color:#8794A8;background:#E5EAF3;border-color:#D8E0ED;cursor:not-allowed;
+}
+form,section[style*="border"],article[style*="border"]{
+  border-color:var(--ops-border);
+}
+form{color:var(--ops-text)}
+table{color:var(--ops-text);border-color:var(--ops-border)}
+th{background:#EAF0FF;color:#243E8D}
+tbody tr:nth-child(even) td{background:#FAFBFF}
+tbody tr:hover td{background:#EFF4FF}
+[role="status"]{color:#086B5D}
+[role="alert"]{color:#9D263D}
+.pricing-panel [role="status"].pricing-market-note{
+  background:var(--ops-orange-soft);
+  color:#895000;
+  border:1px solid #F3D7A6;
+  border-left:4px solid var(--ops-orange);
+}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{transition-duration:.01ms!important;scroll-behavior:auto!important}
+}
+
