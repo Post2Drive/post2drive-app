@@ -11,14 +11,19 @@ async function cleanupSyntheticRuns(runIds: string[], base: string) {
   return prisma.$transaction(async tx => {
     const results: Array<Record<string, unknown>> = [];
     for (const runId of runIds) {
-      const runs = await tx.$queryRawUnsafe<Array<{ id: string; target_url: string; status: string; target_accounts: number; created_accounts: number }>>(
-        "SELECT id,target_url,status,target_accounts,created_accounts FROM qa_test_runs WHERE id=$1",
+      const runs = await tx.$queryRawUnsafe<Array<{ id: string; target_url: string; status: string; target_accounts: number; created_accounts: number; finished_at: Date | null; duration_ms: bigint | null }>>(
+        "SELECT id,target_url,status,target_accounts,created_accounts,finished_at,duration_ms FROM qa_test_runs WHERE id=$1",
         runId
       );
       const run = runs[0];
       const allowedStatuses = new Set(["completed", "failed", "aborted"]);
       if (!run || !allowedStatuses.has(run.status) || run.target_url !== base || run.target_accounts !== 10_000) {
         throw new Error("Cleanup refused: run must be a completed, failed, or aborted 10,000-account QA run for this exact staging target. Stop or confirm the run is no longer active before cleanup: " + runId);
+      }
+      // A legacy cleanup could change a live run to aborted without finalizing it.
+      // Never infer that such a row is safe to delete: require durable completion markers.
+      if (!run.finished_at || run.duration_ms === null) {
+        throw new Error("Cleanup refused: this terminal row has no complete finish timestamp/duration. Treat it as an interrupted legacy run; verify the worker is stopped and preserve/review evidence before any manual recovery: " + runId);
       }
       const marker = "%QA-" + runId + "%";
       const emailPattern = "qa-" + runId + "-%@post2drive.invalid";
@@ -53,8 +58,8 @@ async function cleanupSyntheticRuns(runIds: string[], base: string) {
       await exec("accountMappings", 'DELETE FROM qa_test_accounts WHERE run_id=$1', runId);
       const finalStatus = run.status;
       await tx.$executeRawUnsafe(
-        "UPDATE qa_test_runs SET status=$2, finished_at=COALESCE(finished_at,now()), duration_ms=COALESCE(duration_ms,GREATEST(0,(EXTRACT(EPOCH FROM (now()-(SELECT started_at FROM qa_test_runs WHERE id=$1)))*1000)::bigint)), created_accounts=GREATEST(created_accounts,$3), summary=COALESCE(summary,'{}'::jsonb) || jsonb_build_object('status',$2,'cleanupReason','explicitly requested staging synthetic cleanup','recoveredSyntheticAccounts',$3,'syntheticDataRetained',false,'syntheticDataCleanedAt',now(),'cleanupCounts',$4::jsonb) WHERE id=$1",
-        runId, finalStatus, recoveredAccounts, JSON.stringify(counts)
+        "UPDATE qa_test_runs SET created_accounts=GREATEST(created_accounts,$2), summary=COALESCE(summary,'{}'::jsonb) || jsonb_build_object('cleanupReason','explicitly requested staging synthetic cleanup','recoveredSyntheticAccounts',$3,'syntheticDataRetained',false,'syntheticDataCleanedAt',now(),'cleanupCounts',$4::jsonb) WHERE id=$1 AND status=$5 AND finished_at IS NOT NULL AND duration_ms IS NOT NULL",
+        runId, recoveredAccounts, recoveredAccounts, JSON.stringify(counts), run.status
       );
       results.push({ runId, priorStatus: run.status, finalStatus, recoveredSyntheticAccounts: recoveredAccounts, deleted: counts, preservedAuditEvents: true, preservedRunSummary: true });
     }
