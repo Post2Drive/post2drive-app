@@ -288,6 +288,7 @@ model Vehicle {
 
   vehicleType String
   regPlate    String
+  registrationRegion String?
 
   ownershipType String?
   make          String?
