@@ -35,11 +35,13 @@ Do not deploy with a blank/default password or with a database role that can mod
 - Do not disable authentication to make the dashboard easier to open.
 - Keep the public domain private to authorised operators where Railway access controls or an approved access gateway are available. If a public domain is enabled, the operator password remains mandatory.
 - Use HTTPS in deployed environments. No secrets, emails, contact details or individual account rows are rendered in charts.
-- Query endpoints are read-only. The service does not run migrations or cleanup operations.
+- Query endpoints are read-only. The service does not run migrations or cleanup operations. Tester approval/rejection, access-code generation, and incident resolution/notification are not executed by this reporting service: those operations must be routed through a secured application-side bridge that enforces existing business rules, transaction/audit requirements, and notification behaviour. Do not grant this service a write-capable database role to bypass that boundary.
 
 ## Data and limitations
 
 First-party account, job, bid, vehicle, API telemetry and QA-history metrics are sourced from PostgreSQL. Synthetic QA accounts are excluded from business totals where the QA attribution table is available. QA runs and failed scenarios remain visible in a separate section. If a query/table is unavailable, the UI must surface a coverage warning.
+
+The dashboard is organized into Overview, Marketplace, API & Reliability, QA & Incidents, Tester Operations, Market Research, Logistics Intelligence, and Data Catalogue sections. Tester applications, aggregate access-code history, incident review rows, and market-research aggregates are included in the standalone portal. Market-research answer groups with fewer than three responses are suppressed.
 
 The country selector filters first-party data by the poster/account country; it does not mutate account country or currency. Job metrics are attributed to the posting account's country. This is a product analytics convention, not a representation of national freight-market size.
 
