@@ -92,9 +92,9 @@ async function cleanupSyntheticRuns(runIds: string[], base: string) {
         runId
       );
       const run = runs[0];
-      const allowedStatuses = new Set(["completed", "running", "failed", "aborted"]);
+      const allowedStatuses = new Set(["completed", "failed", "aborted"]);
       if (!run || !allowedStatuses.has(run.status) || run.target_url !== base || run.target_accounts !== 10_000) {
-        throw new Error("Cleanup refused: run must be an explicitly named 10,000-account QA run for this exact staging target: " + runId);
+        throw new Error("Cleanup refused: run must be a completed, failed, or aborted 10,000-account QA run for this exact staging target. Stop or confirm the run is no longer active before cleanup: " + runId);
       }
       const marker = "%QA-" + runId + "%";
       const emailPattern = "qa-" + runId + "-%@post2drive.invalid";
@@ -129,7 +129,7 @@ async function cleanupSyntheticRuns(runIds: string[], base: string) {
       await exec("accountMappings", 'DELETE FROM qa_test_accounts WHERE run_id=$1', runId);
       const finalStatus = run.status === "running" ? "aborted" : run.status;
       await tx.$executeRawUnsafe(
-        "UPDATE qa_test_runs SET status=$2, created_accounts=GREATEST(created_accounts,$3), summary=COALESCE(summary,'{}'::jsonb) || jsonb_build_object('status',$2,'cleanupReason','explicitly requested staging synthetic cleanup','recoveredSyntheticAccounts',$3,'syntheticDataRetained',false,'syntheticDataCleanedAt',now(),'cleanupCounts',$4::jsonb) WHERE id=$1",
+        "UPDATE qa_test_runs SET status=$2, finished_at=COALESCE(finished_at,now()), duration_ms=COALESCE(duration_ms,GREATEST(0,(EXTRACT(EPOCH FROM (now()-(SELECT started_at FROM qa_test_runs WHERE id=$1)))*1000)::bigint)), created_accounts=GREATEST(created_accounts,$3), summary=COALESCE(summary,'{}'::jsonb) || jsonb_build_object('status',$2,'cleanupReason','explicitly requested staging synthetic cleanup','recoveredSyntheticAccounts',$3,'syntheticDataRetained',false,'syntheticDataCleanedAt',now(),'cleanupCounts',$4::jsonb) WHERE id=$1",
         runId, finalStatus, recoveredAccounts, JSON.stringify(counts)
       );
       results.push({ runId, priorStatus: run.status, finalStatus, recoveredSyntheticAccounts: recoveredAccounts, deleted: counts, preservedAuditEvents: true, preservedRunSummary: true });
