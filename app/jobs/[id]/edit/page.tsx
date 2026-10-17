@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { VEHICLE_TYPES, vehicleTypeLabel } from "@/lib/vehicles";
+import { VEHICLE_TYPES } from "@/lib/vehicles";
 import { getLocalisationProfile, getTimeZoneOptions } from "@/lib/localisation";
 
 type Job = {
