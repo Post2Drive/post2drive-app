@@ -131,9 +131,7 @@ export default function ActivityHistory({
                         marginTop: 2,
                       }}
                     >
-                      {new Date(
-                        activity.createdAt
-                       ).toLocaleString()}
+                      {formatMarketDateTime(activity.createdAt, { country, currency })}
                     </div>
 
                     {activity.description && (
