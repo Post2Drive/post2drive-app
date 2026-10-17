@@ -14,7 +14,7 @@ export default function PricingPage() {
           style={{
             margin: 0,
             fontSize: 32,
-            color: "#102A43",
+            color: "var(--color-primary)",
           }}
         >
           Pricing by market
@@ -23,7 +23,7 @@ export default function PricingPage() {
         <p
           style={{
             margin: "8px 0 0",
-            color: "#6B7C93",
+            color: "var(--color-muted)",
           }}
         >
           The configured 7-day access model and numeric price tiers apply across supported non-India markets, displayed in each market’s local currency. India pricing remains separate. These are planning prices only; checkout is not connected.
