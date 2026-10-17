@@ -92,8 +92,8 @@ try {
   assert.ok(qaRunner.includes("country: market.country, currency: market.currency"), "synthetic accounts must use the selected market currency");
   assert.ok(qaRunner.includes("currency: market.currency"), "synthetic jobs must use the selected market currency");
   assert.ok(qaRoute.includes('crypto.randomUUID();'), "QA run IDs must use high entropy");
-  assert.ok(qaRunner.includes("const routeMatrixTarget = 10_000"), "each country run must target 10,000 API route scenarios");
-  assert.ok(qaRunner.includes("Array.from({ length: 10_000 }, (_, i) => i)"), "each country run must provision 10,000 synthetic accounts");
+  assert.ok(qaRunner.includes('const routeMatrixTarget = testType === "synthetic-accounts" ? 0 : 10_000'), "API-load and workflow-e2e modes must target 10,000 route scenarios");
+  assert.ok(qaRunner.includes('Array.from({ length: testType === "synthetic-accounts" ? 10_000 : 0 }, (_, i) => i)'), "only the synthetic-account mode may provision the 10,000-account pool");
   assert.ok(qaRunner.includes("createdAccounts !== 10_000"), "the run must abort unless all 10,000 synthetic accounts are created");
   assert.ok(qaRoute.includes("target_accounts !== 10_000"), "cleanup must be bound to a recorded 10,000-account run");
   assert.ok(qaRoute.includes('accounts !== "10000"'), "the HTTP trigger must require explicit 10,000-account confirmation");
@@ -111,7 +111,7 @@ try {
   assert.ok(qaRoute.includes("VALUES($1,$2,10000,'queued'"), "HTTP requests must enqueue a durable run");
   assert.ok(qaWorker.includes("FOR UPDATE SKIP LOCKED"), "worker claims must be atomic across replicas");
   assert.ok(qaWorker.includes("workerHeartbeatAt"), "worker heartbeat must be persisted");
-  assert.ok(qaWorker.includes("runQaWorker(job.id, country, workerId)"), "worker must invoke the shared runner with the claim owner ID");
+  assert.ok(qaWorker.includes("runQaWorker(job.id, country, workerId, testType)"), "worker must dispatch the selected QA workload mode with the claim owner ID");
   assert.ok(qaRunner.includes("status='running' AND target_url=$2 AND target_accounts=10000 AND summary->>'workerId'=$3"), "runner must verify the exact worker-owned staging row");
   assert.ok(qaRunner.includes("summary=COALESCE(summary,'{}'::jsonb) || $7::jsonb"), "run finalization must preserve worker metadata");
   assert.ok(qaRunner.includes("summary->>'workerId'=$8"), "only the claiming worker may finalize a run");
