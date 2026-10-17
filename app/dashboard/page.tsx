@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { formatMarketDate } from "@/lib/localisation";
 import { getTrialCycleStatus } from "@/lib/trialCycles";
 import {
   getPlanDisplay,
@@ -493,9 +494,7 @@ export default async function DashboardPage() {
               <p>
                 Free access until:{" "}
                 {account.freeEndsAt
-                  ? account.freeEndsAt.toLocaleDateString(
-                      "en-GB"
-                    )
+                  ? formatMarketDate(account.freeEndsAt, { country: account.country, currency: account.currency })
                   : "Not started"}
               </p>
 
@@ -529,7 +528,7 @@ export default async function DashboardPage() {
               <p>Verified referrals: <strong>{trialCycleStatus.actual.verifiedReferrals} / {trialCycleStatus.targets.verifiedReferrals}</strong></p>
               <p>Referred accounts completing a genuine job: <strong>{trialCycleStatus.actual.completedReferrals} / {trialCycleStatus.targets.completedReferrals}</strong></p>
               {trialCycleStatus.status === "grace" && trialCycleStatus.graceEndsAt && (
-                <p role="status"><strong>30-day grace period:</strong> finish the remaining targets by {new Date(trialCycleStatus.graceEndsAt).toLocaleDateString("en-GB")}.</p>
+                <p role="status"><strong>30-day grace period:</strong> finish the remaining targets by {formatMarketDate(trialCycleStatus.graceEndsAt, { country: account.country, currency: account.currency })}.</p>
               )}
               {trialCycleStatus.status === "failed" && (
                 <p role="alert">The targets were not completed within this cycle and its grace period. Free access has ended; choose the paid plan below to continue.</p>
