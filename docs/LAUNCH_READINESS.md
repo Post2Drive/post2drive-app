@@ -2,7 +2,7 @@
 
 **Review date:** 18 October 2026  
 **Repository:** `Post2Drive/post2drive-app`  
-**Release posture:** **Not cleared for public launch. Railway staging infrastructure exists, but the web application source is not connected and no app deployment has succeeded.**
+**Release posture:** **Not cleared for public launch. The staging web application is deployed from `feature/country-localisation-audit`; its current successful deployment does not waive the remaining production launch gates.**
 
 ## 1. Current staging state
 
