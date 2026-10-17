@@ -116,7 +116,7 @@ async function PATCHHandler(
     return NextResponse.json(
       {
         error:
-          "The selected pickup time is invalid for your market local time.",
+          "The selected pickup time is invalid for the chosen pickup time zone.",
       },
       { status: 400 }
     );
