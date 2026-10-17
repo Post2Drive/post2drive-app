@@ -42,13 +42,18 @@ async function authenticateBridge(req: Request, rawBody: string) {
         expiresAt: new Date(Date.now() + 10 * 60 * 1000),
       },
     });
-  } catch {
-    return { ok: false as const, status: 409, error: "This admin request has already been used." };
+  } catch (error) {
+    if ((error as { code?: string })?.code === "P2002") {
+      return { ok: false as const, status: 409, error: "This admin request has already been used." };
+    }
+    return { ok: false as const, status: 503, error: "Admin replay protection is unavailable." };
   }
   return { ok: true as const };
 }
 
 async function handler(req: Request) {
+  const declaredLength = Number(req.headers.get("content-length") || 0);
+  if (declaredLength > 24_000) return NextResponse.json({ error: "Request too large." }, { status: 413 });
   const rawBody = await req.text();
   if (rawBody.length > 24_000) return NextResponse.json({ error: "Request too large." }, { status: 413 });
   const auth = await authenticateBridge(req, rawBody);
