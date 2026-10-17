@@ -66,7 +66,7 @@ Test both markets independently with separate test accounts and currency values.
 
 ## 4. Verification evidence currently available
 
-- Latest Railway web redeploy — **SUCCESS**, commit `b15e0ff754860c564db6fc26930a024d85234938`, branch `feature/country-localisation-audit`. The configuration redeploy after clearing the unused Redis reference built successfully, reported no pending Prisma migrations on `post2drive_qa`, and started Next.js successfully.
+- Railway Web and QA-worker deployments after the staging documentation reconciliation — **SUCCESS**. The application-code revision inspected was `b15e0ff754860c564db6fc26930a024d85234938` on `feature/country-localisation-audit`; later changes in the staging reconciliation were documentation-only and did not alter runtime code. The Web build, Prisma pre-deploy on `post2drive_qa`, and Next.js startup passed.
 - Web process startup and Railway's `/api/health` check — **PASSED** on the previously completed deployment. The health route checks PostgreSQL connectivity only; it does not prove all application workflows or the operations-dashboard read-only connection.
 - Prisma migration — **PASSED** on the current app database; the log reported no pending migrations on `post2drive_qa` at `postgres-j8xl.railway.internal`.
 - Current app database and QA worker both use PostgreSQL-backed storage/queueing. No Redis runtime integration was found in the package dependencies, dashboard, rate limiter or worker.

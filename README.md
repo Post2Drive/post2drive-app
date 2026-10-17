@@ -180,7 +180,7 @@ Before enabling the flow in production:
 
 ## Deployment and environments
 
-As of 18 October 2026, the private Railway project `Post2Drive Staging` has a deployed Next.js application at [`post2drive-web-staging.up.railway.app`](https://post2drive-web-staging.up.railway.app). The latest successful web redeploy used commit `b15e0ff754860c564db6fc26930a024d85234938` from `Post2Drive/post2drive-app`, branch `feature/country-localisation-audit`. The configuration redeploy after clearing the unused Redis reference completed successfully, including build, Prisma pre-deploy and app startup. The current source branch is not `main`; do not assume a main-branch commit is what Railway is running.
+As of 18 October 2026, the private Railway project `Post2Drive Staging` has a deployed Next.js application at [`post2drive-web-staging.up.railway.app`](https://post2drive-web-staging.up.railway.app). The application-code revision inspected was commit `b15e0ff754860c564db6fc26930a024d85234938` on `feature/country-localisation-audit`. The subsequent Redis-cleanup and documentation-only staging redeploys both completed successfully; the documentation-only changes did not alter application runtime code. Railway deploys the feature branch, not `main`, so do not assume a main-branch commit is what Railway is running.
 
 ### Staging database ownership
 
