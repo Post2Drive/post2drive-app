@@ -65,7 +65,6 @@ export default function NewJobPage() {
 
   const marketProfile = getLocalisationProfile({ country, currency });
   const timeZoneLabel = marketProfile?.timeZone ?? "your market time zone";
-  const selectedTimeZoneLabel = getTimeZoneOptions(country, marketProfile?.timeZone).find((zone) => zone.value === form.pickupTimeZone)?.label ?? form.pickupTimeZone ?? timeZoneLabel;
   const steps = country === "IN"
     ? ["Route & schedule", "Vehicle & pricing", "Contacts & review"]
     : ["Route & schedule", "Vehicle & pricing", "Contacts & instructions", "Review & post"];
@@ -101,6 +100,8 @@ export default function NewJobPage() {
       dropoffSameAsPickup:
         false,
     });
+
+  const selectedTimeZoneLabel = getTimeZoneOptions(country, marketProfile?.timeZone).find((zone) => zone.value === form.pickupTimeZone)?.label ?? form.pickupTimeZone ?? timeZoneLabel;
 
   useEffect(() => {
     if (marketProfile?.timeZone) {
