@@ -3,12 +3,13 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { VEHICLE_TYPES, vehicleTypeLabel } from "@/lib/vehicles";
-import { getLocalisationProfile, formatMarketDate } from "@/lib/localisation";
+import { getLocalisationProfile, formatMarketDate, getJurisdictionOptions } from "@/lib/localisation";
 
 type Vehicle = {
   id: string;
   vehicleType: string;
   regPlate: string;
+  registrationRegion: string | null;
   ownershipType: string | null;
   make: string | null;
   model: string | null;
@@ -24,6 +25,7 @@ type Vehicle = {
 const initialForm = {
   vehicleType: VEHICLE_TYPES[0] as string,
   regPlate: "",
+  registrationRegion: "",
   ownershipType: "owned",
   make: "",
   model: "",
@@ -156,6 +158,15 @@ export default function VehiclesPage() {
         </label>
 
         {field(marketProfile?.registrationLabel ?? "Vehicle registration number", "regPlate", "text", true)}
+        {getJurisdictionOptions(market.country).length > 0 && (
+          <label style={{ display: "block", fontSize: 14, marginTop: 10 }}>
+            {marketProfile?.jurisdictionLabel ?? "Vehicle registration jurisdiction"}
+            <select style={fieldStyle} value={form.registrationRegion} required={Boolean(marketProfile?.jurisdictionSelectionRequired)} onChange={(event) => setForm((current) => ({ ...current, registrationRegion: event.target.value }))}>
+              <option value="">Select jurisdiction</option>
+              {getJurisdictionOptions(market.country).map((region) => <option key={region.code} value={region.code}>{region.label}</option>)}
+            </select>
+          </label>
+        )}
 
         <label style={{ display: "block", fontSize: 14 }}>
           Ownership
@@ -192,7 +203,7 @@ export default function VehiclesPage() {
       <div style={{ display: "grid", gap: 12 }}>
         {vehicles.map((vehicle) => (
           <section key={vehicle.id} style={{ border: "1px solid var(--color-border)", borderRadius: 10, padding: 16 }}>
-            <strong>{vehicleTypeLabel(vehicle.vehicleType, market.country)} — {vehicle.regPlate}</strong>
+            <strong>{vehicleTypeLabel(vehicle.vehicleType, market.country)} — {vehicle.regPlate}</strong>{vehicle.registrationRegion ? <span> · {getJurisdictionOptions(market.country).find((region) => region.code === vehicle.registrationRegion)?.label ?? vehicle.registrationRegion}</span> : null}
             <p>Status: <strong>{vehicle.verificationStatus}</strong></p>
             <p>{[vehicle.make, vehicle.model, vehicle.mamKg ? `${marketProfile?.weightUnit === "lb" ? Math.round(vehicle.mamKg / 0.45359237).toLocaleString("en-US") + " lb GVWR" : vehicle.mamKg + " kg"}` : null].filter(Boolean).join(" · ") || "No additional vehicle details"}</p>
             <p>{marketProfile?.inspectionLabel ?? "Inspection expiry"}: {vehicle.motValidUntil ? formatMarketDate(vehicle.motValidUntil, market) : "Not recorded"}</p>
