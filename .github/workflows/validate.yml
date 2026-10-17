@@ -51,6 +51,10 @@ jobs:
         run: npm run qa:country-matrix
       - name: Validate country-aware UI localisation contracts
         run: npm run qa:localisation
+      - name: Validate internal country-aware ops dashboard
+        run: |
+          node --check ops-dashboard/server.mjs
+          npm run qa:ops-dashboard
       - name: Audit user-facing app copy for market assumptions
         run: npm run qa:localisation-copy
       - name: Validate QA runner staging-only guard
