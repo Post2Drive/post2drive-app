@@ -473,3 +473,109 @@ main table tr:hover td {
 .signup-error { padding: 11px 12px; border-radius: 8px; background: var(--color-danger-soft); color: var(--color-danger) !important; }
 .signup-alert { padding: 18px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 12px; }
 @media (max-width: 560px) { .signup-review-grid { grid-template-columns: 1fr; } .signup-step-header h2 { font-size: 21px; } }
+
+
+/* Operations-inspired dark theme for the signed-in user dashboard.
+   Scoped to the dashboard so signup, jobs, payments and settings retain their existing design. */
+:root {
+  --ops-bg: #0b1220;
+  --ops-panel: #121d30;
+  --ops-border: #293a53;
+  --ops-muted: #9bacbf;
+  --ops-text: #eaf1fa;
+  --ops-blue: #70aaff;
+  --ops-teal: #56d6c2;
+  --ops-red: #ff8b91;
+  --ops-amber: #ffc96b;
+}
+body:has(.ops-theme-dashboard) {
+  background: var(--ops-bg);
+  color: var(--ops-text);
+}
+body:has(.ops-theme-dashboard) main h1,
+body:has(.ops-theme-dashboard) main h2,
+body:has(.ops-theme-dashboard) main h3,
+body:has(.ops-theme-dashboard) main h4 {
+  color: var(--ops-text);
+}
+.ops-theme-dashboard {
+  --color-primary: var(--ops-blue);
+  --color-primary-action: var(--ops-blue);
+  --color-primary-action-hover: #91bdff;
+  --color-positive: var(--ops-teal);
+  --color-warning: var(--ops-amber);
+  --color-danger: var(--ops-red);
+  --color-background: var(--ops-bg);
+  --color-surface: var(--ops-panel);
+  --color-text: var(--ops-text);
+  --color-muted: var(--ops-muted);
+  --color-border: var(--ops-border);
+  color: var(--ops-text);
+  width: calc(100% - 32px);
+  max-width: 1600px !important;
+  min-height: calc(100vh - 72px);
+  margin: 0 auto;
+  padding: 28px clamp(16px, 2.5vw, 36px) 60px !important;
+  background: var(--ops-bg);
+}
+.ops-theme-dashboard h1,
+.ops-theme-dashboard h2,
+.ops-theme-dashboard h3,
+.ops-theme-dashboard h4,
+.ops-theme-dashboard strong {
+  color: var(--ops-text) !important;
+}
+.ops-theme-dashboard p,
+.ops-theme-dashboard small,
+.ops-theme-dashboard label {
+  color: var(--ops-muted);
+}
+.ops-theme-dashboard section {
+  background: var(--ops-panel);
+  border-color: var(--ops-border) !important;
+  color: var(--ops-text);
+  box-shadow: 0 8px 24px rgba(0,0,0,.12);
+}
+.ops-theme-dashboard .ops-theme-card {
+  background: var(--ops-panel);
+  border-color: var(--ops-border) !important;
+  transition: background-color .15s ease, border-color .15s ease, transform .15s ease;
+}
+.ops-theme-dashboard .dashboard-stat-link:hover .ops-theme-card {
+  background: #17263c;
+  border-color: var(--ops-blue) !important;
+  transform: translateY(-2px);
+}
+.ops-theme-dashboard .ops-theme-card > div:first-child {
+  color: var(--ops-muted) !important;
+}
+.ops-theme-dashboard .ops-theme-card > div:last-child {
+  color: var(--ops-text);
+}
+.ops-theme-dashboard a {
+  color: var(--ops-blue);
+}
+.ops-theme-dashboard button {
+  background: #17263c;
+  color: var(--ops-text);
+  border: 1px solid #354862;
+  border-radius: 8px;
+}
+.ops-theme-dashboard button:hover:not(:disabled) {
+  background: #223753;
+  border-color: var(--ops-blue);
+}
+.ops-theme-dashboard button:focus-visible,
+.ops-theme-dashboard a:focus-visible {
+  outline: 3px solid rgba(112,170,255,.35);
+  outline-offset: 2px;
+}
+.ops-theme-dashboard hr {
+  border-color: var(--ops-border);
+}
+@media (max-width: 700px) {
+  .ops-theme-dashboard {
+    width: 100%;
+    padding: 20px 14px 44px !important;
+  }
+}
