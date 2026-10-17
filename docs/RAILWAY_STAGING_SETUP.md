@@ -56,8 +56,8 @@ Create a private Railway service named `Post2Drive QA Worker` in the **staging**
 - `POST2DRIVE_QA_MODE=true`
 - `POST2DRIVE_QA_ENVIRONMENT=staging`
 - `POST2DRIVE_QA_DATABASE_ISOLATED=true`
-- `RAILWAY_ENVIRONMENT_ID`: Railway's actual ID for the staging environment.
-- `POST2DRIVE_QA_ALLOWED_ENVIRONMENT_ID`: the exact same staging environment ID.
+- Verify Railway's automatically supplied `RAILWAY_ENVIRONMENT_ID` equals the staging environment ID; do not manually override this platform variable.
+- `POST2DRIVE_QA_ALLOWED_ENVIRONMENT_ID`: set this to the exact staging environment ID.
 - `QA_BASE_URL=https://post2drive-web-staging.up.railway.app`
 - `QA_ACCOUNT_COUNT=10000`
 - `QA_MARKET_COUNTRY=GB` for a UK run or `IN` for an India run.
