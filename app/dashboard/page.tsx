@@ -416,6 +416,60 @@ export default async function DashboardPage() {
         </div>
       </section>
 
+      <section className="ops-section ops-section-visual-analytics" aria-labelledby="job-analytics-heading" style={{ marginTop: 28, border: "1px solid #D5D9E0", borderRadius: 14, padding: 20, background: "#FFFFFF" }}>
+        <h2 id="job-analytics-heading">Job analytics</h2>
+        <p style={{ color: "#30343B", marginTop: 0 }}>Live breakdown of jobs you have posted. Counts reflect your current account and market.</p>
+        {totalPosted > 0 ? (
+          <div className="job-analytics-layout">
+            <div className="job-analytics-chart-panel">
+              <h3>Status distribution</h3>
+              <div className="job-donut-row">
+                <div role="img" aria-label={`Donut chart: ${postedOpen} open, ${postedAccepted} accepted, ${postedInTransit} in transit, ${postedDelivered} delivered, ${postedCompleted} completed, ${postedCancelled} cancelled jobs`} className="job-status-donut" style={{ background: `conic-gradient(#0057D9 0% ${postedOpen / totalPosted * 100}%, #6F2DBD ${postedOpen / totalPosted * 100}% ${(postedOpen + postedAccepted) / totalPosted * 100}%, #F06A00 ${(postedOpen + postedAccepted) / totalPosted * 100}% ${(postedOpen + postedAccepted + postedInTransit) / totalPosted * 100}%, #008A45 ${(postedOpen + postedAccepted + postedInTransit) / totalPosted * 100}% ${(postedOpen + postedAccepted + postedInTransit + postedDelivered) / totalPosted * 100}%, #178A45 ${(postedOpen + postedAccepted + postedInTransit + postedDelivered) / totalPosted * 100}% ${(postedOpen + postedAccepted + postedInTransit + postedDelivered + postedCompleted) / totalPosted * 100}%, #D71920 ${(postedOpen + postedAccepted + postedInTransit + postedDelivered + postedCompleted) / totalPosted * 100}% 100%)` }}>
+                  <div className="job-status-donut-hole"><strong>{totalPosted}</strong><span>Total jobs</span></div>
+                </div>
+                <div className="job-chart-legend">
+                  {[
+                    { label: "Open", value: postedOpen, color: "#0057D9" },
+                    { label: "Accepted", value: postedAccepted, color: "#6F2DBD" },
+                    { label: "In transit", value: postedInTransit, color: "#F06A00" },
+                    { label: "Delivered", value: postedDelivered, color: "#008A45" },
+                    { label: "Completed", value: postedCompleted, color: "#178A45" },
+                    { label: "Cancelled", value: postedCancelled, color: "#D71920" },
+                  ].map((item) => (
+                    <div key={item.label} className="job-chart-legend-item">
+                      <span aria-hidden="true" className="job-chart-legend-dot" style={{ background: item.color }} />
+                      <span>{item.label}</span><strong>{item.value}</strong>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="job-analytics-chart-panel">
+              <h3>Jobs by status</h3>
+              <div className="job-horizontal-bars">
+                {[
+                  { label: "Open", value: postedOpen, color: "#0057D9" },
+                  { label: "Accepted", value: postedAccepted, color: "#6F2DBD" },
+                  { label: "In transit", value: postedInTransit, color: "#F06A00" },
+                  { label: "Delivered", value: postedDelivered, color: "#008A45" },
+                  { label: "Completed", value: postedCompleted, color: "#178A45" },
+                  { label: "Cancelled", value: postedCancelled, color: "#D71920" },
+                ].map((item) => (
+                  <div className="job-bar-row" key={item.label}>
+                    <div className="job-bar-label"><span>{item.label}</span><strong>{item.value}</strong></div>
+                    <div className="job-bar-track" role="img" aria-label={`${item.label}: ${item.value} jobs`}>
+                      <span style={{ width: `${item.value / totalPosted * 100}%`, background: item.color }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="job-analytics-empty"><strong>No job data to chart yet.</strong><span>Your charts will populate automatically when you post jobs.</span></div>
+        )}
+      </section>
+
       <section
         className="ops-section ops-section-fulfilment"
         style={{
