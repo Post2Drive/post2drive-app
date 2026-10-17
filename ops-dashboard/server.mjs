@@ -9,6 +9,12 @@ const PASSWORD = process.env.OPS_DASHBOARD_PASSWORD;
 const SESSION_SECRET = process.env.OPS_DASHBOARD_SESSION_SECRET;
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 const SESSION_TTL_MS = 8 * 60 * 60 * 1000;
+const METRICS_CACHE_TTL_MS = 30_000;
+const metricsCache = new Map();
+const metricsInflight = new Map();
+const loginAttempts = new Map();
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const LOGIN_MAX_ATTEMPTS = 10;
 
 if (!USERNAME || USERNAME.length < 3) {
   console.error("OPS_DASHBOARD_USERNAME is required and must be at least 3 characters.");
@@ -43,6 +49,28 @@ const marketSources = {
   EU: [{name:"Eurostat transport statistics",url:"https://ec.europa.eu/eurostat/web/transport"},{name:"European Commission Mobility and Transport",url:"https://transport.ec.europa.eu/"}]
 };
 const market = (code) => markets.find(m => m.code === code);
+const READINESS_GATES = [
+  ["localization","Localization review"],["vehicleRules","Vehicle/document rules"],["payments","Payments capability"],
+  ["timezones","Time-zone handling"],["legalReview","Local legal review"],["stagingE2E","Authenticated staging E2E"],
+  ["operationalRecovery","Monitoring & recovery"]
+];
+function countryReadiness() {
+  let configured = {};
+  try {
+    const parsed = JSON.parse(process.env.COUNTRY_READINESS_JSON || "{}");
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) configured = parsed;
+  } catch { console.error("COUNTRY_READINESS_JSON is invalid JSON; readiness remains not assessed."); }
+  return markets.map(m => {
+    const raw = configured[m.code] && typeof configured[m.code] === "object" ? configured[m.code] : {};
+    const gates = READINESS_GATES.map(([key,label]) => {
+      const supplied = raw[key] && typeof raw[key] === "object" ? raw[key] : {};
+      const status = ["verified","blocked","in_progress"].includes(supplied.status) ? supplied.status : "not_assessed";
+      return {key,label,status,reviewedAt:typeof supplied.reviewedAt==="string"?supplied.reviewedAt:null,evidenceRef:typeof supplied.evidenceRef==="string"?supplied.evidenceRef:null};
+    });
+    const ready = gates.every(g => g.status === "verified" && g.evidenceRef && g.reviewedAt);
+    return {code:m.code,name:m.name,currency:m.currency,gates,verifiedGates:gates.filter(g=>g.status==="verified"&&g.evidenceRef&&g.reviewedAt).length,totalGates:gates.length,status:ready?"ready":gates.some(g=>g.status==="blocked")?"blocked":gates.some(g=>g.status==="in_progress")?"in_progress":"not_assessed"};
+  });
+}
 const sourceList = (code) => code === "ALL"
   ? [...new Map(Object.values(marketSources).flat().map(s => [s.url,s])).values()]
   : marketSources[code] || (["AT","BE","BG","HR","CY","EE","FI","FR","DE","GR","IE","IT","LV","LT","LU","MT","NL","PT","SK","SI","ES","CZ","DK","HU","IS","NO","PL","RO","SE"].includes(code) ? marketSources.EU : []);
