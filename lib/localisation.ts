@@ -192,7 +192,7 @@ export function getTimeZoneOptions(country: string, defaultTimeZone?: string) {
   const configured = TIME_ZONE_OPTIONS[country];
   if (configured) return configured;
   const fallback = defaultTimeZone ?? getMarket(country)?.timeZone;
-  return fallback ? [{ value: fallback, label: fallback }] : [];
+  return fallback ? [{ value: fallback, label: `${getMarket(country)?.label ?? country} local time` }] : [];
 }
 
 export function getJurisdictionOptions(country: string) {
