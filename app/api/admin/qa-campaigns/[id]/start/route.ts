@@ -75,18 +75,26 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         if (!pools[0]) return { error: "A completed synthetic-account pool for this market and account count is required, or include the provisioning suite.", status: 409 };
       }
 
-      const steps: Array<{ id: string; ordinal: number; variationId: string | null; variationName: string | null; suite: string; testType: string; iterations: number }> = [];
+      const steps: Array<{ id: string; ordinal: number; variationId: string | null; variationName: string | null; suite: string; testType: string; iterations: number; concurrency?: number }> = [];
       let ordinal = 0;
       if (suites.includes("provisioning")) steps.push({ id: "step-" + randomUUID(), ordinal: ordinal++, variationId: null, variationName: null, suite: "provisioning", testType: "synthetic-accounts", iterations: accountCount });
       const comparisonSuites = suites.filter(s => s !== "provisioning");
+      let allocatedIterations = 0;
       for (let i = 0; i < variations.length; i++) {
         const variation = variations[i] && typeof variations[i] === "object" ? variations[i] : {};
         const variationId = String(variation.id || "variation-" + (i + 1)).slice(0, 40);
         const variationName = String(variation.name || "Variation " + (i + 1)).slice(0, 80);
+        const overrides = variation.overrides && typeof variation.overrides === "object" ? variation.overrides : {};
+        const iterations = overrides.testIterations === undefined || overrides.testIterations === "" ? testsPerVariation : Number(overrides.testIterations);
+        const variationConcurrency = overrides.concurrency === undefined || overrides.concurrency === "" ? concurrency : Number(overrides.concurrency);
+        if (!Number.isInteger(iterations) || iterations < 1 || iterations > 25000) return { error: "Variation " + variationName + " test iterations must be from 1 to 25,000.", status: 400 };
+        if (!Number.isInteger(variationConcurrency) || variationConcurrency < 1 || variationConcurrency > 100) return { error: "Variation " + variationName + " concurrency must be from 1 to 100.", status: 400 };
+        allocatedIterations += iterations;
         for (const suite of comparisonSuites) {
-          steps.push({ id: "step-" + randomUUID(), ordinal: ordinal++, variationId, variationName, suite, testType: SUITE_TYPES[suite], iterations: testsPerVariation });
+          steps.push({ id: "step-" + randomUUID(), ordinal: ordinal++, variationId, variationName, suite, testType: SUITE_TYPES[suite], iterations, concurrency: variationConcurrency });
         }
       }
+      if (allocatedIterations > totalCampaignTests) return { error: "Variation-specific test iterations exceed the total campaign test budget.", status: 400 };
       if (steps.length > 101) return { error: "Campaign exceeds the supported sequential step limit.", status: 400 };
       const first = steps[0];
       const runId = new Date().toISOString().replace(/[^0-9]/g, "").slice(0, 14) + "-" + randomUUID();
@@ -97,12 +105,12 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       for (const step of steps) {
         await tx.$executeRawUnsafe(
           "INSERT INTO qa_test_campaign_steps(id,campaign_id,ordinal,variation_id,variation_name,suite,test_type,test_iterations,account_count,concurrency,status) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)",
-          step.id, campaignId, step.ordinal, step.variationId, step.variationName, step.suite, step.testType, step.iterations, accountCount, concurrency, step.id === first.id ? "queued" : "pending"
+          step.id, campaignId, step.ordinal, step.variationId, step.variationName, step.suite, step.testType, step.iterations, accountCount, step.concurrency ?? concurrency, step.id === first.id ? "queued" : "pending"
         );
       }
       const runSummary = {
         status: "queued", phase: "queued", country: market.country, testType: first.testType,
-        testIterations: first.iterations, accountCount, concurrency, campaignId, campaignStepId: first.id,
+        testIterations: first.iterations, accountCount, concurrency: first.concurrency ?? concurrency, campaignId, campaignStepId: first.id,
         variationId: first.variationId, variationName: first.variationName, suite: first.suite,
         targetEnvironment: "staging", queuedAt: new Date().toISOString(),
       };
