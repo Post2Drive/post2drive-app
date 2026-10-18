@@ -225,8 +225,8 @@ export default function PerformanceDashboard() {
       <Table rows={data.qaRuns} columns={[
         {key:"id",label:"Run ID",render:(v:any)=><span style={{fontFamily:"monospace",fontSize:11,overflowWrap:"anywhere"}}>{String(v??"—")}</span>},
         {key:"startedAt",label:"Started",render:(v:any)=>date(v)},
-        {key:"summary",label:"Country",render:(_:any,row:Row)=>{const s=qaSummary(row);return String(s.country||s.marketCode||s.marketLabel||"Not recorded");}},
-        {key:"summary",label:"Phase",render:(_:any,row:Row)=>{const s=qaSummary(row);return String(s.phase||s.testStage||s.scenario||"Not recorded");}},
+        {key:"country",label:"Country",render:(_:any,row:Row)=>{const s=qaSummary(row);return String(s.country||s.marketCode||s.marketLabel||"Not recorded");}},
+        {key:"phase",label:"Phase",render:(_:any,row:Row)=>{const s=qaSummary(row);return String(s.phase||s.testStage||s.scenario||"Not recorded");}},
         {key:"status",label:"Run status"},
         {key:"targetAccounts",label:"Target users",render:(v:any)=>num(v)},
         {key:"createdAccounts",label:"Created",render:(v:any)=>num(v)},
