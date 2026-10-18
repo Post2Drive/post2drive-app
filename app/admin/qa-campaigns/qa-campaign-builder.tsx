@@ -19,15 +19,15 @@ function num(value: string | number | null | undefined) { return value === null 
 function fmtMs(value: string | number | null | undefined) { const n = num(value); return n === null || !Number.isFinite(n) ? "—" : n >= 1000 ? (n / 1000).toFixed(2) + " s" : n + " ms"; }
 
 export default function QaCampaignBuilder() {
-  const [name,setName] = useState("India demand stress test");
+  const [name,setName] = useState("India API load check");
   const [countryCode,setCountryCode] = useState("IN");
-  const [scenario,setScenario] = useState("Demand stress test");
-  const [totalCampaignTests,setTotalCampaignTests] = useState(10000);
+  const [scenario,setScenario] = useState("Authenticated API load");
+  const [totalCampaignTests,setTotalCampaignTests] = useState(1000);
   const [testsPerVariation,setTestsPerVariation] = useState(1000);
-  const [accountCount,setAccountCount] = useState(10000);
-  const [concurrency,setConcurrency] = useState(100);
-  const [suites,setSuites] = useState<string[]>(["provisioning","api","workflow","regression","localization","failure"]);
-  const [variations,setVariations] = useState<Variation[]>([defaultVariation(0),defaultVariation(1),defaultVariation(2)]);
+  const [accountCount,setAccountCount] = useState(1000);
+  const [concurrency,setConcurrency] = useState(10);
+  const [suites,setSuites] = useState<string[]>(["api"]);
+  const [variations,setVariations] = useState<Variation[]>([defaultVariation(0)]);
   const [campaigns,setCampaigns] = useState<Campaign[]>([]);
   const [runs,setRuns] = useState<QaRun[]>([]);
   const [steps,setSteps] = useState<QaStep[]>([]);
@@ -90,15 +90,15 @@ export default function QaCampaignBuilder() {
     </section>
     <section style={panel}>
       <h2 style={{margin:"0 0 8px",fontSize:20}}>2 · Execution volume</h2>
-      <p style={{fontSize:13,color:"#667085",lineHeight:1.5,marginTop:0}}>Test iterations, account count, and concurrency are independent settings. The total budget counts iterations per variation; each selected suite executes for that variation, so aggregate HTTP requests can be higher when multiple suites are selected. Account count is 500–10,000 for execution. Workflow, regression, localization and failure suites currently require the full 10,000-account pool. Campaign steps run sequentially to preserve the single-active-run safety guard.</p>
+      <p style={{fontSize:13,color:"#667085",lineHeight:1.5,marginTop:0}}>Choose how much to test. Each variation runs the selected tests once using its settings. More suites can mean more requests. Use 10,000 accounts for Workflow E2E, Regression, Country localization or Failure handling. Runs are queued one at a time.</p>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:14}}>
-        <div><label style={label}>Total campaign tests</label><input type="number" min="1" max="25000" style={field} value={totalCampaignTests} onChange={e=>setTotalCampaignTests(Number(e.target.value))}/></div>
-        <div><label style={label}>Default tests per variation</label><input type="number" min="1" max="25000" style={field} value={testsPerVariation} onChange={e=>setTestsPerVariation(Number(e.target.value))}/></div>
-        <div><label style={label}>Synthetic account count</label><input type="number" min="500" max="10000" style={field} value={accountCount} onChange={e=>setAccountCount(Number(e.target.value))}/></div>
-        <div><label style={label}>Default concurrency</label><input type="number" min="1" max="100" style={field} value={concurrency} onChange={e=>setConcurrency(Number(e.target.value))}/></div>
+        <div><label style={label}>Total test budget</label><input type="number" min="1" max="25000" style={field} value={totalCampaignTests} onChange={e=>setTotalCampaignTests(Number(e.target.value))}/></div>
+        <div><label style={label}>Tests in each variation</label><input type="number" min="1" max="25000" style={field} value={testsPerVariation} onChange={e=>setTestsPerVariation(Number(e.target.value))}/></div>
+        <div><label style={label}>Test accounts</label><input type="number" min="500" max="10000" style={field} value={accountCount} onChange={e=>setAccountCount(Number(e.target.value))}/></div>
+        <div><label style={label}>Parallel requests (concurrency)</label><input type="number" min="1" max="100" style={field} value={concurrency} onChange={e=>setConcurrency(Number(e.target.value))}/></div>
       </div>
       <div style={{marginTop:14,padding:12,borderRadius:8,background:remaining<0?"#fff1f2":"#f8fafc",fontSize:14}}>
-        <strong>Iteration budget:</strong> {allocated.toLocaleString()} allocated across {variations.length} variations; {Math.max(0,remaining).toLocaleString()} unallocated of {totalCampaignTests.toLocaleString()} total. A variation override replaces the default iteration count.
+        <strong>Test budget:</strong> {allocated.toLocaleString()} planned across {variations.length} variation(s); {Math.max(0,remaining).toLocaleString()} left out of {totalCampaignTests.toLocaleString()}. You can keep the defaults for a simple test.
         {remaining<0?<p style={{color:"#b42318",marginBottom:0}}>Reduce variation iterations or increase the total campaign test budget.</p>:null}
       </div>
     </section>
@@ -109,20 +109,20 @@ export default function QaCampaignBuilder() {
       {suites.some(s=>["regression","localization","failure"].includes(s))?<p style={{fontSize:13,color:"#8a4b08"}}>Coverage note: regression, localization and failure profiles currently dispatch the existing broad Workflow E2E runner. Their labels are retained in reports, but they are not yet isolated test-only suites.</p>:null}
     </section>
     <section style={panel}>
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}><div><h2 style={{margin:"0 0 5px",fontSize:20}}>4 · Variations</h2><p style={{margin:0,fontSize:13,color:"#667085"}}>Vary iterations and concurrency to compare measured results. Up to 20 variations are supported.</p></div><button type="button" style={button} disabled={variations.length>=20} onClick={()=>setVariations(old=>[...old,defaultVariation(old.length)])}>+ Add variation</button></div>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}><div><h2 style={{margin:"0 0 5px",fontSize:20}}>4 · Variations (optional)</h2><p style={{margin:0,fontSize:13,color:"#667085"}}>You do not need variations for a normal test. Keep one variation unless you want to compare settings—for example, concurrency 10 vs 20. Each variation runs separately.</p></div><button type="button" style={button} disabled={variations.length>=20} onClick={()=>setVariations(old=>[...old,defaultVariation(old.length)])}>+ Add comparison</button></div>
       <div style={{display:"grid",gap:12,marginTop:14}}>{variations.map((v,i)=><div key={v.id} style={{border:"1px solid #dfe5eb",borderRadius:10,padding:14}}>
         <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}><strong style={{minWidth:90}}>Variation {i+1}</strong><input aria-label={"Variation "+(i+1)+" name"} style={{...field,flex:"1 1 200px"}} value={v.name} maxLength={80} onChange={e=>updateVariation(i,{name:e.target.value})}/><button type="button" style={button} disabled={variations.length<=1} onClick={()=>setVariations(old=>old.filter((_,j)=>j!==i))}>Remove</button></div>
         <textarea aria-label={"Variation "+(i+1)+" description"} style={{...field,marginTop:10,minHeight:58,resize:"vertical"}} placeholder="What changes in this variation?" value={v.description} maxLength={240} onChange={e=>updateVariation(i,{description:e.target.value})}/>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:12,marginTop:10}}>
-          <div><label style={label}>Iteration override (optional)</label><input type="number" min="1" max="25000" style={field} placeholder={String(testsPerVariation)} value={v.overrides.testIterations||""} onChange={e=>updateOverride(i,"testIterations",e.target.value)}/></div>
-          <div><label style={label}>Concurrency override (optional)</label><input type="number" min="1" max="100" style={field} placeholder={String(concurrency)} value={v.overrides.concurrency||""} onChange={e=>updateOverride(i,"concurrency",e.target.value)}/></div>
+          <div><label style={label}>Tests for this variation (optional)</label><input type="number" min="1" max="25000" style={field} placeholder={String(testsPerVariation)} value={v.overrides.testIterations||""} onChange={e=>updateOverride(i,"testIterations",e.target.value)}/></div>
+          <div><label style={label}>Parallel requests (optional)</label><input type="number" min="1" max="100" style={field} placeholder={String(concurrency)} value={v.overrides.concurrency||""} onChange={e=>updateOverride(i,"concurrency",e.target.value)}/></div>
         </div>
       </div>)}</div>
     </section>
     <section style={panel}>
       <h2 style={{margin:"0 0 8px",fontSize:20}}>5 · Review & save</h2>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:10}}>{[["Market",countryCode],["Total tests",totalCampaignTests.toLocaleString()],["Iterations allocated",allocated.toLocaleString()],["Accounts",accountCount.toLocaleString()],["Concurrency",String(concurrency)],["Suites",String(suites.length)]].map(([k,v])=><div key={k} style={{padding:12,border:"1px solid #e4e7ec",borderRadius:8}}><div style={{fontSize:12,color:"#667085"}}>{k}</div><strong>{v}</strong></div>)}</div>
-      <p style={{fontSize:13,color:"#667085",lineHeight:1.6}}>New drafts are saved without execution. Starting a saved draft requires a separate staging confirmation and queues one run at a time; each run's measured latency, checks and failures are retained in QA history.</p>
+      <p style={{fontSize:13,color:"#667085",lineHeight:1.6}}>Saving only stores this plan. It does not start tests or create accounts. Starting it is a separate action that asks you to confirm staging; results are added to QA history and synthetic data is not automatically deleted.</p>
       {error?<p role="alert" style={{color:"#b42318"}}>{error}</p>:null}{notice?<p role="status" style={{color:"#067647"}}>{notice}</p>:null}
       <button type="button" style={{...button,background:"#175cd3",borderColor:"#175cd3",color:"#fff",opacity:(!valid||busy)?0.55:1}} disabled={!valid||busy} onClick={()=>void save()}>{busy?"Saving…":"Save campaign draft"}</button>
     </section>
