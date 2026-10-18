@@ -53,14 +53,17 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       const concurrency = Number(campaign.concurrency);
       const testsPerVariation = Number(campaign.tests_per_variation);
       const totalCampaignTests = Number(campaign.total_campaign_tests);
-      const suites = Array.isArray(campaign.suites) ? campaign.suites.filter((s: unknown): s is keyof typeof SUITE_TYPES => typeof s === "string" && Object.prototype.hasOwnProperty.call(SUITE_TYPES, s)) : [];
+      type QaSuite = keyof typeof SUITE_TYPES;
+      const suites: QaSuite[] = (Array.isArray(campaign.suites)
+        ? campaign.suites.filter((s: unknown): s is QaSuite => typeof s === "string" && Object.prototype.hasOwnProperty.call(SUITE_TYPES, s))
+        : []) as QaSuite[];
       const variations = Array.isArray(campaign.variations) ? campaign.variations : [];
       if (!Number.isInteger(accountCount) || accountCount < 500 || accountCount > 10000) return { error: "Execution requires 500–10,000 synthetic accounts.", status: 400 };
       if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > 100) return { error: "Concurrency must be between 1 and 100.", status: 400 };
       if (!Number.isInteger(testsPerVariation) || testsPerVariation < 1 || testsPerVariation > 25000 || !Number.isInteger(totalCampaignTests) || totalCampaignTests < 1 || totalCampaignTests > 25000) return { error: "Campaign test allocation is invalid.", status: 400 };
       if (!variations.length || !suites.length) return { error: "At least one variation and supported suite are required.", status: 400 };
       if (!suites.some(s => s !== "provisioning")) return { error: "Select at least one comparison suite in addition to provisioning.", status: 400 };
-      if (suites.some(s => ["workflow","regression","localization","failure"].includes(s)) && accountCount !== 10000) {
+      if (suites.some((s: QaSuite) => ["workflow","regression","localization","failure"].includes(s)) && accountCount !== 10000) {
         return { error: "The current workflow/regression/localization/failure runner requires 10,000 accounts. Use API-only suites for smaller pools.", status: 400 };
       }
       const active = await tx.$queryRawUnsafe<Array<{ id: string; status: string }>>(
@@ -78,7 +81,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       const steps: Array<{ id: string; ordinal: number; variationId: string | null; variationName: string | null; suite: string; testType: string; iterations: number; concurrency?: number }> = [];
       let ordinal = 0;
       if (suites.includes("provisioning")) steps.push({ id: "step-" + randomUUID(), ordinal: ordinal++, variationId: null, variationName: null, suite: "provisioning", testType: "synthetic-accounts", iterations: accountCount });
-      const comparisonSuites = suites.filter(s => s !== "provisioning");
+      const comparisonSuites = suites.filter((s: QaSuite) => s !== "provisioning");
       let allocatedIterations = 0;
       for (let i = 0; i < variations.length; i++) {
         const variation = variations[i] && typeof variations[i] === "object" ? variations[i] : {};
