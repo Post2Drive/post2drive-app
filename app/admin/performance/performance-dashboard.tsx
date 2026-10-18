@@ -221,9 +221,12 @@ export default function PerformanceDashboard() {
         {s.persistedDataSummary&&typeof s.persistedDataSummary==="object"?<Table rows={Object.entries(s.persistedDataSummary).map(([label,value])=>({label,value}))} columns={[{key:"label",label:"Persisted data check"},{key:"value",label:"Result",render:(v:any)=>typeof v==="object"?JSON.stringify(v):String(v??"—")}]}/>:null}
       </div>})()}
     </Section> : null}
-    <Section title="Synthetic QA runs" subtitle="Latest 10 stored runs, kept separate from business totals. Country, route-matrix counts and latency are shown in the run summary above.">
+    <Section title="Synthetic QA runs" subtitle="Latest 100 stored runs, kept separate from business totals. Country and phase are read from each saved summary; missing metadata is shown as not recorded.">
       <Table rows={data.qaRuns} columns={[
+        {key:"id",label:"Run ID",render:(v:any)=><span style={{fontFamily:"monospace",fontSize:11,overflowWrap:"anywhere"}}>{String(v??"—")}</span>},
         {key:"startedAt",label:"Started",render:(v:any)=>date(v)},
+        {key:"summary",label:"Country",render:(_:any,row:Row)=>{const s=qaSummary(row);return String(s.country||s.marketCode||s.marketLabel||"Not recorded");}},
+        {key:"summary",label:"Phase",render:(_:any,row:Row)=>{const s=qaSummary(row);return String(s.phase||s.testStage||s.scenario||"Not recorded");}},
         {key:"status",label:"Run status"},
         {key:"targetAccounts",label:"Target users",render:(v:any)=>num(v)},
         {key:"createdAccounts",label:"Created",render:(v:any)=>num(v)},
@@ -231,8 +234,11 @@ export default function PerformanceDashboard() {
         {key:"failedChecks",label:"Failed",render:(v:any,row:Row)=><span style={{color:Number(v)>0?"#b42318":"inherit",fontWeight:700}}>{num(v)}</span>},
         {key:"durationMs",label:"Run time",render:(v:any)=>duration(v)}
       ]}/>
-      <h3 style={{fontSize:15,margin:"18px 0 8px"}}>Failure patterns from latest QA run</h3>
+      <h3 style={{fontSize:15,margin:"18px 0 8px"}}>Failure patterns across recent QA runs</h3>
       <Table rows={data.latestQaFailures} columns={[
+        {key:"runId",label:"Run ID",render:(v:any)=><span style={{fontFamily:"monospace",fontSize:11,overflowWrap:"anywhere"}}>{String(v??"—")}</span>},
+        {key:"country",label:"Country",render:(v:any)=>String(v??"Not recorded")},
+        {key:"runStatus",label:"Run status"},
         {key:"scenario",label:"Scenario"},
         {key:"action",label:"Action"},
         {key:"path",label:"Route"},
