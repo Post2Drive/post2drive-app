@@ -12,7 +12,7 @@ assert.ok(route.includes("target_environment text NOT NULL DEFAULT 'staging'") |
 assert.ok(migration.includes("CHECK (target_environment = 'staging')"), "database must reject non-staging campaign targets");
 assert.ok(migration.includes("CHECK (execution_mode = 'preview_only')"), "database must reject campaign execution mode until runner orchestration is reviewed");
 assert.ok(migration.includes("CHECK (status = 'draft')"), "campaign metadata may only be persisted as drafts in this phase");
-assert.ok(route.includes("BETWEEN 1 AND 25000") && route.includes("BETWEEN 1 AND 10000") && route.includes("BETWEEN 1 AND 100"), "API must cap test volume, account count and concurrency");
+assert.ok(route.includes("int(body?.totalCampaignTests, 1, 25000)") && route.includes("int(body?.accountCount, 1, 10000)") && route.includes("int(body?.concurrency, 1, 100)"), "API must cap test volume, account count and concurrency");
 assert.ok(route.includes("MAX_VARIATIONS = 20"), "API must cap the number of variations");
 assert.ok(route.includes("variations.length * testsPerVariation > totalCampaignTests"), "API must reject variation allocation above the campaign test budget");
 assert.ok(route.includes("executionEnabled: false") && route.includes("executionMode: \"preview_only\""), "API must communicate that execution is disabled");
