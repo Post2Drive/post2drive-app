@@ -14,10 +14,41 @@ function safeEqual(a: string, b: string) {
   return left.length === right.length && left.length > 0 && timingSafeEqual(left, right);
 }
 
+function isSameOriginRequest(request: NextRequest) {
+  const originHeader = request.headers.get("origin");
+  if (!originHeader) return false;
+
+  let origin: string;
+  try {
+    origin = new URL(originHeader).origin;
+  } catch {
+    return false;
+  }
+
+  // Behind Railway's reverse proxy, Next.js can see the internal request
+  // protocol while the browser uses the public HTTPS origin. Compare against
+  // the forwarded public origin as well as Next.js's direct request origin.
+  const forwardedHost = request.headers.get("x-forwarded-host")?.split(",")[0]?.trim();
+  const host = forwardedHost || request.headers.get("host");
+  const forwardedProto = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
+  const protocol = forwardedProto || request.nextUrl.protocol.replace(/:$/, "");
+
+  const allowedOrigins = new Set<string>([request.nextUrl.origin]);
+  if (host && (protocol === "http" || protocol === "https")) {
+    try {
+      allowedOrigins.add(new URL(`${protocol}://${host}`).origin);
+    } catch {
+      // Ignore malformed proxy/host metadata; the direct origin check remains.
+    }
+  }
+
+  return allowedOrigins.has(origin);
+}
+
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Sign in to Post2Drive first." }, { status: 401 });
-  if (request.headers.get("origin") !== request.nextUrl.origin) {
+  if (!isSameOriginRequest(request)) {
     return NextResponse.json({ error: "Same-origin request required." }, { status: 403 });
   }
 
@@ -59,7 +90,7 @@ export async function POST(request: NextRequest) {
   });
   response.cookies.set(OPS_QA_ADMIN_COOKIE, token.value, {
     httpOnly: true,
-    secure: request.nextUrl.protocol === "https:",
+    secure: request.nextUrl.protocol === "https:" || request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim() === "https",
     sameSite: "strict",
     path: "/",
     maxAge: token.maxAge,
@@ -71,7 +102,7 @@ export async function DELETE(request: NextRequest) {
   const response = NextResponse.json({ success: true }, { headers: { "cache-control": "no-store" } });
   response.cookies.set(OPS_QA_ADMIN_COOKIE, "", {
     httpOnly: true,
-    secure: request.nextUrl.protocol === "https:",
+    secure: request.nextUrl.protocol === "https:" || request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim() === "https",
     sameSite: "strict",
     path: "/",
     maxAge: 0,
