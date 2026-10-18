@@ -78,7 +78,7 @@ export default function SettingsPage() {
   const marketProfile = getLocalisationProfile({ country: account.country, currency: account.currency });
 
   return (
-    <div style={{ maxWidth: 500 }}>
+    <main className="account-settings-page" style={{ width: "100%", maxWidth: 760, margin: "0 auto", padding: 24, boxSizing: "border-box" }}>
       <p>
         <Link href="/jobs" className="button-link button-link-secondary">← Back to jobs</Link>
       </p>
@@ -168,6 +168,6 @@ export default function SettingsPage() {
           <button type="submit" disabled={deleteBusy || deleteForm.confirm !== "DELETE"} style={{ background: "var(--color-danger)", borderColor: "var(--color-danger)" }}>{deleteBusy ? "Deleting…" : "Permanently anonymise account"}</button>
         </form>
       </section>
-    </div>
+    </main>
   );
 }
