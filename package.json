@@ -26,7 +26,7 @@
     "qa:localisation-copy": "node scripts/qa/localisation-copy-audit.mjs",
     "ops:dashboard": "node ops-dashboard/server.mjs",
     "qa:ops-dashboard": "node scripts/qa/ops-dashboard-contract.mjs",
-    "predeploy:staging": "node ops-dashboard/provision-readonly-role.mjs && npx prisma migrate deploy",
+    "predeploy:staging": "node ops-dashboard/provision-readonly-role.mjs",
     "qa:market-parity": "node --experimental-strip-types scripts/qa/market-feature-parity-contract.mjs"
   },
   "dependencies": {
