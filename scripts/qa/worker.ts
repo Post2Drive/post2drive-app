@@ -89,6 +89,76 @@ async function markWorkerFailure(runId: string) {
   );
 }
 
+async function advanceCampaign(runId: string) {
+  await prisma.$transaction(async tx => {
+    const rows = await tx.$queryRawUnsafe<Array<{ status: string; summary: unknown }>>(
+      "SELECT status,summary FROM qa_test_runs WHERE id=$1 FOR UPDATE", runId
+    );
+    const run = rows[0];
+    const summary = run?.summary && typeof run.summary === "object" ? run.summary as Record<string, unknown> : {};
+    const campaignId = typeof summary.campaignId === "string" ? summary.campaignId : "";
+    const stepId = typeof summary.campaignStepId === "string" ? summary.campaignStepId : "";
+    if (!run || !campaignId || !stepId) return;
+    const campaigns = await tx.$queryRawUnsafe<Array<{ id: string; status: string }>>(
+      "SELECT id,status FROM qa_test_campaigns WHERE id=$1 FOR UPDATE", campaignId
+    );
+    if (!campaigns[0] || !["queued","running"].includes(campaigns[0].status)) return;
+    const terminal = ["completed","failed","aborted"].includes(run.status) ? run.status : "failed";
+    await tx.$executeRawUnsafe(
+      "UPDATE qa_test_campaign_steps SET status=$3,finished_at=now() WHERE id=$1 AND campaign_id=$2 AND run_id=$4 AND status IN ('queued','running')",
+      stepId, campaignId, terminal, runId
+    );
+    const completedStep = await tx.$queryRawUnsafe<Array<{ suite: string }>>(
+      "SELECT suite FROM qa_test_campaign_steps WHERE id=$1", stepId
+    );
+    if (terminal !== "completed" && completedStep[0]?.suite === "provisioning") {
+      await tx.$executeRawUnsafe(
+        "UPDATE qa_test_campaign_steps SET status='skipped',finished_at=now() WHERE campaign_id=$1 AND status='pending'", campaignId
+      );
+      await tx.$executeRawUnsafe("UPDATE qa_test_campaigns SET status='failed',updated_at=now() WHERE id=$1", campaignId);
+      return;
+    }
+    const nextRows = await tx.$queryRawUnsafe<Array<{ id: string; ordinal: number; variation_id: string | null; variation_name: string | null; suite: string; test_type: string; test_iterations: number; account_count: number; concurrency: number; country_code: string; target_environment: string }>>(
+      `SELECT s.id,s.ordinal,s.variation_id,s.variation_name,s.suite,s.test_type,s.test_iterations,s.account_count,s.concurrency,
+              c.country_code,c.target_environment
+       FROM qa_test_campaign_steps s JOIN qa_test_campaigns c ON c.id=s.campaign_id
+       WHERE s.campaign_id=$1 AND s.status='pending' ORDER BY s.ordinal ASC LIMIT 1 FOR UPDATE OF s`,
+      campaignId
+    );
+    if (!nextRows[0]) {
+      const failures = await tx.$queryRawUnsafe<Array<{ count: number }>>(
+        "SELECT count(*)::int AS count FROM qa_test_campaign_steps WHERE campaign_id=$1 AND status IN ('failed','aborted')", campaignId
+      );
+      await tx.$executeRawUnsafe(
+        "UPDATE qa_test_campaigns SET status=$2,updated_at=now() WHERE id=$1",
+        campaignId, Number(failures[0]?.count ?? 0) > 0 ? "failed" : "completed"
+      );
+      return;
+    }
+    const next = nextRows[0];
+    const active = await tx.$queryRawUnsafe<Array<{ id: string }>>(
+      "SELECT id FROM qa_test_runs WHERE status IN ('queued','running') AND id<>$1 LIMIT 1", runId
+    );
+    if (active[0]) throw new Error("Cannot advance QA campaign while another QA run is active.");
+    const nextRunId = new Date().toISOString().replace(/[^0-9]/g, "").slice(0, 14) + "-" + randomUUID();
+    const runSummary = {
+      status: "queued", phase: "queued", country: next.country_code, testType: next.test_type,
+      testIterations: next.test_iterations, accountCount: next.account_count, concurrency: next.concurrency,
+      campaignId, campaignStepId: next.id, variationId: next.variation_id, variationName: next.variation_name,
+      suite: next.suite, queuedAt: new Date().toISOString(), targetEnvironment: next.target_environment,
+    };
+    await tx.$executeRawUnsafe(
+      "INSERT INTO qa_test_runs(id,target_url,target_accounts,status,summary) VALUES($1,$2,$3,'queued',$4::jsonb)",
+      nextRunId, (process.env.QA_BASE_URL || "").replace(/\\/+$/, ""), next.account_count, JSON.stringify(runSummary)
+    );
+    await tx.$executeRawUnsafe(
+      "UPDATE qa_test_campaign_steps SET status='queued',run_id=$2,started_at=now() WHERE id=$1 AND status='pending'",
+      next.id, nextRunId
+    );
+    await tx.$executeRawUnsafe("UPDATE qa_test_campaigns SET status='running',updated_at=now() WHERE id=$1", campaignId);
+  }, { maxWait: 15000, timeout: 30000 });
+}
+
 async function executeRun(job: { id: string; summary: unknown; target_url: string; target_accounts: number }) {
   if (job.target_url !== (process.env.QA_BASE_URL || "").replace(/\/+$/, "") || job.target_accounts < 500 || job.target_accounts > 10000) {
     await markWorkerFailure(job.id);
@@ -120,6 +190,11 @@ async function executeRun(job: { id: string; summary: unknown; target_url: strin
   } catch (error) {
     await markWorkerFailure(job.id).catch(markError => console.error("QA worker could not persist failure for run " + job.id, markError));
     console.error("QA worker execution failed for run " + job.id, error instanceof Error ? error.message : String(error));
+  }
+  try {
+    await advanceCampaign(job.id);
+  } catch (error) {
+    console.error("QA campaign could not advance after run " + job.id, error instanceof Error ? error.message : String(error));
   } finally {
     stopHeartbeat();
     activeJob = false;
