@@ -56,7 +56,7 @@ assert.ok(css.includes('[style*="color: var(--ops-orange)"]'), "App CSS must cor
 assert.ok(css.includes('[style*="color: var(--ops-cyan)"]'), "App CSS must correct inline cyan text");
 assert.ok(css.includes('main table th,main th,th{background:#F2C300!important;color:#171717!important'), "Table headings must have black text on solid yellow");
 assert.ok(css.includes('main [role="alert"],.auth-page [role="alert"],.signup-error{'), "Error messages need readable explicit styling");
-assert.ok(css.includes('.button-link-secondary,.auth-page .button-link-secondary'), "Secondary links must keep a white surface and contrasting text");
+assert.ok(css.includes('main .button-link-secondary,.auth-page .button-link-secondary'), "Secondary links must keep a white surface and contrasting text");
 
 const dashboardStart = ops.indexOf("const dashboard = `");
 const dashboardStyleEnd = ops.indexOf("</style>", dashboardStart);
