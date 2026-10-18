@@ -7,7 +7,7 @@ import {
   getMaximumExtensionCount,
 } from "@/lib/promotion";
 import { getTrialCycleStatus } from "@/lib/trialCycles";
-import { getPlanDisplay } from "@/lib/pricing";
+import { getPlanDisplay, isWeeklyPricingEligible } from "@/lib/pricing";
 import { prisma } from "@/lib/prisma";
 import { isUkAccount } from "@/lib/uk";
 
@@ -51,6 +51,9 @@ async function GETHandler() {
 
   const ukEligible =
     isUkAccount(account);
+
+  // Keep launch-promotion eligibility GB-only, but expose the paid plan to
+  // every supported non-India market that uses weekly pricing.
 
   const planKey =
     account.subscriptionPlanKey ===
@@ -152,7 +155,7 @@ async function GETHandler() {
 
     trialCycle,
     paidPlan:
-      ukEligible
+      isWeeklyPricingEligible(account)
         ? {
             key: plan.key,
             name: plan.name,

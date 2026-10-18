@@ -92,6 +92,8 @@ export default function SubscriptionStatus() {
     data.timeZone,
   );
   const formattedPrice = data.price === null || !data.currency ? null : new Intl.NumberFormat(data.locale || "en", { style: "currency", currency: data.currency }).format(data.price);
+  const showPlanPrice = formattedPrice !== null &&
+    (trialActive || (!data.allowed && data.reason === "access_expired"));
 
   const planName =
     data.planType === "fleet"
@@ -174,22 +176,22 @@ export default function SubscriptionStatus() {
         </span>
       </div>
 
-      {trialActive && formattedPrice !== null && (
+      {showPlanPrice && (
         <div
           style={{
             marginTop: 17,
             borderTop: "1px solid var(--color-border)",
             paddingTop: 15,
             display: "flex",
-            alignItems: "center",
+            alignItems: "flex-start",
             justifyContent: "space-between",
             gap: 16,
             flexWrap: "wrap",
           }}
         >
-          <div>
+          <div style={{ maxWidth: 520 }}>
             <div style={{ color: "var(--color-muted)", fontSize: 13 }}>
-              After your free access
+              {trialActive ? "After your free access" : "Configured weekly access price"}
             </div>
 
             <div
@@ -212,6 +214,9 @@ export default function SubscriptionStatus() {
             >
               Unlimited legitimate marketplace activity · No per-job charges
             </div>
+            <p style={{ margin: "8px 0 0", color: "var(--color-muted)", fontSize: 12, lineHeight: 1.5 }}>
+              Planning price only: payment checkout is not connected yet, so you cannot buy or renew access in the app.
+            </p>
           </div>
 
           <Link
@@ -226,7 +231,7 @@ export default function SubscriptionStatus() {
               fontWeight: 700,
               fontSize: 14,
             }}
-           className="button-link">
+            className="button-link">
             View pricing
           </Link>
         </div>

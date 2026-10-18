@@ -666,6 +666,9 @@ export default async function DashboardPage() {
                 </strong>
               </p>
             )}
+            <p role="note" style={{ color: "var(--color-muted)", fontSize: 13 }}>
+              This is a planning price only. Payment checkout is not connected yet, so paid access cannot currently be purchased or renewed in the app.
+            </p>
           </>
         ) : (
           <p>

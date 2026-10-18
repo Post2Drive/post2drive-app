@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { majorUnitsToMinorUnits } from "@/lib/currencyMinorUnits";
 import { getFleetPrice, getIndividualWeeklyPrice, INDIVIDUAL_ACCESS_DAYS, isWeeklyPricingEligible } from "@/lib/pricing";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -27,10 +28,7 @@ export function getPaidPriceMinorUnits(account: {
 
   if (price === null) return null;
   const currency = account.currency ?? "GBP";
-  const fractionDigits = new Intl.NumberFormat("en", {
-    style: "currency", currency,
-  }).resolvedOptions().maximumFractionDigits ?? 2;
-  return Math.round(price * (10 ** fractionDigits));
+  return majorUnitsToMinorUnits(price, currency);
 }
 
 /** Backwards-compatible alias. The integer is currency minor units, not always GBP pence. */

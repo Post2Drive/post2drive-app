@@ -90,3 +90,20 @@ Status values: **Configured** means registry/profile code exists; **Campaign pen
 - Never treat a passing static contract as a substitute for authenticated E2E and recovery testing.
 - Keep QA cleanup disabled; retain run summaries, events and synthetic records.
 - Do not merge PR #12 or deploy to production as part of this qualification work.
+## All-market feature-parity audit update — 18 October 2026
+
+The source audit fixed two cross-market inconsistencies:
+
+- The paid-plan details endpoint had a GB-only gate, even though the configured weekly access policy applies to every supported non-India market. Paid-plan details now follow the shared weekly-pricing eligibility rule. The GB launch promotion remains GB-only.
+- The account-access API previously converted all stored minor-unit amounts by dividing by 100. It now uses the currency-specific minor-unit precision, including zero-decimal currencies such as ISK.
+- The subscription status component shows weekly price information for eligible markets after access expires and clearly states that checkout is not connected.
+- A new CI contract checks localisation, currency precision, vehicle terminology, time zones, market isolation, shared access paths and payment-state limitations across all 43 markets.
+
+## Outstanding country-parity launch gates
+
+- No payment provider or checkout session is connected. A pending payment record does not charge a customer or activate access.
+- The full-size authenticated staging campaigns are evidenced for GB and IN only in the current readiness record. The other 41 markets still need sequential isolated staging campaigns after the current changes.
+- The Terms and Privacy pages remain product-testing drafts. Qualified local legal review and regional vehicle-class compliance review remain necessary.
+- Non-India local-currency price tiers remain planning values until commercial pricing and tax treatment are confirmed.
+
+Passing the all-market source contract is evidence of consistent configured code paths, not evidence that all 43 markets are launch-ready.

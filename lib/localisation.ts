@@ -279,11 +279,11 @@ export function formatMarketCurrency(value: number | string, identity: MarketIde
   const profile = getLocalisationProfile(identity);
   const amount = Number(value);
   if (!profile || !Number.isFinite(amount)) return String(value);
+  // Let Intl apply this currency's standard fraction digits. Hard-coding two
+  // decimals is incorrect for zero-decimal currencies such as ISK.
   return new Intl.NumberFormat(profile.locale, {
     style: "currency",
     currency: profile.currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
   }).format(amount);
 }
 
