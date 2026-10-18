@@ -244,41 +244,18 @@ async function POSTHandler(
         10
       );
 
-    let displayId =
-      generateDisplayId(
-        normalizedCompanyName
-      );
+    let displayId = generateDisplayId(normalizedCompanyName);
+    let account: { id: string } | undefined;
+    let displayIdCollisionCount = 0;
+    const maxDisplayIdAttempts = 5;
 
-    for (
-      let attempt = 0;
-      attempt < 5;
-      attempt++
-    ) {
-      const clash =
-        await prisma.account.findUnique({
-          where: {
-            displayId,
-          },
-        });
-
-      if (!clash) {
-        break;
-      }
-
-      displayId =
-        generateDisplayId(
-          normalizedCompanyName
-        );
-    }
-
-    const finalDisplayIdClash = await prisma.account.findUnique({ where: { displayId } });
-    if (finalDisplayIdClash) {
-      return NextResponse.json({ error: "Could not reserve a unique business ID. Please retry signup." }, { status: 409 });
-    }
-
-    const account =
-      await prisma.$transaction(
-        async (tx) => {
+    // The unique database constraint is the reservation authority. A preflight
+    // SELECT cannot reserve an ID and races under concurrent signup load.
+    for (let attempt = 1; attempt <= maxDisplayIdAttempts; attempt++) {
+      displayId = generateDisplayId(normalizedCompanyName);
+      try {
+        account = await prisma.$transaction(
+          async (tx) => {
           const createdAccount =
             await tx.account.create({
               data: {
@@ -366,7 +343,46 @@ async function POSTHandler(
 
           return createdAccount;
         }
-      );
+        );
+        break;
+      } catch (error) {
+        const databaseError = error as { code?: unknown; meta?: { target?: unknown } };
+        const target = Array.isArray(databaseError.meta?.target)
+          ? databaseError.meta.target.join(",").toLowerCase()
+          : String(databaseError.meta?.target ?? "").toLowerCase();
+        const isDisplayIdCollision =
+          databaseError.code === "P2002" &&
+          (target.includes("displayid") || target.includes("display_id"));
+
+        if (!isDisplayIdCollision) throw error;
+
+        displayIdCollisionCount++;
+        console.warn("Signup displayId collision", {
+          attempt,
+          collisionCount: displayIdCollisionCount,
+          maxAttempts: maxDisplayIdAttempts,
+        });
+
+        if (attempt === maxDisplayIdAttempts) {
+          console.warn("Signup displayId reservation exhausted", {
+            attempts: attempt,
+            collisionCount: displayIdCollisionCount,
+          });
+          return NextResponse.json(
+            { error: "Could not reserve a unique business ID. Please retry signup." },
+            { status: 409 }
+          );
+        }
+        // The failed transaction has rolled back, so retry with a new candidate.
+      }
+    }
+
+    if (!account) {
+      console.error("Signup account creation ended without an account", {
+        displayIdCollisionCount,
+      });
+      return NextResponse.json({ error: "Unable to create account. Please try again." }, { status: 500 });
+    }
 
 let verificationEmailSent = false;
 if (verificationRequired) {
