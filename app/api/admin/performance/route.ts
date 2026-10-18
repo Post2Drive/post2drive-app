@@ -53,7 +53,37 @@ async function GETHandler(request: Request) {
       prisma.$queryRawUnsafe<any[]>(`SELECT date_trunc('day',a."createdAt") AS day, count(*)::int AS count FROM "Account" a LEFT JOIN qa_test_accounts q ON q.account_id=a.id WHERE q.account_id IS NULL AND a."createdAt" >= now()-interval '30 days' GROUP BY day ORDER BY day`),
       prisma.$queryRawUnsafe<any[]>(`SELECT date_trunc('hour',"createdAt") AS hour, count(*)::int AS total, count(*) FILTER (WHERE "statusCode">=500)::int AS errors FROM "ApiRequestMetric" WHERE "qaRunId" IS NULL AND "createdAt" >= now()-interval '24 hours' GROUP BY hour ORDER BY hour`),
       prisma.$queryRawUnsafe<any[]>(`SELECT id,status,target_accounts AS "targetAccounts",created_accounts AS "createdAccounts",successful_checks AS "successfulChecks",failed_checks AS "failedChecks",duration_ms AS "durationMs",started_at AS "startedAt",finished_at AS "finishedAt",summary FROM qa_test_runs ORDER BY started_at DESC LIMIT 100`),
-      prisma.$queryRawUnsafe<any[]>(`SELECT e.run_id AS "runId",r.summary->>'country' AS country,r.status AS "runStatus",e.scenario,e.action,e.path,e.expected_statuses AS expected,e."actual_status" AS actual,count(*)::int AS count FROM qa_test_events e JOIN qa_test_runs r ON r.id=e.run_id WHERE e.run_id IN (SELECT id FROM qa_test_runs ORDER BY started_at DESC LIMIT 100) AND e.passed=false GROUP BY e.run_id,r.summary->>'country',r.status,e.scenario,e.action,e.path,e.expected_statuses,e."actual_status" ORDER BY max(r.started_at) DESC,count(*) DESC LIMIT 100`),
+      prisma.$queryRawUnsafe<any[]>(`
+        WITH recent_events AS (
+          SELECT
+            e.run_id AS "runId",
+            COALESCE(r.summary->>'country', r.summary->>'marketCode', r.summary->>'marketLabel', 'Not recorded') AS country,
+            r.status AS "runStatus",
+            e.scenario,
+            e.action,
+            e.path,
+            e.expected_statuses AS expected,
+            e."actual_status" AS actual,
+            e.passed,
+            e.created_at AS "eventCreatedAt",
+            e.id AS "eventId",
+            r.started_at AS "runStartedAt",
+            row_number() OVER (
+              PARTITION BY
+                COALESCE(r.summary->>'country', r.summary->>'marketCode', r.summary->>'marketLabel', 'Not recorded'),
+                e.scenario, e.action, e.path, e.expected_statuses
+              ORDER BY r.started_at DESC, e.created_at DESC, e.id DESC
+            ) AS issue_rank
+          FROM qa_test_events e
+          JOIN qa_test_runs r ON r.id=e.run_id
+          WHERE e.run_id IN (SELECT id FROM qa_test_runs ORDER BY started_at DESC LIMIT 100)
+        )
+        SELECT "runId", country, "runStatus", scenario, action, path, expected, actual, 1::int AS count
+        FROM recent_events
+        WHERE issue_rank=1 AND passed=false
+        ORDER BY "runStartedAt" DESC, scenario, action
+        LIMIT 100
+      `),
       prisma.$queryRawUnsafe<any[]>(`SELECT a.id,a."companyName",a.type::text AS type,a."lastActivityAt",a."createdAt",count(DISTINCT ja.id)::int AS "activityCount" FROM "Account" a LEFT JOIN qa_test_accounts q ON q.account_id=a.id LEFT JOIN "JobActivity" ja ON ja."actorId"=a.id AND ja."createdAt">=now()-($1::int*interval '1 day') WHERE q.account_id IS NULL GROUP BY a.id ORDER BY "activityCount" DESC,a."lastActivityAt" DESC LIMIT 15`, String(days))
     ]);
 
