@@ -51,6 +51,8 @@ jobs:
         run: node --experimental-strip-types scripts/qa/functional-workflows-contract.mjs
       - name: Validate supported-market isolation
         run: npm run qa:market-isolation
+      - name: Validate QA isolation with large retained account pools
+        run: npm run qa:qa-isolation-contract
       - name: Validate all-market feature parity
         run: npm run qa:market-parity
       - name: Validate country matrix across all supported markets

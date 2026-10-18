@@ -209,7 +209,7 @@ contains("app/api/jobs/route.ts", [
   "isSupportedMarket(account)",
   "validateJobInput(body, account)",
   "crossBorder: false",
-  "poster: { country, currency }",
+  "poster: posterFilter",
 ]);
 
 // Every job-specific API must enforce the stored account market boundary.

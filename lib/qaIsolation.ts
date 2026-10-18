@@ -1,32 +1,21 @@
 import { prisma } from "@/lib/prisma";
 
 /**
- * QA runs intentionally retain synthetic records for diagnosis. Do not expose
- * jobs posted by those accounts to ordinary marketplace users.
+ * QA runs intentionally retain synthetic records for diagnosis. Ordinary
+ * marketplace requests must exclude jobs posted by those accounts, while a
+ * mapped QA account must retain fixture visibility for multi-account tests.
  *
- * A mapped QA account keeps fixture visibility so the dedicated QA suite can
- * exercise multi-account job flows. If the QA mapping table cannot be read,
- * this throws rather than silently publishing synthetic jobs.
+ * Return only the requester's QA status. Never materialise the entire account
+ * pool into a Prisma notIn list: the retained pool can exceed the provider's
+ * query-parameter limit.
  */
-export async function getSyntheticAccountIdsForUser(
-  accountId: string,
-): Promise<string[]> {
-  const currentAccount = await prisma.$queryRaw<Array<{ isQa: boolean }>>`
+export async function isQaAccount(accountId: string): Promise<boolean> {
+  const rows = await prisma.$queryRaw<Array<{ isQa: boolean }>>`
     SELECT EXISTS (
       SELECT 1
       FROM qa_test_accounts
       WHERE account_id = ${accountId}
     ) AS "isQa"
   `;
-
-  if (currentAccount[0]?.isQa) {
-    return [];
-  }
-
-  const mappings = await prisma.$queryRaw<Array<{ account_id: string }>>`
-    SELECT DISTINCT account_id
-    FROM qa_test_accounts
-  `;
-
-  return mappings.map((row) => row.account_id);
+  return rows[0]?.isQa === true;
 }
