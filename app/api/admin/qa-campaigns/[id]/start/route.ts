@@ -53,7 +53,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       const concurrency = Number(campaign.concurrency);
       const testsPerVariation = Number(campaign.tests_per_variation);
       const totalCampaignTests = Number(campaign.total_campaign_tests);
-      const suites = Array.isArray(campaign.suites) ? campaign.suites.filter((s: unknown): s is string => typeof s === "string" && SUITE_TYPES[s]) : [];
+      const suites = Array.isArray(campaign.suites) ? campaign.suites.filter((s: unknown): s is keyof typeof SUITE_TYPES => typeof s === "string" && Object.prototype.hasOwnProperty.call(SUITE_TYPES, s)) : [];
       const variations = Array.isArray(campaign.variations) ? campaign.variations : [];
       if (!Number.isInteger(accountCount) || accountCount < 500 || accountCount > 10000) return { error: "Execution requires 500–10,000 synthetic accounts.", status: 400 };
       if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > 100) return { error: "Concurrency must be between 1 and 100.", status: 400 };
@@ -125,7 +125,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       );
       return { accepted: true, campaignId, runId, status: "queued", plannedSteps: steps.length, target: "staging" };
     }, { maxWait: 15000, timeout: 30000 });
-    if ("error" in result) return NextResponse.json({ error: result.error }, { status: result.status });
+    if ("error" in result) return NextResponse.json({ error: result.error }, { status: typeof result.status === "number" ? result.status : 400 });
     return NextResponse.json(result, { status: 202, headers: { "cache-control": "no-store" } });
   } catch (error) {
     console.error("Could not start QA campaign", error);
