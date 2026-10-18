@@ -8,7 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { recordDriverOpportunity } from "@/lib/opportunities";
 import { validateJobInput } from "@/lib/jobValidation";
 import { buildJobFilters } from "@/lib/jobSearch";
-import { getSyntheticAccountIdsForUser } from "@/lib/qaIsolation";
+import { isQaAccount } from "@/lib/qaIsolation";
 import { isSupportedMarket, marketForAccount } from "@/lib/market";
 import { getTimeZoneOptions } from "@/lib/localisation";
 import { enforceRateLimit } from "@/lib/rateLimit";
@@ -144,15 +144,21 @@ async function GETHandler(req: Request) {
 
   // Keep retained QA fixtures out of the real marketplace. QA accounts can
   // still see fixtures while running the synthetic suite.
-  const syntheticAccountIds = await getSyntheticAccountIdsForUser(accountId);
+  const requesterIsQaAccount = await isQaAccount(accountId);
+  const posterFilter = {
+    country,
+    currency,
+    // Keep the exclusion inside PostgreSQL instead of sending every retained
+    // synthetic account ID as a separate Prisma query parameter.
+    ...(!requesterIsQaAccount ? { qaTestAccounts: { none: {} } } : {}),
+  };
 
   const jobs = await prisma.job.findMany({
     where: {
       currency,
       crossBorder: false,
-      poster: { country, currency },
+      poster: posterFilter,
       AND: [
-        { posterId: { notIn: syntheticAccountIds } },
         {
           OR: [
             ...(canBrowseOpenMarketplace
