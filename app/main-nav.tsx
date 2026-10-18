@@ -13,13 +13,16 @@ const baseLinks = [
   { href: "/settings", label: "Account" },
 ];
 
-export default function MainNav() {
+export default function MainNav({ showQaCampaigns = false }: { showQaCampaigns?: boolean }) {
   const pathname = usePathname();
   const { data: session, status } = useSession();
   const country = (session?.user as any)?.country;
-  const links = country === "IN"
+  const marketLinks = country === "IN"
     ? [...baseLinks.slice(0, 2), { href: "/requirements", label: "My Requirements" }, ...baseLinks.slice(2)]
     : baseLinks;
+  const links = showQaCampaigns
+    ? [...marketLinks, { href: "/admin/qa-campaigns", label: "QA Campaigns" }]
+    : marketLinks;
 
   if (status !== "authenticated") return null;
 
