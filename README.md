@@ -6,7 +6,7 @@ The product is being built around a unified account: users can post jobs, find j
 
 > **Current status:** Clean-start prototype / active development. The previous version had repeatable staging synthetic-test evidence, but that evidence does not certify this rebuilt source. Email verification and payment-provider integration are not verified end to end. This repository should not be represented as an unrestricted, fully launched marketplace.
 >
-> See [Launch Readiness](docs/LAUNCH_READINESS.md) for the current release gates and verified operational status.
+> See [Launch Readiness](docs/LAUNCH_READINESS.md) for the current release gates and verified operational status. See [Vibrant Design System](docs/VIBRANT_DESIGN_SYSTEM.md) for the shared colour palette and component semantics.
 
 ## Clean-start safeguards
 

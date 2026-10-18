@@ -805,6 +805,8 @@ export default function JobsPage() {
             return (
               <li
                 key={job.id}
+                className="marketplace-job-card"
+                data-status={job.status}
                 style={{
                   background: "var(--color-surface)",
                   border: "1px solid var(--color-border)",

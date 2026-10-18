@@ -82,6 +82,9 @@ export default function SubscriptionStatus() {
       : data.reason === "verification_required"
         ? "var(--color-warning)"
         : "var(--color-danger)";
+  const statusTextColor = data.reason === "verification_required"
+    ? "var(--color-text)"
+    : statusColor;
 
   const endsAt = formatDate(
     data.endsAt || data.freeEndsAt || data.subscriptionEndsAt,
@@ -99,10 +102,10 @@ export default function SubscriptionStatus() {
     <section
       style={{
         background: "var(--color-surface)",
-        border: "1px solid #D9E2EC",
+        border: "1px solid var(--color-border)",
         borderRadius: 14,
         padding: 20,
-        boxShadow: "0 1px 3px rgba(16,42,67,0.08)",
+        boxShadow: "var(--shadow-card)",
       }}
     >
       <div
@@ -151,9 +154,11 @@ export default function SubscriptionStatus() {
 
         <span
           style={{
-            background: `${statusColor}18`,
-            color: statusColor,
-            borderRadius: 999,
+            background: "var(--color-surface)",
+            color: statusTextColor,
+            border: `1px solid ${statusColor}`,
+            borderLeft: `4px solid ${statusColor}`,
+            borderRadius: 8,
             padding: "7px 11px",
             fontSize: 13,
             fontWeight: 700,
@@ -173,7 +178,7 @@ export default function SubscriptionStatus() {
         <div
           style={{
             marginTop: 17,
-            borderTop: "1px solid #D9E2EC",
+            borderTop: "1px solid var(--color-border)",
             paddingTop: 15,
             display: "flex",
             alignItems: "center",
@@ -221,7 +226,7 @@ export default function SubscriptionStatus() {
               fontWeight: 700,
               fontSize: 14,
             }}
-           className="button-link button-link-secondary">
+           className="button-link">
             View pricing
           </Link>
         </div>
@@ -231,9 +236,10 @@ export default function SubscriptionStatus() {
         <div
           style={{
             marginTop: 15,
-            background: "#FFF8E1",
-            border: "1px solid #F9A825",
-            color: "#7A5600",
+            background: "#FFFFFF",
+            border: "1px solid var(--color-warning)",
+            borderLeft: "4px solid var(--color-warning)",
+            color: "var(--color-text)",
             borderRadius: 9,
             padding: "11px 13px",
             fontSize: 13,
@@ -249,9 +255,10 @@ export default function SubscriptionStatus() {
         <div
           style={{
             marginTop: 15,
-            background: "#FDECEC",
-            border: "1px solid #D32F2F",
-            color: "#A51E1E",
+            background: "#FFFFFF",
+            border: "1px solid var(--color-danger)",
+            borderLeft: "4px solid var(--color-danger)",
+            color: "var(--color-danger)",
             borderRadius: 9,
             padding: "11px 13px",
             fontSize: 13,
