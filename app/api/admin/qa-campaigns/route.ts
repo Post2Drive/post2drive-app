@@ -45,7 +45,12 @@ function validate(body: any) {
   if (concurrency === null) errors.push("Concurrency must be from 1 to 100.");
   if (!suites.length) errors.push("Choose at least one test suite.");
   if (!Array.isArray(body?.variations) || body.variations.length < 1 || body.variations.length > MAX_VARIATIONS) errors.push("Add between 1 and 20 variations.");
-  if (variations.length && testsPerVariation !== null && totalCampaignTests !== null && variations.length * testsPerVariation > totalCampaignTests) errors.push("Tests per variation multiplied by the number of variations cannot exceed the total campaign test count.");
+  const allocatedIterations = variations.reduce((sum: number, variation: any) => {
+    const raw = variation?.overrides?.testIterations;
+    const count = raw === undefined || raw === null || raw === "" ? testsPerVariation : Number(raw);
+    return sum + (Number.isInteger(count) && count >= 1 && count <= 25000 ? count : 25001);
+  }, 0);
+  if (totalCampaignTests !== null && allocatedIterations > totalCampaignTests) errors.push("Effective variation iterations cannot exceed the total campaign test count.");
   return { errors, value: { name, countryCode, scenario, totalCampaignTests, testsPerVariation, accountCount, concurrency, suites, variations } };
 }
 
