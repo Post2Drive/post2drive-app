@@ -71,7 +71,7 @@ for (const [name, pattern] of [
   ["QA campaign builder is in the Ops Dashboard", /id="qaCampaignForm"/],
   ["QA campaign history loads from the dashboard service", /url\.pathname === "\/api\/qa-campaigns"/],
   ["QA campaign actions use the signed admin bridge", /qa-campaign-create.*qa-campaign-delete.*qa-campaign-start/],
-  ["QA campaign start requires staging runner checks", /isQaRunnerEnabled\(\)/],
+
   ["QA history is retained when a draft is deleted", /No QA runs, steps, accounts, events, or reports will be deleted/],
   ["retained QA failure history", /qa_test_events/],
   ["vehicle compliance metrics", /"motExpired"/],
@@ -107,6 +107,7 @@ assert.match(bridge, /codeHash/);
 assert.match(bridge, /action === "qa-campaign-create"/);
 assert.match(bridge, /action === "qa-campaign-delete"/);
 assert.match(bridge, /action === "qa-campaign-start"/);
+assert.match(bridge, /isQaRunnerEnabled\(\)/);
 assert.match(bridge, /campaign\.status !== "draft"/);
 assert.match(bridge, /WITH queue_lock AS MATERIALIZED/);
 assert.match(migration, /CREATE TABLE "AdminAuditEvent"/);
