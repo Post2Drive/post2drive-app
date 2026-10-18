@@ -16,7 +16,7 @@ assert.ok(route.includes("target_environment text NOT NULL DEFAULT 'staging'") |
 assert.ok(migration.includes("CHECK (target_environment = 'staging')"), "database must reject non-staging campaign targets");
 assert.ok(migration.includes("CHECK (execution_mode = 'preview_only')") && executionMigration.includes("staging_sequential"), "campaign execution mode must be explicitly migrated to sequential staging runs");
 assert.ok(migration.includes("CHECK (status = 'draft')") && executionMigration.includes("CHECK (status IN ('pending','queued','running','completed','failed','aborted','skipped'))"), "campaigns progress through constrained durable statuses");
-assert.ok(route.includes("int(body?.totalCampaignTests, 1, 25000)") && route.includes("int(body?.accountCount, 1, 10000)") && route.includes("int(body?.concurrency, 1, 100)"), "API must cap test volume, account count and concurrency");
+assert.ok(route.includes("int(body?.totalCampaignTests, 1, 25000)") && route.includes("int(body?.accountCount, 500, 10000)") && route.includes("int(body?.concurrency, 1, 100)"), "API must cap test volume, account count and concurrency");
 assert.ok(route.includes("MAX_VARIATIONS = 20"), "API must cap the number of variations");
 assert.ok(route.includes("variations.length * testsPerVariation > totalCampaignTests"), "API must reject variation allocation above the campaign test budget");
 assert.ok(route.includes("executionEnabled: true") && route.includes("FROM qa_test_campaign_steps"), "API must expose execution status and campaign steps");
