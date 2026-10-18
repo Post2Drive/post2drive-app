@@ -973,3 +973,116 @@ main [role=alert] strong{color:#D62828}
 .marketplace-job-card[data-status="in_transit"]{--job-accent:#E87500}
 .marketplace-job-card[data-status="delivered"],.marketplace-job-card[data-status="completed"]{--job-accent:#18864B}
 .marketplace-job-card[data-status="cancelled"]{--job-accent:#D62828}
+
+
+/* ── Contrast audit guardrails ───────────────────────────────────────────
+   White-first surfaces, readable labels, and semantic colour as accents.
+   Yellow/orange/cyan are not used as small text on white because they fail
+   normal-text contrast; use black text and reserve those colours for borders,
+   bars, and indicators. These rules intentionally beat inline text colours
+   when the chosen colour is not readable against its rendered surface. */
+:root{
+  --color-warning-text:#171717;
+  --color-orange-text:#171717;
+  --color-cyan-text:#171717;
+  --ops-amber-text:#171717;
+  --ops-orange-text:#171717;
+  --ops-cyan-text:#171717;
+}
+html,body{background:#FFFFFF!important;color:#171717!important;color-scheme:light}
+main{background:#FFFFFF!important;color:#171717}
+main h1,main h2,main h3,main h4,main h5,main h6,
+main p,main li,main dt,main dd,main label,main legend,main summary,
+main small,main th,main td{color:#171717}
+main p,main li,main dt,main dd,main label,main legend,main summary,main small{color:#30343B}
+main strong,main b,main th,main td{color:#171717}
+main a:not(.button-link){color:#2457D6}
+.auth-page h1,.auth-page h2,.auth-page h3{color:#171717}
+.auth-page p,.auth-page label,.auth-page small{color:#30343B}
+
+/* Inline text using yellow/orange/cyan is automatically corrected to ink.
+   Keep the vivid hue on the border/rail/chart, never on small text. */
+[style*="color: var(--color-warning)"],[style*="color:var(--color-warning)"],
+[style*="color: var(--ops-amber)"],[style*="color:var(--ops-amber)"],
+[style*="color: #F2C300"],[style*="color:#F2C300"],
+[style*="color: #FFC400"],[style*="color:#FFC400"],
+[style*="color: var(--ops-orange)"],[style*="color:var(--ops-orange)"],
+[style*="color: var(--color-orange)"],[style*="color:var(--color-orange)"],
+[style*="color: #E87500"],[style*="color:#E87500"],
+[style*="color: #F06A00"],[style*="color:#F06A00"],
+[style*="color: var(--ops-cyan)"],[style*="color:var(--ops-cyan)"],
+[style*="color: #0096C7"],[style*="color:#0096C7"],
+.text-warning,.warning-text,.status-warning,.badge-warning,.badge-warn{
+  color:#171717!important;
+}
+
+/* All content surfaces are white; charts retain their own data colours. */
+main section,main article,main form,
+main [class*="card"],main [class*="Card"],
+main [class*="panel"],main [class*="Panel"],
+main [class*="tile"],main [class*="Tile"],
+main [class*="kpi"],main [class*="Kpi"],
+.auth-page form,.signup-note,.signup-review-grid>div,.signup-alert,
+.pricing-panel,.pricing-tier-card,.pricing-benefit-strip,.pricing-market-note,
+.job-analytics-chart-panel,.job-analytics-empty,.job-create-form fieldset{
+  background:#FFFFFF!important;
+  color:#171717;
+}
+main input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]),
+main select,main textarea,.auth-page input,.auth-page select,.auth-page textarea{
+  background:#FFFFFF!important;color:#171717!important;border-color:#AEB6C2!important;
+}
+main input::placeholder,main textarea::placeholder,.auth-page input::placeholder,.auth-page textarea::placeholder{
+  color:#555D69!important;opacity:1;
+}
+main table,main table tbody,main table tr,main table td{background:#FFFFFF;color:#171717}
+main table th,main th,th{background:#F2C300!important;color:#171717!important;border-bottom:2px solid #171717}
+main table tr:nth-child(even) td,main table tr:hover td,tbody tr:nth-child(even) td,tbody tr:hover td{background:#FFFFFF}
+main [role="alert"],.auth-page [role="alert"],.signup-error{
+  background:#FFFFFF!important;color:#D62828!important;border:1px solid #D62828;border-left:4px solid #D62828;
+}
+main [role="status"]{
+  background:#FFFFFF!important;color:#171717!important;border:1px solid #18864B;border-left:4px solid #18864B;
+}
+main [role="status"] strong{color:#18864B!important}
+main [role="alert"] strong{color:#D62828!important}
+
+/* Status labels use readable text and a coloured border for the same meaning. */
+main .pill,.pill{background:#FFFFFF!important;color:#171717!important;border:1px solid #D7DCE4}
+main .pill.good,.pill.good{color:#18864B!important;border-color:#18864B!important}
+main .pill.warn,.pill.warn{color:#171717!important;border-color:#F2C300!important}
+main .pill.bad,.pill.bad{color:#D62828!important;border-color:#D62828!important}
+main [style*="color: var(--color-warning)"],
+main [style*="color:var(--color-warning)"]{color:#171717!important}
+.marketplace-job-card [style*="color: var(--color-warning)"],
+.marketplace-job-card [style*="color:var(--color-warning)"]{color:#171717!important}
+.marketplace-job-card{background:#FFFFFF!important;color:#171717!important}
+.marketplace-job-card strong,.marketplace-job-card p,.marketplace-job-card span{color:#171717}
+.job-status-donut,.pipeline-donut{color:#171717}
+.job-status-donut-hole,.pipeline-donut>div{background:#FFFFFF!important;color:#171717!important}
+.job-status-donut-hole strong,.pipeline-donut strong{color:#171717!important}
+.job-chart-legend-item,.job-chart-legend-item span,.job-chart-legend-item strong,
+.job-bar-label,.job-bar-label span,.job-bar-label strong,
+.pipeline-chart-row,.pipeline-chart-row span,.pipeline-chart-row strong{color:#171717!important}
+.job-chart-legend-dot,.pipeline-chart-bar,.job-bar-track span,.pipeline-chart-track{color:inherit}
+
+/* Buttons: preserve blue/white primaries, white/blue secondaries, red/destructive. */
+main .button-link:not(.button-link-secondary),
+.auth-page .button-link:not(.button-link-secondary){
+  background:#2457D6!important;color:#FFFFFF!important;border:1px solid #2457D6!important;
+}
+main .button-link-secondary,.auth-page .button-link-secondary,
+.auth-page .signup-actions .signup-secondary{
+  background:#FFFFFF!important;color:#2457D6!important;border:1px solid #2457D6!important;
+}
+main button[style*="var(--color-danger)"],
+main button[style*="var(--color-danger,"],
+main button[style*="--color-danger"]{
+  background:#D62828!important;color:#FFFFFF!important;border-color:#D62828!important;
+}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{
+  outline:3px solid #F2C300!important;outline-offset:2px;
+}
+.pricing-tier-name,.pricing-tier-price,.signup-review-grid strong{color:#171717!important}
+.pricing-benefit-strip{background:#FFFFFF!important;color:#18864B!important;border:1px solid #18864B;border-left:4px solid #18864B}
+.pricing-market-note{background:#FFFFFF!important;color:#171717!important;border:1px solid #F2C300;border-left:4px solid #F2C300}
