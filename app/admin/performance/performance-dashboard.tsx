@@ -22,7 +22,14 @@ function date(value: unknown) {
   return Number.isNaN(d.getTime()) ? String(value) : d.toLocaleString("en-GB", { dateStyle:"medium", timeStyle:"short" });
 }
 function duration(value: unknown) { const n=Number(value ?? 0); return n>=1000?(n/1000).toFixed(2)+" s":Math.round(n)+" ms"; }
-function Section({ title, subtitle, children }: { title:string; subtitle?:string; children:ReactNode }) {
+function Section({ title, subtitle, children, collapsible=false, defaultOpen=true }: { title:string; subtitle?:string; children:ReactNode; collapsible?:boolean; defaultOpen?:boolean }) {
+  if (collapsible) {
+    return <details open={defaultOpen} style={{ ...card, marginBottom:16 }}>
+      <summary style={{ fontSize:18, fontWeight:700, cursor:"pointer", marginBottom:subtitle?4:12 }}>{title}</summary>
+      {subtitle?<p style={{ color:palette.muted, fontSize:13, margin:"0 0 12px" }}>{subtitle}</p>:null}
+      {children}
+    </details>;
+  }
   return <section style={{ ...card, marginBottom:16 }}><h2 style={{ fontSize:18, margin:"0 0 4px" }}>{title}</h2>{subtitle?<p style={{ color:palette.muted, fontSize:13, margin:"0 0 12px" }}>{subtitle}</p>:null}{children}</section>;
 }
 function Table({ rows, columns, empty="No data collected yet." }: { rows:Row[]; columns:{key:string;label:string;render?:(v:any,row:Row)=>React.ReactNode}[]; empty?:string }) {
@@ -36,6 +43,23 @@ function Distribution({ rows }: { rows:Row[] }) {
     const pct=total?Math.round(Number(r.count||0)/total*100):0;
     return <div key={String(r.label??i)}><div style={{ display:"flex", justifyContent:"space-between", gap:12, fontSize:13, marginBottom:5 }}><span>{String(r.label??"Unknown").replaceAll("_"," ")}</span><strong>{num(r.count)} <span style={{ color:palette.muted,fontWeight:400 }}>({pct}%)</span></strong></div><div style={{ height:7, background:"var(--ops-border)", borderRadius:99, overflow:"hidden" }}><div style={{ width:pct+"%", height:"100%", background:"var(--ops-blue)", borderRadius:99 }} /></div></div>;
   })}</div>;
+}
+function PieChart({ rows, title }: { rows:Row[]; title:string }) {
+  const colors=["#3778c2","#16a34a","#f59e0b","#9333ea","#0891b2","#dc2626","#64748b","#db2777"];
+  const total=rows.reduce((n,r)=>n+Number(r.count||0),0);
+  let cursor=0;
+  const stops=rows.map((r,i)=>{const value=total?Number(r.count||0)/total*100:0;const start=cursor;cursor+=value;return colors[i%colors.length]+" "+start+"% "+cursor+"%";});
+  if(!rows.length||total===0)return <p style={{color:palette.muted,fontSize:13}}>No distribution data available.</p>;
+  return <div style={{display:"grid",gridTemplateColumns:"minmax(110px,0.8fr) minmax(130px,1.2fr)",gap:14,alignItems:"center"}}>
+    <div role="img" aria-label={title+" distribution"} style={{width:"100%",maxWidth:170,aspectRatio:"1",borderRadius:"50%",background:"conic-gradient("+stops.join(",")+")",position:"relative",margin:"auto"}}>
+      <div style={{position:"absolute",inset:"25%",borderRadius:"50%",background:palette.surface,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",textAlign:"center"}}>
+        <strong style={{fontSize:18,fontVariantNumeric:"tabular-nums"}}>{num(total)}</strong><span style={{fontSize:10,color:palette.muted}}>total</span>
+      </div>
+    </div>
+    <div style={{display:"grid",gap:8}}>{rows.map((r,i)=>{const count=Number(r.count||0);return <div key={String(r.label??i)} style={{display:"grid",gridTemplateColumns:"10px minmax(0,1fr) auto",gap:7,alignItems:"center",fontSize:12}}>
+      <span style={{width:9,height:9,borderRadius:2,background:colors[i%colors.length]}}/><span style={{overflowWrap:"anywhere"}}>{String(r.label??"Unknown").replaceAll("_"," ")}</span><strong>{num(count)} <span style={{fontWeight:400,color:palette.muted}}>({Math.round(count/total*100)}%)</span></strong>
+    </div>})}</div>
+  </div>;
 }
 function TrendBars({ rows, labelKey, valueKey, valueLabel }: { rows:Row[]; labelKey:string; valueKey:string; valueLabel:string }) {
   const values=rows.map(r=>Number(r[valueKey]||0));
@@ -62,6 +86,8 @@ export default function PerformanceDashboard() {
   const [data,setData]=useState<Data|null>(null);
   const [error,setError]=useState("");
   const [loading,setLoading]=useState(true);
+  const [showAllQaRuns,setShowAllQaRuns]=useState(false);
+  const [showAllQaFailures,setShowAllQaFailures]=useState(false);
   const load=useCallback(async()=>{
     setLoading(true);setError("");
     try {
@@ -78,6 +104,11 @@ export default function PerformanceDashboard() {
   if(!data)return null;
   const o=data.overview||{};
   const latestRun=data.qaRuns?.[0];
+  const qaStatusRows=Object.entries((data.qaRuns||[]).reduce<Record<string,number>>((counts,run)=>{
+    const status=String(run.status||"unknown").toLowerCase();
+    counts[status]=(counts[status]||0)+1;
+    return counts;
+  },{})).map(([label,count])=>({label,count}));
   const endpointColumns=[
     {key:"route",label:"API route"},
     {key:"method",label:"Method"},
@@ -221,18 +252,29 @@ export default function PerformanceDashboard() {
         {s.persistedDataSummary&&typeof s.persistedDataSummary==="object"?<Table rows={Object.entries(s.persistedDataSummary).map(([label,value])=>({label,value}))} columns={[{key:"label",label:"Persisted data check"},{key:"value",label:"Result",render:(v:any)=>typeof v==="object"?JSON.stringify(v):String(v??"—")}]}/>:null}
       </div>})()}
     </Section> : null}
-    <Section title="Synthetic QA runs" subtitle="Latest 10 stored runs, kept separate from business totals. Country, route-matrix counts and latency are shown in the run summary above.">
-      <Table rows={data.qaRuns} columns={[
+    <Section title="Synthetic QA runs" subtitle="Latest 100 stored runs, kept separate from business totals. Shows 15 by default; expand the table for up to 100. This section can also be collapsed." collapsible defaultOpen>
+      <div style={{ ...card, marginBottom:14 }}>
+        <h3 style={{fontSize:15,margin:"0 0 12px"}}>Run outcomes · latest {num(data.qaRuns.length)} runs</h3>
+        <PieChart rows={qaStatusRows} title="QA run outcomes"/>
+      </div>
+      <Table rows={showAllQaRuns?data.qaRuns.slice(0,100):data.qaRuns.slice(0,15)} columns={[
+        {key:"id",label:"Run ID",render:(v:any)=><span style={{fontFamily:"monospace",fontSize:11,overflowWrap:"anywhere"}}>{String(v??"—")}</span>},
         {key:"startedAt",label:"Started",render:(v:any)=>date(v)},
+        {key:"country",label:"Country",render:(_:any,row:Row)=>{const s=qaSummary(row);return String(s.country||s.marketCode||s.marketLabel||"Not recorded");}},
+        {key:"phase",label:"Phase",render:(_:any,row:Row)=>{const s=qaSummary(row);return String(s.phase||s.testStage||s.scenario||"Not recorded");}},
         {key:"status",label:"Run status"},
         {key:"targetAccounts",label:"Target users",render:(v:any)=>num(v)},
         {key:"createdAccounts",label:"Created",render:(v:any)=>num(v)},
         {key:"successfulChecks",label:"Passed",render:(v:any)=>num(v)},
-        {key:"failedChecks",label:"Failed",render:(v:any,row:Row)=><span style={{color:Number(v)>0?"var(--ops-red)":"inherit",fontWeight:700}}>{num(v)}</span>},
+        {key:"failedChecks",label:"Failed",render:(v:any)=><span style={{color:Number(v)>0?"var(--ops-red)":"inherit",fontWeight:700}}>{num(v)}</span>},
         {key:"durationMs",label:"Run time",render:(v:any)=>duration(v)}
       ]}/>
-      <h3 style={{fontSize:15,margin:"18px 0 8px"}}>Failure patterns from latest QA run</h3>
-      <Table rows={data.latestQaFailures} columns={[
+      {data.qaRuns.length>15?<div style={{marginTop:10}}><button type="button" onClick={()=>setShowAllQaRuns(v=>!v)} aria-expanded={showAllQaRuns} style={{border:"1px solid "+palette.border,borderRadius:8,padding:"8px 12px",background:"var(--ops-surface-raised)",color:"var(--ops-text)",cursor:"pointer"}}>{showAllQaRuns?"Show fewer (15)":"Show all "+data.qaRuns.length+" runs"}</button></div>:null}
+      <h3 style={{fontSize:15,margin:"18px 0 8px"}}>Failure patterns across recent QA runs</h3>
+      <Table rows={showAllQaFailures?data.latestQaFailures.slice(0,100):data.latestQaFailures.slice(0,15)} columns={[
+        {key:"runId",label:"Run ID",render:(v:any)=><span style={{fontFamily:"monospace",fontSize:11,overflowWrap:"anywhere"}}>{String(v??"—")}</span>},
+        {key:"country",label:"Country",render:(v:any)=>String(v??"Not recorded")},
+        {key:"runStatus",label:"Run status"},
         {key:"scenario",label:"Scenario"},
         {key:"action",label:"Action"},
         {key:"path",label:"Route"},
@@ -240,6 +282,7 @@ export default function PerformanceDashboard() {
         {key:"actual",label:"Actual"},
         {key:"count",label:"Count",render:(v:any)=>num(v)}
       ]}/>
+      {data.latestQaFailures.length>15?<div style={{marginTop:10}}><button type="button" onClick={()=>setShowAllQaFailures(v=>!v)} aria-expanded={showAllQaFailures} style={{border:"1px solid "+palette.border,borderRadius:8,padding:"8px 12px",background:"var(--ops-surface-raised)",color:"var(--ops-text)",cursor:"pointer"}}>{showAllQaFailures?"Show fewer (15)":"Show all "+data.latestQaFailures.length+" failure groups"}</button></div>:null}
     </Section>
     <p style={{ color:palette.muted,fontSize:12,lineHeight:1.5 }}>Performance telemetry records method, route template, status and duration only. It intentionally omits emails, account IDs, full URLs, query strings, request bodies and passwords. Dashboard metrics are operational indicators, not a guarantee of production capacity; run controlled load tests before making capacity commitments.</p>
   </div>;
