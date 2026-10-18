@@ -1,6 +1,7 @@
 export function currencyMinorUnitScale(currency: string): number {
   if (!/^[A-Z]{3}$/.test(currency)) throw new RangeError("Invalid currency code.");
-  return 10 ** new Intl.NumberFormat("en", { style: "currency", currency }).resolvedOptions().maximumFractionDigits;
+  const digits = new Intl.NumberFormat("en", { style: "currency", currency }).resolvedOptions().maximumFractionDigits;
+  return 10 ** (digits ?? 2);
 }
 
 export function majorUnitsToMinorUnits(amount: number, currency: string): number {
