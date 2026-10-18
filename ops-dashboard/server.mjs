@@ -748,3 +748,16 @@ button.primary:hover{background:#173FA8;color:#FFFFFF}
 /* Nine distinct solid categories for dense charts: core palette plus cyan and magenta. */
 .kpis .kpi:nth-child(9n+8){border-top-color:#0096C7}
 .kpis .kpi:nth-child(9n){border-top-color:#C0268D}
+
+/* Use the same solid colour roles on the admin UI in every market. */
+.panel,.kpi,.source-card,.watch-card,.filter-panel{background:#FFFFFF!important;color:#171717}
+.panel{border-top:4px solid #2457D6}
+.grid.two>.panel:nth-child(9n+1){border-top-color:#2457D6}
+.grid.two>.panel:nth-child(9n+2){border-top-color:#D62828}
+.grid.two>.panel:nth-child(9n+3){border-top-color:#18864B}
+.grid.two>.panel:nth-child(9n+4){border-top-color:#171717}
+.grid.two>.panel:nth-child(9n+5){border-top-color:#F2C300}
+.grid.two>.panel:nth-child(9n+6){border-top-color:#6D28D9}
+.grid.two>.panel:nth-child(9n+7){border-top-color:#E87500}
+.grid.two>.panel:nth-child(9n+8){border-top-color:#0096C7}
+.grid.two>.panel:nth-child(9n){border-top-color:#C0268D}
