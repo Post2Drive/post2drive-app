@@ -216,7 +216,7 @@ async function handler(req: Request) {
     const accountCount = Number(body?.accountCount);
     const concurrency = Number(body?.concurrency);
     const allowedSuites = new Set(["provisioning", "api", "workflow", "regression", "localization", "failure"]);
-    const suites = Array.isArray(body?.suites) ? [...new Set(body.suites.filter((s: unknown): s is string => typeof s === "string" && allowedSuites.has(s)))] : [];
+    const suites: string[] = Array.isArray(body?.suites) ? Array.from(new Set<string>((body.suites as unknown[]).filter((s: unknown): s is string => typeof s === "string" && allowedSuites.has(s)))) : [];
     const market = getMarket(countryCode);
     if (!name || !scenario || !market) return NextResponse.json({ error: "Enter a campaign name, scenario, and supported market." }, { status: 400 });
     if (!Number.isInteger(totalTests) || totalTests < 1 || totalTests > 25000) return NextResponse.json({ error: "Enter 1 to 25,000 tests." }, { status: 400 });
@@ -285,7 +285,7 @@ async function handler(req: Request) {
       const steps: Array<{id:string;ordinal:number;suite:string;testType:string;iterations:number}> = [];
       let ordinal = 0;
       if (suites.includes("provisioning")) steps.push({ id:"step-"+randomUUID(), ordinal:ordinal++, suite:"provisioning", testType:"synthetic-accounts", iterations:accountCount });
-      for (const suite of suites.filter(s => s !== "provisioning")) steps.push({ id:"step-"+randomUUID(), ordinal:ordinal++, suite, testType:suiteTypes[s], iterations });
+      for (const suite of suites.filter((s: string) => s !== "provisioning")) steps.push({ id:"step-"+randomUUID(), ordinal:ordinal++, suite, testType:suiteTypes[suite], iterations });
       if (steps.length > 101) return { error: "The campaign has too many steps.", status: 400 };
       const first = steps[0];
       if (!first) return { error: "The campaign has no runnable steps.", status: 400 };
@@ -300,7 +300,7 @@ async function handler(req: Request) {
       await tx.$executeRawUnsafe("UPDATE qa_test_campaign_steps SET run_id=$2 WHERE id=$1",first.id,runId);
       return { accepted:true,campaignId,runId,status:"queued",plannedSteps:steps.length,target:"staging",countryCode:market.country };
     }, { maxWait:15000, timeout:30000 });
-    if ("error" in result) return NextResponse.json({ error: result.error }, { status: result.status });
+    if ("error" in result) return NextResponse.json({ error: result.error }, { status: typeof result.status === "number" ? result.status : 400 });
     await prisma.adminAuditEvent.create({ data: { actor, action: "qa_campaign_queued", entityType: "qa_campaign", entityId: campaignId, market: result.countryCode, details: { runId: result.runId, plannedSteps: result.plannedSteps, target: "staging" } } });
     return NextResponse.json(result, { status: 202 });
   }
