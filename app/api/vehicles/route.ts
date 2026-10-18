@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { VEHICLE_TYPES } from "@/lib/vehicles";
 import { getLocalisationProfile, getJurisdictionOptions } from "@/lib/localisation";
+import { marketDateKey, parseOptionalDateField } from "@/lib/vehicleDates";
 
 async function currentAccount() {
   const session = await getServerSession(authOptions);
@@ -44,7 +45,15 @@ async function POSTHandler(req: Request) {
     }
 
     const marketProfile = getLocalisationProfile({ country: account.country, currency: account.currency });
-    const body = await req.json();
+    let body: any;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ error: "Request body must be valid JSON." }, { status: 400 });
+    }
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json({ error: "Vehicle details must be sent as a JSON object." }, { status: 400 });
+    }
     const vehicleType = String(body.vehicleType ?? "").trim();
     const regPlate = String(body.regPlate ?? "").trim().toUpperCase();
     const registrationRegion = String(body.registrationRegion ?? "").trim().toUpperCase();
@@ -55,8 +64,12 @@ async function POSTHandler(req: Request) {
     const mamKg = body.mamKg === "" || body.mamKg == null ? null : Number(body.mamKg);
     const v5cDocumentUrl = String(body.v5cDocumentUrl ?? "").trim();
     const insuranceDocumentUrl = String(body.insuranceDocumentUrl ?? "").trim();
-    const motValidUntil = body.motValidUntil ? new Date(body.motValidUntil) : null;
-    const insuranceValidUntil = body.insuranceValidUntil ? new Date(body.insuranceValidUntil) : null;
+    const motDate = parseOptionalDateField(body.motValidUntil, "Inspection expiry date");
+    const insuranceDate = parseOptionalDateField(body.insuranceValidUntil, "Insurance expiry date");
+    if (motDate.error) return NextResponse.json({ error: motDate.error }, { status: 400 });
+    if (insuranceDate.error) return NextResponse.json({ error: insuranceDate.error }, { status: 400 });
+    const motValidUntil = motDate.date;
+    const insuranceValidUntil = insuranceDate.date;
 
     if (!(VEHICLE_TYPES as readonly string[]).includes(vehicleType)) {
       return NextResponse.json({ error: "Select a valid vehicle type." }, { status: 400 });
@@ -90,41 +103,51 @@ async function POSTHandler(req: Request) {
     }
 
     const now = new Date();
+    const todayInMarket = marketDateKey(now, marketProfile?.timeZone ?? "UTC");
     if (!account.isTester && account.testerApprovalStatus !== "pending") {
-      if (!insuranceValidUntil || Number.isNaN(insuranceValidUntil.getTime()) || insuranceValidUntil <= now) {
-        return NextResponse.json({ error: "Enter an insurance expiry date in the future." }, { status: 400 });
+      // Date inputs represent whole local calendar days. Treat today's expiry as valid
+      // through the end of that market day instead of rejecting it at midnight UTC.
+      if (!insuranceValidUntil || !insuranceDate.dateKey || insuranceDate.dateKey < todayInMarket) {
+        return NextResponse.json({ error: "Enter an insurance expiry date that has not passed." }, { status: 400 });
       }
-      if (marketProfile?.inspectionRequiredAtCountryLevel && (!motValidUntil || Number.isNaN(motValidUntil.getTime()) || motValidUntil <= now)) {
-        return NextResponse.json({ error: `Enter a valid future ${marketProfile.inspectionLabel} date. If the vehicle is exempt, contact support for review.` }, { status: 400 });
+      if (marketProfile?.inspectionRequiredAtCountryLevel && (!motValidUntil || !motDate.dateKey || motDate.dateKey < todayInMarket)) {
+        return NextResponse.json({ error: `Enter a valid current or future ${marketProfile.inspectionLabel} date. If the vehicle is exempt, contact support for review.` }, { status: 400 });
       }
     }
 
-    const duplicate = await prisma.vehicle.findFirst({
-      where: { regPlate, accountId: account.id },
+    // Serialize registrations for this account so simultaneous duplicate
+    // submissions cannot both pass the preflight duplicate check.
+    const vehicle = await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw<Array<{ id: string }>>`SELECT "id" FROM "Account" WHERE "id" = ${account.id} FOR UPDATE`;
+      const duplicate = await tx.vehicle.findFirst({
+        where: { regPlate, accountId: account.id },
+        select: { id: true },
+      });
+      if (duplicate) return null;
+
+      return tx.vehicle.create({
+        data: {
+          accountId: account.id,
+          vehicleType,
+          regPlate,
+          registrationRegion: registrationRegion || null,
+          ownershipType,
+          make: make || null,
+          model: model || null,
+          mamKg,
+          v5cDocumentUrl: v5cDocumentUrl || null,
+          insuranceDocumentUrl: insuranceDocumentUrl || null,
+          operatorLicenceNo: operatorLicenceNo || null,
+          motValidUntil,
+          insuranceValidUntil,
+          verificationStatus: "pending",
+          verifiedAt: null,
+        },
+      });
     });
-    if (duplicate) {
+    if (!vehicle) {
       return NextResponse.json({ error: "This registration is already on your account." }, { status: 409 });
     }
-
-    const vehicle = await prisma.vehicle.create({
-      data: {
-        accountId: account.id,
-        vehicleType,
-        regPlate,
-        registrationRegion: registrationRegion || null,
-        ownershipType,
-        make: make || null,
-        model: model || null,
-        mamKg,
-        v5cDocumentUrl: v5cDocumentUrl || null,
-        insuranceDocumentUrl: insuranceDocumentUrl || null,
-        operatorLicenceNo: operatorLicenceNo || null,
-        motValidUntil,
-        insuranceValidUntil,
-        verificationStatus: "pending",
-        verifiedAt: null,
-      },
-    });
 
     return NextResponse.json({
       success: true,

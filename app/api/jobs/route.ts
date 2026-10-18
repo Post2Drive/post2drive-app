@@ -13,6 +13,17 @@ import { isSupportedMarket, marketForAccount } from "@/lib/market";
 import { getTimeZoneOptions } from "@/lib/localisation";
 import { enforceRateLimit } from "@/lib/rateLimit";
 
+function hasFuturePickup(
+  job: { jobDate: Date; pickupTime: string | null; pickupTimeZone: string | null },
+  market: { country: string; currency: string },
+): boolean {
+  try {
+    return getJobPickupAt(job.jobDate, job.pickupTime, market, job.pickupTimeZone).getTime() > Date.now();
+  } catch {
+    return false;
+  }
+}
+
 async function GETHandler(req: Request) {
   const session = await getServerSession(authOptions);
 
@@ -222,7 +233,8 @@ async function GETHandler(req: Request) {
     const marketplaceJobs = jobs.filter(
       (job) =>
         job.status === "open" &&
-        job.posterId !== accountId
+        job.posterId !== accountId &&
+        hasFuturePickup(job, actor)
     );
 
     const trackingResults = await Promise.allSettled(
@@ -313,6 +325,13 @@ async function GETHandler(req: Request) {
       dropoffContactName,
       dropoffContactPhone,
     };
+  }).filter((job) => {
+    const previousDriverIds = Array.isArray(job.previousDriverIds) ? job.previousDriverIds : [];
+    const keepForHistory = job.posterId === accountId ||
+      job.acceptedById === accountId ||
+      previousDriverIds.includes(accountId);
+    if (job.status !== "open" || keepForHistory) return true;
+    return hasFuturePickup(job, actor);
   });
 
   return NextResponse.json({

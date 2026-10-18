@@ -7,6 +7,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { expireJobOpportunities } from "@/lib/opportunities";
+import { getLocalisationProfile } from "@/lib/localisation";
+import { marketDateKey } from "@/lib/vehicleDates";
 
 // POST /api/jobs/[id]/bids/[bidId]/accept
 // Poster accepts one bid and assigns the job to that driver.
@@ -108,7 +110,17 @@ async function POSTHandler(
   }
 
   const updated = await prisma.$transaction(async (tx) => {
-    // Recheck the selected bid and bidder immediately before claiming the job.
+    // Re-read the job in the transaction. A concurrent edit can change the
+    // requested vehicle type while the job is still open.
+    const currentJob = await tx.job.findUnique({
+      where: { id: routeParams.id },
+      select: { id: true, posterId: true, status: true, priceMode: true, vehicleType: true },
+    });
+    if (!currentJob || currentJob.status !== "open" || currentJob.posterId !== accountId || currentJob.priceMode !== "bid") {
+      throw new Error("JOB_ALREADY_TAKEN");
+    }
+
+    // A bid is selectable only while its driver and matching vehicle remain approved.
     const currentBid = await tx.bid.findFirst({
       where: {
         id: bid.id,
@@ -116,8 +128,16 @@ async function POSTHandler(
         status: "active",
         bidder: {
           OR: [
-            { verificationStatus: "verified" },
             { isTester: true },
+            {
+              verificationStatus: "verified",
+              vehicles: {
+                some: {
+                  vehicleType: currentJob.vehicleType,
+                  verificationStatus: "verified",
+                },
+              },
+            },
           ],
         },
       },
@@ -125,6 +145,33 @@ async function POSTHandler(
 
     if (!currentBid) {
       throw new Error("BID_NO_LONGER_ELIGIBLE");
+    }
+
+    // An otherwise verified vehicle can become ineligible when insurance or
+    // a required inspection expires. Recheck the market-local calendar date
+    // immediately before awarding the bid.
+    const currentBidder = await tx.account.findUnique({
+      where: { id: currentBid.bidderId },
+      select: { country: true, currency: true, verificationStatus: true, isTester: true },
+    });
+    if (!currentBidder || (currentBidder.verificationStatus !== "verified" && !currentBidder.isTester)) {
+      throw new Error("BID_NO_LONGER_ELIGIBLE");
+    }
+    if (!currentBidder.isTester) {
+      const bidderMarket = getLocalisationProfile({ country: currentBidder.country, currency: currentBidder.currency });
+      const marketToday = marketDateKey(new Date(), bidderMarket?.timeZone ?? "UTC");
+      const dateCutoff = new Date(marketToday + "T00:00:00.000Z");
+      const matchingVehicle = await tx.vehicle.findFirst({
+        where: {
+          accountId: currentBid.bidderId,
+          vehicleType: currentJob.vehicleType,
+          verificationStatus: "verified",
+          insuranceValidUntil: { gte: dateCutoff },
+          ...(bidderMarket?.inspectionRequiredAtCountryLevel ? { motValidUntil: { gte: dateCutoff } } : {}),
+        },
+        select: { id: true },
+      });
+      if (!matchingVehicle) throw new Error("BID_NO_LONGER_ELIGIBLE");
     }
 
     // Atomically claim the job only if it is still open.
@@ -229,7 +276,7 @@ async function POSTHandler(
 
   if (updated === "BID_NO_LONGER_ELIGIBLE") {
     return NextResponse.json(
-      { error: "This bid is no longer active or the bidder is no longer verified." },
+      { error: "This bid is no longer active, or the bidder no longer has a verified matching vehicle with current insurance and any required inspection." },
       { status: 409 }
     );
   }

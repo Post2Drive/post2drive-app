@@ -45,6 +45,8 @@ jobs:
         run: npm run qa:health-contract
       - name: Validate lifecycle, incident, and market-guard contracts
         run: npm run qa:lifecycle-contract
+      - name: Validate signup, jobs, bidding, status, payments and vehicle workflows
+        run: node --experimental-strip-types scripts/qa/functional-workflows-contract.mjs
       - name: Validate supported-market isolation
         run: npm run qa:market-isolation
       - name: Validate country matrix across all supported markets
