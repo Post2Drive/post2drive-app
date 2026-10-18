@@ -38,6 +38,9 @@ for (const market of markets) {
   check(profile?.currency === market.currency, `${market.country}: currency mismatch`);
   check(profile?.locale === market.locale, `${market.country}: locale mismatch`);
   check(profile?.timeZone === market.timeZone, `${market.country}: time zone mismatch`);
+  const jurisdictionRequired = ["IN", "US", "CA", "AU", "BE", "CH"].includes(market.country);
+  check(profile?.jurisdictionSelectionRequired === jurisdictionRequired, `${market.country}: jurisdiction selection policy mismatch`);
+  if (jurisdictionRequired) check(getJurisdictionOptions(market.country).length > 0, `${market.country}: jurisdiction options missing`);
   check(profile?.dialingCode === market.dialingCode, `${market.country}: dialing code mismatch`);
   check(isWeeklyPricingMarket(identity) === (market.country !== "IN"), `${market.country}: unexpected paid-access policy`);
   check(Boolean(formatMarketCurrency(1234.56, identity)), `${market.country}: currency formatting failed`);
