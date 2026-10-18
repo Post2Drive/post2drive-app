@@ -39,7 +39,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
   try {
     const result = await prisma.$transaction(async tx => {
-      await tx.$queryRawUnsafe("SELECT pg_advisory_xact_lock(hashtext($1))", "post2drive-qa-run-queue");
+      await tx.$queryRawUnsafe("WITH queue_lock AS MATERIALIZED (SELECT pg_advisory_xact_lock(hashtext($1))) SELECT 1 FROM queue_lock", "post2drive-qa-run-queue");
       const rows = await tx.$queryRawUnsafe<any[]>(
         "SELECT id,name,country_code,scenario,total_campaign_tests,tests_per_variation,account_count,concurrency,suites,variations,status FROM qa_test_campaigns WHERE id=$1 FOR UPDATE",
         campaignId
