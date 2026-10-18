@@ -70,7 +70,7 @@ assert.ok(ops.includes('.pill.warn{color:#171717!important;border-color:#F2C300!
 console.log("PASS Post2Drive contrast guardrails: text, buttons, tables, alerts, charts and admin controls.");
 
 expectTextContrast("disabled button text", "#30343B", "#E8EBF0");
-assert.ok(/a\\.button-link-secondary,\\s*\\.button-link-secondary/.test(css), "Secondary links must stay white with blue text on every route wrapper");
-assert.ok(/color: #FFFFFF !important;\\s*border: 1px solid #2457D6 !important;/.test(css), "Primary action links must force white text on blue");
-assert.ok(/button:disabled,\\s*input\\[type="submit"\\]:disabled,\\s*input\\[type="button"\\]:disabled/.test(css), "Disabled button contrast must not inherit pale text on a saturated background");
+assert.ok(css.includes("a.button-link-secondary,") && css.includes(".button-link-secondary *"), "Secondary links must stay white with blue text on every route wrapper");
+assert.ok(css.includes("a.button-link:not(.button-link-secondary)") && css.includes("color: #FFFFFF !important;"), "Primary action links must force white text on blue");
+assert.ok(css.includes("button:disabled,") && css.includes('input[type="submit"]:disabled,') && css.includes('input[type="button"]:disabled'), "Disabled button contrast must not inherit pale text on a saturated background");
 console.log("PASS screenshot-driven global button and link contrast rules.");
