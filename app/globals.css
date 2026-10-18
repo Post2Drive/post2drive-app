@@ -1182,3 +1182,86 @@ input[type="submit"]:disabled *,
 input[type="button"]:disabled * {
   color: #30343B !important;
 }
+
+/* Layout guardrails for routes that previously bypassed the shared main layout. */
+.marketplace-page {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+  box-sizing: border-box;
+}
+.marketplace-header {
+  width: 100%;
+  min-width: 0;
+}
+.marketplace-heading {
+  flex: 1 1 320px;
+  min-width: 0;
+}
+.marketplace-heading h1 {
+  max-width: 100%;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+.marketplace-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  min-width: 0;
+}
+.account-settings-page {
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 24px;
+  box-sizing: border-box;
+}
+.account-settings-page label {
+  display: block;
+  min-width: 0;
+  color: #30343B;
+  font-weight: 600;
+  line-height: 1.45;
+}
+.account-settings-page label input:not([type="checkbox"]):not([type="radio"]),
+.account-settings-page label select,
+.account-settings-page label textarea {
+  display: block;
+  width: 100%;
+  min-height: 42px;
+  margin-top: 7px;
+  padding: 9px 11px;
+  box-sizing: border-box;
+  border: 1px solid #AEB6C2;
+  border-radius: 8px;
+  background: #FFFFFF;
+  color: #171717;
+}
+.account-settings-page input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  margin: 2px 0 0;
+  accent-color: #2457D6;
+}
+.account-settings-page > form {
+  padding: 18px;
+  border: 1px solid #D7DCE4;
+  border-radius: 12px;
+  background: #FFFFFF;
+}
+.account-settings-page > section {
+  padding: 18px;
+}
+@media (max-width: 700px) {
+  .marketplace-page,.account-settings-page {
+    padding: 16px;
+  }
+  .marketplace-header {
+    align-items: flex-start;
+  }
+  .marketplace-header-actions {
+    width: 100%;
+  }
+}
