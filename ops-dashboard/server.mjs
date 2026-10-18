@@ -252,9 +252,9 @@ header.app-header{background:#FFFFFF!important;border-bottom:2px solid #2457D6;b
 select,button,input[type=number],.filter-drawer>summary{background:#FFFFFF;color:#171717;border-color:#B9C1CE}
 button.primary{background:#2457D6;color:#FFFFFF;border-color:#2457D6}
 button.primary:hover{background:#173FA8;color:#FFFFFF}
-.pill.good{background:#E8F6ED;color:#126B3B;border-color:#18864B}.pill.warn{background:#FFF6CC;color:#171717;border-color:#F2C300}.pill.bad{background:#FCE8E8;color:#A71919;border-color:#D62828}
-.notice{background:#FFF6CC;color:#171717;border-color:#F2C300}
-.insight{background:#E8F6ED;border-left-color:#18864B;color:#171717}
+.pill.good{background:#FFFFFF!important;color:#18864B;border-color:#18864B}.pill.warn{background:#FFFFFF!important;color:#171717;border-color:#F2C300}.pill.bad{background:#FFFFFF!important;color:#D62828;border-color:#D62828}
+.notice{background:#FFFFFF!important;color:#171717;border:1px solid #F2C300;border-left:4px solid #F2C300}
+.insight{background:#FFFFFF!important;border-left-color:#18864B;color:#171717}
 .source-tools input{background:#FFFFFF;color:#171717}
 
 /* Flat, solid chart colours (no gradient fills); keep each series unmistakable. */
