@@ -85,7 +85,9 @@ class ApiClient {
   }
 }
 
-async function runQA(countryOverride: string, runId: string, workerId: string, testType: QaTestType) {
+type QaRunConfig = { accountCount: number; testIterations: number; concurrency: number; campaignId?: string; variationId?: string; variationName?: string; suite?: string };
+
+async function runQA(countryOverride: string, runId: string, workerId: string, testType: QaTestType, config: QaRunConfig) {
   const base = (process.env.QA_BASE_URL || "").replace(/\/+$/, "");
   const db = process.env.DATABASE_URL || "";
   const countryCode = (countryOverride || process.env.QA_MARKET_COUNTRY || "GB").trim().toUpperCase();
@@ -96,12 +98,18 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
     throw new Error("QA runner is disabled unless an explicitly allow-listed staging deployment and isolated QA database are configured.");
   }
   if (!base.startsWith("https://") || !db || process.env.QA_ACCOUNT_COUNT !== "10000" || process.env.POST2DRIVE_QA_DATABASE_ISOLATED !== "true") throw new Error("QA preflight requires an HTTPS staging target, an explicitly isolated DATABASE_URL and QA_ACCOUNT_COUNT=10000.");
+  const accountTarget = Number.isInteger(config.accountCount) && config.accountCount >= 500 && config.accountCount <= 10_000 ? config.accountCount : 10_000;
+  const testIterations = Number.isInteger(config.testIterations) && config.testIterations >= 1 && config.testIterations <= 25_000 ? config.testIterations : 10_000;
+  const executionConcurrency = Number.isInteger(config.concurrency) && config.concurrency >= 1 && config.concurrency <= 100 ? config.concurrency : 12;
+  if (testType === "workflow-e2e" && accountTarget !== 10_000) throw new Error("The current workflow suite requires the complete 10,000-account fixture pool.");
+  if (testType !== "synthetic-accounts" && accountTarget < 500) throw new Error("API and workflow suites require at least 500 synthetic accounts.");
+  if (testType === "synthetic-accounts" && testIterations !== accountTarget) throw new Error("Synthetic account provisioning iterations must match the account target.");
   const marker = "QA-" + runId;
   const started = Date.now();
   const events: EventResult[] = [];
   let createdAccounts = 0;
   let routeMatrixExecuted = 0;
-  const routeMatrixTarget = testType === "synthetic-accounts" ? 0 : 10_000;
+  const routeMatrixTarget = testType === "synthetic-accounts" ? 0 : testIterations;
   const fixtures: AccountFixture[] = [];
   let accountPoolRunId: string | null = null;
 
@@ -179,9 +187,9 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
       endpoints[path] = { count: row.count, failures: row.failures, p50Ms: row.durations[Math.floor((row.durations.length - 1) * 0.5)], p95Ms: row.durations[Math.floor((row.durations.length - 1) * 0.95)], maxMs: row.durations[row.durations.length - 1] };
     }
     const summary = {
-      runId, marker, status: finalStatus, testType, target: base, targetAccounts: 10_000, country: selectedMarket.country, currency: selectedMarket.currency, marketLabel: selectedMarket.label, createdAccounts, eventCount: events.length, routeMatrixTarget, routeMatrixExecuted, accountPoolSize: fixtures.length, accountPoolRunId,
+      runId, marker, status: finalStatus, testType, target: base, targetAccounts: accountTarget, testIterations, concurrencyTarget: executionConcurrency, campaignId: config.campaignId ?? null, variationId: config.variationId ?? null, variationName: config.variationName ?? null, suite: config.suite ?? null, country: selectedMarket.country, currency: selectedMarket.currency, marketLabel: selectedMarket.label, createdAccounts, eventCount: events.length, routeMatrixTarget, routeMatrixExecuted, accountPoolSize: fixtures.length, accountPoolRunId,
       passed, failed, durationMs: Date.now() - started, p50Ms: percentile(0.5), p95Ms: percentile(0.95),
-      cohorts: { posterFocused: 100, driverFocused: 150, both: 9_749, restricted: 1 },
+      cohorts: accountTarget === 10_000 ? { posterFocused: 100, driverFocused: 150, both: 9_749, restricted: 1 } : { posterFocused: Math.floor((accountTarget - 1) * 0.2), driverFocused: Math.floor((accountTarget - 1) * 0.3), both: accountTarget - 1 - Math.floor((accountTarget - 1) * 0.2) - Math.floor((accountTarget - 1) * 0.3), restricted: 1 },
       endpoints, syntheticDataRetained: true, realMoneyPaymentsAttempted: false, emailDeliveryTested: false, ...extra,
     };
     const finalized = await prisma.$executeRawUnsafe(
@@ -196,8 +204,8 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
   }
 
   const claimed = await prisma.$queryRawUnsafe<Array<{ id: string }>>(
-    "SELECT id FROM qa_test_runs WHERE id=$1 AND status='running' AND target_url=$2 AND target_accounts=10000 AND summary->>'workerId'=$3",
-    runId, base, workerId,
+    "SELECT id FROM qa_test_runs WHERE id=$1 AND status='running' AND target_url=$2 AND target_accounts=$4 AND summary->>'workerId'=$3",
+    runId, base, workerId, accountTarget,
   );
   if (claimed.length !== 1) {
     throw new Error("QA worker must claim an existing queued run for this exact staging target before execution.");
@@ -206,8 +214,10 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
 
   try {
     console.log("Starting staging QA run " + runId + " type=" + testType + " for " + market.country + "/" + market.currency + " at " + base);
-    await parallel(Array.from({ length: testType === "synthetic-accounts" ? 10_000 : 0 }, (_, i) => i), 12, async i => {
-      const cohort: AccountFixture["cohort"] = i < 100 ? "poster-focused" : i < 250 ? "driver-focused" : i < 9_999 ? "both" : "restricted";
+    await parallel(Array.from({ length: testType === "synthetic-accounts" ? accountTarget : 0 }, (_, i) => i), executionConcurrency, async i => {
+      const posterBoundary = accountTarget === 10_000 ? 100 : Math.floor((accountTarget - 1) * 0.2);
+      const driverBoundary = accountTarget === 10_000 ? 250 : posterBoundary + Math.floor((accountTarget - 1) * 0.3);
+      const cohort: AccountFixture["cohort"] = i < posterBoundary ? "poster-focused" : i < driverBoundary ? "driver-focused" : i < accountTarget - 1 ? "both" : "restricted";
       const email = "qa-" + runId + "-" + String(i + 1).padStart(3, "0") + "@post2drive.invalid";
       const password = "QA-" + runId + "-" + String(i + 1).padStart(5, "0") + "-p2d";
       const payload = {
@@ -231,15 +241,15 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
       const persistStarted = Date.now();
       try {
         await prisma.$transaction(async tx => {
-          const ukPromotion = market.country === "GB" && i !== 9_999;
-          const paidWeeklyMarket = market.country !== "GB" && market.country !== "IN" && i !== 9_999;
+          const ukPromotion = market.country === "GB" && i !== accountTarget - 1;
+          const paidWeeklyMarket = market.country !== "GB" && market.country !== "IN" && i !== accountTarget - 1;
           const accessEndsAt = new Date(Date.now() + 60 * 86400000);
           await tx.account.update({
             where: { id: accountId },
             data: {
-              isTester: i !== 9_999,
-              verificationStatus: i === 9_999 ? "not_started" : "verified",
-              verifiedAt: i === 9_999 ? null : new Date(),
+              isTester: i !== accountTarget - 1,
+              verificationStatus: i === accountTarget - 1 ? "not_started" : "verified",
+              verifiedAt: i === accountTarget - 1 ? null : new Date(),
               promotionParticipant: ukPromotion,
               trialStartedAt: ukPromotion ? new Date() : null,
               trialEndsAt: ukPromotion ? accessEndsAt : null,
@@ -261,24 +271,25 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
 
     await prisma.$executeRawUnsafe("UPDATE qa_test_runs SET created_accounts=$2 WHERE id=$1", runId, createdAccounts);
     if (testType === "synthetic-accounts") {
-      if (createdAccounts !== 10_000) return await finish("aborted", { testType, reason: "Account provisioning did not create exactly 10,000 accounts.", createdAccounts });
+      if (createdAccounts !== accountTarget) return await finish("aborted", { testType, reason: "Account provisioning did not create the configured account target.", expectedAccounts: accountTarget, createdAccounts });
       accountPoolRunId = runId;
       return await finish("completed", { testType, accountProvisioningOnly: true, syntheticDataRetained: true, limitations: ["Only synthetic-account creation and fixture persistence were tested; no cleanup was performed."] });
     }
 
     const pools = await prisma.$queryRawUnsafe<Array<{ id: string }>>(
-      "SELECT id FROM qa_test_runs WHERE status='completed' AND summary->>'testType'='synthetic-accounts' AND summary->>'country'=$1 ORDER BY finished_at DESC LIMIT 1",
-      selectedMarket.country,
+      "SELECT id FROM qa_test_runs WHERE status='completed' AND summary->>'testType'='synthetic-accounts' AND summary->>'country'=$1 AND target_accounts >= $2 ORDER BY finished_at DESC LIMIT 1",
+      selectedMarket.country, accountTarget,
     );
     const sourceRunId = pools[0]?.id ?? null;
-    if (!sourceRunId) throw new Error("Run the 10,000 synthetic-accounts test for this market before API-load or workflow-e2e.");
+    if (!sourceRunId) throw new Error("A completed synthetic-account pool with at least the configured account count is required for this market.");
     accountPoolRunId = sourceRunId;
     const poolRows = await prisma.$queryRawUnsafe<Array<{ account_id: string; email: string; cohort: string; account_index: number }>>(
       "SELECT account_id,email,cohort,account_index FROM qa_test_accounts WHERE run_id=$1 ORDER BY account_index",
       sourceRunId,
     );
-    if (poolRows.length !== 10_000) throw new Error("The preserved synthetic-account pool is incomplete; expected exactly 10,000 accounts.");
-    fixtures.push(...poolRows.map((row) => ({
+    if (poolRows.length < accountTarget) throw new Error("The preserved synthetic-account pool is smaller than the configured account target.");
+    const selectedPoolRows = poolRows.slice(0, accountTarget);
+    fixtures.push(...selectedPoolRows.map((row) => ({
       index: Number(row.account_index) - 1,
       email: row.email,
       password: "QA-" + sourceRunId + "-" + String(row.account_index).padStart(5, "0") + "-p2d",
@@ -286,7 +297,7 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
       cohort: row.cohort as AccountFixture["cohort"],
     })));
 
-    await parallel(fixtures.filter(account => account.index < 499 || account.index === 9_999), 16, async account => {
+    await parallel(fixtures.filter(account => account.index < Math.min(499, accountTarget - 1) || account.index === accountTarget - 1), executionConcurrency, async account => {
       const client = new ApiClient(account, base, runId);
       const t = Date.now();
       let status = 401;
@@ -301,7 +312,7 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
     });
 
     const signed = fixtures.filter(a => a.client);
-    await parallel(signed, 4, async a => {
+    await parallel(signed, Math.min(executionConcurrency, 4), async a => {
       for (const [path, action] of [
         ["/api/account", "account-self-read"], ["/api/account/access", "marketplace-access"],
         ["/api/jobs", "job-list-search"], ["/api/vehicles", "vehicle-list"],
@@ -312,8 +323,8 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
 
     if (testType === "api-load") {
       const loadPaths = ["/api/account", "/api/account/access", "/api/jobs", "/api/vehicles", "/api/payments", "/api/promotion/status", "/api/promotion/referrals/progress"];
-      const loadAccounts = signed.filter((account) => account.index < 499);
-      await parallel(Array.from({ length: routeMatrixTarget }, (_, i) => i), 12, async i => {
+      const loadAccounts = signed.filter((account) => account.index < Math.min(499, accountTarget - 1));
+      await parallel(Array.from({ length: testIterations }, (_, i) => i), executionConcurrency, async i => {
         const account = loadAccounts.length ? loadAccounts[i % loadAccounts.length] : null;
         const path = loadPaths[i % loadPaths.length];
         await check(account?.client ?? null, account, "api-load", "authenticated-read-" + i, "GET", path, undefined, [200]);
@@ -635,7 +646,7 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
       await check(signed[0].client!, signed[0], "admin-access", "ordinary-user-cannot-read-admin", "GET", "/api/admin/testers", undefined, [403]);
       await check(signed[0].client!, signed[0], "payments", market.country === "IN" ? "india-weekly-subscription-blocked" : "pending-payment-record-without-real-charge", "POST", "/api/subscription/create-payment", {}, market.country === "IN" ? [400] : [200]);
     }
-    const restricted = fixtures.find(a => a.index === 9_999);
+    const restricted = fixtures.find(a => a.index === accountTarget - 1);
     if (restricted?.client && posters[0]) {
       const sample = await createJob(posters[0], 1800, "bid");
       if (sample) await check(restricted.client, restricted, "access-control", market.country === "IN" ? "india-non-weekly-market-access-policy" : "restricted-account-cannot-bid", "POST", "/api/jobs/" + sample + "/bid", { amount: 100 }, market.country === "IN" ? [200] : [403, 402]);
@@ -764,7 +775,7 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
 
 
 
-export async function runQaWorker(runId: string, countryOverride: string, workerId: string, testType: QaTestType = "workflow-e2e") {
+export async function runQaWorker(runId: string, countryOverride: string, workerId: string, testType: QaTestType = "workflow-e2e", config: QaRunConfig = { accountCount: 10_000, testIterations: 10_000, concurrency: 12 }) {
   if (!/^[A-Za-z0-9._:-]{1,80}$/.test(runId)) {
     throw new Error("Invalid QA run identifier.");
   }
@@ -772,5 +783,5 @@ export async function runQaWorker(runId: string, countryOverride: string, worker
     throw new Error("Invalid QA worker identifier.");
   }
   if (!["api-load", "synthetic-accounts", "workflow-e2e"].includes(testType)) throw new Error("Invalid QA test type.");
-  return runQA(countryOverride, runId, workerId, testType);
+  return runQA(countryOverride, runId, workerId, testType, config);
 }
