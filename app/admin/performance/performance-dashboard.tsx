@@ -22,7 +22,14 @@ function date(value: unknown) {
   return Number.isNaN(d.getTime()) ? String(value) : d.toLocaleString("en-GB", { dateStyle:"medium", timeStyle:"short" });
 }
 function duration(value: unknown) { const n=Number(value ?? 0); return n>=1000?(n/1000).toFixed(2)+" s":Math.round(n)+" ms"; }
-function Section({ title, subtitle, children }: { title:string; subtitle?:string; children:ReactNode }) {
+function Section({ title, subtitle, children, collapsible=false, defaultOpen=true }: { title:string; subtitle?:string; children:ReactNode; collapsible?:boolean; defaultOpen?:boolean }) {
+  if (collapsible) {
+    return <details open={defaultOpen} style={{ ...card, marginBottom:16 }}>
+      <summary style={{ fontSize:18, fontWeight:700, cursor:"pointer", marginBottom:subtitle?4:12 }}>{title}</summary>
+      {subtitle?<p style={{ color:palette.muted, fontSize:13, margin:"0 0 12px" }}>{subtitle}</p>:null}
+      {children}
+    </details>;
+  }
   return <section style={{ ...card, marginBottom:16 }}><h2 style={{ fontSize:18, margin:"0 0 4px" }}>{title}</h2>{subtitle?<p style={{ color:palette.muted, fontSize:13, margin:"0 0 12px" }}>{subtitle}</p>:null}{children}</section>;
 }
 function Table({ rows, columns, empty="No data collected yet." }: { rows:Row[]; columns:{key:string;label:string;render?:(v:any,row:Row)=>React.ReactNode}[]; empty?:string }) {
@@ -97,6 +104,11 @@ export default function PerformanceDashboard() {
   if(!data)return null;
   const o=data.overview||{};
   const latestRun=data.qaRuns?.[0];
+  const qaStatusRows=Object.entries((data.qaRuns||[]).reduce<Record<string,number>>((counts,run)=>{
+    const status=String(run.status||"unknown").toLowerCase();
+    counts[status]=(counts[status]||0)+1;
+    return counts;
+  },{})).map(([label,count])=>({label,count}));
   const endpointColumns=[
     {key:"route",label:"API route"},
     {key:"method",label:"Method"},
@@ -240,8 +252,12 @@ export default function PerformanceDashboard() {
         {s.persistedDataSummary&&typeof s.persistedDataSummary==="object"?<Table rows={Object.entries(s.persistedDataSummary).map(([label,value])=>({label,value}))} columns={[{key:"label",label:"Persisted data check"},{key:"value",label:"Result",render:(v:any)=>typeof v==="object"?JSON.stringify(v):String(v??"—")}]}/>:null}
       </div>})()}
     </Section> : null}
-    <Section title="Synthetic QA runs" subtitle="Latest 100 stored runs, kept separate from business totals. Country and phase are read from each saved summary; missing metadata is shown as not recorded.">
-      <Table rows={showAllQaRuns?data.qaRuns:data.qaRuns.slice(0,15)} columns={[
+    <Section title="Synthetic QA runs" subtitle="Latest 100 stored runs, kept separate from business totals. Shows 15 by default; expand the table for up to 100. This section can also be collapsed." collapsible defaultOpen>
+      <div style={{ ...card, marginBottom:14 }}>
+        <h3 style={{fontSize:15,margin:"0 0 12px"}}>Run outcomes · latest {num(data.qaRuns.length)} runs</h3>
+        <PieChart rows={qaStatusRows} title="QA run outcomes"/>
+      </div>
+      <Table rows={showAllQaRuns?data.qaRuns.slice(0,100):data.qaRuns.slice(0,15)} columns={[
         {key:"id",label:"Run ID",render:(v:any)=><span style={{fontFamily:"monospace",fontSize:11,overflowWrap:"anywhere"}}>{String(v??"—")}</span>},
         {key:"startedAt",label:"Started",render:(v:any)=>date(v)},
         {key:"country",label:"Country",render:(_:any,row:Row)=>{const s=qaSummary(row);return String(s.country||s.marketCode||s.marketLabel||"Not recorded");}},
