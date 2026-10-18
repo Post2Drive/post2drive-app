@@ -97,6 +97,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       if (allocatedIterations > totalCampaignTests) return { error: "Variation-specific test iterations exceed the total campaign test budget.", status: 400 };
       if (steps.length > 101) return { error: "Campaign exceeds the supported sequential step limit.", status: 400 };
       const first = steps[0];
+      if (!first) return { error: "Campaign has no executable steps.", status: 400 };
       const runId = new Date().toISOString().replace(/[^0-9]/g, "").slice(0, 14) + "-" + randomUUID();
       await tx.$executeRawUnsafe(
         "UPDATE qa_test_campaigns SET status='running',execution_mode='staging_sequential',updated_at=now() WHERE id=$1 AND status='draft'",
