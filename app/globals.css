@@ -1265,3 +1265,358 @@ input[type="button"]:disabled * {
     width: 100%;
   }
 }
+
+/* -------------------------------------------------------------------------
+   Mobile responsiveness audit
+   Shared breakpoints: compact navigation on tablet/phone, safe grids/forms,
+   scrollable data tables, and 44px+ touch targets. These rules are appended
+   after legacy route styles so inline-width layouts do not overflow phones.
+   ------------------------------------------------------------------------- */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  scroll-padding-top: 72px;
+}
+body {
+  width: 100%;
+  min-width: 320px;
+  max-width: 100%;
+  overflow-x: clip;
+}
+img, video, canvas, iframe, svg {
+  max-width: 100%;
+}
+fieldset {
+  min-width: 0;
+}
+pre, code {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+main,
+.marketplace-page,
+.account-settings-page,
+.auth-page,
+.signup-shell,
+.ops-theme-dashboard,
+.pricing-panel {
+  min-width: 0;
+}
+main > *,
+.marketplace-page > *,
+.account-settings-page > *,
+.ops-theme-dashboard > *,
+.auth-page > * {
+  min-width: 0;
+  max-width: 100%;
+}
+h1, h2, h3, h4, h5, h6,
+p, li, dt, dd, label, strong, small {
+  overflow-wrap: anywhere;
+}
+button,
+.button-link,
+.main-nav-link,
+.mobile-nav-link,
+[role="button"],
+input[type="submit"],
+input[type="button"] {
+  min-height: 44px;
+  touch-action: manipulation;
+}
+button, a, input, select, textarea {
+  max-width: 100%;
+}
+input:not([type="checkbox"]):not([type="radio"]),
+select,
+textarea {
+  min-width: 0;
+}
+.account-settings-page,
+.marketplace-page,
+.profile-page {
+  width: 100%;
+  box-sizing: border-box;
+}
+.profile-page {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 24px;
+}
+.marketplace-job-tabs {
+  min-width: 0;
+}
+
+/* Switch before the desktop nav gets crowded by six or seven routes. */
+@media (max-width: 900px) {
+  header nav[aria-label="Main navigation"] {
+    width: 100%;
+    min-height: 58px;
+    padding-left: 16px;
+    padding-right: 16px;
+    gap: 10px;
+  }
+  .desktop-nav {
+    display: none !important;
+  }
+  .mobile-bottom-nav {
+    display: flex !important;
+    position: fixed;
+    z-index: 100;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    max-width: 100%;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 4px;
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    background: #FFFFFF;
+    border-top: 2px solid #2457D6;
+  }
+  .mobile-bottom-nav::-webkit-scrollbar {
+    display: none;
+  }
+  .mobile-nav-link {
+    display: flex;
+    flex: 1 0 auto !important;
+    align-items: center;
+    justify-content: center;
+    min-width: 68px;
+    max-width: 124px;
+    min-height: 48px !important;
+    padding: 8px 9px !important;
+    border-radius: 8px;
+    font-size: 12px !important;
+    line-height: 1.15;
+    text-align: center;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    scroll-snap-align: start;
+  }
+  .mobile-bottom-nav {
+    scroll-snap-type: x proximity;
+  }
+  body {
+    padding-bottom: calc(74px + env(safe-area-inset-bottom)) !important;
+  }
+}
+
+/* Single-column content, responsive cards and horizontally scrollable tables. */
+@media (max-width: 760px) {
+  main {
+    width: 100%;
+    max-width: 100% !important;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+  main form,
+  main section,
+  main article,
+  .auth-page form,
+  .account-settings-page > form,
+  .account-settings-page > section,
+  .job-create-form fieldset {
+    min-width: 0;
+    max-width: 100%;
+  }
+  main input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]),
+  main select,
+  main textarea,
+  .auth-page input:not([type="checkbox"]):not([type="radio"]),
+  .auth-page select,
+  .auth-page textarea {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+  main table {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+  }
+  main th,
+  main td {
+    max-width: 280px;
+  }
+  .marketplace-page,
+  .account-settings-page,
+  .profile-page {
+    padding: 16px !important;
+  }
+  .marketplace-header {
+    align-items: flex-start !important;
+  }
+  .marketplace-heading,
+  .marketplace-header-actions {
+    width: 100%;
+    max-width: 100%;
+  }
+  .marketplace-job-tabs {
+    display: flex;
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    overflow-y: hidden;
+    max-width: 100%;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+  .marketplace-job-tabs button {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+  .ops-theme-dashboard {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 18px 12px 32px !important;
+  }
+  .ops-theme-dashboard > div:first-child {
+    padding: 16px !important;
+  }
+  .ops-theme-dashboard > section.ops-section {
+    padding: 14px !important;
+    margin-top: 18px !important;
+  }
+  .ops-theme-dashboard .dashboard-stat-link {
+    flex: 1 1 calc(50% - 8px) !important;
+    min-width: 0 !important;
+    max-width: 100%;
+  }
+  .ops-theme-dashboard .dashboard-stat-link .ops-theme-card {
+    width: 100%;
+    min-width: 0 !important;
+    padding: 14px !important;
+  }
+  .job-analytics-layout {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  .job-analytics-chart-panel {
+    min-width: 0;
+    max-width: 100%;
+    padding: 14px !important;
+  }
+  .job-create-form {
+    min-width: 0;
+    padding: 16px !important;
+  }
+  .job-create-form fieldset {
+    padding: 12px !important;
+  }
+  [style*="minmax(280px"] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  [style*="grid-template-columns: repeat(2, minmax(0, 1fr))"],
+  [style*="grid-template-columns:repeat(2,minmax(0,1fr))"] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  .pricing-panel {
+    padding: 16px !important;
+  }
+  .signup-fields,
+  .signup-review-grid,
+  .signup-plan-card,
+  .pricing-tier-card {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .profile-page h1 {
+    font-size: clamp(1.5rem, 6vw, 2rem);
+  }
+}
+
+/* Narrow phones: reflow the multi-step progress and actions without clipping. */
+@media (max-width: 560px) {
+  h1, main h1 {
+    font-size: clamp(1.6rem, 7vw, 2.05rem);
+    line-height: 1.16;
+  }
+  h2, main h2 {
+    font-size: clamp(1.2rem, 5.5vw, 1.55rem);
+    line-height: 1.25;
+  }
+  .auth-page {
+    min-height: auto;
+    padding: 22px 14px calc(24px + env(safe-area-inset-bottom));
+  }
+  .auth-page form,
+  .auth-page .signup-form {
+    padding: 16px !important;
+  }
+  .signup-step-header {
+    align-items: flex-start;
+  }
+  .signup-step-market {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  nav[aria-label="Job posting progress"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 12px 10px !important;
+  }
+  .job-create-form > div:last-child {
+    flex-wrap: wrap;
+    align-items: stretch !important;
+  }
+  .job-create-form > div:last-child > button {
+    flex: 1 1 120px;
+  }
+  .signup-actions {
+    flex-wrap: wrap;
+  }
+  .signup-actions button {
+    flex: 1 1 120px;
+  }
+  .pipeline-chart-row {
+    grid-template-columns: minmax(70px, 0.8fr) minmax(40px, 1fr) 28px;
+    gap: 8px;
+  }
+  .pipeline-donut-row {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .job-status-donut,
+  .pipeline-donut {
+    max-width: 100%;
+  }
+  .account-settings-page > form,
+  .account-settings-page > section {
+    padding: 14px !important;
+  }
+}
+
+/* Respect reduced-motion preferences for scroll snapping and transitions. */
+@media (prefers-reduced-motion: reduce) {
+  .mobile-bottom-nav {
+    scroll-behavior: auto;
+    scroll-snap-type: none;
+  }
+}
+
+/* Keep the fixed-nav clearance only on authenticated pages where the nav exists. */
+@media (max-width: 900px) {
+  body:has(.mobile-bottom-nav) {
+    padding-bottom: calc(74px + env(safe-area-inset-bottom)) !important;
+  }
+  body:not(:has(.mobile-bottom-nav)) {
+    padding-bottom: 0 !important;
+  }
+}
+@media (max-width: 760px) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    min-height: 44px;
+  }
+}

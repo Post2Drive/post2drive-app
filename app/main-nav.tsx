@@ -80,6 +80,7 @@ export default function MainNav() {
                   key={link.href}
                   href={link.href}
                   className="main-nav-link"
+                  aria-current={active ? "page" : undefined}
                   style={{
                     padding: "9px 12px",
                     borderRadius: 8,
@@ -115,6 +116,7 @@ export default function MainNav() {
               key={link.href}
               href={link.href}
               className="mobile-nav-link"
+              aria-current={active ? "page" : undefined}
               style={{
                 flex: 1,
                 textAlign: "center",

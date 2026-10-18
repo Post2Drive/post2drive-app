@@ -680,11 +680,11 @@ export default function JobsPage() {
       </div>
 
       <div
+        className="marketplace-job-tabs"
         style={{
           display: "flex",
           gap: 4,
-          borderBottom:
-            "1px solid var(--color-border)",
+          borderBottom: "1px solid var(--color-border)",
           marginBottom: 12,
         }}
       >

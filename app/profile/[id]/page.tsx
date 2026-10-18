@@ -30,7 +30,7 @@ export default function ProfilePage() {
   const countryName = COUNTRIES.find((market) => market.code === account.country)?.name ?? account.country;
 
   return (
-    <div style={{ maxWidth: 600 }}>
+    <main className="profile-page" style={{ width: "100%", maxWidth: 760, margin: "0 auto", padding: 24, boxSizing: "border-box" }}>
       <p>
         <Link href="/jobs" className="button-link button-link-secondary">← Back to jobs</Link>
       </p>
@@ -71,6 +71,6 @@ export default function ProfilePage() {
           </li>
         ))}
       </ul>
-    </div>
+    </main>
   );
 }
