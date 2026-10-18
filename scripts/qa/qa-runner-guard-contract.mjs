@@ -80,7 +80,7 @@ try {
   const qaAuthorization = readFileSync("lib/qaRunAuthorization.ts", "utf8");
   assert.ok(qaAuthorization.includes("isQaRunnerEnabled()"), "QA throttle bypass must require the staging guard");
   assert.ok(qaAuthorization.includes("target_url = ${base}"), "QA throttle bypass must match the configured staging target");
-  assert.ok(qaAuthorization.includes("target_accounts = 10000"), "QA throttle bypass must be limited to the fixed synthetic cohort");
+  assert.ok(qaAuthorization.includes("target_accounts BETWEEN 500 AND 10000"), "QA throttle bypass must be limited to bounded active staging runs");
   assert.ok(qaAuthorization.includes("status = 'running'"), "QA throttle bypass must require a currently running QA run");
   const rateLimitSource = readFileSync("lib/rateLimit.ts", "utf8");
   assert.ok(rateLimitSource.includes("isAuthorizedQaRunId(qaRunId)"), "network throttle bypass must verify the active run without relying on proxy-internal request origin");
