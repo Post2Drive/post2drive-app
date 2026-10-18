@@ -376,7 +376,7 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
       return {
         pickup: lane.pickup, dropoff: lane.dropoff, jobDate, pickupTime,
         dropoffTime: pad(dropoffHour) + ":00", vehicleType: profile.vehicleType,
-        weightKg: profile.weightKg, dimensions: profile.dimensions, price, priceMode: mode, currency: market.currency,
+        weightKg: profile.weightKg, dimensions: profile.dimensions, price, priceMode: market.country === "IN" ? "fixed" : mode, currency: market.currency,
         crossBorder: false,
         notes: "Synthetic QA only " + marker + "; lane=" + lane.pickup + " to " + lane.dropoff +
           "; estimatedMiles=" + lane.miles + "; cargo=" + profile.cargo + "; scenario=" + n,
@@ -385,6 +385,7 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
       };
     };
     async function createJob(p: AccountFixture, n: number, mode: "fixed" | "bid") {
+      if (market.country === "IN" && mode === "bid") return null;
       const r = await check(p.client!, p, "job-posting", "create-" + mode + "-job", "POST", "/api/jobs", jobPayload(n, mode), [201]);
       return r.status === 201 && r.data?.job?.id ? String(r.data.job.id) : null;
     }
@@ -418,6 +419,12 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
     for (let i = 0; i < 20 && i < posters.length && i < drivers.length; i++) {
       const p = posters[i], d = drivers[i], id = await createJob(p, i, "fixed");
       if (!id) continue;
+      if (market.country === "IN") {
+        await check(d.client!, d, "bidding", "india-bidding-disabled", "POST", "/api/jobs/" + id + "/bid", { amount: 120 }, [403]);
+        await check(p.client!, p, "bidding", "india-bid-list-disabled", "GET", "/api/jobs/" + id + "/bids", undefined, [400]);
+        await check(p.client!, p, "bidding", "india-bid-accept-disabled", "POST", "/api/jobs/" + id + "/bids/qa-nonexistent-bid/accept", {}, [400]);
+        await check(p.client!, p, "job-posting", "india-bid-mode-job-rejected", "POST", "/api/jobs", jobPayload(9000 + i, "bid"), [400]);
+      }
       await check(d.client!, d, "job-search", "search-synthetic-marker", "GET", "/api/jobs?search=" + encodeURIComponent(marker), undefined, [200]);
       await check(d.client!, d, "job-search", "filter-by-price-and-vehicle", "GET", "/api/jobs?minPrice=35&maxPrice=700&vehicleType=Small%20van%20(SWB)", undefined, [200]);
       const editPayload = jobPayload(i + 2500, "fixed");
@@ -426,7 +433,7 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
       if (accepted.status === 200) await completeJob(id, p, d, i);
     }
 
-    for (let i = 0; i < 10 && i + 20 < posters.length && i + 20 < drivers.length; i++) {
+    if (market.country !== "IN") for (let i = 0; i < 10 && i + 20 < posters.length && i + 20 < drivers.length; i++) {
       const p = posters[i + 20], d = drivers[i + 20], id = await createJob(p, 100 + i, "bid");
       if (!id) continue;
       await check(p.client!, p, "authorization", "poster-cannot-bid-own-job", "POST", "/api/jobs/" + id + "/bid", { amount: 100 }, [403]);
@@ -520,7 +527,7 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
     }
 
     // Race two active bids for one job. Exactly one bid may claim the job.
-    if (posters.length >= 38 && drivers.length >= 46) {
+    if (market.country !== "IN" && posters.length >= 38 && drivers.length >= 46) {
       const poster = posters[37], bidderA = drivers[44], bidderB = drivers[45];
       const raceJob = await createJob(poster, 1520, "bid");
       if (raceJob) {

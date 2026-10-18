@@ -43,6 +43,9 @@ async function POSTHandler(
     where: { id: accountId },
     select: { verificationStatus: true, isTester: true, country: true, currency: true },
   });
+  if (bidderAccount?.country === "IN" && bidderAccount?.currency === "INR") {
+    return NextResponse.json({ error: "Bidding is not available in India. Contact the poster about the fixed quote." }, { status: 403 });
+  }
   if (bidderAccount?.verificationStatus !== "verified" && !bidderAccount?.isTester) {
     return NextResponse.json(
       { error: "Your account must be verified before placing bids." },

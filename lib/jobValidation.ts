@@ -119,6 +119,9 @@ export function validateJobInput(body: unknown, expectedMarket?: MarketIdentity)
 
     const currency = typeof input.currency === "string" ? input.currency.trim().toUpperCase() : "";
     const country = expectedMarket?.country ?? "GB";
+    if (country === "IN" && priceMode === "bid") {
+      return { ok: false, error: "Bidding is not available in India. Use fixed quote pricing." };
+    }
     const defaultTimeZone = marketForAccount(expectedMarket ?? { country: "GB", currency: "GBP" })?.timeZone ?? "Europe/London";
     const timeZoneOptions = getTimeZoneOptions(country, defaultTimeZone);
     const requestedTimeZone = typeof input.pickupTimeZone === "string" ? input.pickupTimeZone.trim() : "";

@@ -39,6 +39,9 @@ async function POSTHandler(
   if (!job) {
     return NextResponse.json({ error: "Job not found." }, { status: 404 });
   }
+  if (job.currency === "INR" || job.priceMode !== "bid") {
+    return NextResponse.json({ error: "This job does not support bidding." }, { status: 400 });
+  }
 
   let pickupAt: Date;
 
