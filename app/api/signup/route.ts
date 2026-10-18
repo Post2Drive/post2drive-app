@@ -399,6 +399,23 @@ return NextResponse.json({
     if (error instanceof Error && error.message === "TESTER_CODE_INVALID_OR_USED") {
       return NextResponse.json({ error: "This tester code is invalid or has already been used." }, { status: 409 });
     }
+
+    // The preflight lookup improves the normal duplicate-email response, but
+    // concurrent signups can still race the database unique constraint.
+    const databaseError = error as { code?: unknown; meta?: { target?: unknown } };
+    if (databaseError?.code === "P2002") {
+      const target = Array.isArray(databaseError.meta?.target)
+        ? databaseError.meta.target.join(",").toLowerCase()
+        : String(databaseError.meta?.target ?? "").toLowerCase();
+      if (target.includes("email")) {
+        return NextResponse.json({ error: "An account with this email already exists." }, { status: 409 });
+      }
+      if (target.includes("displayid") || target.includes("display_id")) {
+        return NextResponse.json({ error: "Could not reserve a unique business ID. Please retry signup." }, { status: 409 });
+      }
+      return NextResponse.json({ error: "A conflicting account record was created. Please retry signup." }, { status: 409 });
+    }
+
     return NextResponse.json({ error: "Unable to create account. Please try again." }, { status: 500 });
   }
 }
