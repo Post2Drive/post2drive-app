@@ -149,7 +149,7 @@ async function advanceCampaign(runId: string) {
     };
     await tx.$executeRawUnsafe(
       "INSERT INTO qa_test_runs(id,target_url,target_accounts,status,summary) VALUES($1,$2,$3,'queued',$4::jsonb)",
-      nextRunId, (process.env.QA_BASE_URL || "").replace(/\\/+$/, ""), next.account_count, JSON.stringify(runSummary)
+      nextRunId, (process.env.QA_BASE_URL || "").replace(/\/+$/, ""), next.account_count, JSON.stringify(runSummary)
     );
     await tx.$executeRawUnsafe(
       "UPDATE qa_test_campaign_steps SET status='queued',run_id=$2,started_at=now() WHERE id=$1 AND status='pending'",
