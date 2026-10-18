@@ -44,6 +44,8 @@ for (const market of markets) {
   check(profile?.dialingCode === market.dialingCode, `${market.country}: dialing code mismatch`);
   check(isWeeklyPricingMarket(identity) === (market.country !== "IN"), `${market.country}: unexpected paid-access policy`);
   check(Boolean(formatMarketCurrency(1234.56, identity)), `${market.country}: currency formatting failed`);
+  const expectedCurrencyText = new Intl.NumberFormat(market.locale, { style: "currency", currency: market.currency }).format(1234.56);
+  check(formatMarketCurrency(1234.56, identity) === expectedCurrencyText, `${market.country}: market currency output must use standard currency precision`);
   check(Boolean(formatMarketDate("2026-10-18", identity)), `${market.country}: date formatting failed`);
   check(getTimeZoneOptions(market.country, market.timeZone).some((zone) => zone.value === market.timeZone), `${market.country}: default timezone is not selectable`);
   assert.doesNotThrow(() => new Intl.DateTimeFormat(market.locale, { timeZone: market.timeZone }), `${market.country}: invalid locale/time zone`);
@@ -86,6 +88,9 @@ contains("app/api/account/access/route.ts", "minorUnitsToMajorUnits(priceMinorUn
 contains("lib/subscription.ts", "majorUnitsToMinorUnits(price, currency)", "subscription price must use currency-specific minor units");
 contains("components/subscription-pricing.tsx", "checkout is not connected", "pricing must not imply that real checkout is live");
 contains("components/subscription-status.tsx", "No payment provider is connected yet", "pending payment must not imply a real charge was taken");
+contains("components/subscription-status.tsx", "const showPlanPrice = formattedPrice !== null", "expired paid markets must see their configured plan price");
+contains("components/subscription-status.tsx", "{showPlanPrice && (", "pricing visibility must not be limited to the UK trial");
+contains("app/dashboard/page.tsx", "This is a planning price only. Payment checkout is not connected yet", "dashboard must not imply an operational renewal checkout");
 
 // These are explicit cross-market exceptions, not feature parity gaps: India
 // pricing is separate, the UK trial is UK-only, and compliance can vary locally.
