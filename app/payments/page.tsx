@@ -637,9 +637,11 @@ const receivedBadge: React.CSSProperties = {
 
 const pendingBadge: React.CSSProperties = {
   padding: "6px 9px",
-  borderRadius: 12,
-  background: "var(--color-warning-soft)",
-  color: "var(--color-warning)",
+  borderRadius: 8,
+  background: "#FFFFFF",
+  border: "1px solid var(--color-warning)",
+  borderLeft: "4px solid var(--color-warning)",
+  color: "var(--color-text)",
   fontSize: 13,
 };
 
