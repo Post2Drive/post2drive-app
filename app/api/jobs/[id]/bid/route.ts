@@ -129,6 +129,23 @@ async function POSTHandler(
     );
   }
 
+  if (!bidderAccount?.isTester) {
+    const matchingVehicle = await prisma.vehicle.findFirst({
+      where: {
+        accountId,
+        vehicleType: job.vehicleType,
+        verificationStatus: "verified",
+      },
+      select: { id: true },
+    });
+    if (!matchingVehicle) {
+      return NextResponse.json(
+        { error: "You need an approved vehicle matching this job's vehicle type before placing a bid." },
+        { status: 403 }
+      );
+    }
+  }
+
   if (job.status !== "open") {
     return NextResponse.json(
       {
