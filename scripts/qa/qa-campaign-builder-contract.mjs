@@ -26,7 +26,7 @@ assert.ok(builder.includes("Save campaign draft") && builder.includes("Confirm &
 assert.ok(builder.includes("Test accounts") && builder.includes("Total test count") && builder.includes("Parallel requests (concurrency)"), "simplified UI must expose test count, account count and concurrency");
 assert.ok(!builder.includes("Add comparison") && !builder.includes("Variations (optional)") && !builder.includes("Variation {i+1}"), "variation controls must be removed from the builder UI");
 assert.ok(builder.includes('variations:[{id:"variation-1",name:"Standard run",description:"",overrides:{}}]'), "simplified UI must submit one standard run for backend compatibility");
-assert.ok(page.includes("isTesterAdmin()"), "campaign page must enforce admin access");
+assert.ok(page.includes('redirect("/admin-access#quality")'), "in-app QA page must send operators to the authenticated Ops Dashboard");
 assert.ok(startRoute.includes("RUN_QA_CAMPAIGN_ON_STAGING") && startRoute.includes("pg_advisory_xact_lock") && startRoute.includes("WITH queue_lock AS MATERIALIZED"), "campaign start must require explicit staging confirmation and serialize queue access without selecting PostgreSQL void");
 assert.ok(worker.includes("WITH queue_lock AS MATERIALIZED"), "worker campaign advancement must serialize queue access without selecting PostgreSQL void");
 assert.ok(worker.includes("advanceCampaign") && worker.includes("qa_test_campaign_steps"), "worker must advance campaign steps sequentially");
