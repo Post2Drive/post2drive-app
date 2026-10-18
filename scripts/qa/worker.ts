@@ -171,6 +171,7 @@ async function advanceCampaign(runId: string) {
 async function executeRun(job: { id: string; summary: unknown; target_url: string; target_accounts: number }) {
   if (job.target_url !== (process.env.QA_BASE_URL || "").replace(/\/+$/, "") || job.target_accounts < 500 || job.target_accounts > 10000) {
     await markWorkerFailure(job.id);
+    await advanceCampaign(job.id).catch(error => console.error("QA campaign could not advance after target rejection", error instanceof Error ? error.message : String(error)));
     throw new Error("Claimed QA run did not match worker target/count.");
   }
   const summary = (job.summary && typeof job.summary === "object") ? job.summary as Record<string, unknown> : {};
