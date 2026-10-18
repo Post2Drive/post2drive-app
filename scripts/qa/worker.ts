@@ -33,7 +33,7 @@ async function claimNextRun() {
     `WITH candidate AS (
        SELECT id
        FROM qa_test_runs
-       WHERE status = 'queued' AND target_accounts = 10000
+       WHERE status = 'queued' AND target_accounts BETWEEN 500 AND 10000
        ORDER BY started_at ASC
        LIMIT 1
        FOR UPDATE SKIP LOCKED
@@ -90,17 +90,26 @@ async function markWorkerFailure(runId: string) {
 }
 
 async function executeRun(job: { id: string; summary: unknown; target_url: string; target_accounts: number }) {
-  if (job.target_url !== (process.env.QA_BASE_URL || "").replace(/\/+$/, "") || job.target_accounts !== 10000) {
+  if (job.target_url !== (process.env.QA_BASE_URL || "").replace(/\/+$/, "") || job.target_accounts < 500 || job.target_accounts > 10000) {
     await markWorkerFailure(job.id);
     throw new Error("Claimed QA run did not match worker target/count.");
   }
   const summary = (job.summary && typeof job.summary === "object") ? job.summary as Record<string, unknown> : {};
   const country = typeof summary.country === "string" ? summary.country : (process.env.QA_MARKET_COUNTRY || "GB");
   const testType = summary.testType === "api-load" || summary.testType === "synthetic-accounts" || summary.testType === "workflow-e2e" ? summary.testType : "workflow-e2e";
+  const config = {
+    accountCount: Number.isInteger(summary.accountCount) ? Number(summary.accountCount) : job.target_accounts,
+    testIterations: Number.isInteger(summary.testIterations) ? Number(summary.testIterations) : 10_000,
+    concurrency: Number.isInteger(summary.concurrency) ? Number(summary.concurrency) : 12,
+    campaignId: typeof summary.campaignId === "string" ? summary.campaignId : undefined,
+    variationId: typeof summary.variationId === "string" ? summary.variationId : undefined,
+    variationName: typeof summary.variationName === "string" ? summary.variationName : undefined,
+    suite: typeof summary.suite === "string" ? summary.suite : undefined,
+  };
   const stopHeartbeat = startHeartbeat(job.id);
   activeJob = true;
   try {
-    const result = await runQaWorker(job.id, country, workerId, testType);
+    const result = await runQaWorker(job.id, country, workerId, testType, config);
     await prisma.$executeRawUnsafe(
       `UPDATE qa_test_runs
        SET summary=COALESCE(summary,'{}'::jsonb) ||
