@@ -71,12 +71,13 @@ async function GETHandler(request: Request) {
             row_number() OVER (
               PARTITION BY
                 COALESCE(r.summary->>'country', r.summary->>'marketCode', r.summary->>'marketLabel', 'Not recorded'),
-                e.scenario, e.action, e.path, e.expected_statuses
+                e.scenario, e.action, e.method, e.path, e.expected_statuses
               ORDER BY r.started_at DESC, e.created_at DESC, e.id DESC
             ) AS issue_rank
           FROM qa_test_events e
           JOIN qa_test_runs r ON r.id=e.run_id
-          WHERE e.run_id IN (SELECT id FROM qa_test_runs ORDER BY started_at DESC LIMIT 100)
+          WHERE r.status IN ('completed', 'failed')
+            AND e.run_id IN (SELECT id FROM qa_test_runs ORDER BY started_at DESC LIMIT 100)
         )
         SELECT "runId", country, "runStatus", scenario, action, path, expected, actual, 1::int AS count
         FROM recent_events
