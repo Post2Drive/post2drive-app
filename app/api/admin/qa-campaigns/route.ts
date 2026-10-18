@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { authOptions } from "@/lib/auth";
 import { isTesterAdmin } from "@/lib/testerAdmin";
 import { prisma } from "@/lib/prisma";
+import { isQaRunnerEnabled } from "@/lib/qaRunnerGuard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,7 +26,7 @@ function validate(body: any) {
   const scenario = safeString(body?.scenario);
   const totalCampaignTests = int(body?.totalCampaignTests, 1, 25000);
   const testsPerVariation = int(body?.testsPerVariation, 1, 25000);
-  const accountCount = int(body?.accountCount, 1, 10000);
+  const accountCount = int(body?.accountCount, 500, 10000);
   const concurrency = int(body?.concurrency, 1, 100);
   const suites = Array.isArray(body?.suites) ? [...new Set(body.suites.filter((x: unknown): x is string => typeof x === "string" && ALLOWED_SUITES.has(x)))] : [];
   const variations = Array.isArray(body?.variations) ? body.variations.slice(0, MAX_VARIATIONS).map((v: any, i: number) => ({
@@ -40,11 +41,16 @@ function validate(body: any) {
   if (!scenario) errors.push("Scenario is required.");
   if (totalCampaignTests === null) errors.push("Total campaign tests must be from 1 to 25,000.");
   if (testsPerVariation === null) errors.push("Tests per variation must be from 1 to 25,000.");
-  if (accountCount === null) errors.push("Account count must be from 1 to 10,000.");
+  if (accountCount === null) errors.push("Account count must be from 500 to 10,000 for execution.");
   if (concurrency === null) errors.push("Concurrency must be from 1 to 100.");
   if (!suites.length) errors.push("Choose at least one test suite.");
   if (!Array.isArray(body?.variations) || body.variations.length < 1 || body.variations.length > MAX_VARIATIONS) errors.push("Add between 1 and 20 variations.");
-  if (variations.length && testsPerVariation !== null && totalCampaignTests !== null && variations.length * testsPerVariation > totalCampaignTests) errors.push("Tests per variation multiplied by the number of variations cannot exceed the total campaign test count.");
+  const allocatedIterations = variations.reduce((sum: number, variation: any) => {
+    const raw = variation?.overrides?.testIterations;
+    const count = raw === undefined || raw === null || raw === "" ? (testsPerVariation ?? 25001) : Number(raw);
+    return sum + (Number.isInteger(count) && count >= 1 && count <= 25000 ? count : 25001);
+  }, 0);
+  if (totalCampaignTests !== null && allocatedIterations > totalCampaignTests) errors.push("Effective variation iterations cannot exceed the total campaign test count.");
   return { errors, value: { name, countryCode, scenario, totalCampaignTests, testsPerVariation, accountCount, concurrency, suites, variations } };
 }
 
@@ -53,7 +59,7 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: "Not logged in." }, { status: 401 });
   if (!(await isTesterAdmin())) return NextResponse.json({ error: "Admin access required." }, { status: 403 });
   try {
-    const [campaigns, rawRuns] = await Promise.all([
+    const [campaigns, rawRuns, rawSteps] = await Promise.all([
       prisma.$queryRawUnsafe<any[]>(`
         SELECT id, name, target_environment AS "targetEnvironment", country_code AS "countryCode",
           scenario, total_campaign_tests AS "totalCampaignTests", tests_per_variation AS "testsPerVariation",
@@ -65,12 +71,30 @@ export async function GET() {
         SELECT id, status, target_accounts AS "targetAccounts", created_accounts AS "createdAccounts",
           successful_checks AS "successfulChecks", failed_checks AS "failedChecks", duration_ms AS "durationMs",
           started_at AS "startedAt", finished_at AS "finishedAt", summary->>'country' AS "countryCode",
-          summary->>'testType' AS "testType", summary->>'loadRequestCount' AS "loadRequestCount"
+          summary->>'testType' AS "testType", summary->>'loadRequestCount' AS "loadRequestCount",
+          summary->>'campaignId' AS "campaignId", summary->>'variationId' AS "variationId",
+          summary->>'variationName' AS "variationName", summary->>'suite' AS "suite",
+          summary->>'testIterations' AS "testIterations", summary->>'concurrencyTarget' AS "concurrencyTarget",
+          summary->>'p50Ms' AS "p50Ms", summary->>'p95Ms' AS "p95Ms"
         FROM qa_test_runs ORDER BY started_at DESC LIMIT 50
+      `),
+      prisma.$queryRawUnsafe<any[]>(`
+        SELECT s.id, s.campaign_id AS "campaignId", s.ordinal, s.variation_id AS "variationId",
+          s.variation_name AS "variationName", s.suite, s.test_type AS "testType",
+          s.test_iterations AS "testIterations", s.account_count AS "accountCount", s.concurrency,
+          s.status, s.run_id AS "runId", s.started_at AS "startedAt", s.finished_at AS "finishedAt",
+          r.successful_checks AS "successfulChecks", r.failed_checks AS "failedChecks",
+          r.duration_ms AS "durationMs", r.summary->>'loadRequestCount' AS "loadRequestCount",
+          r.summary->>'routeMatrixExecuted' AS "routeMatrixExecuted", r.summary->>'p50Ms' AS "p50Ms",
+          r.summary->>'p95Ms' AS "p95Ms", r.summary->>'eventCount' AS "eventCount"
+        FROM qa_test_campaign_steps s LEFT JOIN qa_test_runs r ON r.id=s.run_id
+        ORDER BY s.campaign_id,s.ordinal LIMIT 1000
       `)
     ]);
-    const runs = rawRuns.map(run => ({ ...run, durationMs: run.durationMs === null ? null : Number(run.durationMs) }));
-    return NextResponse.json({ campaigns, runs, executionEnabled: false }, { headers: { "cache-control": "no-store" } });
+    const normalise = (row: any) => ({ ...row, durationMs: row.durationMs === null ? null : row.durationMs === undefined ? null : Number(row.durationMs) });
+    const runs = rawRuns.map(normalise);
+    const steps = rawSteps.map(normalise);
+    return NextResponse.json({ campaigns, runs, steps, executionEnabled: isQaRunnerEnabled() }, { headers: { "cache-control": "no-store" } });
   } catch (error) {
     console.error("QA campaign history unavailable", error);
     return NextResponse.json({ error: "Campaign storage is not available yet. Apply the reviewed QA campaign metadata migration to staging before using this page." }, { status: 503 });
