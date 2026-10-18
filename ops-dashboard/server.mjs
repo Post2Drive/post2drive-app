@@ -521,6 +521,7 @@ async function load(forceRefresh=false){
       {market:c.market.name,accounts:c.overview.totalAccounts,jobs:c.overview.jobs,bids:c.overview.bids,completed:c.overview.completedJobs,api5xx:c.overview.api5xx}
     ];
     render(d);
+    void loadQaCampaigns();
   }catch(e){
     if(requestId!==loadSequence||e?.name==="AbortError")return;
     $("warning").innerHTML='<div class="notice" role="alert">Could not '+(forceRefresh?'refresh':'load')+' current metrics: '+safe(e.message)+'. Try again in a moment.</div>';
