@@ -1,15 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import type { CSSProperties } from "react";
 
 type Variation = { id: string; name: string; description: string; overrides: Record<string, string> };
 type Campaign = { id: string; name: string; targetEnvironment: string; countryCode: string; scenario: string; totalCampaignTests: number; testsPerVariation: number; accountCount: number; concurrency: number; suites: string[]; variations: Variation[]; executionMode: string; status: string; createdAt: string };
 const countries = [["IN","India"],["GB","United Kingdom"],["US","United States"],["CA","Canada"],["AU","Australia"],["DE","Germany"],["FR","France"],["NL","Netherlands"],["IE","Ireland"],["NZ","New Zealand"],["CH","Switzerland"],["TR","Türkiye"]];
 const suiteOptions = [["provisioning","Synthetic account provisioning"],["api","API load"],["workflow","Workflow E2E"],["regression","Regression"],["localization","Country localization"],["failure","Failure handling"]];
-const panel: React.CSSProperties = { border: "1px solid #dfe5eb", borderRadius: 12, padding: 18, marginTop: 16, background: "#fff" };
-const field: React.CSSProperties = { width: "100%", boxSizing: "border-box", border: "1px solid #cbd5e1", borderRadius: 8, padding: "9px 10px", background: "#fff", color: "#101828" };
-const label: React.CSSProperties = { display: "block", fontSize: 13, fontWeight: 650, marginBottom: 6 };
-const button: React.CSSProperties = { border: "1px solid #cbd5e1", borderRadius: 8, padding: "9px 12px", cursor: "pointer", background: "#fff", color: "#101828", fontWeight: 600 };
+const panel: CSSProperties = { border: "1px solid #dfe5eb", borderRadius: 12, padding: 18, marginTop: 16, background: "#fff" };
+const field: CSSProperties = { width: "100%", boxSizing: "border-box", border: "1px solid #cbd5e1", borderRadius: 8, padding: "9px 10px", background: "#fff", color: "#101828" };
+const label: CSSProperties = { display: "block", fontSize: 13, fontWeight: 650, marginBottom: 6 };
+const button: CSSProperties = { border: "1px solid #cbd5e1", borderRadius: 8, padding: "9px 12px", cursor: "pointer", background: "#fff", color: "#101828", fontWeight: 600 };
 function defaultVariation(i: number): Variation { return { id: "variation-" + (i + 1) + "-" + Math.random().toString(36).slice(2, 7), name: "Variation " + (i + 1), description: "", overrides: {} }; }
 function date(value: string) { const d = new Date(value); return Number.isNaN(d.getTime()) ? value : d.toLocaleString(); }
 
@@ -39,7 +40,7 @@ export default function QaCampaignBuilder() {
     } catch(e) { setError(e instanceof Error ? e.message : "Could not load campaign history."); }
   },[]);
   useEffect(()=>{ void load(); },[load]);
-  const valid = useMemo(()=>name.trim() && scenario.trim() && suites.length>0 && variations.length>0 && allocated<=totalCampaignTests && totalCampaignTests<=25000 && testsPerVariation>=1 && accountCount>=1 && concurrency>=1,[name,scenario,suites,variations,allocated,totalCampaignTests,testsPerVariation,accountCount,concurrency]);
+  const valid = useMemo(()=>name.trim() && scenario.trim() && suites.length>0 && variations.length>0 && allocated<=totalCampaignTests && Number.isInteger(totalCampaignTests) && totalCampaignTests>=1 && totalCampaignTests<=25000 && Number.isInteger(testsPerVariation) && testsPerVariation>=1 && Number.isInteger(accountCount) && accountCount>=1 && accountCount<=10000 && Number.isInteger(concurrency) && concurrency>=1 && concurrency<=100,[name,scenario,suites,variations,allocated,totalCampaignTests,testsPerVariation,accountCount,concurrency]);
   function updateVariation(index: number, patch: Partial<Variation>) { setVariations(old=>old.map((v,i)=>i===index?{...v,...patch}:v)); }
   function toggleSuite(key: string) { setSuites(old=>old.includes(key)?old.filter(x=>x!==key):[...old,key]); }
   async function save() {
