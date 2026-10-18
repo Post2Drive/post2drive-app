@@ -935,3 +935,20 @@ main [role=alert],.auth-page [role=alert],.signup-error{background:#FFFFFF!impor
 .job-create-form .job-step-complete{background:#18864B!important;color:#FFFFFF!important}
 .job-create-form .job-step-active{background:#2457D6!important;color:#FFFFFF!important}
 .job-create-form .job-step-upcoming{background:#FFFFFF!important;color:#171717!important;border:1px solid #D7DCE4}
+
+/* Semantic alerts and every market-sensitive status keep readable dark wording. */
+main .pending-payment,.payment-pending,.status-pending{background:#FFFFFF!important;color:#171717!important;border:1px solid #F2C300;border-left:4px solid #F2C300}
+main [role=status] strong{color:#18864B}
+main [role=alert] strong{color:#D62828}
+.ops-theme-dashboard .ops-section-pipeline>div:first-of-type>div,
+.ops-theme-dashboard .ops-section-fulfilment>div:first-of-type>div{background:#FFFFFF!important;color:#171717!important;border:1px solid #D7DCE4;border-top:4px solid var(--metric-accent,#2457D6)!important}
+.ops-theme-dashboard .ops-section-pipeline>div:first-of-type>div:nth-child(6n+1){--metric-accent:#2457D6}
+.ops-theme-dashboard .ops-section-pipeline>div:first-of-type>div:nth-child(6n+2){--metric-accent:#6D28D9}
+.ops-theme-dashboard .ops-section-pipeline>div:first-of-type>div:nth-child(6n+3){--metric-accent:#E87500}
+.ops-theme-dashboard .ops-section-pipeline>div:first-of-type>div:nth-child(6n+4){--metric-accent:#18864B}
+.ops-theme-dashboard .ops-section-pipeline>div:first-of-type>div:nth-child(6n+5){--metric-accent:#18864B}
+.ops-theme-dashboard .ops-section-pipeline>div:first-of-type>div:nth-child(6n){--metric-accent:#D62828}
+.ops-theme-dashboard .ops-section-fulfilment>div:first-of-type>div:nth-child(4n+1){--metric-accent:#18864B}
+.ops-theme-dashboard .ops-section-fulfilment>div:first-of-type>div:nth-child(4n+2){--metric-accent:#2457D6}
+.ops-theme-dashboard .ops-section-fulfilment>div:first-of-type>div:nth-child(4n+3){--metric-accent:#6D28D9}
+.ops-theme-dashboard .ops-section-fulfilment>div:first-of-type>div:nth-child(4n){--metric-accent:#E87500}
