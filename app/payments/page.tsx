@@ -606,7 +606,7 @@ const primaryButton: React.CSSProperties = {
   border: "1px solid var(--color-primary-action)",
   borderRadius: 7,
   background: "var(--color-primary-action)",
-  color: "#081323",
+  color: "#FFFFFF",
   cursor: "pointer",
 };
 
