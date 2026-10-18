@@ -254,6 +254,7 @@ async function handler(req: Request) {
   }
 
   if (action === "qa-campaign-start") {
+    if (body?.confirm !== "RUN_QA_CAMPAIGN_ON_STAGING") return NextResponse.json({ error: "Confirm that this campaign should run on staging." }, { status: 400 });
     const campaignId = typeof body?.campaignId === "string" ? body.campaignId : "";
     if (!/^campaign-[0-9a-f-]{36}$/i.test(campaignId)) return NextResponse.json({ error: "Campaign ID is not valid." }, { status: 400 });
     if (!isQaRunnerEnabled()) return NextResponse.json({ error: "Test execution is not enabled for the approved staging environment." }, { status: 503 });
