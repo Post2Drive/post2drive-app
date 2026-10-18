@@ -336,12 +336,12 @@ td.bad{background:#FFFFFF!important;color:#D62828!important}
 <form id="qaCampaignForm"><div class="grid two">
 <label>Campaign name<input id="qaCampaignName" name="name" maxlength="120" required placeholder="India workflow check"></label>
 <label>Market<select id="qaCampaignMarket" name="countryCode" required>${markets.map(m=>`<option value="${m.code}">${m.name} · ${m.code}</option>`).join("")}</select></label>
-<label>Test plan<select id="qaCampaignScenario" name="scenario"><option>API load</option><option>Workflow test</option><option>Regression test</option><option>Country rules test</option><option>Failure handling test</option></select></label>
+<label>Plan name<input id="qaCampaignScenario" name="scenario" maxlength="120" value="API load" required></label>
 <label>Total tests<input id="qaCampaignTests" name="totalTests" type="number" min="1" max="25000" value="1000" required></label>
 <label>Test accounts<input id="qaCampaignAccounts" name="accountCount" type="number" min="500" max="10000" value="1000" required></label>
 <label>Parallel requests<input id="qaCampaignConcurrency" name="concurrency" type="number" min="1" max="100" value="10" required></label>
 </div><fieldset><legend>Test suites</legend><label><input type="checkbox" name="suites" value="provisioning"> Set up test accounts</label> <label><input type="checkbox" name="suites" value="api" checked> API load</label> <label><input type="checkbox" name="suites" value="workflow"> Workflow test</label> <label><input type="checkbox" name="suites" value="regression"> Regression test</label> <label><input type="checkbox" name="suites" value="localization"> Country rules test</label> <label><input type="checkbox" name="suites" value="failure"> Failure handling test</label></fieldset>
-<p class="muted">Workflow, regression, country rules and failure handling tests need 10,000 accounts. Account setup creates synthetic accounts. API tests can use a smaller pool. If the market has no completed test-account pool, select Set up test accounts. The system keeps test data and reports.</p>
+<p class="muted">The selected test suites determine the work. The plan name is only a label. Workflow, regression, country rules and failure handling tests need 10,000 accounts. Account setup creates test accounts. API tests can use a smaller pool. If the market has no completed test-account pool, select Set up test accounts. The system keeps test data and reports.</p>
 <button class="primary" type="submit" id="qaCampaignSave">Save draft</button><span id="qaCampaignFormMessage" class="muted" role="status"></span></form>
 <h3>Saved plans</h3><div class="scroll" id="qaCampaignsTable">Loading…</div>
 <h3>Campaign steps and measured results</h3><div class="scroll" id="qaCampaignSteps">Loading…</div></section>
