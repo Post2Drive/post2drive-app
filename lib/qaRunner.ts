@@ -421,6 +421,9 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
       if (!id) continue;
       if (market.country === "IN") {
         await check(d.client!, d, "bidding", "india-bidding-disabled", "POST", "/api/jobs/" + id + "/bid", { amount: 120 }, [403]);
+        await check(p.client!, p, "bidding", "india-bid-list-disabled", "GET", "/api/jobs/" + id + "/bids", undefined, [400]);
+        await check(p.client!, p, "bidding", "india-bid-accept-disabled", "POST", "/api/jobs/" + id + "/bids/qa-nonexistent-bid/accept", {}, [400]);
+        await check(p.client!, p, "job-posting", "india-bid-mode-job-rejected", "POST", "/api/jobs", jobPayload(9000 + i, "bid"), [400]);
       }
       await check(d.client!, d, "job-search", "search-synthetic-marker", "GET", "/api/jobs?search=" + encodeURIComponent(marker), undefined, [200]);
       await check(d.client!, d, "job-search", "filter-by-price-and-vehicle", "GET", "/api/jobs?minPrice=35&maxPrice=700&vehicleType=Small%20van%20(SWB)", undefined, [200]);
@@ -430,7 +433,7 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
       if (accepted.status === 200) await completeJob(id, p, d, i);
     }
 
-    for (let i = 0; i < 10 && i + 20 < posters.length && i + 20 < drivers.length; i++) {
+    if (market.country !== "IN") for (let i = 0; i < 10 && i + 20 < posters.length && i + 20 < drivers.length; i++) {
       const p = posters[i + 20], d = drivers[i + 20], id = await createJob(p, 100 + i, "bid");
       if (!id) continue;
       await check(p.client!, p, "authorization", "poster-cannot-bid-own-job", "POST", "/api/jobs/" + id + "/bid", { amount: 100 }, [403]);
@@ -524,7 +527,7 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
     }
 
     // Race two active bids for one job. Exactly one bid may claim the job.
-    if (posters.length >= 38 && drivers.length >= 46) {
+    if (market.country !== "IN" && posters.length >= 38 && drivers.length >= 46) {
       const poster = posters[37], bidderA = drivers[44], bidderB = drivers[45];
       const raceJob = await createJob(poster, 1520, "bid");
       if (raceJob) {
