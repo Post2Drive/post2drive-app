@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
   const candidate = body as { username?: unknown; password?: unknown };
   const username = typeof candidate?.username === "string" ? candidate.username.trim() : "";
   const password = typeof candidate?.password === "string" ? candidate.password : "";
-  const expectedUsername = process.env.OPS_DASHBOARD_USERNAME || "";
+  const expectedUsername = process.env.OPS_DASHBOARD_USERNAME?.trim() || "";
   const expectedPassword = process.env.OPS_DASHBOARD_PASSWORD || "";
   const secret = process.env.OPS_DASHBOARD_BRIDGE_SECRET || process.env.NEXTAUTH_SECRET || "";
 
@@ -50,7 +50,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Ops Dashboard credentials were not accepted." }, { status: 401 });
   }
 
-  const token = createOpsQaAdminSessionToken();
+  const email = session.user?.email?.trim().toLowerCase();
+  if (!email) return NextResponse.json({ error: "The signed-in Post2Drive account has no email identity." }, { status: 403 });
+  const token = createOpsQaAdminSessionToken(email);
   if (!token) return NextResponse.json({ error: "Could not create an admin session." }, { status: 503 });
   const response = NextResponse.json({ success: true, message: "Ops Dashboard access verified." }, {
     headers: { "cache-control": "no-store" },
