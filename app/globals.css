@@ -1107,3 +1107,78 @@ main [style*="background: var(--color-danger-soft)"],
 main [style*="background:var(--color-danger-soft)"]{
   background:#FFFFFF!important;border:1px solid #D62828!important;
 }
+
+/* Screenshot-driven control contrast fix. These rules apply even when a route
+   uses a top-level div instead of main, and override inline text colours. */
+a.button-link:not(.button-link-secondary),
+.button-link:not(.button-link-secondary) {
+  background: #2457D6 !important;
+  color: #FFFFFF !important;
+  border: 1px solid #2457D6 !important;
+}
+a.button-link:not(.button-link-secondary) *,
+.button-link:not(.button-link-secondary) * {
+  color: #FFFFFF !important;
+}
+a.button-link-secondary,
+.button-link-secondary {
+  background: #FFFFFF !important;
+  color: #2457D6 !important;
+  border: 1px solid #2457D6 !important;
+}
+a.button-link-secondary *,
+.button-link-secondary * {
+  color: #2457D6 !important;
+}
+
+/* Inline-styled labels must not overrule a button's background contrast. */
+button:not(:disabled):not([style*="background: transparent"]):not([style*="background:transparent"]):not([style*="background: var(--color-surface)"]):not([style*="background:var(--color-surface)"]),
+input[type="submit"]:not(:disabled),
+input[type="button"]:not(:disabled) {
+  color: #FFFFFF !important;
+}
+button:not(:disabled):not([style*="background: transparent"]):not([style*="background:transparent"]):not([style*="background: var(--color-surface)"]):not([style*="background:var(--color-surface)"]) *,
+input[type="submit"]:not(:disabled) *,
+input[type="button"]:not(:disabled) * {
+  color: #FFFFFF !important;
+}
+
+/* Transparent tab controls remain transparent and use dark text. */
+button[style*="background: transparent"],
+button[style*="background:transparent"] {
+  background: transparent !important;
+  color: #171717 !important;
+  border-color: transparent;
+}
+button[style*="background: transparent"] *,
+button[style*="background:transparent"] * {
+  color: #171717 !important;
+}
+
+/* Explicit white-surface secondary buttons use blue wording. */
+button:not(:disabled)[style*="background: var(--color-surface)"],
+button:not(:disabled)[style*="background:var(--color-surface)"] {
+  background: #FFFFFF !important;
+  color: #2457D6 !important;
+  border-color: #2457D6 !important;
+}
+button:not(:disabled)[style*="background: var(--color-surface)"] *,
+button:not(:disabled)[style*="background:var(--color-surface)"] * {
+  color: #2457D6 !important;
+}
+
+/* Disabled actions are visibly disabled without leaving pale text on bright fills. */
+button:disabled,
+input[type="submit"]:disabled,
+input[type="button"]:disabled {
+  background: #E8EBF0 !important;
+  color: #30343B !important;
+  border-color: #9299A5 !important;
+  box-shadow: none !important;
+  opacity: 1;
+}
+button:disabled *,
+input[type="submit"]:disabled *,
+input[type="button"]:disabled * {
+  color: #30343B !important;
+}
