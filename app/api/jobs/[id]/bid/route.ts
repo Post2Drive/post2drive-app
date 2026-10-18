@@ -37,6 +37,17 @@ async function POSTHandler(
   const writeLimit = await enforceRateLimit(req, { scope: "job-bid-create", identity: accountId, limit: 30, windowMs: 60 * 60 * 1000 });
   if (writeLimit) return writeLimit;
 
+  const bidderAccount = await prisma.account.findUnique({
+    where: { id: accountId },
+    select: { verificationStatus: true, isTester: true },
+  });
+  if (bidderAccount?.verificationStatus !== "verified" && !bidderAccount?.isTester) {
+    return NextResponse.json(
+      { error: "Your account must be verified before placing bids." },
+      { status: 403 }
+    );
+  }
+
   const marketplaceAccessCheck = await getAccountAccess(accountId);
 
   if (!marketplaceAccessCheck.allowed) {
@@ -149,9 +160,9 @@ async function POSTHandler(
         ? Number(rawAmount)
         : Number.NaN;
 
-  if (!Number.isFinite(amount) || amount <= 0) {
+  if (!Number.isFinite(amount) || amount <= 0 || amount > 100000000) {
     return NextResponse.json(
-      { error: "Enter a valid bid amount." },
+      { error: "Enter a bid amount greater than zero and no more than 100,000,000." },
       { status: 400 }
     );
   }
