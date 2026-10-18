@@ -8,6 +8,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { markDriverOpportunityBid } from "@/lib/opportunities";
+import { getLocalisationProfile } from "@/lib/localisation";
+import { marketDateKey } from "@/lib/vehicleDates";
 
 async function POSTHandler(
   req: Request,
@@ -39,7 +41,7 @@ async function POSTHandler(
 
   const bidderAccount = await prisma.account.findUnique({
     where: { id: accountId },
-    select: { verificationStatus: true, isTester: true },
+    select: { verificationStatus: true, isTester: true, country: true, currency: true },
   });
   if (bidderAccount?.verificationStatus !== "verified" && !bidderAccount?.isTester) {
     return NextResponse.json(
@@ -130,17 +132,22 @@ async function POSTHandler(
   }
 
   if (!bidderAccount?.isTester) {
+    const bidderMarket = getLocalisationProfile({ country: bidderAccount.country, currency: bidderAccount.currency });
+    const marketToday = marketDateKey(new Date(), bidderMarket?.timeZone ?? "UTC");
+    const dateCutoff = new Date(marketToday + "T00:00:00.000Z");
     const matchingVehicle = await prisma.vehicle.findFirst({
       where: {
         accountId,
         vehicleType: job.vehicleType,
         verificationStatus: "verified",
+        insuranceValidUntil: { gte: dateCutoff },
+        ...(bidderMarket?.inspectionRequiredAtCountryLevel ? { motValidUntil: { gte: dateCutoff } } : {}),
       },
       select: { id: true },
     });
     if (!matchingVehicle) {
       return NextResponse.json(
-        { error: "You need an approved vehicle matching this job's vehicle type before placing a bid." },
+        { error: "You need a verified vehicle of the required type with current insurance and any required inspection before placing a bid." },
         { status: 403 }
       );
     }
