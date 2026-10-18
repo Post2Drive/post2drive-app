@@ -939,7 +939,7 @@ export default function EditJobPage() {
               padding: "11px 18px",
               border: "1px solid var(--color-primary-action)",
               borderRadius: 8,
-              color: "#081323",
+              color: "#FFFFFF",
               background: "var(--color-primary-action)",
               cursor: saving ? "not-allowed" : "pointer",
               opacity: saving ? 0.7 : 1,
