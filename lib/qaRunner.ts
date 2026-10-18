@@ -376,7 +376,7 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
       return {
         pickup: lane.pickup, dropoff: lane.dropoff, jobDate, pickupTime,
         dropoffTime: pad(dropoffHour) + ":00", vehicleType: profile.vehicleType,
-        weightKg: profile.weightKg, dimensions: profile.dimensions, price, priceMode: mode, currency: market.currency,
+        weightKg: profile.weightKg, dimensions: profile.dimensions, price, priceMode: market.country === "IN" ? "fixed" : mode, currency: market.currency,
         crossBorder: false,
         notes: "Synthetic QA only " + marker + "; lane=" + lane.pickup + " to " + lane.dropoff +
           "; estimatedMiles=" + lane.miles + "; cargo=" + profile.cargo + "; scenario=" + n,
@@ -385,6 +385,7 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
       };
     };
     async function createJob(p: AccountFixture, n: number, mode: "fixed" | "bid") {
+      if (market.country === "IN" && mode === "bid") return null;
       const r = await check(p.client!, p, "job-posting", "create-" + mode + "-job", "POST", "/api/jobs", jobPayload(n, mode), [201]);
       return r.status === 201 && r.data?.job?.id ? String(r.data.job.id) : null;
     }
@@ -418,6 +419,9 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
     for (let i = 0; i < 20 && i < posters.length && i < drivers.length; i++) {
       const p = posters[i], d = drivers[i], id = await createJob(p, i, "fixed");
       if (!id) continue;
+      if (market.country === "IN") {
+        await check(d.client!, d, "bidding", "india-bidding-disabled", "POST", "/api/jobs/" + id + "/bid", { amount: 120 }, [403]);
+      }
       await check(d.client!, d, "job-search", "search-synthetic-marker", "GET", "/api/jobs?search=" + encodeURIComponent(marker), undefined, [200]);
       await check(d.client!, d, "job-search", "filter-by-price-and-vehicle", "GET", "/api/jobs?minPrice=35&maxPrice=700&vehicleType=Small%20van%20(SWB)", undefined, [200]);
       const editPayload = jobPayload(i + 2500, "fixed");
