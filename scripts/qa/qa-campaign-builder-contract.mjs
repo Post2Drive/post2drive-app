@@ -19,7 +19,7 @@ assert.ok(migration.includes("CHECK (status = 'draft')") && executionMigration.i
 assert.ok(route.includes("int(body?.totalCampaignTests, 1, 25000)") && route.includes("int(body?.accountCount, 500, 10000)") && route.includes("int(body?.concurrency, 1, 100)"), "API must cap test volume, account count and concurrency");
 assert.ok(route.includes("MAX_VARIATIONS = 20"), "API must cap the number of variations");
 assert.ok(route.includes("variations.length * testsPerVariation > totalCampaignTests"), "API must reject variation allocation above the campaign test budget");
-assert.ok(route.includes("executionEnabled: true") && route.includes("FROM qa_test_campaign_steps"), "API must expose execution status and campaign steps");
+assert.ok(route.includes("executionEnabled: isQaRunnerEnabled()") && route.includes("FROM qa_test_campaign_steps"), "API must expose execution status and campaign steps");
 assert.ok(route.includes("FROM qa_test_runs ORDER BY started_at DESC LIMIT 50") && route.includes("FROM qa_test_campaigns ORDER BY created_at DESC LIMIT 100"), "reporting must keep campaign drafts separate from preserved execution history");
 assert.ok(route.includes("const steps = rawSteps.map(normalise)") && route.includes("summary->>'p95Ms'"), "reporting must expose measured per-step latency and normalized durations");
 assert.ok(builder.includes("Save campaign draft") && builder.includes("Confirm & queue campaign") && builder.includes("Per-variation measured results"), "UI must separate draft saving from confirmed execution and show measured results");
