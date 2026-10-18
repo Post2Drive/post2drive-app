@@ -112,6 +112,22 @@ export function pickupAccessError(
     };
   }
 
+  if (!Number.isFinite(pickupAt.getTime())) {
+    return {
+      error: "This job has an invalid pickup time.",
+      reason: "invalid_pickup_time",
+      status: 409,
+    };
+  }
+
+  if (pickupAt.getTime() <= Date.now()) {
+    return {
+      error: "This pickup time has already passed. Choose a future pickup time before posting, bidding on, or accepting the job.",
+      reason: "pickup_in_past",
+      status: 409,
+    };
+  }
+
   if (
     access.endsAt &&
     pickupAt.getTime() >= access.endsAt.getTime()
