@@ -6,14 +6,17 @@ import type { CSSProperties } from "react";
 type Variation = { id: string; name: string; description: string; overrides: Record<string, string> };
 type Campaign = { id: string; name: string; targetEnvironment: string; countryCode: string; scenario: string; totalCampaignTests: number; testsPerVariation: number; accountCount: number; concurrency: number; suites: string[]; variations: Variation[]; executionMode: string; status: string; createdAt: string };
 type QaRun = { id: string; status: string; targetAccounts: number; createdAccounts: number; successfulChecks: number; failedChecks: number; durationMs: number | null; startedAt: string; finishedAt: string | null; countryCode: string | null; testType: string | null; loadRequestCount: number | null };
+type QaStep = { id: string; campaignId: string; ordinal: number; variationId: string | null; variationName: string | null; suite: string; testType: string; testIterations: number; accountCount: number; concurrency: number; status: string; runId: string | null; startedAt: string | null; finishedAt: string | null; successfulChecks: number | null; failedChecks: number | null; durationMs: number | null; loadRequestCount: string | number | null; routeMatrixExecuted: string | number | null; p50Ms: string | number | null; p95Ms: string | number | null; eventCount: string | number | null };
 const countries = [["IN","India"],["GB","United Kingdom"],["US","United States"],["CA","Canada"],["AU","Australia"],["DE","Germany"],["FR","France"],["NL","Netherlands"],["IE","Ireland"],["NZ","New Zealand"],["CH","Switzerland"],["TR","Türkiye"]];
 const suiteOptions = [["provisioning","Synthetic account provisioning"],["api","API load"],["workflow","Workflow E2E"],["regression","Regression"],["localization","Country localization"],["failure","Failure handling"]];
 const panel: CSSProperties = { border: "1px solid #dfe5eb", borderRadius: 12, padding: 18, marginTop: 16, background: "#fff" };
 const field: CSSProperties = { width: "100%", boxSizing: "border-box", border: "1px solid #cbd5e1", borderRadius: 8, padding: "9px 10px", background: "#fff", color: "#101828" };
 const label: CSSProperties = { display: "block", fontSize: 13, fontWeight: 650, marginBottom: 6 };
 const button: CSSProperties = { border: "1px solid #cbd5e1", borderRadius: 8, padding: "9px 12px", cursor: "pointer", background: "#fff", color: "#101828", fontWeight: 600 };
-function defaultVariation(i: number): Variation { return { id: "variation-" + (i + 1) + "-" + Math.random().toString(36).slice(2, 7), name: "Variation " + (i + 1), description: "", overrides: {} }; }
-function date(value: string) { const d = new Date(value); return Number.isNaN(d.getTime()) ? value : d.toLocaleString(); }
+function defaultVariation(i: number): Variation { return { id: "variation-" + (i + 1) + "-" + Math.random().toString(36).slice(2, 7), name: "Variation " + (i + 1), description: "", overrides: { testIterations: "", concurrency: "" } }; }
+function date(value: string | null) { if (!value) return "—"; const d = new Date(value); return Number.isNaN(d.getTime()) ? value : d.toLocaleString(); }
+function num(value: string | number | null | undefined) { return value === null || value === undefined || value === "" ? null : Number(value); }
+function fmtMs(value: string | number | null | undefined) { const n = num(value); return n === null || !Number.isFinite(n) ? "—" : n >= 1000 ? (n / 1000).toFixed(2) + " s" : n + " ms"; }
 
 export default function QaCampaignBuilder() {
   const [name,setName] = useState("India demand stress test");
@@ -27,10 +30,13 @@ export default function QaCampaignBuilder() {
   const [variations,setVariations] = useState<Variation[]>([defaultVariation(0),defaultVariation(1),defaultVariation(2)]);
   const [campaigns,setCampaigns] = useState<Campaign[]>([]);
   const [runs,setRuns] = useState<QaRun[]>([]);
+  const [steps,setSteps] = useState<QaStep[]>([]);
   const [error,setError] = useState("");
   const [notice,setNotice] = useState("");
   const [busy,setBusy] = useState(false);
-  const allocated = variations.length * testsPerVariation;
+  const [reviewStartId,setReviewStartId] = useState<string | null>(null);
+  const [startConfirmed,setStartConfirmed] = useState(false);
+  const allocated = variations.reduce((sum,v)=>sum+(v.overrides.testIterations?.trim()?Number(v.overrides.testIterations):testsPerVariation),0);
   const remaining = totalCampaignTests - allocated;
   const load = useCallback(async () => {
     try {
@@ -39,12 +45,14 @@ export default function QaCampaignBuilder() {
       if (!response.ok) throw new Error(payload.error || "Could not load campaign history.");
       setCampaigns(payload.campaigns || []);
       setRuns(payload.runs || []);
+      setSteps(payload.steps || []);
       setError("");
     } catch(e) { setError(e instanceof Error ? e.message : "Could not load campaign history."); }
   },[]);
   useEffect(()=>{ void load(); },[load]);
-  const valid = useMemo(()=>name.trim() && scenario.trim() && suites.length>0 && variations.length>0 && allocated<=totalCampaignTests && Number.isInteger(totalCampaignTests) && totalCampaignTests>=1 && totalCampaignTests<=25000 && Number.isInteger(testsPerVariation) && testsPerVariation>=1 && Number.isInteger(accountCount) && accountCount>=1 && accountCount<=10000 && Number.isInteger(concurrency) && concurrency>=1 && concurrency<=100,[name,scenario,suites,variations,allocated,totalCampaignTests,testsPerVariation,accountCount,concurrency]);
+  const valid = useMemo(()=>Boolean(name.trim() && scenario.trim() && suites.length>0 && variations.length>0 && allocated<=totalCampaignTests && Number.isInteger(totalCampaignTests) && totalCampaignTests>=1 && totalCampaignTests<=25000 && Number.isInteger(testsPerVariation) && testsPerVariation>=1 && Number.isInteger(accountCount) && accountCount>=500 && accountCount<=10000 && Number.isInteger(concurrency) && concurrency>=1 && concurrency<=100 && variations.every(v=>(!v.overrides.testIterations?.trim() || (Number.isInteger(Number(v.overrides.testIterations)) && Number(v.overrides.testIterations)>=1 && Number(v.overrides.testIterations)<=25000)) && (!v.overrides.concurrency?.trim() || (Number.isInteger(Number(v.overrides.concurrency)) && Number(v.overrides.concurrency)>=1 && Number(v.overrides.concurrency)<=100)))),[name,scenario,suites,variations,allocated,totalCampaignTests,testsPerVariation,accountCount,concurrency]);
   function updateVariation(index: number, patch: Partial<Variation>) { setVariations(old=>old.map((v,i)=>i===index?{...v,...patch}:v)); }
+  function updateOverride(index: number, key: string, value: string) { setVariations(old=>old.map((v,i)=>i===index?{...v,overrides:{...v.overrides,[key]:value}}:v)); }
   function toggleSuite(key: string) { setSuites(old=>old.includes(key)?old.filter(x=>x!==key):[...old,key]); }
   async function save() {
     setBusy(true); setError(""); setNotice("");
@@ -52,11 +60,24 @@ export default function QaCampaignBuilder() {
       const response = await fetch("/api/admin/qa-campaigns",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({name,countryCode,scenario,totalCampaignTests,testsPerVariation,accountCount,concurrency,suites,variations})});
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "Could not save campaign draft.");
-      setNotice("Campaign draft saved ("+payload.id+"). Execution remains disabled; no QA run was queued.");
+      setNotice("Campaign draft saved ("+payload.id+"). Saving does not queue a QA run.");
       await load();
     } catch(e) { setError(e instanceof Error?e.message:"Could not save campaign draft."); }
     finally { setBusy(false); }
   }
+  async function start(campaignId: string) {
+    setBusy(true); setError(""); setNotice("");
+    try {
+      const response = await fetch("/api/admin/qa-campaigns/"+encodeURIComponent(campaignId)+"/start",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({target:"staging",confirm:"RUN_QA_CAMPAIGN_ON_STAGING"})});
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || "Could not queue campaign.");
+      setNotice("Campaign queued for staging. First run: "+payload.runId+". Planned sequential steps: "+payload.plannedSteps+".");
+      setReviewStartId(null); setStartConfirmed(false);
+      await load();
+    } catch(e) { setError(e instanceof Error?e.message:"Could not start campaign."); }
+    finally { setBusy(false); }
+  }
+  const campaignById = new Map(campaigns.map(c=>[c.id,c]));
   return <div>
     <section style={panel}>
       <h2 style={{margin:"0 0 14px",fontSize:20}}>1 · Scenario profile</h2>
@@ -69,43 +90,56 @@ export default function QaCampaignBuilder() {
     </section>
     <section style={panel}>
       <h2 style={{margin:"0 0 8px",fontSize:20}}>2 · Execution volume</h2>
-      <p style={{fontSize:13,color:"#667085",lineHeight:1.5,marginTop:0}}>These are separate planning values, not claims about concurrent users. Current campaign saving is preview-only; runner execution has not been enabled for these controls.</p>
+      <p style={{fontSize:13,color:"#667085",lineHeight:1.5,marginTop:0}}>Test iterations, account count, and concurrency are independent settings. Account count is 500–10,000 for execution. Workflow, regression, localization and failure suites currently require the full 10,000-account pool. Campaign steps run sequentially to preserve the single-active-run safety guard.</p>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:14}}>
         <div><label style={label}>Total campaign tests</label><input type="number" min="1" max="25000" style={field} value={totalCampaignTests} onChange={e=>setTotalCampaignTests(Number(e.target.value))}/></div>
-        <div><label style={label}>Tests per variation</label><input type="number" min="1" max="25000" style={field} value={testsPerVariation} onChange={e=>setTestsPerVariation(Number(e.target.value))}/></div>
-        <div><label style={label}>Synthetic account count</label><input type="number" min="1" max="10000" style={field} value={accountCount} onChange={e=>setAccountCount(Number(e.target.value))}/></div>
-        <div><label style={label}>Concurrency target</label><input type="number" min="1" max="100" style={field} value={concurrency} onChange={e=>setConcurrency(Number(e.target.value))}/></div>
+        <div><label style={label}>Default tests per variation</label><input type="number" min="1" max="25000" style={field} value={testsPerVariation} onChange={e=>setTestsPerVariation(Number(e.target.value))}/></div>
+        <div><label style={label}>Synthetic account count</label><input type="number" min="500" max="10000" style={field} value={accountCount} onChange={e=>setAccountCount(Number(e.target.value))}/></div>
+        <div><label style={label}>Default concurrency</label><input type="number" min="1" max="100" style={field} value={concurrency} onChange={e=>setConcurrency(Number(e.target.value))}/></div>
       </div>
       <div style={{marginTop:14,padding:12,borderRadius:8,background:remaining<0?"#fff1f2":"#f8fafc",fontSize:14}}>
-        <strong>Plan allocation:</strong> {variations.length} variations × {testsPerVariation.toLocaleString()} tests = {allocated.toLocaleString()} allocated; {Math.max(0,remaining).toLocaleString()} unallocated of {totalCampaignTests.toLocaleString()} total.
-        {remaining<0?<p style={{color:"#b42318",marginBottom:0}}>Reduce tests per variation or increase total campaign tests.</p>:null}
+        <strong>Iteration budget:</strong> {allocated.toLocaleString()} allocated across {variations.length} variations; {Math.max(0,remaining).toLocaleString()} unallocated of {totalCampaignTests.toLocaleString()} total. A variation override replaces the default iteration count.
+        {remaining<0?<p style={{color:"#b42318",marginBottom:0}}>Reduce variation iterations or increase the total campaign test budget.</p>:null}
       </div>
     </section>
     <section style={panel}>
       <h2 style={{margin:"0 0 12px",fontSize:20}}>3 · Test suites</h2>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(230px,1fr))",gap:10}}>{suiteOptions.map(([key,title])=><label key={key} style={{display:"flex",alignItems:"center",gap:9,padding:10,border:"1px solid #e4e7ec",borderRadius:8,fontSize:14}}><input type="checkbox" checked={suites.includes(key)} onChange={()=>toggleSuite(key)}/>{title}</label>)}</div>
+      {suites.includes("provisioning")?<p style={{fontSize:13,color:"#667085"}}>Provisioning creates one shared synthetic account pool for the campaign. Other suites then reuse that pool; provisioning is not repeated per variation.</p>:null}
     </section>
     <section style={panel}>
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}><div><h2 style={{margin:"0 0 5px",fontSize:20}}>4 · Variations</h2><p style={{margin:0,fontSize:13,color:"#667085"}}>Name each variation and describe its controlled difference. Up to 20 are supported.</p></div><button type="button" style={button} disabled={variations.length>=20} onClick={()=>setVariations(old=>[...old,defaultVariation(old.length)])}>+ Add variation</button></div>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}><div><h2 style={{margin:"0 0 5px",fontSize:20}}>4 · Variations</h2><p style={{margin:0,fontSize:13,color:"#667085"}}>Vary iterations and concurrency to compare measured results. Up to 20 variations are supported.</p></div><button type="button" style={button} disabled={variations.length>=20} onClick={()=>setVariations(old=>[...old,defaultVariation(old.length)])}>+ Add variation</button></div>
       <div style={{display:"grid",gap:12,marginTop:14}}>{variations.map((v,i)=><div key={v.id} style={{border:"1px solid #dfe5eb",borderRadius:10,padding:14}}>
-        <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}><strong style={{minWidth:90}}>Variation {i+1}</strong><input aria-label={"Variation "+(i+1)+" name"} style={{...field,flex:"1 1 200px"}} value={v.name} maxLength={80} onChange={e=>updateVariation(i,{name:e.target.value})}/><button type="button" style={button} disabled={variations.length<=1} onClick={()=>setVariations(old=>old.filter((_,j)=>i!==j))}>Remove</button></div>
-        <textarea aria-label={"Variation "+(i+1)+" description"} style={{...field,marginTop:10,minHeight:68,resize:"vertical"}} placeholder="What changes in this variation?" value={v.description} maxLength={240} onChange={e=>updateVariation(i,{description:e.target.value})}/>
+        <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}><strong style={{minWidth:90}}>Variation {i+1}</strong><input aria-label={"Variation "+(i+1)+" name"} style={{...field,flex:"1 1 200px"}} value={v.name} maxLength={80} onChange={e=>updateVariation(i,{name:e.target.value})}/><button type="button" style={button} disabled={variations.length<=1} onClick={()=>setVariations(old=>old.filter((_,j)=>j!==i))}>Remove</button></div>
+        <textarea aria-label={"Variation "+(i+1)+" description"} style={{...field,marginTop:10,minHeight:58,resize:"vertical"}} placeholder="What changes in this variation?" value={v.description} maxLength={240} onChange={e=>updateVariation(i,{description:e.target.value})}/>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:12,marginTop:10}}>
+          <div><label style={label}>Iteration override (optional)</label><input type="number" min="1" max="25000" style={field} placeholder={String(testsPerVariation)} value={v.overrides.testIterations||""} onChange={e=>updateOverride(i,"testIterations",e.target.value)}/></div>
+          <div><label style={label}>Concurrency override (optional)</label><input type="number" min="1" max="100" style={field} placeholder={String(concurrency)} value={v.overrides.concurrency||""} onChange={e=>updateOverride(i,"concurrency",e.target.value)}/></div>
+        </div>
       </div>)}</div>
     </section>
     <section style={panel}>
       <h2 style={{margin:"0 0 8px",fontSize:20}}>5 · Review & save</h2>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:10}}>{[["Market",countryCode],["Total tests",totalCampaignTests.toLocaleString()],["Per variation",testsPerVariation.toLocaleString()],["Accounts",accountCount.toLocaleString()],["Concurrency",String(concurrency)],["Suites",String(suites.length)]].map(([k,v])=><div key={k} style={{padding:12,border:"1px solid #e4e7ec",borderRadius:8}}><div style={{fontSize:12,color:"#667085"}}>{k}</div><strong>{v}</strong></div>)}</div>
-      <p style={{fontSize:13,color:"#667085",lineHeight:1.6}}>Mode: <strong>preview_only</strong>. Save stores a durable draft only. Run queueing, account creation, and load generation are intentionally disabled until runner configuration and safety limits are implemented and reviewed.</p>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:10}}>{[["Market",countryCode],["Total tests",totalCampaignTests.toLocaleString()],["Iterations allocated",allocated.toLocaleString()],["Accounts",accountCount.toLocaleString()],["Concurrency",String(concurrency)],["Suites",String(suites.length)]].map(([k,v])=><div key={k} style={{padding:12,border:"1px solid #e4e7ec",borderRadius:8}}><div style={{fontSize:12,color:"#667085"}}>{k}</div><strong>{v}</strong></div>)}</div>
+      <p style={{fontSize:13,color:"#667085",lineHeight:1.6}}>New drafts are saved without execution. Starting a saved draft requires a separate staging confirmation and queues one run at a time; each run's measured latency, checks and failures are retained in QA history.</p>
       {error?<p role="alert" style={{color:"#b42318"}}>{error}</p>:null}{notice?<p role="status" style={{color:"#067647"}}>{notice}</p>:null}
       <button type="button" style={{...button,background:"#175cd3",borderColor:"#175cd3",color:"#fff",opacity:(!valid||busy)?0.55:1}} disabled={!valid||busy} onClick={()=>void save()}>{busy?"Saving…":"Save campaign draft"}</button>
     </section>
     <section style={panel}>
-      <h2 style={{margin:"0 0 12px",fontSize:20}}>Campaign history</h2>
-      <p style={{fontSize:13,color:"#667085"}}>Saved plans only. Execution results and run-level performance will appear here after campaign-to-run orchestration is implemented; historical QA run/event rows remain untouched.</p>
-      {campaigns.length?<div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:13,textAlign:"left"}}><thead><tr>{["Created","Campaign","Market","Scenario","Total tests","Tests / variation","Accounts","Concurrency","Status"].map(x=><th key={x} style={{padding:"9px",borderBottom:"1px solid #dfe5eb",whiteSpace:"nowrap"}}>{x}</th>)}</tr></thead><tbody>{campaigns.map(c=><tr key={c.id}>{[date(c.createdAt),c.name,c.countryCode,c.scenario,Number(c.totalCampaignTests).toLocaleString(),Number(c.testsPerVariation).toLocaleString(),Number(c.accountCount).toLocaleString(),c.concurrency,c.status].map((v,i)=><td key={i} style={{padding:"9px",borderBottom:"1px solid #e4e7ec"}}>{String(v)}</td>)}</tr>)}</tbody></table></div>:<p style={{fontSize:13,color:"#667085"}}>No saved campaign plans yet.</p>}
+      <h2 style={{margin:"0 0 12px",fontSize:20}}>Campaign history & execution</h2>
+      {campaigns.length?<div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:13,textAlign:"left"}}><thead><tr>{["Created","Campaign","Market","Scenario","Total tests","Tests / variation","Accounts","Concurrency","Status","Action"].map(x=><th key={x} style={{padding:"9px",borderBottom:"1px solid #dfe5eb",whiteSpace:"nowrap"}}>{x}</th>)}</tr></thead><tbody>{campaigns.map(c=><tr key={c.id}>{[date(c.createdAt),c.name,c.countryCode,c.scenario,Number(c.totalCampaignTests).toLocaleString(),Number(c.testsPerVariation).toLocaleString(),Number(c.accountCount).toLocaleString(),c.concurrency,c.status].map((v,i)=><td key={i} style={{padding:"9px",borderBottom:"1px solid #e4e7ec"}}>{String(v)}</td>)}<td style={{padding:"9px",borderBottom:"1px solid #e4e7ec",whiteSpace:"nowrap"}}>{c.status==="draft"?<button type="button" style={button} disabled={busy} onClick={()=>{setReviewStartId(c.id);setStartConfirmed(false);setError("");setNotice("");}}>Review start</button>:<span>{c.executionMode==="staging_sequential"?"Sequential run":"—"}</span>}</td></tr>)}</tbody></table></div>:<p style={{fontSize:13,color:"#667085"}}>No saved campaign plans yet.</p>}
+      {reviewStartId && campaignById.has(reviewStartId)?<div style={{border:"1px solid #fdb022",borderRadius:10,padding:14,marginTop:14,background:"#fffaeb"}}>
+        <h3 style={{margin:"0 0 8px",fontSize:17}}>Confirm staging execution</h3>
+        <p style={{fontSize:13,lineHeight:1.6}}>You are about to queue <strong>{campaignById.get(reviewStartId)?.name}</strong> on staging. It will run sequentially, can create synthetic accounts and synthetic marketplace records, and will retain its QA history. This action does not clean up data automatically.</p>
+        <label style={{display:"flex",gap:9,alignItems:"flex-start",fontSize:13,marginBottom:12}}><input type="checkbox" checked={startConfirmed} onChange={e=>setStartConfirmed(e.target.checked)}/>I confirm this campaign should execute against staging and its synthetic data may be retained for review.</label>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}><button type="button" style={{...button,background:"#b42318",borderColor:"#b42318",color:"#fff"}} disabled={!startConfirmed||busy} onClick={()=>void start(reviewStartId)}>{busy?"Queueing…":"Confirm & queue campaign"}</button><button type="button" style={button} onClick={()=>{setReviewStartId(null);setStartConfirmed(false);}}>Cancel</button></div>
+      </div>:null}
+      <h3 style={{margin:"22px 0 8px",fontSize:17}}>Per-variation measured results</h3>
+      <p style={{fontSize:13,color:"#667085"}}>Latency and check counts below come from persisted worker results. Empty fields mean no run evidence is available yet; configured targets are shown separately.</p>
+      {steps.length?<div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:13,textAlign:"left"}}><thead><tr>{["Campaign","Variation","Suite","Status","Iterations","Concurrency","Requests","Checks passed","Checks failed","P50","P95","Duration","Run ID"].map(x=><th key={x} style={{padding:"9px",borderBottom:"1px solid #dfe5eb",whiteSpace:"nowrap"}}>{x}</th>)}</tr></thead><tbody>{steps.map(s=><tr key={s.id}>{[campaignById.get(s.campaignId)?.name||s.campaignId,s.variationName||"Shared setup",s.suite,s.status,s.testIterations,s.concurrency,num(s.loadRequestCount)??num(s.routeMatrixExecuted)??"—",s.successfulChecks??"—",s.failedChecks??"—",fmtMs(s.p50Ms),fmtMs(s.p95Ms),s.durationMs==null?"—":fmtMs(s.durationMs),s.runId||"—"].map((v,i)=><td key={i} style={{padding:"9px",borderBottom:"1px solid #e4e7ec",color:i===8&&Number(s.failedChecks)>0?"#b42318":"inherit",whiteSpace:"nowrap"}}>{String(v)}</td>)}</tr>)}</tbody></table></div>:<p style={{fontSize:13,color:"#667085"}}>No campaign execution steps have been recorded.</p>}
       <h3 style={{margin:"22px 0 8px",fontSize:17}}>Recent QA runs (existing execution evidence)</h3>
-      <p style={{fontSize:13,color:"#667085"}}>These runs pre-date campaign orchestration and are shown separately; they are not attributed to any saved draft. Failed events and summaries remain in the existing QA history tables.</p>
-      {runs.length?<div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:13,textAlign:"left"}}><thead><tr>{["Started","Run ID","Market","Test type","Status","Target accounts","Created","Checks passed","Checks failed","Load requests","Duration"].map(x=><th key={x} style={{padding:"9px",borderBottom:"1px solid #dfe5eb",whiteSpace:"nowrap"}}>{x}</th>)}</tr></thead><tbody>{runs.map(r=><tr key={r.id}>{[date(r.startedAt),r.id,r.countryCode||"—",r.testType||"—",r.status,Number(r.targetAccounts).toLocaleString(),Number(r.createdAccounts).toLocaleString(),Number(r.successfulChecks).toLocaleString(),Number(r.failedChecks).toLocaleString(),r.loadRequestCount==null?"—":Number(r.loadRequestCount).toLocaleString(),r.durationMs==null?"—":(Number(r.durationMs)>=1000?(Number(r.durationMs)/1000).toFixed(2)+" s":Number(r.durationMs)+" ms")].map((v,i)=><td key={i} style={{padding:"9px",borderBottom:"1px solid #e4e7ec",color:i===8&&Number(r.failedChecks)>0?"#b42318":"inherit"}}>{String(v)}</td>)}</tr>)}</tbody></table></div>:<p style={{fontSize:13,color:"#667085"}}>No QA runs have been recorded.</p>}
+      <p style={{fontSize:13,color:"#667085"}}>Legacy runs are shown separately and are not attributed to a campaign. Existing QA event and account records are retained.</p>
+      {runs.length?<div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:13,textAlign:"left"}}><thead><tr>{["Started","Run ID","Market","Test type","Status","Target accounts","Created","Checks passed","Checks failed","Load requests","Duration"].map(x=><th key={x} style={{padding:"9px",borderBottom:"1px solid #dfe5eb",whiteSpace:"nowrap"}}>{x}</th>)}</tr></thead><tbody>{runs.map(r=><tr key={r.id}>{[date(r.startedAt),r.id,r.countryCode||"—",r.testType||"—",r.status,Number(r.targetAccounts).toLocaleString(),Number(r.createdAccounts).toLocaleString(),Number(r.successfulChecks).toLocaleString(),Number(r.failedChecks).toLocaleString(),r.loadRequestCount==null?"—":Number(r.loadRequestCount).toLocaleString(),r.durationMs==null?"—":fmtMs(r.durationMs)].map((v,i)=><td key={i} style={{padding:"9px",borderBottom:"1px solid #e4e7ec",color:i===8&&Number(r.failedChecks)>0?"#b42318":"inherit",whiteSpace:"nowrap"}}>{String(v)}</td>)}</tr>)}</tbody></table></div>:<p style={{fontSize:13,color:"#667085"}}>No QA runs have been recorded.</p>}
     </section>
   </div>;
 }
