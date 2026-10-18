@@ -108,7 +108,17 @@ async function POSTHandler(
   }
 
   const updated = await prisma.$transaction(async (tx) => {
-    // Recheck the selected bid and bidder immediately before claiming the job.
+    // Re-read the job in the transaction. A concurrent edit can change the
+    // requested vehicle type while the job is still open.
+    const currentJob = await tx.job.findUnique({
+      where: { id: routeParams.id },
+      select: { id: true, posterId: true, status: true, priceMode: true, vehicleType: true },
+    });
+    if (!currentJob || currentJob.status !== "open" || currentJob.posterId !== accountId || currentJob.priceMode !== "bid") {
+      throw new Error("JOB_ALREADY_TAKEN");
+    }
+
+    // A bid is selectable only while its driver and matching vehicle remain approved.
     const currentBid = await tx.bid.findFirst({
       where: {
         id: bid.id,
@@ -116,8 +126,16 @@ async function POSTHandler(
         status: "active",
         bidder: {
           OR: [
-            { verificationStatus: "verified" },
             { isTester: true },
+            {
+              verificationStatus: "verified",
+              vehicles: {
+                some: {
+                  vehicleType: currentJob.vehicleType,
+                  verificationStatus: "verified",
+                },
+              },
+            },
           ],
         },
       },
@@ -229,7 +247,7 @@ async function POSTHandler(
 
   if (updated === "BID_NO_LONGER_ELIGIBLE") {
     return NextResponse.json(
-      { error: "This bid is no longer active or the bidder is no longer verified." },
+      { error: "This bid is no longer active, or the bidder no longer has an approved matching vehicle." },
       { status: 409 }
     );
   }
