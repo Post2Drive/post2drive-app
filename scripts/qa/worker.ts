@@ -48,7 +48,15 @@ async function claimNextRun() {
      RETURNING run.id,run.summary,run.target_url,run.target_accounts`,
     workerId,
   );
-  return rows[0] ?? null;
+  const claimed = rows[0] ?? null;
+  const summary = claimed?.summary && typeof claimed.summary === "object" ? claimed.summary as Record<string, unknown> : {};
+  if (claimed && typeof summary.campaignStepId === "string" && typeof summary.campaignId === "string") {
+    await prisma.$executeRawUnsafe(
+      "UPDATE qa_test_campaign_steps SET status='running',started_at=COALESCE(started_at,now()) WHERE id=$1 AND campaign_id=$2 AND run_id=$3 AND status='queued'",
+      summary.campaignStepId, summary.campaignId, claimed.id
+    );
+  }
+  return claimed;
 }
 
 function startHeartbeat(runId: string) {
@@ -91,6 +99,7 @@ async function markWorkerFailure(runId: string) {
 
 async function advanceCampaign(runId: string) {
   await prisma.$transaction(async tx => {
+    await tx.$queryRawUnsafe("SELECT pg_advisory_xact_lock(hashtext($1))", "post2drive-qa-run-queue");
     const rows = await tx.$queryRawUnsafe<Array<{ status: string; summary: unknown }>>(
       "SELECT status,summary FROM qa_test_runs WHERE id=$1 FOR UPDATE", runId
     );
