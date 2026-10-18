@@ -1086,3 +1086,24 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .pricing-tier-name,.pricing-tier-price,.signup-review-grid strong{color:#171717!important}
 .pricing-benefit-strip{background:#FFFFFF!important;color:#18864B!important;border:1px solid #18864B;border-left:4px solid #18864B}
 .pricing-market-note{background:#FFFFFF!important;color:#171717!important;border:1px solid #F2C300;border-left:4px solid #F2C300}
+
+
+/* Inline status banners/chips become bordered white labels rather than pale fill + pale text. */
+main [style*="background: var(--color-primary-soft)"],
+main [style*="background:var(--color-primary-soft)"],
+main [style*="background: var(--color-action-soft)"],
+main [style*="background:var(--color-action-soft)"]{
+  background:#FFFFFF!important;border:1px solid #2457D6!important;color:#171717;
+}
+main [style*="background: var(--color-positive-soft)"],
+main [style*="background:var(--color-positive-soft)"]{
+  background:#FFFFFF!important;border:1px solid #18864B!important;
+}
+main [style*="background: var(--color-warning-soft)"],
+main [style*="background:var(--color-warning-soft)"]{
+  background:#FFFFFF!important;border:1px solid #F2C300!important;color:#171717!important;
+}
+main [style*="background: var(--color-danger-soft)"],
+main [style*="background:var(--color-danger-soft)"]{
+  background:#FFFFFF!important;border:1px solid #D62828!important;
+}
