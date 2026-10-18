@@ -1603,3 +1603,20 @@ textarea {
     scroll-snap-type: none;
   }
 }
+
+/* Keep the fixed-nav clearance only on authenticated pages where the nav exists. */
+@media (max-width: 900px) {
+  body:has(.mobile-bottom-nav) {
+    padding-bottom: calc(74px + env(safe-area-inset-bottom)) !important;
+  }
+  body:not(:has(.mobile-bottom-nav)) {
+    padding-bottom: 0 !important;
+  }
+}
+@media (max-width: 760px) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    min-height: 44px;
+  }
+}
