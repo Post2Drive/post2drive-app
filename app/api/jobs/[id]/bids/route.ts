@@ -49,6 +49,10 @@ const job = await prisma.job.findUnique({
     );
   }
 
+  if (job.currency === "INR" || job.priceMode !== "bid") {
+    return NextResponse.json({ error: "This job does not support bidding." }, { status: 400 });
+  }
+
   if (job.posterId !== accountId) {
     return NextResponse.json(
       {
