@@ -8,6 +8,8 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { markDriverOpportunityAccepted } from "@/lib/opportunities";
 import { recordAcceptedJobUsage } from "@/lib/usage";
+import { getLocalisationProfile } from "@/lib/localisation";
+import { marketDateKey } from "@/lib/vehicleDates";
 
 async function POSTHandler(
   req: Request,
@@ -96,6 +98,8 @@ async function POSTHandler(
       select: {
         verificationStatus: true,
         isTester: true,
+        country: true,
+        currency: true,
       },
     });
 
@@ -110,17 +114,22 @@ async function POSTHandler(
   }
 
   if (!account?.isTester) {
+    const driverMarket = getLocalisationProfile({ country: account.country, currency: account.currency });
+    const marketToday = marketDateKey(new Date(), driverMarket?.timeZone ?? "UTC");
+    const dateCutoff = new Date(marketToday + "T00:00:00.000Z");
     const matchingVehicle = await prisma.vehicle.findFirst({
       where: {
         accountId,
         vehicleType: jobForAcceptance.vehicleType,
         verificationStatus: "verified",
+        insuranceValidUntil: { gte: dateCutoff },
+        ...(driverMarket?.inspectionRequiredAtCountryLevel ? { motValidUntil: { gte: dateCutoff } } : {}),
       },
       select: { id: true },
     });
     if (!matchingVehicle) {
       return NextResponse.json(
-        { error: "You need an approved vehicle matching this job's vehicle type before accepting it." },
+        { error: "You need a verified vehicle of the required type with current insurance and any required inspection before accepting it." },
         { status: 403 }
       );
     }
@@ -145,17 +154,22 @@ async function POSTHandler(
 
           const currentDriver = await tx.account.findUnique({
             where: { id: accountId },
-            select: { verificationStatus: true, isTester: true },
+            select: { verificationStatus: true, isTester: true, country: true, currency: true },
           });
           if (!currentDriver || (currentDriver.verificationStatus !== "verified" && !currentDriver.isTester)) {
             throw new Error("DRIVER_NOT_VERIFIED");
           }
           if (!currentDriver.isTester) {
+            const driverMarket = getLocalisationProfile({ country: currentDriver.country, currency: currentDriver.currency });
+            const marketToday = marketDateKey(new Date(), driverMarket?.timeZone ?? "UTC");
+            const dateCutoff = new Date(marketToday + "T00:00:00.000Z");
             const matchingVehicle = await tx.vehicle.findFirst({
               where: {
                 accountId,
                 vehicleType: job.vehicleType,
                 verificationStatus: "verified",
+                insuranceValidUntil: { gte: dateCutoff },
+                ...(driverMarket?.inspectionRequiredAtCountryLevel ? { motValidUntil: { gte: dateCutoff } } : {}),
               },
               select: { id: true },
             });
@@ -324,7 +338,7 @@ async function POSTHandler(
     }
 
     if (message === "DRIVER_VEHICLE_NOT_VERIFIED") {
-      return NextResponse.json({ error: "You need an approved vehicle matching this job's vehicle type before accepting it." }, { status: 403 });
+      return NextResponse.json({ error: "You need a verified vehicle of the required type with current insurance and any required inspection before accepting it." }, { status: 403 });
     }
 
     if (
