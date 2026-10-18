@@ -44,6 +44,10 @@ includes("app/api/jobs/route.ts", ".filter((job) => {");
 includes("app/api/jobs/[id]/bid/route.ts", 'bidderAccount?.verificationStatus !== "verified"');
 includes("app/api/jobs/[id]/bid/route.ts", 'vehicleType: job.vehicleType');
 includes("app/api/jobs/[id]/bid/route.ts", 'verificationStatus: "verified"');
+includes("app/api/jobs/[id]/bid/route.ts", "marketDateKey(new Date(), bidderMarket?.timeZone");
+includes("app/api/jobs/[id]/bid/route.ts", "insuranceValidUntil: { gte: dateCutoff }");
+includes("app/api/jobs/[id]/bid/route.ts", "inspectionRequiredAtCountryLevel");
+
 includes("app/api/jobs/[id]/bid/route.ts", "amount > 100000000");
 includes("app/api/jobs/[id]/bid/route.ts", "FOR UPDATE");
 
@@ -52,6 +56,9 @@ includes("app/api/jobs/[id]/bid/route.ts", "FOR UPDATE");
 includes("app/api/jobs/[id]/accept/route.ts", 'vehicleType: jobForAcceptance.vehicleType');
 includes("app/api/jobs/[id]/accept/route.ts", "const currentDriver = await tx.account.findUnique");
 includes("app/api/jobs/[id]/accept/route.ts", "tx.vehicle.findFirst");
+includes("app/api/jobs/[id]/accept/route.ts", "insuranceValidUntil: { gte: dateCutoff }");
+includes("app/api/jobs/[id]/accept/route.ts", "driverMarket?.inspectionRequiredAtCountryLevel");
+
 includes("app/api/jobs/[id]/accept/route.ts", 'priceMode: "fixed"');
 
 // A selected bid remains valid only if the bidder has an approved vehicle for
@@ -59,6 +66,9 @@ includes("app/api/jobs/[id]/accept/route.ts", 'priceMode: "fixed"');
 includes("app/api/jobs/[id]/bids/[bidId]/accept/route.ts", "const currentJob = await tx.job.findUnique");
 includes("app/api/jobs/[id]/bids/[bidId]/accept/route.ts", "vehicles: {");
 includes("app/api/jobs/[id]/bids/[bidId]/accept/route.ts", "vehicleType: currentJob.vehicleType");
+includes("app/api/jobs/[id]/bids/[bidId]/accept/route.ts", "insuranceValidUntil: { gte: dateCutoff }");
+includes("app/api/jobs/[id]/bids/[bidId]/accept/route.ts", "bidderMarket?.inspectionRequiredAtCountryLevel");
+
 
 // Payment declarations are single-write state transitions, and audit events
 // commit in the same transaction as their corresponding timestamps.
