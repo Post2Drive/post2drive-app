@@ -762,3 +762,9 @@ const server = http.createServer(async (req,res) => {
 });
 server.listen(PORT,"0.0.0.0",()=>console.log(`Post2Drive Ops Dashboard listening on ${PORT}`));
 for (const sig of ["SIGTERM","SIGINT"]) process.on(sig,async()=>{server.close();await prisma.$disconnect();process.exit(0);});
+
+/* Corporate status chips remain white with bold, legible semantic labels. */
+.pill{background:#FFFFFF!important;color:#171717;border:1px solid #D7DCE4;font-weight:700}
+.pill.good{background:#FFFFFF!important;color:#18864B!important;border-color:#18864B}
+.pill.warn{background:#FFFFFF!important;color:#171717!important;border-color:#F2C300}
+.pill.bad{background:#FFFFFF!important;color:#D62828!important;border-color:#D62828}
