@@ -74,3 +74,11 @@ assert.ok(css.includes("a.button-link-secondary,") && css.includes(".button-link
 assert.ok(css.includes("a.button-link:not(.button-link-secondary)") && css.includes("color: #FFFFFF !important;"), "Primary action links must force white text on blue");
 assert.ok(css.includes("button:disabled,") && css.includes('input[type="submit"]:disabled,') && css.includes('input[type="button"]:disabled'), "Disabled button contrast must not inherit pale text on a saturated background");
 console.log("PASS screenshot-driven global button and link contrast rules.");
+
+const settingsPage = readFileSync("app/settings/page.tsx", "utf8");
+const marketplacePage = readFileSync("app/jobs/page.tsx", "utf8");
+assert.ok(settingsPage.includes('className="account-settings-page"'), "Account settings must use the shared layout wrapper");
+assert.ok(marketplacePage.includes('className="marketplace-page"'), "Marketplace must use a responsive width-safe wrapper");
+assert.ok(css.includes(".account-settings-page label input:not([type=\"checkbox\"])"), "Account settings fields must have their own legible stacked layout");
+assert.ok(css.includes(".marketplace-header-actions"), "Marketplace header actions must wrap rather than push the title off-screen");
+console.log("PASS responsive wrappers and account form layout.");
