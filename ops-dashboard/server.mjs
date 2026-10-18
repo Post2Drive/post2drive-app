@@ -230,6 +230,55 @@ tr:hover td{background:#EAF2FF}
 .badge-danger,.status-cancelled,.status-failed{background:#D71920!important;color:#FFFFFF!important}
 .badge-warning,.status-review,.status-pending{background:#FFC400!important;color:#171717!important}
 :focus-visible{outline:3px solid #F06A00!important;outline-offset:2px}
+
+/* Solid seven-colour corporate refresh: white panels, black copy, saturated accents. */
+body{background:#FFFFFF;color:#171717}
+header.app-header{background:#FFFFFF!important;border-bottom:2px solid #2457D6;box-shadow:0 4px 16px rgba(23,23,23,.06)}
+.brand,.brand-block{color:#2457D6}
+.panel,.kpi,.source-card,.watch-card,.filter-panel{background:#FFFFFF!important;color:#171717;border-color:#D7DCE4}
+.panel:nth-of-type(7n+1),.watch-card:nth-child(7n+1){border-top:4px solid #2457D6}
+.panel:nth-of-type(7n+2),.watch-card:nth-child(7n+2){border-top:4px solid #D62828}
+.panel:nth-of-type(7n+3),.watch-card:nth-child(7n+3){border-top:4px solid #18864B}
+.panel:nth-of-type(7n+4),.watch-card:nth-child(7n+4){border-top:4px solid #6D28D9}
+.panel:nth-of-type(7n+5),.watch-card:nth-child(7n+5){border-top:4px solid #E87500}
+.panel:nth-of-type(7n+6),.watch-card:nth-child(7n+6){border-top:4px solid #F2C300}
+.panel:nth-of-type(7n),.watch-card:nth-child(7n){border-top:4px solid #171717}
+.kpi{background:#FFFFFF;border-top:4px solid #2457D6;box-shadow:0 3px 12px rgba(23,23,23,.06)}
+.kpis .kpi:nth-child(7n+1){border-top-color:#2457D6}.kpis .kpi:nth-child(7n+2){border-top-color:#D62828}.kpis .kpi:nth-child(7n+3){border-top-color:#18864B}.kpis .kpi:nth-child(7n+4){border-top-color:#6D28D9}.kpis .kpi:nth-child(7n+5){border-top-color:#E87500}.kpis .kpi:nth-child(7n+6){border-top-color:#F2C300}.kpis .kpi:nth-child(7n){border-top-color:#171717}
+.kpi strong{color:#171717}
+.bar{background:linear-gradient(90deg,#2457D6 0%,#6D28D9 25%,#E87500 50%,#18864B 75%,#D62828 100%)}
+.chart .line{stroke:#2457D6}.chart .area{fill:#2457D618}.chart .gridline{stroke:#D7DCE4}.chart text{fill:#454B55}
+.section-nav{background:#FFFFFF}.section-nav a{background:#FFFFFF;color:#171717;border-color:#D7DCE4}.section-nav a:hover,.section-nav a:focus{background:#F2C300;color:#171717;border-color:#171717}
+select,button,input[type=number],.filter-drawer>summary{background:#FFFFFF;color:#171717;border-color:#B9C1CE}
+button.primary{background:#2457D6;color:#FFFFFF;border-color:#2457D6}
+button.primary:hover{background:#173FA8;color:#FFFFFF}
+.pill.good{background:#E8F6ED;color:#126B3B;border-color:#18864B}.pill.warn{background:#FFF6CC;color:#171717;border-color:#F2C300}.pill.bad{background:#FCE8E8;color:#A71919;border-color:#D62828}
+.notice{background:#FFF6CC;color:#171717;border-color:#F2C300}
+.insight{background:#E8F6ED;border-left-color:#18864B;color:#171717}
+.source-tools input{background:#FFFFFF;color:#171717}
+
+/* Flat, solid chart colours (no gradient fills); keep each series unmistakable. */
+.bar{background:#2457D6}
+.chart .area{fill:#2457D61A}
+.kpi,.panel,.watch-card,.source-card{background:#FFFFFF!important}
+
+/* Nine distinct solid categories for dense charts: core palette plus cyan and magenta. */
+.kpis .kpi:nth-child(9n+8){border-top-color:#0096C7}
+.kpis .kpi:nth-child(9n){border-top-color:#C0268D}
+
+/* Use the same solid colour roles on the admin UI in every market. */
+.panel,.kpi,.source-card,.watch-card,.filter-panel{background:#FFFFFF!important;color:#171717}
+.panel{border-top:4px solid #2457D6}
+.grid.two>.panel:nth-child(9n+1){border-top-color:#2457D6}
+.grid.two>.panel:nth-child(9n+2){border-top-color:#D62828}
+.grid.two>.panel:nth-child(9n+3){border-top-color:#18864B}
+.grid.two>.panel:nth-child(9n+4){border-top-color:#171717}
+.grid.two>.panel:nth-child(9n+5){border-top-color:#F2C300}
+.grid.two>.panel:nth-child(9n+6){border-top-color:#6D28D9}
+.grid.two>.panel:nth-child(9n+7){border-top-color:#E87500}
+.grid.two>.panel:nth-child(9n+8){border-top-color:#0096C7}
+.grid.two>.panel:nth-child(9n){border-top-color:#C0268D}
+
 </style>
 <header class='app-header'><div class='brand-block'><div class='brand'>POST2DRIVE / ADMIN DASHBOARD</div><div class='sub'>Operations · marketplace analytics · country logistics signals</div></div><div class='header-actions'><details id='filterDrawer' class='filter-drawer'><summary id='filterSummary'>Filters · Global · 7 days</summary><div class='filter-panel'><label for='country'>Market<select id='country'><option value='ALL'>🌐 Global · all markets</option>${markets.map(m=>`<option value='${m.code}'>${m.name} · ${m.currency}</option>`).join('')}</select></label><label for='compare'>Compare market<select id='compare'><option value=''>No comparison</option>${markets.map(m=>`<option value='${m.code}'>${m.name}</option>`).join('')}</select></label><label for='days'>Time window<select id='days'><option value='1'>24 hours</option><option value='7' selected>7 days</option><option value='30'>30 days</option><option value='90'>90 days</option></select></label><p class='filter-hint'>Filters only change reporting. Nothing in the marketplace is modified.</p><div class='filter-panel-actions'><button id='resetFilters' type='button'>Reset &amp; apply</button><button id='applyFilters' class='primary' type='button'>Apply filters</button></div></div></details><button id='refresh' class='primary' type='button'>↻ Refresh data</button><form method="post" action="/logout" class="header-signout"><button type='submit'>Sign out</button></form></div></header><nav class="section-nav" aria-label="Admin sections"><a href="#overview">Command Centre</a><a href="#marketplace">Marketplace</a><a href="#people">Trust & Operations</a><a href="#quality">QA & Engineering</a><a href="#countries">Countries & Research</a><a href="#audit">Admin & Audit</a><a href="#catalogue-section">Data Catalogue</a></nav><main><div id="overview" class="section"><div><h1 id="title">Global operations overview</h1><p id="subtitle">Loading country-aware metrics…</p></div><div class="status" id="updated">Connecting to reporting database…</div></div><div id="warning"></div>
 <div class="grid kpis" id="kpis"></div><div class="section"><div><h2>Needs attention</h2><p>Prioritized operational exceptions; recommendations are advisory and do not perform changes.</p></div><div class="status" id="attentionCount">Building queue…</div></div><section class="panel"><div class="scroll" id="attentionQueue"></div></section>
@@ -713,51 +762,3 @@ const server = http.createServer(async (req,res) => {
 });
 server.listen(PORT,"0.0.0.0",()=>console.log(`Post2Drive Ops Dashboard listening on ${PORT}`));
 for (const sig of ["SIGTERM","SIGINT"]) process.on(sig,async()=>{server.close();await prisma.$disconnect();process.exit(0);});
-
-/* Solid seven-colour corporate refresh: white panels, black copy, saturated accents. */
-body{background:#FFFFFF;color:#171717}
-header.app-header{background:#FFFFFF!important;border-bottom:2px solid #2457D6;box-shadow:0 4px 16px rgba(23,23,23,.06)}
-.brand,.brand-block{color:#2457D6}
-.panel,.kpi,.source-card,.watch-card,.filter-panel{background:#FFFFFF!important;color:#171717;border-color:#D7DCE4}
-.panel:nth-of-type(7n+1),.watch-card:nth-child(7n+1){border-top:4px solid #2457D6}
-.panel:nth-of-type(7n+2),.watch-card:nth-child(7n+2){border-top:4px solid #D62828}
-.panel:nth-of-type(7n+3),.watch-card:nth-child(7n+3){border-top:4px solid #18864B}
-.panel:nth-of-type(7n+4),.watch-card:nth-child(7n+4){border-top:4px solid #6D28D9}
-.panel:nth-of-type(7n+5),.watch-card:nth-child(7n+5){border-top:4px solid #E87500}
-.panel:nth-of-type(7n+6),.watch-card:nth-child(7n+6){border-top:4px solid #F2C300}
-.panel:nth-of-type(7n),.watch-card:nth-child(7n){border-top:4px solid #171717}
-.kpi{background:#FFFFFF;border-top:4px solid #2457D6;box-shadow:0 3px 12px rgba(23,23,23,.06)}
-.kpis .kpi:nth-child(7n+1){border-top-color:#2457D6}.kpis .kpi:nth-child(7n+2){border-top-color:#D62828}.kpis .kpi:nth-child(7n+3){border-top-color:#18864B}.kpis .kpi:nth-child(7n+4){border-top-color:#6D28D9}.kpis .kpi:nth-child(7n+5){border-top-color:#E87500}.kpis .kpi:nth-child(7n+6){border-top-color:#F2C300}.kpis .kpi:nth-child(7n){border-top-color:#171717}
-.kpi strong{color:#171717}
-.bar{background:linear-gradient(90deg,#2457D6 0%,#6D28D9 25%,#E87500 50%,#18864B 75%,#D62828 100%)}
-.chart .line{stroke:#2457D6}.chart .area{fill:#2457D618}.chart .gridline{stroke:#D7DCE4}.chart text{fill:#454B55}
-.section-nav{background:#FFFFFF}.section-nav a{background:#FFFFFF;color:#171717;border-color:#D7DCE4}.section-nav a:hover,.section-nav a:focus{background:#F2C300;color:#171717;border-color:#171717}
-select,button,input[type=number],.filter-drawer>summary{background:#FFFFFF;color:#171717;border-color:#B9C1CE}
-button.primary{background:#2457D6;color:#FFFFFF;border-color:#2457D6}
-button.primary:hover{background:#173FA8;color:#FFFFFF}
-.pill.good{background:#E8F6ED;color:#126B3B;border-color:#18864B}.pill.warn{background:#FFF6CC;color:#171717;border-color:#F2C300}.pill.bad{background:#FCE8E8;color:#A71919;border-color:#D62828}
-.notice{background:#FFF6CC;color:#171717;border-color:#F2C300}
-.insight{background:#E8F6ED;border-left-color:#18864B;color:#171717}
-.source-tools input{background:#FFFFFF;color:#171717}
-
-/* Flat, solid chart colours (no gradient fills); keep each series unmistakable. */
-.bar{background:#2457D6}
-.chart .area{fill:#2457D61A}
-.kpi,.panel,.watch-card,.source-card{background:#FFFFFF!important}
-
-/* Nine distinct solid categories for dense charts: core palette plus cyan and magenta. */
-.kpis .kpi:nth-child(9n+8){border-top-color:#0096C7}
-.kpis .kpi:nth-child(9n){border-top-color:#C0268D}
-
-/* Use the same solid colour roles on the admin UI in every market. */
-.panel,.kpi,.source-card,.watch-card,.filter-panel{background:#FFFFFF!important;color:#171717}
-.panel{border-top:4px solid #2457D6}
-.grid.two>.panel:nth-child(9n+1){border-top-color:#2457D6}
-.grid.two>.panel:nth-child(9n+2){border-top-color:#D62828}
-.grid.two>.panel:nth-child(9n+3){border-top-color:#18864B}
-.grid.two>.panel:nth-child(9n+4){border-top-color:#171717}
-.grid.two>.panel:nth-child(9n+5){border-top-color:#F2C300}
-.grid.two>.panel:nth-child(9n+6){border-top-color:#6D28D9}
-.grid.two>.panel:nth-child(9n+7){border-top-color:#E87500}
-.grid.two>.panel:nth-child(9n+8){border-top-color:#0096C7}
-.grid.two>.panel:nth-child(9n){border-top-color:#C0268D}
