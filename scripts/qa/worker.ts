@@ -99,7 +99,7 @@ async function markWorkerFailure(runId: string) {
 
 async function advanceCampaign(runId: string) {
   await prisma.$transaction(async tx => {
-    await tx.$queryRawUnsafe("SELECT pg_advisory_xact_lock(hashtext($1))", "post2drive-qa-run-queue");
+    await tx.$queryRawUnsafe("WITH queue_lock AS MATERIALIZED (SELECT pg_advisory_xact_lock(hashtext($1))) SELECT 1 FROM queue_lock", "post2drive-qa-run-queue");
     const rows = await tx.$queryRawUnsafe<Array<{ status: string; summary: unknown }>>(
       "SELECT status,summary FROM qa_test_runs WHERE id=$1 FOR UPDATE", runId
     );
