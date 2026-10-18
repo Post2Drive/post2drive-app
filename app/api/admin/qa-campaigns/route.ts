@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { authOptions } from "@/lib/auth";
 import { isTesterAdmin } from "@/lib/testerAdmin";
 import { prisma } from "@/lib/prisma";
+import { isQaRunnerEnabled } from "@/lib/qaRunnerGuard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -88,7 +89,7 @@ export async function GET() {
     const normalise = (row: any) => ({ ...row, durationMs: row.durationMs === null ? null : row.durationMs === undefined ? null : Number(row.durationMs) });
     const runs = rawRuns.map(normalise);
     const steps = rawSteps.map(normalise);
-    return NextResponse.json({ campaigns, runs, steps, executionEnabled: true }, { headers: { "cache-control": "no-store" } });
+    return NextResponse.json({ campaigns, runs, steps, executionEnabled: isQaRunnerEnabled() }, { headers: { "cache-control": "no-store" } });
   } catch (error) {
     console.error("QA campaign history unavailable", error);
     return NextResponse.json({ error: "Campaign storage is not available yet. Apply the reviewed QA campaign metadata migration to staging before using this page." }, { status: 503 });
