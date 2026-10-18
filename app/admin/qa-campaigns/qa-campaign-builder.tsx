@@ -5,6 +5,7 @@ import type { CSSProperties } from "react";
 
 type Variation = { id: string; name: string; description: string; overrides: Record<string, string> };
 type Campaign = { id: string; name: string; targetEnvironment: string; countryCode: string; scenario: string; totalCampaignTests: number; testsPerVariation: number; accountCount: number; concurrency: number; suites: string[]; variations: Variation[]; executionMode: string; status: string; createdAt: string };
+type QaRun = { id: string; status: string; targetAccounts: number; createdAccounts: number; successfulChecks: number; failedChecks: number; durationMs: number | null; startedAt: string; finishedAt: string | null; countryCode: string | null; testType: string | null; loadRequestCount: number | null };
 const countries = [["IN","India"],["GB","United Kingdom"],["US","United States"],["CA","Canada"],["AU","Australia"],["DE","Germany"],["FR","France"],["NL","Netherlands"],["IE","Ireland"],["NZ","New Zealand"],["CH","Switzerland"],["TR","Türkiye"]];
 const suiteOptions = [["provisioning","Synthetic account provisioning"],["api","API load"],["workflow","Workflow E2E"],["regression","Regression"],["localization","Country localization"],["failure","Failure handling"]];
 const panel: CSSProperties = { border: "1px solid #dfe5eb", borderRadius: 12, padding: 18, marginTop: 16, background: "#fff" };
@@ -25,6 +26,7 @@ export default function QaCampaignBuilder() {
   const [suites,setSuites] = useState<string[]>(["provisioning","api","workflow","regression","localization","failure"]);
   const [variations,setVariations] = useState<Variation[]>([defaultVariation(0),defaultVariation(1),defaultVariation(2)]);
   const [campaigns,setCampaigns] = useState<Campaign[]>([]);
+  const [runs,setRuns] = useState<QaRun[]>([]);
   const [error,setError] = useState("");
   const [notice,setNotice] = useState("");
   const [busy,setBusy] = useState(false);
@@ -36,6 +38,7 @@ export default function QaCampaignBuilder() {
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "Could not load campaign history.");
       setCampaigns(payload.campaigns || []);
+      setRuns(payload.runs || []);
       setError("");
     } catch(e) { setError(e instanceof Error ? e.message : "Could not load campaign history."); }
   },[]);
@@ -100,6 +103,9 @@ export default function QaCampaignBuilder() {
       <h2 style={{margin:"0 0 12px",fontSize:20}}>Campaign history</h2>
       <p style={{fontSize:13,color:"#667085"}}>Saved plans only. Execution results and run-level performance will appear here after campaign-to-run orchestration is implemented; historical QA run/event rows remain untouched.</p>
       {campaigns.length?<div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:13,textAlign:"left"}}><thead><tr>{["Created","Campaign","Market","Scenario","Total tests","Tests / variation","Accounts","Concurrency","Status"].map(x=><th key={x} style={{padding:"9px",borderBottom:"1px solid #dfe5eb",whiteSpace:"nowrap"}}>{x}</th>)}</tr></thead><tbody>{campaigns.map(c=><tr key={c.id}>{[date(c.createdAt),c.name,c.countryCode,c.scenario,Number(c.totalCampaignTests).toLocaleString(),Number(c.testsPerVariation).toLocaleString(),Number(c.accountCount).toLocaleString(),c.concurrency,c.status].map((v,i)=><td key={i} style={{padding:"9px",borderBottom:"1px solid #e4e7ec"}}>{String(v)}</td>)}</tr>)}</tbody></table></div>:<p style={{fontSize:13,color:"#667085"}}>No saved campaign plans yet.</p>}
+      <h3 style={{margin:"22px 0 8px",fontSize:17}}>Recent QA runs (existing execution evidence)</h3>
+      <p style={{fontSize:13,color:"#667085"}}>These runs pre-date campaign orchestration and are shown separately; they are not attributed to any saved draft. Failed events and summaries remain in the existing QA history tables.</p>
+      {runs.length?<div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:13,textAlign:"left"}}><thead><tr>{["Started","Run ID","Market","Test type","Status","Target accounts","Created","Checks passed","Checks failed","Load requests","Duration"].map(x=><th key={x} style={{padding:"9px",borderBottom:"1px solid #dfe5eb",whiteSpace:"nowrap"}}>{x}</th>)}</tr></thead><tbody>{runs.map(r=><tr key={r.id}>{[date(r.startedAt),r.id,r.countryCode||"—",r.testType||"—",r.status,Number(r.targetAccounts).toLocaleString(),Number(r.createdAccounts).toLocaleString(),Number(r.successfulChecks).toLocaleString(),Number(r.failedChecks).toLocaleString(),r.loadRequestCount==null?"—":Number(r.loadRequestCount).toLocaleString(),r.durationMs==null?"—":(Number(r.durationMs)>=1000?(Number(r.durationMs)/1000).toFixed(2)+" s":Number(r.durationMs)+" ms")].map((v,i)=><td key={i} style={{padding:"9px",borderBottom:"1px solid #e4e7ec",color:i===8&&Number(r.failedChecks)>0?"#b42318":"inherit"}}>{String(v)}</td>)}</tr>)}</tbody></table></div>:<p style={{fontSize:13,color:"#667085"}}>No QA runs have been recorded.</p>}
     </section>
   </div>;
 }
