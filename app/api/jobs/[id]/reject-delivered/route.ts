@@ -99,6 +99,13 @@ async function POSTHandler(
     );
   }
 
+  if (!job.deliveryMarkedById) {
+    return NextResponse.json(
+      { error: "This delivery has no recorded confirming party. Contact support." },
+      { status: 409 }
+    );
+  }
+
   const updated = await prisma.$transaction(async (tx) => {
     const transition = await tx.job.updateMany({
       where: {
