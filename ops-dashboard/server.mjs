@@ -577,7 +577,7 @@ document.addEventListener("click",async event=>{
       }
       if(kind==="start") {
         if(!confirm("Run this campaign on staging? It can create synthetic data. The system will keep the data and reports."))return;
-        button.disabled=true;const result=await adminAction({action:"qa-campaign-start",campaignId});$("qaCampaignFormMessage").textContent="Campaign queued. Run ID: "+result.runId;await loadQaCampaigns();return;
+        button.disabled=true;const result=await adminAction({action:"qa-campaign-start",campaignId,confirm:"RUN_QA_CAMPAIGN_ON_STAGING"});$("qaCampaignFormMessage").textContent="Campaign queued. Run ID: "+result.runId;await loadQaCampaigns();return;
       }
     }
     if(button.id==="generateTesterCode") {
