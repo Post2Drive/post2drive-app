@@ -115,32 +115,39 @@ async function POSTHandler(req: Request) {
       }
     }
 
-    const duplicate = await prisma.vehicle.findFirst({
-      where: { regPlate, accountId: account.id },
+    // Serialize registrations for this account so simultaneous duplicate
+    // submissions cannot both pass the preflight duplicate check.
+    const vehicle = await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw<Array<{ id: string }>>`SELECT "id" FROM "Account" WHERE "id" = ${account.id} FOR UPDATE`;
+      const duplicate = await tx.vehicle.findFirst({
+        where: { regPlate, accountId: account.id },
+        select: { id: true },
+      });
+      if (duplicate) return null;
+
+      return tx.vehicle.create({
+        data: {
+          accountId: account.id,
+          vehicleType,
+          regPlate,
+          registrationRegion: registrationRegion || null,
+          ownershipType,
+          make: make || null,
+          model: model || null,
+          mamKg,
+          v5cDocumentUrl: v5cDocumentUrl || null,
+          insuranceDocumentUrl: insuranceDocumentUrl || null,
+          operatorLicenceNo: operatorLicenceNo || null,
+          motValidUntil,
+          insuranceValidUntil,
+          verificationStatus: "pending",
+          verifiedAt: null,
+        },
+      });
     });
-    if (duplicate) {
+    if (!vehicle) {
       return NextResponse.json({ error: "This registration is already on your account." }, { status: 409 });
     }
-
-    const vehicle = await prisma.vehicle.create({
-      data: {
-        accountId: account.id,
-        vehicleType,
-        regPlate,
-        registrationRegion: registrationRegion || null,
-        ownershipType,
-        make: make || null,
-        model: model || null,
-        mamKg,
-        v5cDocumentUrl: v5cDocumentUrl || null,
-        insuranceDocumentUrl: insuranceDocumentUrl || null,
-        operatorLicenceNo: operatorLicenceNo || null,
-        motValidUntil,
-        insuranceValidUntil,
-        verificationStatus: "pending",
-        verifiedAt: null,
-      },
-    });
 
     return NextResponse.json({
       success: true,
