@@ -1385,7 +1385,7 @@ textarea {
   }
   .mobile-nav-link {
     display: flex;
-    flex: 0 0 auto !important;
+    flex: 1 0 auto !important;
     align-items: center;
     justify-content: center;
     min-width: 68px;
