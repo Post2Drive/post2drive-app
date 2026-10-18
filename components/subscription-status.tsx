@@ -226,7 +226,7 @@ export default function SubscriptionStatus() {
               fontWeight: 700,
               fontSize: 14,
             }}
-           className="button-link button-link-secondary">
+           className="button-link">
             View pricing
           </Link>
         </div>
