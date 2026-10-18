@@ -79,6 +79,8 @@ export default function PerformanceDashboard() {
   const [data,setData]=useState<Data|null>(null);
   const [error,setError]=useState("");
   const [loading,setLoading]=useState(true);
+  const [showAllQaRuns,setShowAllQaRuns]=useState(false);
+  const [showAllQaFailures,setShowAllQaFailures]=useState(false);
   const load=useCallback(async()=>{
     setLoading(true);setError("");
     try {
@@ -144,11 +146,11 @@ export default function PerformanceDashboard() {
       <Table rows={data.endpointPerformance} columns={endpointColumns} empty="No API timings yet. Deploy the telemetry release and exercise the app."/>
     </Section>
     <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,380px),1fr))",gap:14 }}>
-      <Section title="Account types"><Distribution rows={data.accountTypes}/></Section>
-      <Section title="Verification status"><Distribution rows={data.verificationStatuses}/></Section>
-      <Section title="Subscription status"><Distribution rows={data.subscriptionStatuses}/></Section>
-      <Section title="Job status"><Distribution rows={data.jobStatuses}/></Section>
-      <Section title="Fixed-price vs bidding jobs"><Distribution rows={data.jobPriceModes}/></Section>
+      <Section title="Account types"><PieChart rows={data.accountTypes} title="Account types"/></Section>
+      <Section title="Verification status"><PieChart rows={data.verificationStatuses} title="Verification status"/></Section>
+      <Section title="Subscription status"><PieChart rows={data.subscriptionStatuses} title="Subscription status"/></Section>
+      <Section title="Job status"><PieChart rows={data.jobStatuses} title="Job status"/></Section>
+      <Section title="Fixed-price vs bidding jobs"><PieChart rows={data.jobPriceModes} title="Fixed-price vs bidding jobs"/></Section>
       <Section title="Product activity events" subtitle={"Application-level usage events over the last " + days + " day(s)."}><Distribution rows={data.usageEvents}/></Section>
     </div>
     <Section title="Job activity and lifecycle" subtitle={"Action counts from the past "+days+" day(s). This helps show where loads are moving, cancelled or getting stuck."}>
@@ -239,7 +241,7 @@ export default function PerformanceDashboard() {
       </div>})()}
     </Section> : null}
     <Section title="Synthetic QA runs" subtitle="Latest 100 stored runs, kept separate from business totals. Country and phase are read from each saved summary; missing metadata is shown as not recorded.">
-      <Table rows={data.qaRuns} columns={[
+      <Table rows={showAllQaRuns?data.qaRuns:data.qaRuns.slice(0,15)} columns={[
         {key:"id",label:"Run ID",render:(v:any)=><span style={{fontFamily:"monospace",fontSize:11,overflowWrap:"anywhere"}}>{String(v??"—")}</span>},
         {key:"startedAt",label:"Started",render:(v:any)=>date(v)},
         {key:"country",label:"Country",render:(_:any,row:Row)=>{const s=qaSummary(row);return String(s.country||s.marketCode||s.marketLabel||"Not recorded");}},
@@ -251,8 +253,9 @@ export default function PerformanceDashboard() {
         {key:"failedChecks",label:"Failed",render:(v:any,row:Row)=><span style={{color:Number(v)>0?"#b42318":"inherit",fontWeight:700}}>{num(v)}</span>},
         {key:"durationMs",label:"Run time",render:(v:any)=>duration(v)}
       ]}/>
+      {data.qaRuns.length>15?<div style={{marginTop:10}}><button type="button" onClick={()=>setShowAllQaRuns(v=>!v)} aria-expanded={showAllQaRuns} style={{border:"1px solid "+palette.border,borderRadius:8,padding:"8px 12px",background:"white",cursor:"pointer"}}>{showAllQaRuns?"Show fewer (15)":"Show all "+data.qaRuns.length+" runs"}</button></div>:null}
       <h3 style={{fontSize:15,margin:"18px 0 8px"}}>Failure patterns across recent QA runs</h3>
-      <Table rows={data.latestQaFailures} columns={[
+      <Table rows={showAllQaFailures?data.latestQaFailures:data.latestQaFailures.slice(0,15)} columns={[
         {key:"runId",label:"Run ID",render:(v:any)=><span style={{fontFamily:"monospace",fontSize:11,overflowWrap:"anywhere"}}>{String(v??"—")}</span>},
         {key:"country",label:"Country",render:(v:any)=>String(v??"Not recorded")},
         {key:"runStatus",label:"Run status"},
@@ -263,6 +266,7 @@ export default function PerformanceDashboard() {
         {key:"actual",label:"Actual"},
         {key:"count",label:"Count",render:(v:any)=>num(v)}
       ]}/>
+      {data.latestQaFailures.length>15?<div style={{marginTop:10}}><button type="button" onClick={()=>setShowAllQaFailures(v=>!v)} aria-expanded={showAllQaFailures} style={{border:"1px solid "+palette.border,borderRadius:8,padding:"8px 12px",background:"white",cursor:"pointer"}}>{showAllQaFailures?"Show fewer (15)":"Show all "+data.latestQaFailures.length+" failure groups"}</button></div>:null}
     </Section>
     <p style={{ color:palette.muted,fontSize:12,lineHeight:1.5 }}>Performance telemetry records method, route template, status and duration only. It intentionally omits emails, account IDs, full URLs, query strings, request bodies and passwords. Dashboard metrics are operational indicators, not a guarantee of production capacity; run controlled load tests before making capacity commitments.</p>
   </div>;
