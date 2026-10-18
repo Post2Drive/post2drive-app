@@ -952,3 +952,16 @@ main [role=alert] strong{color:#D62828}
 .ops-theme-dashboard .ops-section-fulfilment>div:first-of-type>div:nth-child(4n+2){--metric-accent:#2457D6}
 .ops-theme-dashboard .ops-section-fulfilment>div:first-of-type>div:nth-child(4n+3){--metric-accent:#6D28D9}
 .ops-theme-dashboard .ops-section-fulfilment>div:first-of-type>div:nth-child(4n){--metric-accent:#E87500}
+
+/* Notifications share white surfaces and use a solid semantic left rail. */
+.notification-card{background:#FFFFFF!important;color:#171717;border:1px solid #D7DCE4!important;border-left:4px solid #2457D6!important}
+.notification-card[data-notice-type*="incident"],.notification-card[data-notice-type*="reject"],.notification-card[data-notice-type*="cancel"],.notification-card[data-notice-type*="error"]{border-left-color:#D62828!important}
+.notification-card[data-notice-type*="deliver"],.notification-card[data-notice-type*="complete"],.notification-card[data-notice-type*="verified"],.notification-card[data-notice-type*="success"]{border-left-color:#18864B!important}
+.notification-card[data-notice-type*="payment"],.notification-card[data-notice-type*="subscription"]{border-left-color:#6D28D9!important}
+.notification-card[data-notice-type*="vehicle"],.notification-card[data-notice-type*="verification"],.notification-card[data-notice-type*="review"]{border-left-color:#F2C300!important}
+.notification-card[data-notice-type*="offer"],.notification-card[data-notice-type*="new_job"],.notification-card[data-notice-type*="transit"]{border-left-color:#E87500!important}
+.notification-card strong,.notification-card p{color:#171717}
+.ops-theme-dashboard .ops-section-overview .dashboard-stat-link .ops-theme-card>div:first-child,
+.ops-theme-dashboard .ops-section-overview .dashboard-stat-link .ops-theme-card>div:nth-child(2){color:#171717!important}
+.ops-theme-dashboard .ops-section-pipeline>div:first-of-type>div strong,
+.ops-theme-dashboard .ops-section-fulfilment>div:first-of-type>div strong{color:#171717!important}
