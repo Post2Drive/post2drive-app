@@ -965,3 +965,11 @@ main [role=alert] strong{color:#D62828}
 .ops-theme-dashboard .ops-section-overview .dashboard-stat-link .ops-theme-card>div:nth-child(2){color:#171717!important}
 .ops-theme-dashboard .ops-section-pipeline>div:first-of-type>div strong,
 .ops-theme-dashboard .ops-section-fulfilment>div:first-of-type>div strong{color:#171717!important}
+
+/* Workflow colour is expressed in the rail; job-card wording stays black for contrast. */
+.marketplace-job-card strong{color:#171717!important}
+.marketplace-job-card[data-status="open"]{--job-accent:#2457D6}
+.marketplace-job-card[data-status="accepted"]{--job-accent:#6D28D9}
+.marketplace-job-card[data-status="in_transit"]{--job-accent:#E87500}
+.marketplace-job-card[data-status="delivered"],.marketplace-job-card[data-status="completed"]{--job-accent:#18864B}
+.marketplace-job-card[data-status="cancelled"]{--job-accent:#D62828}
