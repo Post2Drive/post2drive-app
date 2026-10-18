@@ -656,33 +656,14 @@ export default function JobsPage() {
         );
 
   return (
-    <div
-      style={{
-        maxWidth: 760,
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          justifyContent:
-            "space-between",
-          alignItems:
-            "center",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
-        <h1>{countryName} delivery marketplace</h1>
+    <div className="marketplace-page" style={{ width: "100%", maxWidth: 1200, margin: "0 auto", padding: 24, boxSizing: "border-box" }}>
+      <div className="marketplace-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 16 }}>
+        <div className="marketplace-heading" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, flex: "1 1 320px", minWidth: 0 }}>
+        <h1 style={{ margin: 0, minWidth: 0, overflowWrap: "anywhere" }}>{countryName} delivery marketplace</h1>
         {accountCountry === "IN" && <Link className="button-link button-link-secondary" href="/requirements">My Requirements</Link>}
       </div>
 
-        <div
-          style={{
-            display: "flex",
-            gap: 12,
-            alignItems:
-              "center",
-          }}
-        >
+        <div className="marketplace-header-actions" style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", minWidth: 0 }}>
           {canPost && (
             <Link href="/jobs/new" className="button-link button-link-secondary">
               + Post a job

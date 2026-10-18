@@ -1107,3 +1107,161 @@ main [style*="background: var(--color-danger-soft)"],
 main [style*="background:var(--color-danger-soft)"]{
   background:#FFFFFF!important;border:1px solid #D62828!important;
 }
+
+/* Screenshot-driven control contrast fix. These rules apply even when a route
+   uses a top-level div instead of main, and override inline text colours. */
+a.button-link:not(.button-link-secondary),
+.button-link:not(.button-link-secondary) {
+  background: #2457D6 !important;
+  color: #FFFFFF !important;
+  border: 1px solid #2457D6 !important;
+}
+a.button-link:not(.button-link-secondary) *,
+.button-link:not(.button-link-secondary) * {
+  color: #FFFFFF !important;
+}
+a.button-link-secondary,
+.button-link-secondary {
+  background: #FFFFFF !important;
+  color: #2457D6 !important;
+  border: 1px solid #2457D6 !important;
+}
+a.button-link-secondary *,
+.button-link-secondary * {
+  color: #2457D6 !important;
+}
+
+/* Inline-styled labels must not overrule a button's background contrast. */
+button:not(:disabled):not([style*="background: transparent"]):not([style*="background:transparent"]):not([style*="background: var(--color-surface)"]):not([style*="background:var(--color-surface)"]),
+input[type="submit"]:not(:disabled),
+input[type="button"]:not(:disabled) {
+  color: #FFFFFF !important;
+}
+button:not(:disabled):not([style*="background: transparent"]):not([style*="background:transparent"]):not([style*="background: var(--color-surface)"]):not([style*="background:var(--color-surface)"]) *,
+input[type="submit"]:not(:disabled) *,
+input[type="button"]:not(:disabled) * {
+  color: #FFFFFF !important;
+}
+
+/* Transparent tab controls remain transparent and use dark text. */
+button[style*="background: transparent"],
+button[style*="background:transparent"] {
+  background: transparent !important;
+  color: #171717 !important;
+  border-color: transparent;
+}
+button[style*="background: transparent"] *,
+button[style*="background:transparent"] * {
+  color: #171717 !important;
+}
+
+/* Explicit white-surface secondary buttons use blue wording. */
+button:not(:disabled)[style*="background: var(--color-surface)"],
+button:not(:disabled)[style*="background:var(--color-surface)"] {
+  background: #FFFFFF !important;
+  color: #2457D6 !important;
+  border-color: #2457D6 !important;
+}
+button:not(:disabled)[style*="background: var(--color-surface)"] *,
+button:not(:disabled)[style*="background:var(--color-surface)"] * {
+  color: #2457D6 !important;
+}
+
+/* Disabled actions are visibly disabled without leaving pale text on bright fills. */
+button:disabled,
+input[type="submit"]:disabled,
+input[type="button"]:disabled {
+  background: #E8EBF0 !important;
+  color: #30343B !important;
+  border-color: #9299A5 !important;
+  box-shadow: none !important;
+  opacity: 1;
+}
+button:disabled *,
+input[type="submit"]:disabled *,
+input[type="button"]:disabled * {
+  color: #30343B !important;
+}
+
+/* Layout guardrails for routes that previously bypassed the shared main layout. */
+.marketplace-page {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+  box-sizing: border-box;
+}
+.marketplace-header {
+  width: 100%;
+  min-width: 0;
+}
+.marketplace-heading {
+  flex: 1 1 320px;
+  min-width: 0;
+}
+.marketplace-heading h1 {
+  max-width: 100%;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+.marketplace-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  min-width: 0;
+}
+.account-settings-page {
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 24px;
+  box-sizing: border-box;
+}
+.account-settings-page label {
+  display: block;
+  min-width: 0;
+  color: #30343B;
+  font-weight: 600;
+  line-height: 1.45;
+}
+.account-settings-page label input:not([type="checkbox"]):not([type="radio"]),
+.account-settings-page label select,
+.account-settings-page label textarea {
+  display: block;
+  width: 100%;
+  min-height: 42px;
+  margin-top: 7px;
+  padding: 9px 11px;
+  box-sizing: border-box;
+  border: 1px solid #AEB6C2;
+  border-radius: 8px;
+  background: #FFFFFF;
+  color: #171717;
+}
+.account-settings-page input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  margin: 2px 0 0;
+  accent-color: #2457D6;
+}
+.account-settings-page > form {
+  padding: 18px;
+  border: 1px solid #D7DCE4;
+  border-radius: 12px;
+  background: #FFFFFF;
+}
+.account-settings-page > section {
+  padding: 18px;
+}
+@media (max-width: 700px) {
+  .marketplace-page,.account-settings-page {
+    padding: 16px;
+  }
+  .marketplace-header {
+    align-items: flex-start;
+  }
+  .marketplace-header-actions {
+    width: 100%;
+  }
+}
