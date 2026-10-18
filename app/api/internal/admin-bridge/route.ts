@@ -222,7 +222,7 @@ async function handler(req: Request) {
     if (!Number.isInteger(totalTests) || totalTests < 1 || totalTests > 25000) return NextResponse.json({ error: "Enter 1 to 25,000 tests." }, { status: 400 });
     if (!Number.isInteger(accountCount) || accountCount < 500 || accountCount > 10000) return NextResponse.json({ error: "Enter 500 to 10,000 test accounts." }, { status: 400 });
     if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > 100) return NextResponse.json({ error: "Enter a concurrency value from 1 to 100." }, { status: 400 });
-    if (!suites.length || !suites.some(s => s !== "provisioning")) return NextResponse.json({ error: "Select at least one test suite other than account setup." }, { status: 400 });
+    if (!suites.length || !suites.some((s: string) => s !== "provisioning")) return NextResponse.json({ error: "Select at least one test suite other than account setup." }, { status: 400 });
     if (suites.some(s => ["workflow","regression","localization","failure"].includes(s)) && accountCount !== 10000) return NextResponse.json({ error: "Workflow, regression, localization, and failure tests require 10,000 accounts." }, { status: 400 });
     const id = "campaign-" + randomUUID();
     await prisma.$executeRawUnsafe(
@@ -271,9 +271,9 @@ async function handler(req: Request) {
       const accountCount = Number(campaign.account_count), concurrency = Number(campaign.concurrency);
       const iterations = Number(campaign.tests_per_variation), totalTests = Number(campaign.total_campaign_tests);
       const suiteTypes: Record<string,string> = { provisioning:"synthetic-accounts", api:"api-load", workflow:"workflow-e2e", regression:"workflow-e2e", localization:"workflow-e2e", failure:"workflow-e2e" };
-      const suites = (Array.isArray(campaign.suites) ? campaign.suites : []).filter((s: unknown): s is string => typeof s === "string" && Object.prototype.hasOwnProperty.call(suiteTypes, s));
+      const suites: string[] = (Array.isArray(campaign.suites) ? campaign.suites as unknown[] : []).filter((s: unknown): s is string => typeof s === "string" && Object.prototype.hasOwnProperty.call(suiteTypes, s));
       if (accountCount < 500 || accountCount > 10000 || !Number.isInteger(accountCount)) return { error: "Use 500 to 10,000 test accounts.", status: 400 };
-      if (["workflow","regression","localization","failure"].some(s => suites.includes(s)) && accountCount !== 10000) return { error: "This test suite requires 10,000 accounts.", status: 400 };
+      if (["workflow","regression","localization","failure"].some((s: string) => suites.includes(s)) && accountCount !== 10000) return { error: "This test suite requires 10,000 accounts.", status: 400 };
       if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > 100 || !Number.isInteger(iterations) || iterations < 1 || iterations > 25000 || !Number.isInteger(totalTests) || totalTests < 1 || totalTests > 25000) return { error: "The test plan has invalid limits. Review the values and save a new draft.", status: 400 };
       if (!suites.length || !suites.some(s => s !== "provisioning")) return { error: "Select at least one test suite other than account setup.", status: 400 };
       const active = await tx.$queryRawUnsafe<Array<{id:string}>>("SELECT id FROM qa_test_runs WHERE status IN ('queued','running') ORDER BY started_at DESC LIMIT 1");
