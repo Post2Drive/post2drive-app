@@ -57,6 +57,8 @@ jobs:
           npm run qa:ops-dashboard
       - name: Audit user-facing app copy for market assumptions
         run: npm run qa:localisation-copy
+      - name: Validate mobile responsiveness contract
+        run: node scripts/qa/mobile-responsiveness-contract.mjs
       - name: Validate UI text and background contrast
         run: node scripts/qa/ui-contrast-contract.mjs
       - name: Validate QA runner staging-only guard
