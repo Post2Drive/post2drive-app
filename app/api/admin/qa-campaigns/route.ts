@@ -47,7 +47,7 @@ function validate(body: any) {
   if (!Array.isArray(body?.variations) || body.variations.length < 1 || body.variations.length > MAX_VARIATIONS) errors.push("Add between 1 and 20 variations.");
   const allocatedIterations = variations.reduce((sum: number, variation: any) => {
     const raw = variation?.overrides?.testIterations;
-    const count = raw === undefined || raw === null || raw === "" ? testsPerVariation : Number(raw);
+    const count = raw === undefined || raw === null || raw === "" ? (testsPerVariation ?? 25001) : Number(raw);
     return sum + (Number.isInteger(count) && count >= 1 && count <= 25000 ? count : 25001);
   }, 0);
   if (totalCampaignTests !== null && allocatedIterations > totalCampaignTests) errors.push("Effective variation iterations cannot exceed the total campaign test count.");
