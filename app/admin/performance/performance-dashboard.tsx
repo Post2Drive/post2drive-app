@@ -270,7 +270,8 @@ export default function PerformanceDashboard() {
         {key:"durationMs",label:"Run time",render:(v:any)=>duration(v)}
       ]}/>
       {data.qaRuns.length>15?<div style={{marginTop:10}}><button type="button" onClick={()=>setShowAllQaRuns(v=>!v)} aria-expanded={showAllQaRuns} style={{border:"1px solid "+palette.border,borderRadius:8,padding:"8px 12px",background:"white",cursor:"pointer"}}>{showAllQaRuns?"Show fewer (15)":"Show all "+data.qaRuns.length+" runs"}</button></div>:null}
-      <h3 style={{fontSize:15,margin:"18px 0 8px"}}>Failure patterns across recent QA runs</h3>
+      <h3 style={{fontSize:15,margin:"18px 0 8px"}}>Active QA issues</h3>
+      <p style={{color:palette.muted,fontSize:12,margin:"0 0 10px"}}>An issue stays active until the same country/scenario/action/route/expected-status check passes in a later run. Skipped or missing checks do not clear it. Previous failures remain preserved in each run's history above.</p>
       <Table rows={showAllQaFailures?data.latestQaFailures:data.latestQaFailures.slice(0,15)} columns={[
         {key:"runId",label:"Run ID",render:(v:any)=><span style={{fontFamily:"monospace",fontSize:11,overflowWrap:"anywhere"}}>{String(v??"—")}</span>},
         {key:"country",label:"Country",render:(v:any)=>String(v??"Not recorded")},
@@ -282,7 +283,7 @@ export default function PerformanceDashboard() {
         {key:"actual",label:"Actual"},
         {key:"count",label:"Count",render:(v:any)=>num(v)}
       ]}/>
-      {data.latestQaFailures.length>15?<div style={{marginTop:10}}><button type="button" onClick={()=>setShowAllQaFailures(v=>!v)} aria-expanded={showAllQaFailures} style={{border:"1px solid "+palette.border,borderRadius:8,padding:"8px 12px",background:"white",cursor:"pointer"}}>{showAllQaFailures?"Show fewer (15)":"Show all "+data.latestQaFailures.length+" failure groups"}</button></div>:null}
+      {data.latestQaFailures.length>15?<div style={{marginTop:10}}><button type="button" onClick={()=>setShowAllQaFailures(v=>!v)} aria-expanded={showAllQaFailures} style={{border:"1px solid "+palette.border,borderRadius:8,padding:"8px 12px",background:"white",cursor:"pointer"}}>{showAllQaFailures?"Show fewer (15)":"Show all "+data.latestQaFailures.length+" active issues"}</button></div>:null}
     </Section>
     <p style={{ color:palette.muted,fontSize:12,lineHeight:1.5 }}>Performance telemetry records method, route template, status and duration only. It intentionally omits emails, account IDs, full URLs, query strings, request bodies and passwords. Dashboard metrics are operational indicators, not a guarantee of production capacity; run controlled load tests before making capacity commitments.</p>
   </div>;
