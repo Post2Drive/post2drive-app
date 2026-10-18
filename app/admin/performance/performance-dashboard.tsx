@@ -37,6 +37,23 @@ function Distribution({ rows }: { rows:Row[] }) {
     return <div key={String(r.label??i)}><div style={{ display:"flex", justifyContent:"space-between", gap:12, fontSize:13, marginBottom:5 }}><span>{String(r.label??"Unknown").replaceAll("_"," ")}</span><strong>{num(r.count)} <span style={{ color:palette.muted,fontWeight:400 }}>({pct}%)</span></strong></div><div style={{ height:7, background:"#edf0f4", borderRadius:99, overflow:"hidden" }}><div style={{ width:pct+"%", height:"100%", background:"#3778c2", borderRadius:99 }} /></div></div>;
   })}</div>;
 }
+function PieChart({ rows, title }: { rows:Row[]; title:string }) {
+  const colors=["#3778c2","#16a34a","#f59e0b","#9333ea","#0891b2","#dc2626","#64748b","#db2777"];
+  const total=rows.reduce((n,r)=>n+Number(r.count||0),0);
+  let cursor=0;
+  const stops=rows.map((r,i)=>{const value=total?Number(r.count||0)/total*100:0;const start=cursor;cursor+=value;return colors[i%colors.length]+" "+start+"% "+cursor+"%";});
+  if(!rows.length||total===0)return <p style={{color:palette.muted,fontSize:13}}>No distribution data available.</p>;
+  return <div style={{display:"grid",gridTemplateColumns:"minmax(110px,0.8fr) minmax(130px,1.2fr)",gap:14,alignItems:"center"}}>
+    <div role="img" aria-label={title+" distribution"} style={{width:"100%",maxWidth:170,aspectRatio:"1",borderRadius:"50%",background:"conic-gradient("+stops.join(",")+")",position:"relative",margin:"auto"}}>
+      <div style={{position:"absolute",inset:"25%",borderRadius:"50%",background:palette.surface,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",textAlign:"center"}}>
+        <strong style={{fontSize:18,fontVariantNumeric:"tabular-nums"}}>{num(total)}</strong><span style={{fontSize:10,color:palette.muted}}>total</span>
+      </div>
+    </div>
+    <div style={{display:"grid",gap:8}}>{rows.map((r,i)=>{const count=Number(r.count||0);return <div key={String(r.label??i)} style={{display:"grid",gridTemplateColumns:"10px minmax(0,1fr) auto",gap:7,alignItems:"center",fontSize:12}}>
+      <span style={{width:9,height:9,borderRadius:2,background:colors[i%colors.length]}}/><span style={{overflowWrap:"anywhere"}}>{String(r.label??"Unknown").replaceAll("_"," ")}</span><strong>{num(count)} <span style={{fontWeight:400,color:palette.muted}}>({Math.round(count/total*100)}%)</span></strong>
+    </div>})}</div>
+  </div>;
+}
 function TrendBars({ rows, labelKey, valueKey, valueLabel }: { rows:Row[]; labelKey:string; valueKey:string; valueLabel:string }) {
   const values=rows.map(r=>Number(r[valueKey]||0));
   const max=Math.max(1,...values);
