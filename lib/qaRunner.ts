@@ -635,8 +635,8 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
         registrationRegion: getJurisdictionOptions(market.country)[0]?.code,
         ownershipType: ["owned", "leased", "rented", "other"][i % 4], make: "QA Make", model: "QA Model", mamKg: [350, 1800, 3500, 3500, 3500, 3500, 7500, 12000, 18000, 32000, 7500, 18000, 18000, 3500, 3500, 3500][i % VEHICLE_TYPES.length],
         v5cDocumentUrl: "https://example.invalid/qa-v5c.pdf", insuranceDocumentUrl: "https://example.invalid/qa-insurance.pdf",
-        operatorLicenceNo: "QA-" + runId, motValidUntil: new Date(Date.now() + 180 * 86400000).toISOString(),
-        insuranceValidUntil: new Date(Date.now() + 180 * 86400000).toISOString(),
+        operatorLicenceNo: "QA-" + runId, motValidUntil: new Date(Date.now() + 180 * 86400000).toISOString().slice(0, 10),
+        insuranceValidUntil: new Date(Date.now() + 180 * 86400000).toISOString().slice(0, 10),
       };
       await check(a.client!, a, "vehicles", "create-synthetic-vehicle", "POST", "/api/vehicles", payload, [201]);
       await check(a.client!, a, "vehicles", "duplicate-registration-rejected", "POST", "/api/vehicles", payload, [409]);

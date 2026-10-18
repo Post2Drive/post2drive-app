@@ -1,9 +1,11 @@
-import { createHash, createHmac, randomBytes, timingSafeEqual } from "crypto";
+import { createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from "crypto";
 import { NextResponse } from "next/server";
 import { withApiMetrics } from "@/lib/apiMetrics";
 import { prisma } from "@/lib/prisma";
 import { getPromotion, calculatePromotionalEnd } from "@/lib/promotion";
 import { emailVerificationEnabled } from "@/lib/emailVerification";
+import { getMarket } from "@/lib/market";
+import { isQaRunnerEnabled } from "@/lib/qaRunnerGuard";
 
 const ALLOWED_OUTCOMES = new Set([
   "resume", "reassign", "return_goods", "terminate_with_incident",
@@ -203,6 +205,104 @@ async function handler(req: Request) {
     });
     if (!result) return NextResponse.json({ error: "The job status changed while this decision was being processed. Refresh and review before retrying." }, { status: 409 });
     return NextResponse.json({ success: true, resolution: result.resolution, jobStatus: result.finalStatus, lifecycleChanged: result.lifecycleChanged }, { status: 201 });
+  }
+
+
+  if (action === "qa-campaign-create") {
+    const name = typeof body?.name === "string" ? body.name.trim().slice(0, 120) : "";
+    const countryCode = typeof body?.countryCode === "string" ? body.countryCode.trim().toUpperCase() : "";
+    const scenario = typeof body?.scenario === "string" ? body.scenario.trim().slice(0, 120) : "";
+    const totalTests = Number(body?.totalTests);
+    const accountCount = Number(body?.accountCount);
+    const concurrency = Number(body?.concurrency);
+    const allowedSuites = new Set(["provisioning", "api", "workflow", "regression", "localization", "failure"]);
+    const suites: string[] = Array.isArray(body?.suites) ? Array.from(new Set<string>((body.suites as unknown[]).filter((s: unknown): s is string => typeof s === "string" && allowedSuites.has(s)))) : [];
+    const market = getMarket(countryCode);
+    if (!name || !scenario || !market) return NextResponse.json({ error: "Enter a campaign name, scenario, and supported market." }, { status: 400 });
+    if (!Number.isInteger(totalTests) || totalTests < 1 || totalTests > 25000) return NextResponse.json({ error: "Enter 1 to 25,000 tests." }, { status: 400 });
+    if (!Number.isInteger(accountCount) || accountCount < 500 || accountCount > 10000) return NextResponse.json({ error: "Enter 500 to 10,000 test accounts." }, { status: 400 });
+    if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > 100) return NextResponse.json({ error: "Enter a concurrency value from 1 to 100." }, { status: 400 });
+    if (!suites.length || !suites.some((s: string) => s !== "provisioning")) return NextResponse.json({ error: "Select at least one test suite other than account setup." }, { status: 400 });
+    if (suites.some(s => ["workflow","regression","localization","failure"].includes(s)) && accountCount !== 10000) return NextResponse.json({ error: "Workflow, regression, localization, and failure tests require 10,000 accounts." }, { status: 400 });
+    const id = "campaign-" + randomUUID();
+    await prisma.$executeRawUnsafe(
+      "INSERT INTO qa_test_campaigns (id,name,target_environment,country_code,scenario,total_campaign_tests,tests_per_variation,account_count,concurrency,suites,variations,execution_mode,status,created_by) VALUES ($1,$2,'staging',$3,$4,$5,$5,$6,$7,$8::jsonb,$9::jsonb,'preview_only','draft',$10)",
+      id, name, countryCode, scenario, totalTests, accountCount, concurrency, JSON.stringify(suites),
+      JSON.stringify([{id:"standard-run",name:"Standard run",description:"",overrides:{}}]), actor
+    );
+    await prisma.adminAuditEvent.create({ data: { actor, action: "qa_campaign_draft_created", entityType: "qa_campaign", entityId: id, market: countryCode, details: { totalTests, accountCount, concurrency, suites } } });
+    return NextResponse.json({ success: true, id, status: "draft" }, { status: 201 });
+  }
+
+  if (action === "qa-campaign-delete") {
+    const id = typeof body?.campaignId === "string" ? body.campaignId : "";
+    if (!/^campaign-[0-9a-f-]{36}$/i.test(id)) return NextResponse.json({ error: "Campaign ID is not valid." }, { status: 400 });
+    const result = await prisma.$transaction(async tx => {
+      const rows = await tx.$queryRawUnsafe<Array<{id:string;status:string;country_code:string}>>("SELECT id,status,country_code FROM qa_test_campaigns WHERE id=$1 FOR UPDATE", id);
+      const campaign = rows[0];
+      if (!campaign) return { error: "Campaign not found.", status: 404 };
+      if (campaign.status !== "draft") return { error: "Only a draft that has not started can be deleted.", status: 409 };
+      const steps = await tx.$queryRawUnsafe<Array<{id:string}>>("SELECT id FROM qa_test_campaign_steps WHERE campaign_id=$1 LIMIT 1", id);
+      const runs = await tx.$queryRawUnsafe<Array<{id:string}>>("SELECT id FROM qa_test_runs WHERE summary->>'campaignId'=$1 LIMIT 1", id);
+      if (steps.length || runs.length) return { error: "This draft has QA history. It cannot be deleted.", status: 409 };
+      await tx.$executeRawUnsafe("DELETE FROM qa_test_campaigns WHERE id=$1 AND status='draft'", id);
+      return { deleted: true, id, countryCode: campaign.country_code };
+    });
+    if ("error" in result) return NextResponse.json({ error: result.error }, { status: result.status });
+    await prisma.adminAuditEvent.create({ data: { actor, action: "qa_campaign_draft_deleted", entityType: "qa_campaign", entityId: id, market: result.countryCode, details: { historyDeleted: false } } });
+    return NextResponse.json({ success: true, id });
+  }
+
+  if (action === "qa-campaign-start") {
+    if (body?.confirm !== "RUN_QA_CAMPAIGN_ON_STAGING") return NextResponse.json({ error: "Confirm that this campaign should run on staging." }, { status: 400 });
+    const campaignId = typeof body?.campaignId === "string" ? body.campaignId : "";
+    if (!/^campaign-[0-9a-f-]{36}$/i.test(campaignId)) return NextResponse.json({ error: "Campaign ID is not valid." }, { status: 400 });
+    if (!isQaRunnerEnabled()) return NextResponse.json({ error: "Test execution is not enabled for the approved staging environment." }, { status: 503 });
+    const base = (process.env.QA_BASE_URL || "").replace(/\/+$/, "");
+    if (!base.startsWith("https://") || process.env.QA_ACCOUNT_COUNT !== "10000" || process.env.POST2DRIVE_QA_DATABASE_ISOLATED !== "true") return NextResponse.json({ error: "Staging checks are not ready. No test was queued." }, { status: 503 });
+    const result = await prisma.$transaction(async tx => {
+      await tx.$queryRawUnsafe("WITH queue_lock AS MATERIALIZED (SELECT pg_advisory_xact_lock(hashtext($1))) SELECT 1 FROM queue_lock", "post2drive-qa-run-queue");
+      const rows = await tx.$queryRawUnsafe<any[]>("SELECT id,name,country_code,scenario,total_campaign_tests,tests_per_variation,account_count,concurrency,suites,status FROM qa_test_campaigns WHERE id=$1 FOR UPDATE", campaignId);
+      const campaign = rows[0];
+      if (!campaign) return { error: "Campaign not found.", status: 404 };
+      if (campaign.status !== "draft") return { error: "Only a draft that has not started can run.", status: 409 };
+      const market = getMarket(String(campaign.country_code || ""));
+      if (!market) return { error: "The campaign market is not supported.", status: 400 };
+      const accountCount = Number(campaign.account_count), concurrency = Number(campaign.concurrency);
+      const iterations = Number(campaign.tests_per_variation), totalTests = Number(campaign.total_campaign_tests);
+      const suiteTypes: Record<string,string> = { provisioning:"synthetic-accounts", api:"api-load", workflow:"workflow-e2e", regression:"workflow-e2e", localization:"workflow-e2e", failure:"workflow-e2e" };
+      const suites: string[] = (Array.isArray(campaign.suites) ? campaign.suites as unknown[] : []).filter((s: unknown): s is string => typeof s === "string" && Object.prototype.hasOwnProperty.call(suiteTypes, s));
+      if (accountCount < 500 || accountCount > 10000 || !Number.isInteger(accountCount)) return { error: "Use 500 to 10,000 test accounts.", status: 400 };
+      if (["workflow","regression","localization","failure"].some((s: string) => suites.includes(s)) && accountCount !== 10000) return { error: "This test suite requires 10,000 accounts.", status: 400 };
+      if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > 100 || !Number.isInteger(iterations) || iterations < 1 || iterations > 25000 || !Number.isInteger(totalTests) || totalTests < 1 || totalTests > 25000) return { error: "The test plan has invalid limits. Review the values and save a new draft.", status: 400 };
+      if (!suites.length || !suites.some(s => s !== "provisioning")) return { error: "Select at least one test suite other than account setup.", status: 400 };
+      const active = await tx.$queryRawUnsafe<Array<{id:string}>>("SELECT id FROM qa_test_runs WHERE status IN ('queued','running') ORDER BY started_at DESC LIMIT 1");
+      if (active[0]) return { error: "Another QA run is queued or running. Wait until it finishes.", status: 409 };
+      if (!suites.includes("provisioning")) {
+        const pools = await tx.$queryRawUnsafe<Array<{id:string}>>("SELECT id FROM qa_test_runs WHERE status='completed' AND summary->>'testType'='synthetic-accounts' AND summary->>'country'=$1 AND target_accounts >= $2 ORDER BY finished_at DESC LIMIT 1", market.country, accountCount);
+        if (!pools[0]) return { error: "A completed test-account pool is required for this market, or select account setup.", status: 409 };
+      }
+      const steps: Array<{id:string;ordinal:number;suite:string;testType:string;iterations:number}> = [];
+      let ordinal = 0;
+      if (suites.includes("provisioning")) steps.push({ id:"step-"+randomUUID(), ordinal:ordinal++, suite:"provisioning", testType:"synthetic-accounts", iterations:accountCount });
+      for (const suite of suites.filter((s: string) => s !== "provisioning")) steps.push({ id:"step-"+randomUUID(), ordinal:ordinal++, suite, testType:suiteTypes[suite], iterations });
+      if (steps.length > 101) return { error: "The campaign has too many steps.", status: 400 };
+      const first = steps[0];
+      if (!first) return { error: "The campaign has no runnable steps.", status: 400 };
+      const runId = new Date().toISOString().replace(/[^0-9]/g, "").slice(0, 14) + "-" + randomUUID();
+      await tx.$executeRawUnsafe("UPDATE qa_test_campaigns SET status='running',execution_mode='staging_sequential',updated_at=now() WHERE id=$1 AND status='draft'", campaignId);
+      for (const step of steps) await tx.$executeRawUnsafe(
+        "INSERT INTO qa_test_campaign_steps(id,campaign_id,ordinal,variation_id,variation_name,suite,test_type,test_iterations,account_count,concurrency,status) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)",
+        step.id,campaignId,step.ordinal,"standard-run","Standard run",step.suite,step.testType,step.iterations,accountCount,concurrency,step.id===first.id?"queued":"pending"
+      );
+      const summary = { status:"queued",phase:"queued",country:market.country,testType:first.testType,testIterations:first.iterations,accountCount,concurrency,campaignId,campaignStepId:first.id,variationId:"standard-run",variationName:"Standard run",suite:first.suite,targetEnvironment:"staging",queuedAt:new Date().toISOString() };
+      await tx.$executeRawUnsafe("INSERT INTO qa_test_runs(id,target_url,target_accounts,status,summary) VALUES($1,$2,$3,'queued',$4::jsonb)",runId,base,accountCount,JSON.stringify(summary));
+      await tx.$executeRawUnsafe("UPDATE qa_test_campaign_steps SET run_id=$2 WHERE id=$1",first.id,runId);
+      return { accepted:true,campaignId,runId,status:"queued",plannedSteps:steps.length,target:"staging",countryCode:market.country };
+    }, { maxWait:15000, timeout:30000 });
+    if ("error" in result) return NextResponse.json({ error: result.error }, { status: typeof result.status === "number" ? result.status : 400 });
+    await prisma.adminAuditEvent.create({ data: { actor, action: "qa_campaign_queued", entityType: "qa_campaign", entityId: campaignId, market: result.countryCode, details: { runId: result.runId, plannedSteps: result.plannedSteps, target: "staging" } } });
+    return NextResponse.json(result, { status: 202 });
   }
 
   return NextResponse.json({ error: "Unsupported admin action." }, { status: 400 });
