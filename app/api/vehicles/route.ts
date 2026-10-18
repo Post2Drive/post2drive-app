@@ -10,7 +10,7 @@ function parseOptionalDateField(value: unknown, label: string): { date: Date | n
   if (value === undefined || value === null || value === "") {
     return { date: null, dateKey: null, error: null };
   }
-  if (typeof value !== "string" || !/^\\d{4}-\\d{2}-\\d{2}$/.test(value)) {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     return { date: null, dateKey: null, error: `${label} must be a valid calendar date.` };
   }
   const date = new Date(`${value}T00:00:00.000Z`);
