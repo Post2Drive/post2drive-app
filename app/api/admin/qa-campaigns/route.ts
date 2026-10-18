@@ -53,7 +53,7 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: "Not logged in." }, { status: 401 });
   if (!(await isTesterAdmin())) return NextResponse.json({ error: "Admin access required." }, { status: 403 });
   try {
-    const [campaigns, rawRuns] = await Promise.all([
+    const [campaigns, rawRuns, rawSteps] = await Promise.all([
       prisma.$queryRawUnsafe<any[]>(`
         SELECT id, name, target_environment AS "targetEnvironment", country_code AS "countryCode",
           scenario, total_campaign_tests AS "totalCampaignTests", tests_per_variation AS "testsPerVariation",
@@ -65,12 +65,30 @@ export async function GET() {
         SELECT id, status, target_accounts AS "targetAccounts", created_accounts AS "createdAccounts",
           successful_checks AS "successfulChecks", failed_checks AS "failedChecks", duration_ms AS "durationMs",
           started_at AS "startedAt", finished_at AS "finishedAt", summary->>'country' AS "countryCode",
-          summary->>'testType' AS "testType", summary->>'loadRequestCount' AS "loadRequestCount"
+          summary->>'testType' AS "testType", summary->>'loadRequestCount' AS "loadRequestCount",
+          summary->>'campaignId' AS "campaignId", summary->>'variationId' AS "variationId",
+          summary->>'variationName' AS "variationName", summary->>'suite' AS "suite",
+          summary->>'testIterations' AS "testIterations", summary->>'concurrencyTarget' AS "concurrencyTarget",
+          summary->>'p50Ms' AS "p50Ms", summary->>'p95Ms' AS "p95Ms"
         FROM qa_test_runs ORDER BY started_at DESC LIMIT 50
+      `),
+      prisma.$queryRawUnsafe<any[]>(`
+        SELECT s.id, s.campaign_id AS "campaignId", s.ordinal, s.variation_id AS "variationId",
+          s.variation_name AS "variationName", s.suite, s.test_type AS "testType",
+          s.test_iterations AS "testIterations", s.account_count AS "accountCount", s.concurrency,
+          s.status, s.run_id AS "runId", s.started_at AS "startedAt", s.finished_at AS "finishedAt",
+          r.successful_checks AS "successfulChecks", r.failed_checks AS "failedChecks",
+          r.duration_ms AS "durationMs", r.summary->>'loadRequestCount' AS "loadRequestCount",
+          r.summary->>'routeMatrixExecuted' AS "routeMatrixExecuted", r.summary->>'p50Ms' AS "p50Ms",
+          r.summary->>'p95Ms' AS "p95Ms", r.summary->>'eventCount' AS "eventCount"
+        FROM qa_test_campaign_steps s LEFT JOIN qa_test_runs r ON r.id=s.run_id
+        ORDER BY s.campaign_id,s.ordinal LIMIT 1000
       `)
     ]);
-    const runs = rawRuns.map(run => ({ ...run, durationMs: run.durationMs === null ? null : Number(run.durationMs) }));
-    return NextResponse.json({ campaigns, runs, executionEnabled: false }, { headers: { "cache-control": "no-store" } });
+    const normalise = (row: any) => ({ ...row, durationMs: row.durationMs === null ? null : row.durationMs === undefined ? null : Number(row.durationMs) });
+    const runs = rawRuns.map(normalise);
+    const steps = rawSteps.map(normalise);
+    return NextResponse.json({ campaigns, runs, steps, executionEnabled: true }, { headers: { "cache-control": "no-store" } });
   } catch (error) {
     console.error("QA campaign history unavailable", error);
     return NextResponse.json({ error: "Campaign storage is not available yet. Apply the reviewed QA campaign metadata migration to staging before using this page." }, { status: 503 });
