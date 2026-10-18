@@ -68,3 +68,9 @@ assert.ok(ops.includes('.filter-drawer>summary,.filter-drawer>summary:after{\n b
 assert.ok(ops.includes('.pill.warn{color:#171717!important;border-color:#F2C300!important}'), "Admin warning pills must use black text");
 
 console.log("PASS Post2Drive contrast guardrails: text, buttons, tables, alerts, charts and admin controls.");
+
+expectTextContrast("disabled button text", "#30343B", "#E8EBF0");
+assert.ok(css.includes("a.button-link-secondary,\\n.button-link-secondary"), "Secondary links must stay white with blue text on every route wrapper");
+assert.ok(css.includes("color: #FFFFFF !important;\\n  border: 1px solid #2457D6 !important;"), "Primary action links must force white text on blue");
+assert.ok(css.includes("button:disabled,\\ninput[type=\"submit\"]:disabled,\\ninput[type=\"button\"]:disabled"), "Disabled button contrast must not inherit pale text on a saturated background");
+console.log("PASS screenshot-driven global button and link contrast rules.");
