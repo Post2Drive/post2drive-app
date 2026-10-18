@@ -286,6 +286,44 @@ button.primary:hover{background:#173FA8;color:#FFFFFF}
 .pill.warn{background:#FFFFFF!important;color:#171717!important;border-color:#F2C300}
 .pill.bad{background:#FFFFFF!important;color:#D62828!important;border-color:#D62828}
 
+
+/* Contrast audit: labels and controls must never inherit the same colour as their surface. */
+body,header,main,.panel,.kpi,.source-card,.watch-card,.filter-panel{background:#FFFFFF!important;color:#171717}
+h1,h2,h3,h4,h5,h6,label,strong,th,td,.barrow>span,.barrow>strong,.kpi strong,.kpi label{color:#171717}
+p,.muted,.empty,.status,.footer,.sub,.source-meta,.section p,.watch-card p,.filter-hint{color:#30343B}
+.brand,.source,.source-card a{color:#2457D6}
+header .header-signout button,.header-signout button{
+ background:#FFFFFF!important;color:#2457D6!important;border:1px solid #2457D6!important;
+}
+.filter-drawer>summary,.filter-drawer>summary:after{
+ background:#FFFFFF!important;color:#171717!important;border-color:#2457D6;
+}
+.filter-drawer[open]>summary{background:#FFFFFF!important;color:#2457D6!important;border-color:#2457D6}
+.filter-panel{background:#FFFFFF!important;color:#171717}
+.filter-panel label{color:#30343B}
+.filter-panel-actions button:not(.primary){background:#FFFFFF!important;color:#2457D6!important;border:1px solid #2457D6}
+button.primary,#refresh.primary,.filter-panel-actions button.primary{
+ background:#2457D6!important;color:#FFFFFF!important;border:1px solid #2457D6!important;
+}
+button.primary:hover{background:#173FA8!important;color:#FFFFFF!important}
+th{background:#F2C300!important;color:#171717!important;border-bottom:2px solid #171717}
+tr:nth-child(even) td,tr:hover td{background:#FFFFFF}
+td.bad{background:#FFFFFF!important;color:#D62828!important}
+.pill,.pill.good,.pill.warn,.pill.bad{
+ background:#FFFFFF!important;border:1px solid #D7DCE4;color:#171717;
+}
+.pill.good{color:#18864B!important;border-color:#18864B!important}
+.pill.warn{color:#171717!important;border-color:#F2C300!important}
+.pill.bad{color:#D62828!important;border-color:#D62828!important}
+.notice,#warning .notice{background:#FFFFFF!important;color:#171717!important;border:1px solid #F2C300;border-left:4px solid #F2C300}
+.insight{background:#FFFFFF!important;color:#171717!important;border-left:4px solid #18864B}
+.bartrack{background:#E7EAF0}
+.bar{background:#2457D6}
+.chart text{fill:#30343B!important}
+.chart .line{stroke:#2457D6}
+.chart .gridline{stroke:#D7DCE4}
+.source-tools input{background:#FFFFFF!important;color:#171717!important;border-color:#AEB6C2}
+.source-tools input::placeholder{color:#555D69!important}
 </style>
 <header class='app-header'><div class='brand-block'><div class='brand'>POST2DRIVE / ADMIN DASHBOARD</div><div class='sub'>Operations · marketplace analytics · country logistics signals</div></div><div class='header-actions'><details id='filterDrawer' class='filter-drawer'><summary id='filterSummary'>Filters · Global · 7 days</summary><div class='filter-panel'><label for='country'>Market<select id='country'><option value='ALL'>🌐 Global · all markets</option>${markets.map(m=>`<option value='${m.code}'>${m.name} · ${m.currency}</option>`).join('')}</select></label><label for='compare'>Compare market<select id='compare'><option value=''>No comparison</option>${markets.map(m=>`<option value='${m.code}'>${m.name}</option>`).join('')}</select></label><label for='days'>Time window<select id='days'><option value='1'>24 hours</option><option value='7' selected>7 days</option><option value='30'>30 days</option><option value='90'>90 days</option></select></label><p class='filter-hint'>Filters only change reporting. Nothing in the marketplace is modified.</p><div class='filter-panel-actions'><button id='resetFilters' type='button'>Reset &amp; apply</button><button id='applyFilters' class='primary' type='button'>Apply filters</button></div></div></details><button id='refresh' class='primary' type='button'>↻ Refresh data</button><form method="post" action="/logout" class="header-signout"><button type='submit'>Sign out</button></form></div></header><nav class="section-nav" aria-label="Admin sections"><a href="#overview">Command Centre</a><a href="#marketplace">Marketplace</a><a href="#people">Trust & Operations</a><a href="#quality">QA & Engineering</a><a href="#countries">Countries & Research</a><a href="#audit">Admin & Audit</a><a href="#catalogue-section">Data Catalogue</a></nav><main><div id="overview" class="section"><div><h1 id="title">Global operations overview</h1><p id="subtitle">Loading country-aware metrics…</p></div><div class="status" id="updated">Connecting to reporting database…</div></div><div id="warning"></div>
 <div class="grid kpis" id="kpis"></div><div class="section"><div><h2>Needs attention</h2><p>Prioritized operational exceptions; recommendations are advisory and do not perform changes.</p></div><div class="status" id="attentionCount">Building queue…</div></div><section class="panel"><div class="scroll" id="attentionQueue"></div></section>

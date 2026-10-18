@@ -40,3 +40,12 @@ Use a clean white interface with solid, saturated, professional corporate colour
 - Visual QA should cover desktop and mobile, including login/sign-up, jobs, job creation, dashboard, payments, vehicles, account settings, pricing, and operations analytics.
 
 Do not treat styling changes as production-readiness approval. Run CI and visual checks before merging or deploying.
+
+
+## Contrast audit rules
+
+- Normal body and control text use dark ink on white. The saturated colours are accents, not text colours for every surface.
+- Blue, red, purple and magenta may use white text on solid fills where the component needs an inverse button label. Green uses white text only at the approved dark-green brand shade.
+- Yellow, orange and cyan do not carry small wording on white or saturated fills: use black text and keep these colours to borders, bars, and indicators.
+- The operations dashboard header controls, filters, pills, notices, table headings, legends and metadata must keep contrast independently of market filters.
+- Status meaning must remain readable when a colour is not distinguishable; preserve explicit words, numbers, border/rail cues and accessible chart labels.
