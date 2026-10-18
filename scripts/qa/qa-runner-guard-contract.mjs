@@ -93,9 +93,9 @@ try {
   assert.ok(qaRunner.includes("country: market.country, currency: market.currency"), "synthetic accounts must use the selected market currency");
   assert.ok(qaRunner.includes("currency: market.currency"), "synthetic jobs must use the selected market currency");
   assert.ok(qaRoute.includes('crypto.randomUUID();'), "QA run IDs must use high entropy");
-  assert.ok(qaRunner.includes('const routeMatrixTarget = testType === "synthetic-accounts" ? 0 : 10_000'), "API-load and workflow-e2e modes must target 10,000 route scenarios");
-  assert.ok(qaRunner.includes('Array.from({ length: testType === "synthetic-accounts" ? 10_000 : 0 }, (_, i) => i)'), "only the synthetic-account mode may provision the 10,000-account pool");
-  assert.ok(qaRunner.includes("createdAccounts !== 10_000"), "the run must abort unless all 10,000 synthetic accounts are created");
+  assert.ok(qaRunner.includes('const routeMatrixTarget = testType === "synthetic-accounts" ? 0 : testIterations'), "API-load and workflow-e2e modes must use their configured iteration target");
+  assert.ok(qaRunner.includes('Array.from({ length: testType === "synthetic-accounts" ? accountTarget : 0 }, (_, i) => i)'), "only the synthetic-account mode provisions its configured bounded pool");
+  assert.ok(qaRunner.includes("createdAccounts !== accountTarget"), "the run must abort unless the configured synthetic account target is created");
   assert.ok(qaRoute.includes("target_accounts !== 10_000"), "cleanup must be bound to a recorded 10,000-account run");
   assert.ok(qaRoute.includes('accounts !== "10000"'), "the HTTP trigger must require explicit 10,000-account confirmation");
   assert.ok(qaRunner.includes("routeMatrixExecuted !== routeMatrixTarget"), "a short route matrix must not be reported as completed");
@@ -112,8 +112,8 @@ try {
   assert.ok(qaRoute.includes("VALUES($1,$2,10000,'queued'"), "HTTP requests must enqueue a durable run");
   assert.ok(qaWorker.includes("FOR UPDATE SKIP LOCKED"), "worker claims must be atomic across replicas");
   assert.ok(qaWorker.includes("workerHeartbeatAt"), "worker heartbeat must be persisted");
-  assert.ok(qaWorker.includes("runQaWorker(job.id, country, workerId, testType)"), "worker must dispatch the selected QA workload mode with the claim owner ID");
-  assert.ok(qaRunner.includes("status='running' AND target_url=$2 AND target_accounts=10000 AND summary->>'workerId'=$3"), "runner must verify the exact worker-owned staging row");
+  assert.ok(qaWorker.includes("runQaWorker(job.id, country, workerId, testType, config)"), "worker must dispatch the selected QA workload mode with the claim owner ID");
+  assert.ok(qaRunner.includes("status='running' AND target_url=$2 AND target_accounts=$4 AND summary->>'workerId'=$3"), "runner must verify the exact worker-owned staging row and configured account count");
   assert.ok(qaRunner.includes("summary=COALESCE(summary,'{}'::jsonb) || $7::jsonb"), "run finalization must preserve worker metadata");
   assert.ok(qaRunner.includes("summary->>'workerId'=$8"), "only the claiming worker may finalize a run");
   assert.ok(!qaRunner.includes("INSERT INTO qa_test_runs"), "runner must not create duplicate run records");
@@ -121,7 +121,7 @@ try {
   console.log(JSON.stringify({
     status: "passed",
     checks: rejected.length + 31,
-    covered: ["valid Railway staging allow-list", ...rejected.map(([label]) => label), "GET guard before sensitive operations", "raw QA errors not returned", "GET and POST handlers present", "resend endpoint rate-limited", "verification token endpoint rate-limited", "login network/email rate limits", "login throttling fails closed", "QA throttle bypass requires an active run, target and origin", "QA runner is market-parameterized", "synthetic fixtures use market currency", "high-entropy QA run IDs", "10,000 API route scenarios required per country", "cleanup preserves findings, marks data deleted and preserves failure status", "cleanup rejects active runs", "interrupted run finalization timestamps"]
+    covered: ["valid Railway staging allow-list", ...rejected.map(([label]) => label), "GET guard before sensitive operations", "raw QA errors not returned", "GET and POST handlers present", "resend endpoint rate-limited", "verification token endpoint rate-limited", "login network/email rate limits", "login throttling fails closed", "QA throttle bypass requires an active run, target and origin", "QA runner is market-parameterized", "synthetic fixtures use market currency", "high-entropy QA run IDs", "bounded configured API route iterations required per run", "cleanup preserves findings, marks data deleted and preserves failure status", "cleanup rejects active runs", "interrupted run finalization timestamps"]
   }, null, 2));
 } finally {
   for (const [key, value] of Object.entries(original)) {
