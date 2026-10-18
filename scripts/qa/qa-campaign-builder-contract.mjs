@@ -16,6 +16,8 @@ assert.ok(route.includes("BETWEEN 1 AND 25000") && route.includes("BETWEEN 1 AND
 assert.ok(route.includes("MAX_VARIATIONS = 20"), "API must cap the number of variations");
 assert.ok(route.includes("variations.length * testsPerVariation > totalCampaignTests"), "API must reject variation allocation above the campaign test budget");
 assert.ok(route.includes("executionEnabled: false") && route.includes("executionMode: \"preview_only\""), "API must communicate that execution is disabled");
+assert.ok(route.includes("FROM qa_test_runs ORDER BY started_at DESC LIMIT 50") && route.includes("FROM qa_test_campaigns ORDER BY created_at DESC LIMIT 100"), "reporting must keep campaign drafts separate from preserved execution history");
+assert.ok(route.includes("durationMs: run.durationMs === null ? null : Number(run.durationMs)"), "reporting must normalize PostgreSQL bigint durations for JSON");
 assert.ok(builder.includes("Save campaign draft") && builder.includes("no QA run was queued"), "UI must distinguish saving a draft from launching a run");
 assert.ok(builder.includes("Synthetic account count") && builder.includes("Tests per variation") && builder.includes("Total campaign tests") && builder.includes("Concurrency target"), "UI must expose distinct volume controls");
 assert.ok(builder.includes("Add variation") && builder.includes("Remove"), "variations must be editable");
@@ -23,4 +25,4 @@ assert.ok(page.includes("isTesterAdmin()"), "campaign page must enforce admin ac
 assert.ok(!route.includes("enqueueQaRun("), "draft API must not enqueue QA runs");
 assert.ok(!route.includes("DELETE FROM qa_test_runs") && !route.includes("DELETE FROM qa_test_events") && !route.includes("DELETE FROM qa_test_accounts"), "campaign API must not modify or clean existing QA history");
 
-console.log(JSON.stringify({status:"passed",checks:15,covered:["admin access","staging-only database constraint","preview-only persistence","draft-only status","bounded workload configuration","variation allocation validation","separate test/account/concurrency controls","no run enqueueing","no QA history deletion"]},null,2));
+console.log(JSON.stringify({status:"passed",checks:17,covered:["admin access","staging-only database constraint","preview-only persistence","draft-only status","bounded workload configuration","variation allocation validation","separate test/account/concurrency controls","no run enqueueing","no QA history deletion"]},null,2));
