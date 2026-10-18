@@ -206,7 +206,7 @@ async function runQA(countryOverride: string, runId: string, workerId: string) {
 
 
   try {
-    console.log("Starting staging QA run " + runId + " for " + market.country + "/" + market.currency + " with 10,000 synthetic accounts at " + base);
+    console.log("Starting staging QA run " + runId + " for " + selectedMarket.country + "/" + selectedMarket.currency + " with 10,000 synthetic accounts at " + base);
     await parallel(Array.from({ length: 10_000 }, (_, i) => i), 12, async i => {
       const cohort: AccountFixture["cohort"] = i < 100 ? "poster-focused" : i < 250 ? "driver-focused" : i < 9_999 ? "both" : "restricted";
       const email = "qa-" + runId + "-" + String(i + 1).padStart(3, "0") + "@post2drive.invalid";
@@ -215,7 +215,7 @@ async function runQA(countryOverride: string, runId: string, workerId: string) {
         name: "QA User " + (i + 1), email, phone: selectedMarket.dialingCode + "770090" + String(i).padStart(4, "0"),
         password, companyName: "[QA-" + runId + "] " + cohort + " " + String(i + 1).padStart(3, "0"),
         planType: "individual", fleetVehicleCount: 1, isSoleTrader: true,
-        country: market.country, currency: market.currency,
+        country: selectedMarket.country, currency: selectedMarket.currency,
         termsAccepted: true, termsVersion: "2026-10-16",
       };
       const t = Date.now();
@@ -232,8 +232,8 @@ async function runQA(countryOverride: string, runId: string, workerId: string) {
       const persistStarted = Date.now();
       try {
         await prisma.$transaction(async tx => {
-          const ukPromotion = market.country === "GB" && i !== 9_999;
-          const paidWeeklyMarket = market.country !== "GB" && market.country !== "IN" && i !== 9_999;
+          const ukPromotion = selectedMarket.country === "GB" && i !== 9_999;
+          const paidWeeklyMarket = selectedMarket.country !== "GB" && selectedMarket.country !== "IN" && i !== 9_999;
           const accessEndsAt = new Date(Date.now() + 60 * 86400000);
           await tx.account.update({
             where: { id: accountId },
@@ -294,8 +294,8 @@ async function runQA(countryOverride: string, runId: string, workerId: string) {
     // seeds UK city names into another country's fixtures.
     const laneMiles = [118, 86, 120, 95, 47, 35, 28, 44, 80, 35, 65, 58, 82, 80, 35];
     const lanes = laneMiles.map((miles, index) => ({
-      pickup: "QA Origin " + market.country + " " + (index + 1),
-      dropoff: "QA Destination " + market.country + " " + (index + 1),
+      pickup: "QA Origin " + selectedMarket.country + " " + (index + 1),
+      dropoff: "QA Destination " + selectedMarket.country + " " + (index + 1),
       miles,
     }));
     const freightProfiles = [
@@ -330,12 +330,12 @@ async function runQA(countryOverride: string, runId: string, workerId: string) {
       return {
         pickup: lane.pickup, dropoff: lane.dropoff, jobDate, pickupTime,
         dropoffTime: pad(dropoffHour) + ":00", vehicleType: profile.vehicleType,
-        weightKg: profile.weightKg, dimensions: profile.dimensions, price, priceMode: mode, currency: market.currency,
+        weightKg: profile.weightKg, dimensions: profile.dimensions, price, priceMode: mode, currency: selectedMarket.currency,
         crossBorder: false,
         notes: "Synthetic QA only " + marker + "; lane=" + lane.pickup + " to " + lane.dropoff +
           "; estimatedMiles=" + lane.miles + "; cargo=" + profile.cargo + "; scenario=" + n,
-        pickupContactName: "QA Contact", pickupContactPhone: market.dialingCode + "7700900111",
-        dropoffContactName: "QA Receiver", dropoffContactPhone: market.dialingCode + "7700900112",
+        pickupContactName: "QA Contact", pickupContactPhone: selectedMarket.dialingCode + "7700900111",
+        dropoffContactName: "QA Receiver", dropoffContactPhone: selectedMarket.dialingCode + "7700900112",
       };
     };
     async function createJob(p: AccountFixture, n: number, mode: "fixed" | "bid") {
@@ -602,7 +602,7 @@ async function runQA(countryOverride: string, runId: string, workerId: string) {
     const restricted = fixtures.find(a => a.index === 9_999);
     if (restricted?.client && posters[0]) {
       const sample = await createJob(posters[0], 1800, "bid");
-      if (sample) await check(restricted.client, restricted, "access-control", market.country === "IN" ? "india-non-weekly-market-access-policy" : "restricted-account-cannot-bid", "POST", "/api/jobs/" + sample + "/bid", { amount: 100 }, market.country === "IN" ? [200] : [403, 402]);
+      if (sample) await check(restricted.client, restricted, "access-control", selectedMarket.country === "IN" ? "india-non-weekly-market-access-policy" : "restricted-account-cannot-bid", "POST", "/api/jobs/" + sample + "/bid", { amount: 100 }, selectedMarket.country === "IN" ? [200] : [403, 402]);
     }
 
     // Exercise the API surface with 10,000 real requests per selected country.
@@ -641,7 +641,7 @@ async function runQA(countryOverride: string, runId: string, workerId: string) {
       { name: "nonnumeric-max-price", auth: true, method: "GET", path: () => "/api/jobs?maxPrice=not-a-number", expected: [400] },
       { name: "authenticated-account-read", auth: true, method: "GET", path: () => "/api/account", expected: [200] },
       { name: "authenticated-access-read", auth: true, method: "GET", path: () => "/api/account/access", expected: [200] },
-      { name: "country-change-rejected", auth: true, method: "PATCH", path: () => "/api/account", body: () => ({ country: market.country === "IN" ? "GB" : "IN", currency: market.country === "IN" ? "GBP" : "INR" }), expected: [409] },
+      { name: "country-change-rejected", auth: true, method: "PATCH", path: () => "/api/account", body: () => ({ country: selectedMarket.country === "IN" ? "GB" : "IN", currency: selectedMarket.country === "IN" ? "GBP" : "INR" }), expected: [409] },
       { name: "authenticated-vehicle-list", auth: true, method: "GET", path: () => "/api/vehicles", expected: [200] },
       { name: "invalid-vehicle-type", auth: true, method: "POST", path: () => "/api/vehicles", body: () => ({ vehicleType: "not-a-vehicle" }), expected: [400] },
       { name: "authenticated-payment-summary", auth: true, method: "GET", path: () => "/api/payments", expected: [200] },
