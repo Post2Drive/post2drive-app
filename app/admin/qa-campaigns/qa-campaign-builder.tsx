@@ -32,6 +32,7 @@ export default function QaCampaignBuilder() {
   const [busy,setBusy] = useState(false);
   const [reviewStartId,setReviewStartId] = useState<string | null>(null);
   const [startConfirmed,setStartConfirmed] = useState(false);
+  const [deleteDraftId,setDeleteDraftId] = useState<string | null>(null);
   const load = useCallback(async () => {
     try {
       const response = await fetch("/api/admin/qa-campaigns",{cache:"no-store"});
@@ -55,6 +56,19 @@ export default function QaCampaignBuilder() {
       setNotice("Campaign draft saved ("+payload.id+"). Saving does not queue a QA run.");
       await load();
     } catch(e) { setError(e instanceof Error?e.message:"Could not save campaign draft."); }
+    finally { setBusy(false); }
+  }
+  async function deleteDraft(campaignId: string) {
+    setBusy(true); setError(""); setNotice("");
+    try {
+      const response = await fetch("/api/admin/qa-campaigns/"+encodeURIComponent(campaignId),{method:"DELETE"});
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || "Could not delete campaign draft.");
+      setNotice("Draft deleted. No QA runs, execution steps, accounts, events, or historical reports were deleted.");
+      setDeleteDraftId(null);
+      if (reviewStartId === campaignId) setReviewStartId(null);
+      await load();
+    } catch(e) { setError(e instanceof Error?e.message:"Could not delete campaign draft."); }
     finally { setBusy(false); }
   }
   async function start(campaignId: string) {
@@ -104,7 +118,12 @@ export default function QaCampaignBuilder() {
     </section>
     <section style={panel}>
       <h2 style={{margin:"0 0 12px",fontSize:20}}>Campaign history & execution</h2>
-      {campaigns.length?<div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:13,textAlign:"left"}}><thead><tr>{["Created","Campaign","Market","Scenario","Total tests","Accounts","Concurrency","Status","Action"].map(x=><th key={x} style={{padding:"9px",borderBottom:"1px solid #dfe5eb",whiteSpace:"nowrap"}}>{x}</th>)}</tr></thead><tbody>{campaigns.map(c=><tr key={c.id}>{[date(c.createdAt),c.name,c.countryCode,c.scenario,Number(c.totalCampaignTests).toLocaleString(),Number(c.accountCount).toLocaleString(),c.concurrency,c.status].map((v,i)=><td key={i} style={{padding:"9px",borderBottom:"1px solid #e4e7ec"}}>{String(v)}</td>)}<td style={{padding:"9px",borderBottom:"1px solid #e4e7ec",whiteSpace:"nowrap"}}>{c.status==="draft"?<button type="button" style={button} disabled={busy} onClick={()=>{setReviewStartId(c.id);setStartConfirmed(false);setError("");setNotice("");}}>Review start</button>:<span>{c.executionMode==="staging_sequential"?"Sequential run":"—"}</span>}</td></tr>)}</tbody></table></div>:<p style={{fontSize:13,color:"#667085"}}>No saved campaign plans yet.</p>}
+      {campaigns.length?<div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:13,textAlign:"left"}}><thead><tr>{["Created","Campaign","Market","Scenario","Total tests","Accounts","Concurrency","Status","Action"].map(x=><th key={x} style={{padding:"9px",borderBottom:"1px solid #dfe5eb",whiteSpace:"nowrap"}}>{x}</th>)}</tr></thead><tbody>{campaigns.map(c=><tr key={c.id}>{[date(c.createdAt),c.name,c.countryCode,c.scenario,Number(c.totalCampaignTests).toLocaleString(),Number(c.accountCount).toLocaleString(),c.concurrency,c.status].map((v,i)=><td key={i} style={{padding:"9px",borderBottom:"1px solid #e4e7ec"}}>{String(v)}</td>)}<td style={{padding:"9px",borderBottom:"1px solid #e4e7ec",whiteSpace:"nowrap"}}>{c.status==="draft"?<div style={{display:"flex",gap:6,alignItems:"center"}}><button type="button" style={button} disabled={busy} onClick={()=>{setReviewStartId(c.id);setDeleteDraftId(null);setStartConfirmed(false);setError("");setNotice("");}}>Review start</button><button type="button" style={{...button,color:"#b42318",borderColor:"#fda29b"}} disabled={busy} onClick={()=>{setDeleteDraftId(c.id);setReviewStartId(null);setError("");setNotice("");}}>Delete draft</button></div>:<span>{c.executionMode==="staging_sequential"?"Sequential run":"—"}</span>}</td></tr>)}</tbody></table></div>:<p style={{fontSize:13,color:"#667085"}}>No saved campaign plans yet.</p>}
+      {deleteDraftId && campaignById.has(deleteDraftId)?<div style={{border:"1px solid #fda29b",borderRadius:10,padding:14,marginTop:14,background:"#fff5f5"}}>
+        <h3 style={{margin:"0 0 8px",fontSize:17}}>Delete saved draft?</h3>
+        <p style={{fontSize:13,lineHeight:1.6}}>Delete <strong>{campaignById.get(deleteDraftId)?.name}</strong> from campaign history? Only this unstarted draft will be removed. Running/completed campaigns and all QA runs, execution steps, accounts, events, and reports are protected.</p>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}><button type="button" style={{...button,background:"#b42318",borderColor:"#b42318",color:"#fff"}} disabled={busy} onClick={()=>void deleteDraft(deleteDraftId)}>{busy?"Deleting…":"Delete draft permanently"}</button><button type="button" style={button} disabled={busy} onClick={()=>setDeleteDraftId(null)}>Cancel</button></div>
+      </div>:null}
       {reviewStartId && campaignById.has(reviewStartId)?<div style={{border:"1px solid #fdb022",borderRadius:10,padding:14,marginTop:14,background:"#fffaeb"}}>
         <h3 style={{margin:"0 0 8px",fontSize:17}}>Confirm staging execution</h3>
         <p style={{fontSize:13,lineHeight:1.6}}>You are about to queue <strong>{campaignById.get(reviewStartId)?.name}</strong> on staging. It will run sequentially, can create synthetic accounts and synthetic marketplace records, and will retain its QA history. This action does not clean up data automatically.</p>
