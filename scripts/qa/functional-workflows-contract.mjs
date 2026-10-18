@@ -52,7 +52,7 @@ includes("app/api/jobs/[id]/bid/route.ts", "FOR UPDATE");
 includes("app/api/jobs/[id]/accept/route.ts", 'vehicleType: jobForAcceptance.vehicleType');
 includes("app/api/jobs/[id]/accept/route.ts", "const currentDriver = await tx.account.findUnique");
 includes("app/api/jobs/[id]/accept/route.ts", "tx.vehicle.findFirst");
-includes("app/api/jobs/[id]/accept/route.ts", 'acceptedById: job.acceptedById');
+includes("app/api/jobs/[id]/accept/route.ts", 'priceMode: "fixed"');
 
 // A selected bid remains valid only if the bidder has an approved vehicle for
 // the job's current required vehicle type.
