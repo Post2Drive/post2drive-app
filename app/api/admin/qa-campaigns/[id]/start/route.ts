@@ -123,7 +123,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         runId, base, accountCount, JSON.stringify(runSummary)
       );
       await tx.$executeRawUnsafe(
-        "UPDATE qa_test_campaign_steps SET run_id=$2,started_at=now() WHERE id=$1",
+        "UPDATE qa_test_campaign_steps SET run_id=$2 WHERE id=$1",
         first.id, runId
       );
       return { accepted: true, campaignId, runId, status: "queued", plannedSteps: steps.length, target: "staging" };
