@@ -161,7 +161,7 @@ async function advanceCampaign(runId: string) {
       nextRunId, (process.env.QA_BASE_URL || "").replace(/\/+$/, ""), next.account_count, JSON.stringify(runSummary)
     );
     await tx.$executeRawUnsafe(
-      "UPDATE qa_test_campaign_steps SET status='queued',run_id=$2,started_at=now() WHERE id=$1 AND status='pending'",
+      "UPDATE qa_test_campaign_steps SET status='queued',run_id=$2 WHERE id=$1 AND status='pending'",
       next.id, nextRunId
     );
     await tx.$executeRawUnsafe("UPDATE qa_test_campaigns SET status='running',updated_at=now() WHERE id=$1", campaignId);
