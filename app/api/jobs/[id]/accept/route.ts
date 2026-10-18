@@ -64,7 +64,7 @@ async function POSTHandler(
 
   const jobForAcceptance = await prisma.job.findUnique({
     where: { id: id },
-    select: { posterId: true, priceMode: true },
+    select: { posterId: true, priceMode: true, vehicleType: true },
   });
 
   if (!jobForAcceptance) {
@@ -109,6 +109,23 @@ async function POSTHandler(
     );
   }
 
+  if (!account?.isTester) {
+    const matchingVehicle = await prisma.vehicle.findFirst({
+      where: {
+        accountId,
+        vehicleType: jobForAcceptance.vehicleType,
+        verificationStatus: "verified",
+      },
+      select: { id: true },
+    });
+    if (!matchingVehicle) {
+      return NextResponse.json(
+        { error: "You need an approved vehicle matching this job's vehicle type before accepting it." },
+        { status: 403 }
+      );
+    }
+  }
+
   try {
     const result =
       await prisma.$transaction(
@@ -124,6 +141,25 @@ async function POSTHandler(
             throw new Error(
               "JOB_NOT_FOUND"
             );
+          }
+
+          const currentDriver = await tx.account.findUnique({
+            where: { id: accountId },
+            select: { verificationStatus: true, isTester: true },
+          });
+          if (!currentDriver || (currentDriver.verificationStatus !== "verified" && !currentDriver.isTester)) {
+            throw new Error("DRIVER_NOT_VERIFIED");
+          }
+          if (!currentDriver.isTester) {
+            const matchingVehicle = await tx.vehicle.findFirst({
+              where: {
+                accountId,
+                vehicleType: job.vehicleType,
+                verificationStatus: "verified",
+              },
+              select: { id: true },
+            });
+            if (!matchingVehicle) throw new Error("DRIVER_VEHICLE_NOT_VERIFIED");
           }
 
           let pickupAt: Date;
@@ -281,6 +317,14 @@ async function POSTHandler(
         },
         { status: 402 }
       );
+    }
+
+    if (message === "DRIVER_NOT_VERIFIED") {
+      return NextResponse.json({ error: "Your account must be verified before accepting jobs." }, { status: 403 });
+    }
+
+    if (message === "DRIVER_VEHICLE_NOT_VERIFIED") {
+      return NextResponse.json({ error: "You need an approved vehicle matching this job's vehicle type before accepting it." }, { status: 403 });
     }
 
     if (
