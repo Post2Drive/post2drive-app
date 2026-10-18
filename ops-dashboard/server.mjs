@@ -332,6 +332,19 @@ td.bad{background:#FFFFFF!important;color:#D62828!important}
 <div id="reliability" class="section"><div><h2>API & technical reliability</h2><p>Telemetry starts only after instrumentation is deployed; missing telemetry is not zero traffic. API routes currently lack reliable market attribution, so these technical-health metrics are global.</p></div></div>
 <div class="grid two"><section class="panel"><h2>API requests and errors</h2><p class="muted">Hourly requests, 5xx counts and observed route latency</p><div id="apiTrend"></div></section><section class="panel"><h2>Slowest API routes</h2><p class="muted">Sorted by P95 latency over the selected period</p><div class="scroll" id="routes"></div></section><section class="panel"><h2>Recent server errors</h2><div class="scroll" id="errors"></div></section><section class="panel"><h2>Vehicle compliance signals</h2><p class="muted">Recorded vehicle/document states, not independent authenticity verification</p><div id="vehicles"></div></section></div>
 <div id="quality" class="section"><div><h2>Tests, incidents & quality</h2><p>Keep failures and their evidence; QA data remains separate from real marketplace activity.</p></div></div>
+<section class="panel"><div class="section"><div><h2>QA campaigns</h2><p class="muted">Create a staging test plan. Save a draft first. A test runs only after you confirm it.</p></div><span id="qaCampaignStatus" class="status" role="status">Loading campaign history…</span></div>
+<form id="qaCampaignForm"><div class="grid two">
+<label>Campaign name<input id="qaCampaignName" name="name" maxlength="120" required placeholder="India workflow check"></label>
+<label>Market<select id="qaCampaignMarket" name="countryCode" required>${markets.map(m=>`<option value="${m.code}">${m.name} · ${m.code}</option>`).join("")}</select></label>
+<label>Test plan<select id="qaCampaignScenario" name="scenario"><option>API load</option><option>Workflow test</option><option>Regression test</option><option>Country rules test</option><option>Failure handling test</option></select></label>
+<label>Total tests<input id="qaCampaignTests" name="totalTests" type="number" min="1" max="25000" value="1000" required></label>
+<label>Test accounts<input id="qaCampaignAccounts" name="accountCount" type="number" min="500" max="10000" value="1000" required></label>
+<label>Parallel requests<input id="qaCampaignConcurrency" name="concurrency" type="number" min="1" max="100" value="10" required></label>
+</div><fieldset><legend>Test suites</legend><label><input type="checkbox" name="suites" value="provisioning"> Set up test accounts</label> <label><input type="checkbox" name="suites" value="api" checked> API load</label> <label><input type="checkbox" name="suites" value="workflow"> Workflow test</label> <label><input type="checkbox" name="suites" value="regression"> Regression test</label> <label><input type="checkbox" name="suites" value="localization"> Country rules test</label> <label><input type="checkbox" name="suites" value="failure"> Failure handling test</label></fieldset>
+<p class="muted">Workflow, regression, country rules and failure handling tests need 10,000 accounts. Account setup creates synthetic accounts. API tests can use a smaller pool. The system keeps test data and reports.</p>
+<button class="primary" type="submit" id="qaCampaignSave">Save draft</button><span id="qaCampaignFormMessage" class="muted" role="status"></span></form>
+<h3>Saved plans</h3><div class="scroll" id="qaCampaignsTable">Loading…</div>
+<h3>Campaign steps and measured results</h3><div class="scroll" id="qaCampaignSteps">Loading…</div></section>
 <div class="grid two"><section class="panel"><h2>Latest QA runs</h2><div class="scroll" id="qa"></div></section><section class="panel"><h2>Latest failed QA scenarios</h2><div class="scroll" id="qaFailures"></div></section><section class="panel"><h2>Operational exceptions</h2><p class="muted">Recent API 5xx errors and failed QA scenarios. Incident and notification feeds are marked when not wired.</p><div id="exceptions"></div></section><section class="panel"><h2>Commercial activity</h2><p class="muted">Recorded subscription payment statuses; not provider-reconciled revenue.</p><div id="payments"></div></section></div>
 <div id="people" class="section"><div><h2>Tester operations & access codes</h2><p>Pending applications and aggregate code-redemption history.</p></div></div><div class="grid two"><section class="panel"><h2>Pending tester applications</h2><div class="scroll" id="testerApplications"></div></section><section class="panel"><div class="section"><h2>Tester access-code history</h2><button id="generateTesterCode" class="primary" type="button">Generate code</button></div><div class="scroll" id="testerCodes"></div><p id="actionBridgeStatus" class="muted"></p></section></div><div id="incident-workbench" class="section"><div><h2>Incident review queue</h2><p>Read-only oversight; incident decisions require the secured application-side action bridge.</p></div></div><section class="panel"><div class="scroll" id="incidentQueue"></div><p class="muted">No decisions are written from this reporting service. Resolution actions must use the application workflow so lifecycle constraints, audit history and notifications remain enforced.</p></section><div id="research" class="section"><div><h2>Market research</h2><p>Aggregated optional responses by market, question and answer; individual response records are not exposed here.</p></div></div><section class="panel"><div class="scroll" id="researchResults"></div></section><div id="countries" class="section"><div><h2>Countries & research</h2><p>Country readiness requires dated evidence for every launch gate. Missing evidence is never treated as passed.</p></div></div><div class="grid two"><section class="panel"><h2>Launch readiness by market</h2><p class="muted">Status is evidence-based and defaults to Not assessed.</p><div class="scroll" id="readinessSummary"></div></section><section class="panel"><h2>Selected market launch gates</h2><p class="muted">A gate is verified only with status, review date and evidence reference.</p><div class="scroll" id="readinessDetail"></div></section></div><div id="intelligence" class="section"><div><h2>Logistics intelligence</h2><p>Industry context is separate from platform metrics.</p></div></div>
 <div class="grid two"><section class="panel"><h2>Country snapshot & data coverage</h2><div id="marketSnapshot"></div></section><section class="panel"><h2>Industry sources to monitor</h2><p class="muted">Selected-market official data and operational notices. These are reference links, not ingested live metrics.</p><div class="source-tools"><input id="sourceSearch" type="search" placeholder="Search this market’s sources…" aria-label="Search industry sources"><span id="sourceCount" class="status" aria-live="polite"></span></div><div id="sources"></div></section><section class="panel"><h2>Emerging platform patterns</h2><p class="muted">Computed only from available first-party observations; low-volume signals are labelled.</p><div id="patterns"></div></section><section class="panel"><h2>Cross-country comparison</h2><p class="muted">Side-by-side metrics from the same time window.</p><div class="scroll" id="comparison"></div></section></div>
@@ -520,6 +533,31 @@ async function load(forceRefresh=false){
     }
   }
 }
+
+function qaEsc(value){return String(value==null?"":value).replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));}
+async function loadQaCampaigns(){
+  const status=$("qaCampaignStatus");
+  try{
+    const response=await fetch("/api/qa-campaigns",{cache:"no-store"});
+    const data=await response.json();
+    if(!response.ok)throw new Error(data.error||"Could not load campaign history.");
+    const campaigns=data.campaigns||[],steps=data.steps||[];
+    status.textContent=campaigns.length+" saved plans";
+    $("qaCampaignsTable").innerHTML=campaigns.length?'<table><thead><tr><th>Created</th><th>Campaign</th><th>Market</th><th>Plan</th><th>Tests</th><th>Accounts</th><th>Parallel</th><th>Status</th><th>Action</th></tr></thead><tbody>'+campaigns.map(c=>'<tr><td>'+qaEsc(c.createdAt?new Date(c.createdAt).toLocaleString():"—")+'</td><td>'+qaEsc(c.name)+'</td><td>'+qaEsc(c.countryCode)+'</td><td>'+qaEsc(c.scenario)+'</td><td>'+qaEsc(c.totalTests)+'</td><td>'+qaEsc(c.accountCount)+'</td><td>'+qaEsc(c.concurrency)+'</td><td>'+qaEsc(c.status)+'</td><td>'+(c.status==="draft"?'<button type="button" data-qa-action="start" data-campaign-id="'+qaEsc(c.id)+'">Review and run</button> <button type="button" data-qa-action="delete" data-campaign-id="'+qaEsc(c.id)+'">Delete draft</button>':qaEsc(c.executionMode||"Running or complete"))+'</td></tr>').join("")+'</tbody></table>':'<p class="empty">No saved plans. Create a plan above.</p>';
+    $("qaCampaignSteps").innerHTML=steps.length?'<table><thead><tr><th>Campaign</th><th>Suite</th><th>Status</th><th>Tests</th><th>Accounts</th><th>Parallel</th><th>Passed</th><th>Failed</th><th>P50</th><th>P95</th><th>Duration</th><th>Run ID</th></tr></thead><tbody>'+steps.map(s=>'<tr><td>'+qaEsc(s.campaignName||s.campaignId)+'</td><td>'+qaEsc(s.suite)+'</td><td>'+qaEsc(s.status)+'</td><td>'+qaEsc(s.testIterations)+'</td><td>'+qaEsc(s.accountCount)+'</td><td>'+qaEsc(s.concurrency)+'</td><td>'+qaEsc(s.passed==null?"—":s.passed)+'</td><td>'+qaEsc(s.failed==null?"—":s.failed)+'</td><td>'+qaEsc(s.p50Ms==null?"—":s.p50Ms+" ms")+'</td><td>'+qaEsc(s.p95Ms==null?"—":s.p95Ms+" ms")+'</td><td>'+qaEsc(s.durationMs==null?"—":s.durationMs+" ms")+'</td><td>'+qaEsc(s.runId||"—")+'</td></tr>').join("")+'</tbody></table>':'<p class="empty">No campaign steps yet. Saved drafts do not run tests.</p>';
+  }catch(e){status.textContent="Campaign history unavailable";$("qaCampaignsTable").innerHTML='<div class="notice" role="alert">'+qaEsc(e.message)+'</div>';}
+}
+document.addEventListener("submit",async event=>{
+  if(event.target?.id!=="qaCampaignForm")return;
+  event.preventDefault();
+  const form=event.target,button=$("qaCampaignSave"),message=$("qaCampaignFormMessage");
+  const suites=Array.from(form.querySelectorAll('input[name="suites"]:checked')).map(x=>x.value);
+  const payload={action:"qa-campaign-create",name:$("qaCampaignName").value,countryCode:$("qaCampaignMarket").value,scenario:$("qaCampaignScenario").value,totalTests:Number($("qaCampaignTests").value),accountCount:Number($("qaCampaignAccounts").value),concurrency:Number($("qaCampaignConcurrency").value),suites};
+  button.disabled=true;message.textContent="Saving draft…";
+  try{const result=await adminAction(payload);message.textContent="Draft saved. No test has started. ID: "+result.id;await loadQaCampaigns();}
+  catch(e){message.textContent="Draft not saved: "+e.message;}
+  finally{button.disabled=false;}
+});
 async function adminAction(payload) {
   const response = await fetch("/api/admin-action",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(payload),cache:"no-store"});
   const data = await response.json().catch(()=>({error:"Invalid action response"}));
@@ -527,9 +565,20 @@ async function adminAction(payload) {
   return data;
 }
 document.addEventListener("click",async event=>{
-  const button=event.target.closest("button[data-admin-action],button[data-resolve-incident],#generateTesterCode");
+  const button=event.target.closest("button[data-admin-action],button[data-resolve-incident],button[data-qa-action],#generateTesterCode");
   if(!button||button.disabled)return;
   try {
+    if(button.dataset.qaAction) {
+      const campaignId=button.dataset.campaignId,kind=button.dataset.qaAction;
+      if(kind==="delete") {
+        if(!confirm("Delete this unstarted draft? No QA runs, steps, accounts, events, or reports will be deleted."))return;
+        button.disabled=true;await adminAction({action:"qa-campaign-delete",campaignId});$("qaCampaignFormMessage").textContent="Draft deleted. QA history was kept.";await loadQaCampaigns();return;
+      }
+      if(kind==="start") {
+        if(!confirm("Run this campaign on staging? It can create synthetic data. The system will keep the data and reports."))return;
+        button.disabled=true;const result=await adminAction({action:"qa-campaign-start",campaignId});$("qaCampaignFormMessage").textContent="Campaign queued. Run ID: "+result.runId;await loadQaCampaigns();return;
+      }
+    }
     if(button.id==="generateTesterCode") {
       if(!confirm("Generate a new one-time tester access code? The raw code is shown only once."))return;
       button.disabled=true;
@@ -774,7 +823,7 @@ const server = http.createServer(async (req,res) => {
       const raw = await body(req);
       let actionBody;
       try { actionBody = JSON.parse(raw); } catch { return send(res,400,JSON.stringify({error:"Request body must be valid JSON"}),"application/json"); }
-      const allowed = new Set(["tester-approve","tester-reject","tester-generate-code","incident-resolve"]);
+      const allowed = new Set(["tester-approve","tester-reject","tester-generate-code","incident-resolve","qa-campaign-create","qa-campaign-delete","qa-campaign-start"]);
       if (!allowed.has(actionBody?.action)) return send(res,400,JSON.stringify({error:"Unsupported admin action"}),"application/json");
       const base = process.env.POST2DRIVE_APP_URL;
       const bridgeSecret = process.env.OPS_DASHBOARD_BRIDGE_SECRET;
@@ -794,6 +843,13 @@ const server = http.createServer(async (req,res) => {
       return send(res,response.status,JSON.stringify(responseBody),"application/json");
     }
     if (req.method === "GET" && url.pathname === "/") return send(res,200,dashboard.replaceAll('action="/logout"', 'action="/admin-access/logout"').replaceAll("fetch('/api/", "fetch('/admin-access/api/").replaceAll('fetch("/api/', 'fetch("/admin-access/api/'));
+    if (req.method === "GET" && url.pathname === "/api/qa-campaigns") {
+      const [campaigns, steps] = await Promise.all([
+        prisma.$queryRawUnsafe('SELECT id,name,country_code AS "countryCode",scenario,total_campaign_tests AS "totalTests",account_count AS "accountCount",concurrency,suites,execution_mode AS "executionMode",status,created_at AS "createdAt" FROM qa_test_campaigns ORDER BY created_at DESC LIMIT 100'),
+        prisma.$queryRawUnsafe('SELECT s.id,s.campaign_id AS "campaignId",c.name AS "campaignName",s.suite,s.status,s.test_iterations AS "testIterations",s.account_count AS "accountCount",s.concurrency,s.run_id AS "runId",r.successful_checks AS passed,r.failed_checks AS failed,r.duration_ms AS "durationMs",r.summary->>\'p50Ms\' AS "p50Ms",r.summary->>\'p95Ms\' AS "p95Ms" FROM qa_test_campaign_steps s JOIN qa_test_campaigns c ON c.id=s.campaign_id LEFT JOIN qa_test_runs r ON r.id=s.run_id ORDER BY s.campaign_id,s.ordinal LIMIT 1000')
+      ]);
+      return send(res,200,JSON.stringify({campaigns,steps},(_k,v)=>typeof v==="bigint"?Number(v):v),"application/json");
+    }
     if (req.method === "GET" && url.pathname === "/api/metrics") {
       const result = await metrics(url);
       return send(res,200,JSON.stringify(result,(_k,v)=>typeof v==="bigint"?Number(v):v),"application/json");
