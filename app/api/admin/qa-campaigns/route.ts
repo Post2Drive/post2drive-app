@@ -25,7 +25,7 @@ function validate(body: any) {
   const scenario = safeString(body?.scenario);
   const totalCampaignTests = int(body?.totalCampaignTests, 1, 25000);
   const testsPerVariation = int(body?.testsPerVariation, 1, 25000);
-  const accountCount = int(body?.accountCount, 1, 10000);
+  const accountCount = int(body?.accountCount, 500, 10000);
   const concurrency = int(body?.concurrency, 1, 100);
   const suites = Array.isArray(body?.suites) ? [...new Set(body.suites.filter((x: unknown): x is string => typeof x === "string" && ALLOWED_SUITES.has(x)))] : [];
   const variations = Array.isArray(body?.variations) ? body.variations.slice(0, MAX_VARIATIONS).map((v: any, i: number) => ({
@@ -40,7 +40,7 @@ function validate(body: any) {
   if (!scenario) errors.push("Scenario is required.");
   if (totalCampaignTests === null) errors.push("Total campaign tests must be from 1 to 25,000.");
   if (testsPerVariation === null) errors.push("Tests per variation must be from 1 to 25,000.");
-  if (accountCount === null) errors.push("Account count must be from 1 to 10,000.");
+  if (accountCount === null) errors.push("Account count must be from 500 to 10,000 for execution.");
   if (concurrency === null) errors.push("Concurrency must be from 1 to 100.");
   if (!suites.length) errors.push("Choose at least one test suite.");
   if (!Array.isArray(body?.variations) || body.variations.length < 1 || body.variations.length > MAX_VARIATIONS) errors.push("Add between 1 and 20 variations.");
