@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { getAccountAccess } from "@/lib/access";
 import { getPaidPriceMinorUnits } from "@/lib/subscription";
 import { marketForAccount } from "@/lib/market";
+import { minorUnitsToMajorUnits } from "@/lib/currencyMinorUnits";
 
 export const dynamic = "force-dynamic";
 
@@ -49,7 +50,7 @@ async function GETHandler() {
 
   const priceMinorUnits = getPaidPriceMinorUnits(access.account);
   const market = marketForAccount(access.account);
-  const price = priceMinorUnits === null ? null : priceMinorUnits / 100;
+  const price = priceMinorUnits === null ? null : minorUnitsToMajorUnits(priceMinorUnits, access.account.currency);
 
   return NextResponse.json({
     allowed: access.allowed,
