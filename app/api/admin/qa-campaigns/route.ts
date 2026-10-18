@@ -53,14 +53,24 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: "Not logged in." }, { status: 401 });
   if (!(await isTesterAdmin())) return NextResponse.json({ error: "Admin access required." }, { status: 403 });
   try {
-    const campaigns = await prisma.$queryRawUnsafe<any[]>(`
-      SELECT id, name, target_environment AS "targetEnvironment", country_code AS "countryCode",
-        scenario, total_campaign_tests AS "totalCampaignTests", tests_per_variation AS "testsPerVariation",
-        account_count AS "accountCount", concurrency, suites, variations, execution_mode AS "executionMode",
-        status, created_at AS "createdAt", updated_at AS "updatedAt"
-      FROM qa_test_campaigns ORDER BY created_at DESC LIMIT 100
-    `);
-    return NextResponse.json({ campaigns, executionEnabled: false }, { headers: { "cache-control": "no-store" } });
+    const [campaigns, rawRuns] = await Promise.all([
+      prisma.$queryRawUnsafe<any[]>(`
+        SELECT id, name, target_environment AS "targetEnvironment", country_code AS "countryCode",
+          scenario, total_campaign_tests AS "totalCampaignTests", tests_per_variation AS "testsPerVariation",
+          account_count AS "accountCount", concurrency, suites, variations, execution_mode AS "executionMode",
+          status, created_at AS "createdAt", updated_at AS "updatedAt"
+        FROM qa_test_campaigns ORDER BY created_at DESC LIMIT 100
+      `),
+      prisma.$queryRawUnsafe<any[]>(`
+        SELECT id, status, target_accounts AS "targetAccounts", created_accounts AS "createdAccounts",
+          successful_checks AS "successfulChecks", failed_checks AS "failedChecks", duration_ms AS "durationMs",
+          started_at AS "startedAt", finished_at AS "finishedAt", summary->>'country' AS "countryCode",
+          summary->>'testType' AS "testType", summary->>'loadRequestCount' AS "loadRequestCount"
+        FROM qa_test_runs ORDER BY started_at DESC LIMIT 50
+      `)
+    ]);
+    const runs = rawRuns.map(run => ({ ...run, durationMs: run.durationMs === null ? null : Number(run.durationMs) }));
+    return NextResponse.json({ campaigns, runs, executionEnabled: false }, { headers: { "cache-control": "no-store" } });
   } catch (error) {
     console.error("QA campaign history unavailable", error);
     return NextResponse.json({ error: "Campaign storage is not available yet. Apply the reviewed QA campaign metadata migration to staging before using this page." }, { status: 503 });
