@@ -79,7 +79,7 @@ for (const [name, pattern] of [
   ["active QA identity includes market and route expectation", /e\.scenario, e\.action, e\.method, e\.path, e\.expected_statuses/],
   ["only latest failing outcome remains active", /WHERE issue_rank=1 AND passed=false/],
   ["passing checks clear active issues without deleting history", /A later pass clears the active issue; skipped or absent checks do not/],
-  ["active QA issue table is rendered", /table\\(d\\.qaFailures/],
+  ["active QA issue table is rendered", /table\(d\.qaFailures/],
   ["vehicle compliance metrics", /"motExpired"/],
   ["source provenance and limitations", /External logistics industry trends/],
   ["seasonality and risk intelligence section", /Seasonality & risk intelligence/],
