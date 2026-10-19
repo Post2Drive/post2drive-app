@@ -461,9 +461,9 @@ acceptJob = {
   priceMode: "fixed", vehicleType: "van", jobDate: new Date("2026-11-01T00:00:00.000Z"),
   pickupTime: "10:00", pickupTimeZone: "Europe/London",
 };
-acceptSessionAccountId = "unrelated-poster";
-const outsiderFixedAccept = await acceptRequest();
-assert.equal(outsiderFixedAccept.status, 403, "unrelated account must not accept another account's fixed-price job as poster");
-assert.equal(acceptJob.status, "open", "unauthorized fixed-price acceptance must not mutate job state");
-assert.equal(acceptAuditEvents, 1, "unauthorized acceptance must not add an audit event");
-console.log("Isolated fixed-price acceptance route tests passed: concurrent claim has one winner; unrelated account denied.");
+acceptSessionAccountId = "poster-a";
+const selfFixedAccept = await acceptRequest();
+assert.equal(selfFixedAccept.status, 403, "poster must not accept their own fixed-price job as driver");
+assert.equal(acceptJob.status, "open", "self-acceptance must not mutate job state");
+assert.equal(acceptAuditEvents, 1, "self-acceptance must not add an audit event");
+console.log("Isolated fixed-price acceptance route tests passed: concurrent claim has one winner; self-acceptance denied.");
