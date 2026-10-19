@@ -47,8 +47,6 @@ jobs:
         run: npm run qa:campaign-builder-contract
       - name: Validate lifecycle, incident, and market-guard contracts
         run: npm run qa:lifecycle-contract
-      - name: Validate isolated security and lifecycle fixtures
-        run: node scripts/qa/security-isolation-contract.mjs
       - name: Validate signup display ID collision retries
         run: npm run qa:signup-display-id-retry
       - name: Validate signup, jobs, bidding, status, payments and vehicle workflows
@@ -87,6 +85,8 @@ jobs:
         run: npx prisma generate --schema=prisma/schema.prisma
       - name: Apply all migrations to a clean PostgreSQL database
         run: npx prisma migrate deploy --schema=prisma/schema.prisma
+      - name: Validate isolated security and lifecycle fixtures
+        run: node scripts/qa/security-isolation-contract.mjs
       - name: Validate worker boot and atomic claim against local PostgreSQL
         run: npm run qa:worker-boot-contract
       - name: Validate competing worker claims against local PostgreSQL
