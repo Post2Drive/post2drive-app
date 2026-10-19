@@ -55,14 +55,20 @@ try {
   poster = await prisma.account.create({ data: {
     type: "poster", companyName: "CI lifecycle poster", displayId: "CIP-" + suffix,
     country: "GB", currency: "GBP", verificationStatus: "verified",
+    subscriptionStatus: "active", subscriptionPlanKey: "individual",
+    subscriptionStartedAt: new Date(), subscriptionEndsAt: new Date("2035-12-31T00:00:00.000Z"),
   }});
   driver = await prisma.account.create({ data: {
     type: "driver", companyName: "CI lifecycle driver", displayId: "CID-" + suffix,
     country: "GB", currency: "GBP", verificationStatus: "verified",
+    subscriptionStatus: "active", subscriptionPlanKey: "individual",
+    subscriptionStartedAt: new Date(), subscriptionEndsAt: new Date("2035-12-31T00:00:00.000Z"),
   }});
   outsider = await prisma.account.create({ data: {
     type: "both", companyName: "CI unrelated account", displayId: "CIO-" + suffix,
     country: "GB", currency: "GBP", verificationStatus: "verified",
+    subscriptionStatus: "active", subscriptionPlanKey: "individual",
+    subscriptionStartedAt: new Date(), subscriptionEndsAt: new Date("2035-12-31T00:00:00.000Z"),
   }});
   accountIds.push(poster.id, driver.id, outsider.id);
 
