@@ -3,7 +3,7 @@
 
 import ActivityHistory from "./activity-history";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import SignOutButton from "@/app/sign-out-button";
@@ -218,6 +218,9 @@ export default function JobsPage() {
   const [message, setMessage] =
     useState("");
 
+  // Prevent repeated clicks from dispatching duplicate lifecycle mutations.
+  const actionInFlight = useRef(false);
+
   const [bidAmounts, setBidAmounts] =
     useState<
       Record<string, string>
@@ -314,12 +317,16 @@ export default function JobsPage() {
     path: string,
     confirmMsg?: string
   ) {
+    if (actionInFlight.current) return false;
+    actionInFlight.current = true;
+
     if (
       confirmMsg &&
       !window.confirm(
         confirmMsg
       )
     ) {
+      actionInFlight.current = false;
       return false;
     }
 
@@ -350,6 +357,8 @@ export default function JobsPage() {
       );
 
       return false;
+    } finally {
+      actionInFlight.current = false;
     }
   }
 
