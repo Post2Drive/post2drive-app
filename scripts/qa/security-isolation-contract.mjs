@@ -21,11 +21,11 @@ assert.match(vehicles, /if \(!account \|\| account\.deletionRequestedAt\) return
   "vehicle GET and POST must reject accounts pending deletion");
 assert.match(vehicles, /where: \{ accountId: account\.id \}/,
   "vehicle listing must scope records to the authenticated account");
-assert.match(jobAccept, /where: \{\s*id: id,\s*status: "open",\s*priceMode: "fixed"\s*\}/,
+assert.match(jobAccept, /where: \{\s*id: id,\s*status: "open",\s*priceMode: "fixed",?\s*\}/,
   "fixed-job acceptance must use a conditional atomic claim");
 assert.match(jobAccept, /if \(\s*updated\.count !== 1\s*\)/,
   "fixed-job acceptance must reject a lost race");
-assert.match(bidAccept, /where: \{\s*id: routeParams\.id,\s*posterId: accountId,\s*status: "open",\s*priceMode: "bid"\s*\}/,
+assert.match(bidAccept, /where: \{\s*id: routeParams\.id,\s*posterId: accountId,\s*status: "open",\s*priceMode: "bid",?\s*\}/,
   "bid acceptance must atomically require the authenticated poster and open job");
 assert.match(bidAccept, /if \(claimed\.count !== 1\)/,
   "bid acceptance must reject a lost race");
