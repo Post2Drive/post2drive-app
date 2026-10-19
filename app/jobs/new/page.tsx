@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import { symbolFor } from "@/lib/currency";
 import { VEHICLE_TYPES, vehicleTypeLabel } from "@/lib/vehicles";
 import { formatMarketCurrency, getLocalisationProfile, getTimeZoneOptions } from "@/lib/localisation";
+import { currencyMinorUnitScale } from "@/lib/currencyMinorUnits";
 
 function parseCoords(
   input: string
@@ -401,7 +402,7 @@ export default function NewJobPage() {
             <label>Dimensions<input maxLength={150} value={form.dimensions} onChange={(e) => update("dimensions", e.target.value)} placeholder={country === "US" ? "e.g. 14 ft × 7 ft × 8 ft" : "e.g. 4.2 m × 2.1 m × 2.4 m"} /></label>
           </div>
           <label>How will you set the price? *<select value={form.priceMode} onChange={(e) => update("priceMode", e.target.value)}><option value="fixed">{country === "IN" ? "Fixed quote — the amount shown is the offer" : "Fixed price — the amount shown is the offer"}</option>{country !== "IN" && <option value="bid">Open to bids — drivers can submit offers</option>}</select></label>
-          <label>{form.priceMode === "bid" ? `Guide price (${symbol.trim()}) *` : `Total job price (${symbol.trim()}) *`}<input required inputMode="decimal" type="number" min="0.01" max="100000000" step="0.01" value={form.price} onChange={(e) => update("price", e.target.value)} placeholder={country === "IN" ? "e.g. 2500" : "e.g. 85.00"} /><small>Currency is fixed to {currency}; jobs are not shared between markets.</small></label>
+          <label>{form.priceMode === "bid" ? `Guide price (${symbol.trim()}) *` : `Total job price (${symbol.trim()}) *`}<input required inputMode="decimal" type="number" min={1 / currencyMinorUnitScale(currency)} max="100000000" step={1 / currencyMinorUnitScale(currency)} value={form.price} onChange={(e) => update("price", e.target.value)} placeholder={country === "IN" ? "e.g. 2500" : "e.g. 85.00"} /><small>Currency is fixed to {currency}; jobs are not shared between markets.</small></label>
           {form.priceMode === "bid" && <p style={{ margin: 0, borderRadius: 10, padding: 12, background: "var(--color-primary-soft)", fontSize: 13 }}>This is a guide price, not a guaranteed final payment. You'll review driver bids before accepting one.</p>}
         </section>}
 
