@@ -36,7 +36,8 @@ async function makeCookie(accountId) {
     maxAge: 3600,
     salt: "next-auth.session-token",
   });
-  return "next-auth.session-token=" + token;
+  // NextAuth selects the cookie name from URL/security configuration; provide both variants in this isolated HTTP harness.
+  return "next-auth.session-token=" + token + "; __Secure-next-auth.session-token=" + token;
 }
 async function api(path, method, cookie, body) {
   const headers = {};
