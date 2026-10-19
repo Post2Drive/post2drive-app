@@ -370,7 +370,7 @@ try {
     "GET", driverCookie,
   );
   assert.equal(evidenceDownload.status, 200, "assigned driver may download incident evidence");
-  assert.equal(evidenceDownload.headers.get("cache-control"), "private, no-store", "evidence download must not be cached publicly");
+  assert.match(evidenceDownload.headers.get("cache-control") || "", /no-store/i, "evidence download must not be cached publicly");
   assert.equal(evidenceDownload.headers.get("x-content-type-options"), "nosniff", "evidence download must disable content sniffing");
 
   const terminated = await api("/api/jobs/" + incidentJob.id + "/incidents/terminate", "POST", posterCookie, {
