@@ -116,6 +116,17 @@ contains("app/jobs/page.tsx", "if (ratingInFlight.current) return;", "repeated r
 contains("app/jobs/page.tsx", "finally {\n      ratingInFlight.current = false;", "rating submission lock must be released after success or failure");
 contains("app/dashboard/page.tsx", "This is a planning price only. Payment checkout is not connected yet", "dashboard must not imply an operational renewal checkout");
 
+
+// Account settings should give recoverable feedback and prevent repeated submissions.
+contains("app/settings/page.tsx", "const [saveBusy, setSaveBusy] = useState(false)", "profile save must expose an in-flight state");
+contains("app/settings/page.tsx", "disabled={saveBusy}", "profile save must be disabled while saving");
+contains("app/settings/page.tsx", "Network error. Your settings could not be saved.", "profile save must report network failures");
+contains("app/settings/page.tsx", "const [passwordBusy, setPasswordBusy] = useState(false)", "password update must expose an in-flight state");
+contains("app/settings/page.tsx", "disabled={passwordBusy}", "password update must be disabled while submitting");
+contains("app/settings/page.tsx", "required\n            autoComplete=\"current-password\"", "password change must require the current password");
+contains("app/settings/page.tsx", "required\n            minLength={8}\n            autoComplete=\"new-password\"", "password change must require a minimum-length new password");
+contains("app/settings/page.tsx", "Could not load account settings.", "account settings load failure must be visible and recoverable");
+
 // These are explicit cross-market exceptions, not feature parity gaps: India
 // pricing is separate, the UK trial is UK-only, and compliance can vary locally.
 contains("lib/promotion.ts", "if (!isUkAccount(account))", "UK promotion rules must remain explicit");
