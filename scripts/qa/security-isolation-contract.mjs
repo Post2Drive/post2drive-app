@@ -151,9 +151,9 @@ const evidenceRoute = loadTypeScriptModule("app/api/jobs/[id]/incidents/[inciden
   "next-auth": { getServerSession: async () => ({ user: { accountId: evidenceSessionAccountId } }) },
   "@/lib/auth": { authOptions: {} },
   "@/lib/prisma": { prisma: { incidentEvidence: { findFirst: async ({ where }) => {
-    assert.deepEqual({ id: where.id, jobId: where.jobId, incidentId: where.incidentId },
-      { id: "evidence-1", jobId: "job-private", incidentId: "incident-1" },
-      "evidence lookup must constrain all parent identifiers");
+    assert.equal(where.id, "evidence-1", "evidence lookup must constrain evidence ID");
+    assert.equal(where.jobId, "job-private", "evidence lookup must constrain job ID");
+    assert.equal(where.incidentId, "incident-1", "evidence lookup must constrain incident ID");
     return evidenceFixture;
   } } } },
   "@/lib/testerAdmin": { isTesterAdmin: async () => false },
