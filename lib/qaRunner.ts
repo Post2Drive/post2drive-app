@@ -3,7 +3,7 @@
 import { isQaRunnerEnabled } from "./qaRunnerGuard.ts";
 import { prisma } from "./prisma.ts";
 import { VEHICLE_TYPES } from "./vehicles.ts";
-import { getMarket } from "./selectedMarket.ts";
+import { getMarket } from "./market.ts";
 import { getJurisdictionOptions } from "./localisation.ts";
 
 type AccountFixture = {
@@ -281,7 +281,7 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
       selectedMarket.country, accountTarget,
     );
     const sourceRunId = pools[0]?.id ?? null;
-    if (!sourceRunId) throw new Error("A completed synthetic-account pool with at least the configured account count is required for this selectedMarket.");
+    if (!sourceRunId) throw new Error("A completed synthetic-account pool with at least the configured account count is required for this market.");
     accountPoolRunId = sourceRunId;
     const poolRows = await prisma.$queryRawUnsafe<Array<{ account_id: string; email: string; cohort: string; account_index: number }>>(
       "SELECT account_id,email,cohort,account_index FROM qa_test_accounts WHERE run_id=$1 ORDER BY account_index",
