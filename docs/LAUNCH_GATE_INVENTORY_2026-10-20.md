@@ -28,7 +28,7 @@ migrations, or deployments without explicit approval.
 
 | Gate | Status | Evidence / remaining action |
 | --- | --- | --- |
-| CI on PR #35 head `cb1cc0b0366520605fb9cb0277b4e14ad20a5287` | Not tested to completion at inventory creation | Latest Validate run `39316683613` was in progress; Security Scan run `39316683625` had passed its secret scan. Recheck final conclusions before review. |
+| CI on PR #35 head `cb1cc0b0366520605fb9cb0277b4e14ad20a5287` | Evidenced complete | Validate run `39316683613` completed successfully; Security Scan run `39316683625` completed successfully. This does not replace the authenticated authorization and concurrency tests below. |
 | Existing JWT after account deletion request | Not tested | Add authenticated integration coverage proving a previously issued session is rejected after `deletionRequestedAt` is set or the account is removed. |
 | Vehicle GET/POST after deletion request | Not tested | Exercise both methods with a pre-existing authenticated session; expect 401 and no write. |
 | Cross-account authorization | Not tested | Negative tests for jobs, vehicles, documents/evidence, and lifecycle actions using separate GB and IN accounts. |
