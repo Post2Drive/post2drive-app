@@ -48,10 +48,12 @@ export default function VehiclesPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [loadError, setLoadError] = useState("");
   const [message, setMessage] = useState("");
 
   const loadVehicles = useCallback(async () => {
     setLoading(true);
+    setLoadError("");
     try {
       const response = await fetch("/api/vehicles");
       const data = await response.json();
@@ -61,7 +63,7 @@ export default function VehiclesPage() {
       setIsTester(Boolean(data.isTester));
       setTesterApprovalStatus(data.testerApprovalStatus || null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load vehicles.");
+      setLoadError(err instanceof Error ? err.message : "Could not load vehicles.");
     } finally {
       setLoading(false);
     }
@@ -141,6 +143,7 @@ export default function VehiclesPage() {
       <p>Add your vehicle and supporting details. Registration does not mean the vehicle is verified or eligible for jobs.</p>
 
       {error && <p role="alert" style={{ color: "var(--color-danger, #b91c1c)" }}>{error}</p>}
+      {loadError && <p role="alert" style={{ color: "var(--color-danger, #b91c1c)" }}>Could not refresh your vehicles: {loadError} <button type="button" onClick={() => void loadVehicles()} disabled={loading}>{loading ? "Retrying…" : "Retry"}</button></p>}
       {message && <p role="status">{message}</p>}
 
       <form onSubmit={submit} style={{ border: "1px solid var(--color-border)", borderRadius: 12, padding: 20 }}>
