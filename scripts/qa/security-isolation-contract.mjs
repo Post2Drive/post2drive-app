@@ -117,6 +117,56 @@ assert.equal(activeGet.status, 200, "active account vehicle GET should proceed")
 assert.equal(vehicleReads, 1, "active vehicle read must be scoped to that account");
 console.log("Isolated vehicle route tests passed: deletion-requested GET/POST rejected; active read account-scoped.");
 
+
+// Execute the actual job detail handler with an authenticated non-party account.
+// This proves the route returns 403 rather than exposing another account's job.
+let jobSessionAccountId = "account-outsider";
+const jobFixture = { id: "job-private", posterId: "account-a", acceptedById: "account-b", status: "accepted" };
+const jobRoute = loadTypeScriptModule("app/api/jobs/[id]/route.ts", {
+  "@/lib/apiMetrics": { withApiMetrics: (_name, handler) => handler },
+  "@/lib/jobMarket": { requireJobMarketAccess: async () => null },
+  "next/server": { NextResponse: { json: (body, init = {}) => new Response(JSON.stringify(body), { status: init.status ?? 200, headers: { "content-type": "application/json" } }) } },
+  "next-auth": { getServerSession: async () => ({ user: { accountId: jobSessionAccountId } }) },
+  "@/lib/auth": { authOptions: {} },
+  "@/lib/prisma": { prisma: { job: { findUnique: async ({ where }) => where.id === jobFixture.id ? jobFixture : null } } },
+});
+const outsiderJobResponse = await jobRoute.GET(new Request("https://fixture.invalid/api/jobs/job-private"), { params: Promise.resolve({ id: "job-private" }) });
+assert.equal(outsiderJobResponse.status, 403, "unrelated account must not read a private job");
+jobSessionAccountId = "account-a";
+const posterJobResponse = await jobRoute.GET(new Request("https://fixture.invalid/api/jobs/job-private"), { params: Promise.resolve({ id: "job-private" }) });
+assert.equal(posterJobResponse.status, 200, "job poster must read their own job");
+console.log("Isolated job API tests passed: cross-account GET denied; owner GET allowed.");
+
+// Execute the actual evidence download handler. Evidence must be linked to the
+// requested job/incident and only a job party or tester admin may download it.
+let evidenceSessionAccountId = "account-outsider";
+const evidenceFixture = {
+  content: Buffer.from("isolated evidence"), fileName: "proof.txt", mimeType: "text/plain",
+  sha256: "fixture-sha256", job: { posterId: "account-a", acceptedById: "account-b" },
+};
+const evidenceRoute = loadTypeScriptModule("app/api/jobs/[id]/incidents/[incidentId]/evidence/[evidenceId]/route.ts", {
+  "@/lib/apiMetrics": { withApiMetrics: (_name, handler) => handler },
+  "@/lib/jobMarket": { requireJobMarketAccess: async () => null },
+  "next/server": { NextResponse: { json: (body, init = {}) => new Response(JSON.stringify(body), { status: init.status ?? 200, headers: { "content-type": "application/json" } }) } },
+  "next-auth": { getServerSession: async () => ({ user: { accountId: evidenceSessionAccountId } }) },
+  "@/lib/auth": { authOptions: {} },
+  "@/lib/prisma": { prisma: { incidentEvidence: { findFirst: async ({ where }) => {
+    assert.deepEqual({ id: where.id, jobId: where.jobId, incidentId: where.incidentId },
+      { id: "evidence-1", jobId: "job-private", incidentId: "incident-1" },
+      "evidence lookup must constrain all parent identifiers");
+    return evidenceFixture;
+  } } } },
+  "@/lib/testerAdmin": { isTesterAdmin: async () => false },
+});
+const outsiderEvidence = await evidenceRoute.GET(new Request("https://fixture.invalid/evidence"), { params: Promise.resolve({ id: "job-private", incidentId: "incident-1", evidenceId: "evidence-1" }) });
+assert.equal(outsiderEvidence.status, 403, "unrelated account must not download incident evidence");
+evidenceSessionAccountId = "account-b";
+const partyEvidence = await evidenceRoute.GET(new Request("https://fixture.invalid/evidence"), { params: Promise.resolve({ id: "job-private", incidentId: "incident-1", evidenceId: "evidence-1" }) });
+assert.equal(partyEvidence.status, 200, "accepted driver must download evidence for their job");
+assert.equal(partyEvidence.headers.get("cache-control"), "private, no-store", "evidence must not be cached publicly");
+assert.equal(partyEvidence.headers.get("x-content-type-options"), "nosniff", "evidence download must disable content sniffing");
+console.log("Isolated evidence API tests passed: outsider denied; job party allowed with private download headers.");
+
 // Use only the CI DATABASE_URL, which points at the ephemeral PostgreSQL service.
 // The uniquely named fixture table is created and dropped by this test; no app tables or QA records are touched.
 const prisma = new PrismaClient();
