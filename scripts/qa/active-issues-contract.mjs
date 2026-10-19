@@ -12,6 +12,7 @@ const query = route.slice(queryStart, queryEnd + "LIMIT 100".length);
 
 assert.ok(query.includes("WHERE r.status IN ('completed', 'failed')"), "only finalized QA runs may resolve an issue");
 assert.ok(query.includes("e.method"), "issue identity must include HTTP method");
+assert.ok(query.includes("e.method,") && query.includes('SELECT "runId", country, "runStatus", scenario, action, method, path'), "HTTP method must be projected out of the CTE for the final SELECT");
 assert.ok(query.includes("e.path"), "issue identity must include route");
 assert.ok(query.includes("e.expected_statuses"), "issue identity must include expected status set");
 assert.ok(query.includes("ORDER BY r.started_at DESC, e.created_at DESC, e.id DESC"), "latest finalized check must win deterministically");
