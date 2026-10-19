@@ -10,6 +10,7 @@ import SignOutButton from "@/app/sign-out-button";
 import { symbolFor, COUNTRIES } from "@/lib/currency";
 import { formatMarketDate, formatMarketCurrency, getLocalisationProfile, getTimeZoneOptions } from "@/lib/localisation";
 import { vehicleTypeLabel } from "@/lib/vehicles";
+import { currencyMinorUnitScale } from "@/lib/currencyMinorUnits";
 
 type Contact = {
   companyName: string;
@@ -930,7 +931,7 @@ export default function JobsPage() {
                   )}
                 </div>
 
-                {job.priceMode === "bid" && (
+                {accountCountry !== "IN" && job.priceMode === "bid" && (
                   <p
                     style={{
                       margin: "10px 0 0",
@@ -1053,6 +1054,7 @@ export default function JobsPage() {
                   !isOwner &&
                   job.status ===
                     "open" &&
+                  accountCountry !== "IN" &&
                   job.priceMode ===
                     "bid" && (
                     <div
@@ -1066,6 +1068,8 @@ export default function JobsPage() {
                     >
                       <input
                         type="number"
+                        min={1 / currencyMinorUnitScale(job.currency)}
+                        step={1 / currencyMinorUnitScale(job.currency)}
                         placeholder={`Your bid (${symbolFor(
                           job.currency
                         ).trim()})`}
@@ -1172,6 +1176,7 @@ export default function JobsPage() {
                   )}
 
                 {isOwner &&
+                  accountCountry !== "IN" &&
                   job.priceMode ===
                     "bid" &&
                   job.status ===
