@@ -20,60 +20,92 @@ export default function SettingsPage() {
   });
   const [pwForm, setPwForm] = useState({ currentPassword: "", newPassword: "" });
   const [message, setMessage] = useState("");
+  const [saveBusy, setSaveBusy] = useState(false);
   const [pwMessage, setPwMessage] = useState("");
+  const [passwordBusy, setPasswordBusy] = useState(false);
+  const [loadError, setLoadError] = useState("");
   const [deleteForm, setDeleteForm] = useState({ currentPassword: "", confirm: "" });
   const [deleteMessage, setDeleteMessage] = useState("");
   const [deleteBusy, setDeleteBusy] = useState(false);
 
   useEffect(() => {
+    let active = true;
     fetch("/api/account")
-      .then((res) => res.json())
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Could not load account settings.");
+        return data;
+      })
       .then((data) => {
-        if (data.account) {
-          setAccount(data.account);
-          const user = data.account.users?.[0];
-          setForm({
-            name: user?.name || "",
-            phone: user?.phone || "",
-            companyName: data.account.companyName,
-            country: data.account.country,
-            currency: data.account.currency,
-            marketingConsent: data.account.marketingConsent,
-          });
+        if (!active) return;
+        if (!data.account) {
+          setLoadError("Could not load account settings.");
+          return;
         }
+        setAccount(data.account);
+        const user = data.account.users?.[0];
+        setForm({
+          name: user?.name || "",
+          phone: user?.phone || "",
+          companyName: data.account.companyName || "",
+          country: data.account.country,
+          currency: data.account.currency,
+          marketingConsent: data.account.marketingConsent,
+        });
+      })
+      .catch((error) => {
+        if (active) setLoadError(error instanceof Error ? error.message : "Could not load account settings.");
       });
+    return () => { active = false; };
   }, []);
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
+    if (saveBusy) return;
     setMessage("");
-    const res = await fetch("/api/account", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: form.name, phone: form.phone, companyName: form.companyName, marketingConsent: form.marketingConsent }),
-    });
-    const data = await res.json();
-    setMessage(res.ok ? "Saved." : data.error || "Something went wrong.");
+    setSaveBusy(true);
+    try {
+      const res = await fetch("/api/account", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: form.name, phone: form.phone, companyName: form.companyName, marketingConsent: form.marketingConsent }),
+      });
+      const data = await res.json().catch(() => ({}));
+      setMessage(res.ok ? "Saved." : data.error || "Could not save settings.");
+    } catch {
+      setMessage("Network error. Your settings could not be saved.");
+    } finally {
+      setSaveBusy(false);
+    }
   }
 
   async function handlePasswordChange(e: React.FormEvent) {
     e.preventDefault();
+    if (passwordBusy) return;
     setPwMessage("");
-    const res = await fetch("/api/account", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(pwForm),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      setPwMessage(data.error || "Something went wrong.");
-      return;
+    setPasswordBusy(true);
+    try {
+      const res = await fetch("/api/account", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(pwForm),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setPwMessage(data.error || "Could not update password.");
+        return;
+      }
+      setPwMessage("Password updated.");
+      setPwForm({ currentPassword: "", newPassword: "" });
+    } catch {
+      setPwMessage("Network error. Your password could not be updated.");
+    } finally {
+      setPasswordBusy(false);
     }
-    setPwMessage("Password updated.");
-    setPwForm({ currentPassword: "", newPassword: "" });
   }
 
-  if (!account) return <p>Loading...</p>;
+  if (loadError) return <main style={{ padding: 24 }}><p role="alert">{loadError}</p><button type="button" onClick={() => router.refresh()}>Retry</button></main>;
+  if (!account) return <p>Loading account settings…</p>;
 
   const marketProfile = getLocalisationProfile({ country: account.country, currency: account.currency });
 
@@ -117,7 +149,7 @@ export default function SettingsPage() {
           I'd like to hear about other offers and updates
         </label>
         {message && <p>{message}</p>}
-        <button type="submit">Save</button>
+        <button type="submit" disabled={saveBusy}>{saveBusy ? "Saving…" : "Save"}</button>
       </form>
 
       <h3 style={{ marginTop: 32 }}>Change password</h3>
@@ -126,6 +158,8 @@ export default function SettingsPage() {
           Current password
           <input
             type="password"
+            required
+            autoComplete="current-password"
             value={pwForm.currentPassword}
             onChange={(e) => setPwForm({ ...pwForm, currentPassword: e.target.value })}
           />
@@ -134,13 +168,15 @@ export default function SettingsPage() {
           New password
           <input
             type="password"
+            required
             minLength={8}
+            autoComplete="new-password"
             value={pwForm.newPassword}
             onChange={(e) => setPwForm({ ...pwForm, newPassword: e.target.value })}
           />
         </label>
         {pwMessage && <p>{pwMessage}</p>}
-        <button type="submit">Change password</button>
+        <button type="submit" disabled={passwordBusy}>{passwordBusy ? "Updating…" : "Change password"}</button>
       </form>
 
       <h3 style={{ marginTop: 32 }}>Subscription</h3>
