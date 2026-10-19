@@ -4,7 +4,7 @@ import { PrismaClient } from "@prisma/client";
 
 const dashboardDatabaseUrl = process.env.OPS_DASHBOARD_DATABASE_URL;
 if (!dashboardDatabaseUrl) {
-  console.error("OPS_DASHBOARD_DATABASE_URL is required; refusing to use the application database credentials.");
+  console.error("OPS_DASHBOARD_DATABASE_URL is required; use a dedicated read-only database role, never application database credentials.");
   process.exit(1);
 }
 const prisma = new PrismaClient({ datasources: { db: { url: dashboardDatabaseUrl } }, log: ["error"] });
@@ -889,6 +889,11 @@ async function startServer() {
         r.rolreplication AS can_replicate,
         r.rolbypassrls AS bypasses_rls,
         has_schema_privilege(current_user, 'public', 'CREATE') AS can_create_in_public,
+        (SELECT count(*)::int FROM pg_tables t WHERE t.schemaname = 'public') AS public_tables,
+        (SELECT count(*)::int FROM pg_tables t
+          WHERE t.schemaname = 'public'
+            AND has_table_privilege(current_user, quote_ident(t.schemaname) || '.' || quote_ident(t.tablename), 'SELECT')
+        ) AS readable_tables,
         (SELECT count(*)::int FROM pg_tables t
           WHERE t.schemaname = 'public' AND (
             has_table_privilege(current_user, quote_ident(t.schemaname) || '.' || quote_ident(t.tablename), 'INSERT')
@@ -922,6 +927,9 @@ async function startServer() {
         identity.can_create_roles || identity.inherits_roles || identity.can_replicate ||
         identity.bypasses_rls || identity.can_create_in_public) {
       problems.push("database role has elevated attributes or schema privileges");
+    }
+    if (Number(identity.public_tables) === 0 || Number(identity.readable_tables) !== Number(identity.public_tables)) {
+      problems.push("not all public tables are readable");
     }
     if (Number(identity.writable_tables) !== 0) problems.push("writable table privileges detected");
     if (Number(identity.sequence_privileges) !== 0) problems.push("sequence privileges detected");
