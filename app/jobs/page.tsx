@@ -220,6 +220,7 @@ export default function JobsPage() {
 
   // Prevent repeated clicks from dispatching duplicate lifecycle mutations.
   const actionInFlight = useRef(false);
+  const bidInFlight = useRef(false);
 
   const [bidAmounts, setBidAmounts] =
     useState<
@@ -504,55 +505,63 @@ export default function JobsPage() {
   async function handleBid(
     jobId: string
   ) {
+    if (bidInFlight.current) return;
+    bidInFlight.current = true;
     setMessage("");
 
-    const amount =
-      bidAmounts[jobId];
+    try {
+      const amount =
+        bidAmounts[jobId];
 
-    if (!amount) {
+      if (!amount) {
+        setMessage(
+          "Enter a bid amount."
+        );
+
+        return;
+      }
+
+      const res =
+        await fetch(
+          `/api/jobs/${jobId}/bid`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body:
+              JSON.stringify({
+                amount,
+              }),
+          }
+        );
+
+      const data =
+        await res.json();
+
+      if (!res.ok) {
+        setMessage(
+          data.error ||
+            "Could not place bid."
+        );
+
+        return;
+      }
+
       setMessage(
-        "Enter a bid amount."
+        "Bid placed."
       );
 
-      return;
+      setBidAmounts({
+        ...bidAmounts,
+        [jobId]: "",
+      });
+    } catch {
+      setMessage("Could not place bid.");
+    } finally {
+      bidInFlight.current = false;
     }
-
-    const res =
-      await fetch(
-        `/api/jobs/${jobId}/bid`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-          body:
-            JSON.stringify({
-              amount,
-            }),
-        }
-      );
-
-    const data =
-      await res.json();
-
-    if (!res.ok) {
-      setMessage(
-        data.error ||
-          "Could not place bid."
-      );
-
-      return;
-    }
-
-    setMessage(
-      "Bid placed."
-    );
-
-    setBidAmounts({
-      ...bidAmounts,
-      [jobId]: "",
-    });
   }
 
   async function loadBids(
