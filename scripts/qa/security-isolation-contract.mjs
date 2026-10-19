@@ -393,3 +393,77 @@ assert.equal(outsiderBidAccept.status, 403, "unrelated account must not accept a
 assert.equal(bidAcceptTransactions, 0, "unauthorized bid acceptance must not start a transaction");
 assert.equal(bidAcceptJob.status, "open", "unauthorized bid acceptance must leave job open");
 console.log("Isolated bid acceptance authorization test passed: unrelated poster denied before bid lookup or mutation.");
+
+
+// Exercise the actual fixed-price acceptance route under contention. A verified
+// tester driver may race another acceptance, but the open -> accepted CAS must
+// assign the job once and emit only one lifecycle event.
+let acceptSessionAccountId = "driver-a";
+let acceptJob = {
+  id: "job-accept-race", posterId: "poster-a", acceptedById: null, status: "open",
+  priceMode: "fixed", vehicleType: "van", jobDate: new Date("2026-11-01T00:00:00.000Z"),
+  pickupTime: "10:00", pickupTimeZone: "Europe/London",
+};
+let acceptAuditEvents = 0;
+const acceptTx = {
+  job: {
+    findUnique: async ({ where }) => where.id === acceptJob.id ? { ...acceptJob } : null,
+    updateMany: async ({ where, data }) => {
+      if (acceptJob.id !== where.id || acceptJob.status !== where.status ||
+          acceptJob.priceMode !== where.priceMode) return { count: 0 };
+      acceptJob = { ...acceptJob, ...data };
+      return { count: 1 };
+    },
+  },
+  account: { findUnique: async () => ({ verificationStatus: "verified", isTester: true, country: "GB", currency: "GBP" }) },
+  vehicle: { findFirst: async () => ({ id: "vehicle-fixture" }) },
+  jobActivity: { create: async () => { acceptAuditEvents++; return {}; } },
+  notification: { create: async () => ({}) },
+};
+const acceptRoute = loadTypeScriptModule("app/api/jobs/[id]/accept/route.ts", {
+  "@/lib/apiMetrics": { withApiMetrics: (_name, handler) => handler },
+  "@/lib/jobMarket": { requireJobMarketAccess: async () => null },
+  "@/lib/jobAccess": {
+    getJobPickupAtForAccount: async () => new Date("2026-11-01T10:00:00.000Z"),
+    pickupAccessError: () => null,
+  },
+  "@/lib/access": { getAccountAccess: async () => ({ allowed: true }) },
+  "next/server": { NextResponse: { json: (body, init = {}) => new Response(JSON.stringify(body), { status: init.status ?? 200, headers: { "content-type": "application/json" } }) } },
+  "next-auth": { getServerSession: async () => ({ user: { accountId: acceptSessionAccountId } }) },
+  "@/lib/auth": { authOptions: {} },
+  "@/lib/prisma": {
+    prisma: {
+      job: { findUnique: async ({ where }) => where.id === acceptJob.id ? { ...acceptJob } : null },
+      account: { findUnique: async () => ({ verificationStatus: "verified", isTester: true, country: "GB", currency: "GBP" }) },
+      vehicle: { findFirst: async () => ({ id: "vehicle-fixture" }) },
+      $transaction: async (callback) => callback(acceptTx),
+      driverOpportunity: { updateMany: async () => ({ count: 0 }) },
+    },
+  },
+  "@/lib/opportunities": { markDriverOpportunityAccepted: async () => {} },
+  "@/lib/usage": { recordAcceptedJobUsage: async () => {} },
+  "@/lib/localisation": { getLocalisationProfile: () => ({ timeZone: "Europe/London", inspectionRequiredAtCountryLevel: false }) },
+  "@/lib/vehicleDates": { marketDateKey: () => "2026-11-01" },
+});
+const acceptRequest = () => acceptRoute.POST(
+  new Request("https://fixture.invalid/api/jobs/job-accept-race/accept", { method: "POST" }),
+  { params: Promise.resolve({ id: "job-accept-race" }) },
+);
+const acceptRace = await Promise.all([acceptRequest(), acceptRequest()]);
+assert.deepEqual(acceptRace.map((response) => response.status).sort(), [200, 409],
+  "two simultaneous fixed-price acceptances must produce one success and one conflict");
+assert.equal(acceptJob.status, "accepted", "winning acceptance must persist accepted state");
+assert.ok(["driver-a"].includes(acceptJob.acceptedById), "winning driver must be assigned");
+assert.equal(acceptAuditEvents, 1, "only the winning acceptance may write one lifecycle audit event");
+
+acceptJob = {
+  id: "job-accept-race", posterId: "poster-a", acceptedById: null, status: "open",
+  priceMode: "fixed", vehicleType: "van", jobDate: new Date("2026-11-01T00:00:00.000Z"),
+  pickupTime: "10:00", pickupTimeZone: "Europe/London",
+};
+acceptSessionAccountId = "unrelated-poster";
+const outsiderFixedAccept = await acceptRequest();
+assert.equal(outsiderFixedAccept.status, 403, "unrelated account must not accept another account's fixed-price job as poster");
+assert.equal(acceptJob.status, "open", "unauthorized fixed-price acceptance must not mutate job state");
+assert.equal(acceptAuditEvents, 1, "unauthorized acceptance must not add an audit event");
+console.log("Isolated fixed-price acceptance route tests passed: concurrent claim has one winner; unrelated account denied.");
