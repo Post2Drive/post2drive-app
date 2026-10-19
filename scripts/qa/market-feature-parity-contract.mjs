@@ -94,6 +94,7 @@ contains("components/subscription-status.tsx", "{showPlanPrice && (", "pricing v
 // User-facing job form must not offer an India workflow that server validation rejects.
 contains("app/jobs/new/page.tsx", 'country !== "IN" && <option value="bid">', "India job creation must hide open bidding");
 contains("app/jobs/new/page.tsx", 'country === "IN" && form.priceMode !== "fixed"', "India job creation must guard against bid mode");
+contains("app/jobs/new/page.tsx", 'country === "IN" ? "Fixed quote" : "Fixed price"', "India review summary must describe fixed-quote pricing accurately");
 contains("app/jobs/new/page.tsx", "currencyMinorUnitScale(currency)", "job price input must use the selected currency precision");
 contains("app/jobs/page.tsx", 'accountCountry !== "IN" &&', "India marketplace must not expose bid actions");
 contains("app/jobs/page.tsx", "currencyMinorUnitScale(job.currency)", "bid input must respect the job currency precision");
