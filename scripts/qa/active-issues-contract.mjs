@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 
 const route = readFileSync("app/api/admin/performance/route.ts", "utf8");
 const dashboard = readFileSync("app/admin/performance/performance-dashboard.tsx", "utf8");
-const queryStart = route.indexOf("WITH recent_events (");
+const queryStart = route.indexOf("WITH recent_events AS (");
 assert.ok(queryStart >= 0, "performance API must define the active QA issues query");
 const queryEnd = route.indexOf("LIMIT 100", queryStart);
 assert.ok(queryEnd > queryStart, "active QA issues query must cap the displayed issue list");
