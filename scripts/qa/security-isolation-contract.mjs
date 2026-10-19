@@ -167,6 +167,61 @@ assert.equal(partyEvidence.headers.get("cache-control"), "private, no-store", "e
 assert.equal(partyEvidence.headers.get("x-content-type-options"), "nosniff", "evidence download must disable content sniffing");
 console.log("Isolated evidence API tests passed: outsider denied; job party allowed with private download headers.");
 
+
+// Exercise the actual cancellation route under contention with a deterministic
+// in-memory Prisma transaction fake. Both requests observe "accepted" before
+// racing the route's conditional updateMany; exactly one may commit.
+let cancelSessionAccountId = "poster-a";
+let cancelJob = {
+  id: "job-race", posterId: "poster-a", acceptedById: "driver-b",
+  status: "accepted", cancelledById: null, cancelledAt: null,
+};
+let cancellationAuditEvents = 0;
+const cancellationTx = {
+  job: {
+    updateMany: async ({ where, data }) => {
+      // Synchronous compare-and-set models PostgreSQL's atomic conditional UPDATE.
+      if (cancelJob.id !== where.id || cancelJob.status !== where.status) return { count: 0 };
+      cancelJob = { ...cancelJob, ...data };
+      return { count: 1 };
+    },
+    findUniqueOrThrow: async () => ({ ...cancelJob }),
+  },
+  bid: { updateMany: async () => ({ count: 0 }) },
+  jobActivity: { create: async () => { cancellationAuditEvents++; return {}; } },
+  notification: { create: async () => ({}) },
+};
+const cancelRoute = loadTypeScriptModule("app/api/jobs/[id]/cancel/route.ts", {
+  "@/lib/apiMetrics": { withApiMetrics: (_name, handler) => handler },
+  "@/lib/jobMarket": { requireJobMarketAccess: async () => null },
+  "next/server": { NextResponse: { json: (body, init = {}) => new Response(JSON.stringify(body), { status: init.status ?? 200, headers: { "content-type": "application/json" } }) } },
+  "next-auth": { getServerSession: async () => ({ user: { accountId: cancelSessionAccountId } }) },
+  "@/lib/auth": { authOptions: {} },
+  "@/lib/prisma": {
+    prisma: {
+      job: { findUnique: async ({ where }) => where.id === cancelJob.id ? { ...cancelJob } : null },
+      $transaction: async (callback) => callback(cancellationTx),
+    },
+  },
+  "@/lib/opportunities": { expireJobOpportunities: async () => {} },
+  "@/lib/cancellationLimits": { isCancellationRestricted: async () => false },
+});
+const cancelRequest = () => cancelRoute.POST(new Request("https://fixture.invalid/api/jobs/job-race/cancel", { method: "POST" }), { params: Promise.resolve({ id: "job-race" }) });
+const cancelRace = await Promise.all([cancelRequest(), cancelRequest()]);
+assert.deepEqual(cancelRace.map((response) => response.status).sort(), [200, 409],
+  "two simultaneous cancellations must produce one success and one stale-transition conflict");
+assert.equal(cancelJob.status, "cancelled", "winning cancellation must persist the terminal status");
+assert.equal(cancellationAuditEvents, 1, "only the winning cancellation may write one lifecycle audit event");
+
+// The same real route must deny a non-poster before it starts a transaction.
+cancelJob = { id: "job-race", posterId: "poster-a", acceptedById: "driver-b", status: "accepted", cancelledById: null, cancelledAt: null };
+cancelSessionAccountId = "unrelated-account";
+const outsiderCancel = await cancelRequest();
+assert.equal(outsiderCancel.status, 403, "unrelated account must not cancel another account's job");
+assert.equal(cancelJob.status, "accepted", "unauthorized cancellation must leave job state unchanged");
+assert.equal(cancellationAuditEvents, 1, "unauthorized cancellation must not add an audit event");
+console.log("Isolated lifecycle route tests passed: concurrent cancellation has one winner; outsider cancellation denied.");
+
 // Use only the CI DATABASE_URL, which points at the ephemeral PostgreSQL service.
 // The uniquely named fixture table is created and dropped by this test; no app tables or QA records are touched.
 const prisma = new PrismaClient();
