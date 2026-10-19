@@ -213,7 +213,7 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
 
 
   try {
-    console.log("Starting staging QA run " + runId + " type=" + testType + " for " + market.country + "/" + market.currency + " at " + base);
+    console.log("Starting staging QA run " + runId + " type=" + testType + " for " + selectedMarket.country + "/" + selectedMarket.currency + " at " + base);
     await parallel(Array.from({ length: testType === "synthetic-accounts" ? accountTarget : 0 }, (_, i) => i), executionConcurrency, async i => {
       const posterBoundary = accountTarget === 10_000 ? 100 : Math.floor((accountTarget - 1) * 0.2);
       const driverBoundary = accountTarget === 10_000 ? 250 : posterBoundary + Math.floor((accountTarget - 1) * 0.3);
@@ -224,7 +224,7 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
         name: "QA User " + (i + 1), email, phone: selectedMarket.dialingCode + "770090" + String(i).padStart(4, "0"),
         password, companyName: "[QA-" + runId + "] " + cohort + " " + String(i + 1).padStart(3, "0"),
         planType: "individual", fleetVehicleCount: 1, isSoleTrader: true,
-        country: market.country, currency: market.currency,
+        country: selectedMarket.country, currency: selectedMarket.currency,
         termsAccepted: true, termsVersion: "2026-10-16",
       };
       const t = Date.now();
@@ -241,8 +241,8 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
       const persistStarted = Date.now();
       try {
         await prisma.$transaction(async tx => {
-          const ukPromotion = market.country === "GB" && i !== accountTarget - 1;
-          const paidWeeklyMarket = market.country !== "GB" && market.country !== "IN" && i !== accountTarget - 1;
+          const ukPromotion = selectedMarket.country === "GB" && i !== accountTarget - 1;
+          const paidWeeklyMarket = selectedMarket.country !== "GB" && selectedMarket.country !== "IN" && i !== accountTarget - 1;
           const accessEndsAt = new Date(Date.now() + 60 * 86400000);
           await tx.account.update({
             where: { id: accountId },
@@ -340,8 +340,8 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
     // seeds UK city names into another country's fixtures.
     const laneMiles = [118, 86, 120, 95, 47, 35, 28, 44, 80, 35, 65, 58, 82, 80, 35];
     const lanes = laneMiles.map((miles, index) => ({
-      pickup: "QA Origin " + market.country + " " + (index + 1),
-      dropoff: "QA Destination " + market.country + " " + (index + 1),
+      pickup: "QA Origin " + selectedMarket.country + " " + (index + 1),
+      dropoff: "QA Destination " + selectedMarket.country + " " + (index + 1),
       miles,
     }));
     const freightProfiles = [
@@ -376,16 +376,16 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
       return {
         pickup: lane.pickup, dropoff: lane.dropoff, jobDate, pickupTime,
         dropoffTime: pad(dropoffHour) + ":00", vehicleType: profile.vehicleType,
-        weightKg: profile.weightKg, dimensions: profile.dimensions, price, priceMode: market.country === "IN" ? "fixed" : mode, currency: market.currency,
+        weightKg: profile.weightKg, dimensions: profile.dimensions, price, priceMode: selectedMarket.country === "IN" ? "fixed" : mode, currency: selectedMarket.currency,
         crossBorder: false,
         notes: "Synthetic QA only " + marker + "; lane=" + lane.pickup + " to " + lane.dropoff +
           "; estimatedMiles=" + lane.miles + "; cargo=" + profile.cargo + "; scenario=" + n,
-        pickupContactName: "QA Contact", pickupContactPhone: market.dialingCode + "7700900111",
-        dropoffContactName: "QA Receiver", dropoffContactPhone: market.dialingCode + "7700900112",
+        pickupContactName: "QA Contact", pickupContactPhone: selectedMarket.dialingCode + "7700900111",
+        dropoffContactName: "QA Receiver", dropoffContactPhone: selectedMarket.dialingCode + "7700900112",
       };
     };
     async function createJob(p: AccountFixture, n: number, mode: "fixed" | "bid") {
-      if (market.country === "IN" && mode === "bid") return null;
+      if (selectedMarket.country === "IN" && mode === "bid") return null;
       const r = await check(p.client!, p, "job-posting", "create-" + mode + "-job", "POST", "/api/jobs", jobPayload(n, mode), [201]);
       return r.status === 201 && r.data?.job?.id ? String(r.data.job.id) : null;
     }
@@ -419,7 +419,7 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
     for (let i = 0; i < 20 && i < posters.length && i < drivers.length; i++) {
       const p = posters[i], d = drivers[i], id = await createJob(p, i, "fixed");
       if (!id) continue;
-      if (market.country === "IN") {
+      if (selectedMarket.country === "IN") {
         await check(d.client!, d, "bidding", "india-bidding-disabled", "POST", "/api/jobs/" + id + "/bid", { amount: 120 }, [403]);
         await check(p.client!, p, "bidding", "india-bid-list-disabled", "GET", "/api/jobs/" + id + "/bids", undefined, [400]);
         await check(p.client!, p, "bidding", "india-bid-accept-disabled", "POST", "/api/jobs/" + id + "/bids/qa-nonexistent-bid/accept", {}, [400]);
@@ -433,7 +433,7 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
       if (accepted.status === 200) await completeJob(id, p, d, i);
     }
 
-    if (market.country !== "IN") for (let i = 0; i < 10 && i + 20 < posters.length && i + 20 < drivers.length; i++) {
+    if (selectedMarket.country !== "IN") for (let i = 0; i < 10 && i + 20 < posters.length && i + 20 < drivers.length; i++) {
       const p = posters[i + 20], d = drivers[i + 20], id = await createJob(p, 100 + i, "bid");
       if (!id) continue;
       await check(p.client!, p, "authorization", "poster-cannot-bid-own-job", "POST", "/api/jobs/" + id + "/bid", { amount: 100 }, [403]);
@@ -527,7 +527,7 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
     }
 
     // Race two active bids for one job. Exactly one bid may claim the job.
-    if (market.country !== "IN" && posters.length >= 38 && drivers.length >= 46) {
+    if (selectedMarket.country !== "IN" && posters.length >= 38 && drivers.length >= 46) {
       const poster = posters[37], bidderA = drivers[44], bidderB = drivers[45];
       const raceJob = await createJob(poster, 1520, "bid");
       if (raceJob) {
@@ -639,7 +639,7 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
     await parallel(drivers.slice(0, 20), 2, async (a, i) => {
       const payload = {
         vehicleType: VEHICLE_TYPES[i % VEHICLE_TYPES.length], regPlate: "QA" + runId.replace(/\D/g, "").slice(-5) + String(i).padStart(3, "0"),
-        registrationRegion: getJurisdictionOptions(market.country)[0]?.code,
+        registrationRegion: getJurisdictionOptions(selectedMarket.country)[0]?.code,
         ownershipType: ["owned", "leased", "rented", "other"][i % 4], make: "QA Make", model: "QA Model", mamKg: [350, 1800, 3500, 3500, 3500, 3500, 7500, 12000, 18000, 32000, 7500, 18000, 18000, 3500, 3500, 3500][i % VEHICLE_TYPES.length],
         v5cDocumentUrl: "https://example.invalid/qa-v5c.pdf", insuranceDocumentUrl: "https://example.invalid/qa-insurance.pdf",
         operatorLicenceNo: "QA-" + runId, motValidUntil: new Date(Date.now() + 180 * 86400000).toISOString().slice(0, 10),
@@ -651,12 +651,12 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
 
     if (signed[0]) {
       await check(signed[0].client!, signed[0], "admin-access", "ordinary-user-cannot-read-admin", "GET", "/api/admin/testers", undefined, [403]);
-      await check(signed[0].client!, signed[0], "payments", market.country === "IN" ? "india-weekly-subscription-blocked" : "pending-payment-record-without-real-charge", "POST", "/api/subscription/create-payment", {}, market.country === "IN" ? [400] : [200]);
+      await check(signed[0].client!, signed[0], "payments", selectedMarket.country === "IN" ? "india-weekly-subscription-blocked" : "pending-payment-record-without-real-charge", "POST", "/api/subscription/create-payment", {}, selectedMarket.country === "IN" ? [400] : [200]);
     }
     const restricted = fixtures.find(a => a.index === accountTarget - 1);
     if (restricted?.client && posters[0]) {
       const sample = await createJob(posters[0], 1800, "bid");
-      if (sample) await check(restricted.client, restricted, "access-control", market.country === "IN" ? "india-non-weekly-market-access-policy" : "restricted-account-cannot-bid", "POST", "/api/jobs/" + sample + "/bid", { amount: 100 }, market.country === "IN" ? [200] : [403, 402]);
+      if (sample) await check(restricted.client, restricted, "access-control", selectedMarket.country === "IN" ? "india-non-weekly-market-access-policy" : "restricted-account-cannot-bid", "POST", "/api/jobs/" + sample + "/bid", { amount: 100 }, selectedMarket.country === "IN" ? [200] : [403, 402]);
     }
 
     // Exercise the API surface with 10,000 real requests per selected country.
@@ -695,7 +695,7 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
       { name: "nonnumeric-max-price", auth: true, method: "GET", path: () => "/api/jobs?maxPrice=not-a-number", expected: [400] },
       { name: "authenticated-account-read", auth: true, method: "GET", path: () => "/api/account", expected: [200] },
       { name: "authenticated-access-read", auth: true, method: "GET", path: () => "/api/account/access", expected: [200] },
-      { name: "country-change-rejected", auth: true, method: "PATCH", path: () => "/api/account", body: () => ({ country: market.country === "IN" ? "GB" : "IN", currency: market.country === "IN" ? "GBP" : "INR" }), expected: [409] },
+      { name: "country-change-rejected", auth: true, method: "PATCH", path: () => "/api/account", body: () => ({ country: selectedMarket.country === "IN" ? "GB" : "IN", currency: selectedMarket.country === "IN" ? "GBP" : "INR" }), expected: [409] },
       { name: "authenticated-vehicle-list", auth: true, method: "GET", path: () => "/api/vehicles", expected: [200] },
       { name: "invalid-vehicle-type", auth: true, method: "POST", path: () => "/api/vehicles", body: () => ({ vehicleType: "not-a-vehicle" }), expected: [400] },
       { name: "authenticated-payment-summary", auth: true, method: "GET", path: () => "/api/payments", expected: [200] },
