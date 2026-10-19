@@ -278,6 +278,7 @@ export default function PerformanceDashboard() {
         {key:"runStatus",label:"Run status"},
         {key:"scenario",label:"Scenario"},
         {key:"action",label:"Action"},
+        {key:"method",label:"Method"},
         {key:"path",label:"Route"},
         {key:"expected",label:"Expected",render:(v:any)=>Array.isArray(v)?v.join(", "):String(v??"—")},
         {key:"actual",label:"Actual"},
