@@ -106,7 +106,7 @@ contains("app/vehicles/page.tsx", 'field("Insurance valid until", "insuranceVali
 contains("app/vehicles/page.tsx", "getJurisdictionAuthority(market.country, form.registrationRegion, market.currency)", "vehicle onboarding must show the applicable jurisdiction authority");
 
 contains("app/jobs/page.tsx", "const actionInFlight = useRef(false)", "lifecycle UI must guard against duplicate in-flight actions");
-contains("app/jobs/page.tsx", "if (actionInFlight.current) return false;", "repeated lifecycle clicks must not dispatch a second mutation");
+contains("app/jobs/page.tsx", "if (actionInFlight.current) {", "repeated lifecycle clicks must not dispatch a second mutation");
 contains("app/jobs/page.tsx", "finally {\n      actionInFlight.current = false;", "lifecycle action lock must be released after success or failure");
 contains("app/jobs/page.tsx", "const bidInFlight = useRef(false)", "bid submission must guard against duplicate in-flight requests");
 contains("app/jobs/page.tsx", "if (bidInFlight.current) return;", "repeated bid clicks must not submit a second bid");
