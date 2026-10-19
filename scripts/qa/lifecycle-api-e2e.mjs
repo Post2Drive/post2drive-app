@@ -84,6 +84,11 @@ async function apiFormData(path, method, cookie, formData) {
     method, headers, body: formData, cache: "no-store", signal: AbortSignal.timeout(8000),
   });
 }
+const makeEvidenceForm = () => {
+  const form = new FormData();
+  form.append("file", new Blob(["%PDF-1.4\\n% isolated CI evidence\\n%%EOF\\n"], { type: "application/pdf" }), "ci-evidence.pdf");
+  return form;
+};
 const denyStatuses = new Set([400, 401, 403, 404, 409, 422]);
 try {
   poster = await prisma.account.create({ data: {
@@ -264,23 +269,33 @@ try {
     ["/api/jobs/" + lifecycleJob.id + "/confirm-delivered", "POST", {}],
     ["/api/jobs/" + lifecycleJob.id + "/reject-delivered", "POST", { reason: "fixture" }],
     ["/api/jobs/" + lifecycleJob.id + "/unassign", "POST", {}],
-    ["/api/jobs/" + lifecycleJob.id + "/edit", "PATCH", { pickup: "attacker edit" }],
+    ["/api/jobs/" + bidJob.id + "/edit", "PATCH", {
+      pickup: "Attacker edit", dropoff: "CI bid dropoff",
+      jobDate: new Date(Date.now() + 2 * 86_400_000).toISOString().slice(0, 10),
+      pickupTime: "10:00", dropoffTime: "14:00", pickupTimeZone: "Europe/London", dropoffTimeZone: "Europe/London",
+      vehicleType: "van", price: 100, priceMode: "bid", currency: "GBP", crossBorder: false,
+    }],
     ["/api/jobs/" + lifecycleJob.id + "/payment/mark-paid", "POST", {}],
     ["/api/jobs/" + lifecycleJob.id + "/payment/confirm-received", "POST", {}],
     ["/api/jobs/" + lifecycleJob.id + "/incidents", "GET"],
-    ["/api/jobs/" + lifecycleJob.id + "/incidents", "POST", { description: "attacker incident", reason: "fixture" }],
-    ["/api/jobs/" + lifecycleJob.id + "/incidents/terminate", "POST", { reason: "fixture", description: "fixture" }],
-    ["/api/jobs/" + lifecycleJob.id + "/incidents/updates", "POST", { parentIncidentId: incident.id, message: "attacker update" }],
-    ["/api/jobs/" + lifecycleJob.id + "/incidents/" + incident.id + "/evidence", "POST", { fileName: "attacker.txt" }],
+    ["/api/jobs/" + incidentJob.id + "/incidents", "POST", { description: "Attacker incident", reason: "vehicle_breakdown", requestedOutcome: "terminate_job" }],
+    ["/api/jobs/" + incidentJob.id + "/incidents/terminate", "POST", { incidentId: incident.id, reason: "isolated fixture", notes: "Attacker termination" }],
+    ["/api/jobs/" + incidentJob.id + "/incidents/updates", "POST", { incidentId: incident.id, description: "Attacker update" }],
+    ["/api/jobs/" + incidentJob.id + "/incidents/" + incident.id + "/evidence", "POST", { __formData: true }],
     ["/api/jobs/" + lifecycleJob.id + "/incidents/" + incident.id + "/evidence/" + evidence.id, "GET"],
   ];
   for (const [path, method, body] of outsiderCases) {
     const before = await snapshot();
-    const anonymous = await api(path, method, null, body);
+    const isFormData = body?.__formData === true;
+    const anonymous = isFormData
+      ? await apiFormData(path, method, null, makeEvidenceForm())
+      : await api(path, method, null, body);
     assert.equal(anonymous.status, 401, method + " " + path + ": anonymous HTTP request must return 401");
     assert.deepEqual(await snapshot(), before, method + " " + path + ": anonymous request changed protected state");
 
-    const response = await api(path, method, outsiderCookie, body);
+    const response = isFormData
+      ? await apiFormData(path, method, outsiderCookie, makeEvidenceForm())
+      : await api(path, method, outsiderCookie, body);
     assert.ok(denyStatuses.has(response.status),
       method + " " + path + ": unrelated authenticated account must be denied (got " + response.status + ")");
     const after = await snapshot();
