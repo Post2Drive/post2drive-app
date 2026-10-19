@@ -3,12 +3,26 @@ import assert from "node:assert/strict";
 import { localDateTimeToInstant } from "../../lib/localTime.ts";
 import { MARKETS, marketTimeZone } from "../../lib/market.ts";
 import { TIME_ZONE_OPTIONS, getTimeZoneOptions } from "../../lib/localisation.ts";
+import { marketDateKey, parseOptionalDateField } from "../../lib/vehicleDates.ts";
 
 const local = (date, time, timeZone) => {
   const [year, month, day] = date.split("-").map(Number);
   const [hour, minute] = time.split(":").map(Number);
   return localDateTimeToInstant({ year, month, day, hour, minute }, timeZone);
 };
+
+
+// Vehicle expiry inputs are calendar dates, not instants. Reject impossible dates
+// and malformed strings; compute "today" in the account market's timezone.
+assert.deepEqual(parseOptionalDateField("", "Insurance expiry date"), { date: null, dateKey: null, error: null });
+assert.equal(parseOptionalDateField("2028-02-29", "Insurance expiry date").dateKey, "2028-02-29", "valid leap day must be accepted");
+assert.match(parseOptionalDateField("2027-02-29", "Insurance expiry date").error ?? "", /valid calendar date/, "invalid leap day must be rejected");
+assert.match(parseOptionalDateField("2026-04-31", "Insurance expiry date").error ?? "", /valid calendar date/, "impossible month/day must be rejected");
+assert.match(parseOptionalDateField("2026-1-02", "Insurance expiry date").error ?? "", /valid calendar date/, "non-padded dates must be rejected");
+assert.match(parseOptionalDateField(new Date("2026-10-20"), "Insurance expiry date").error ?? "", /valid calendar date/, "non-string date input must be rejected");
+const nearUtcMidnight = new Date("2026-10-20T00:30:00.000Z");
+assert.equal(marketDateKey(nearUtcMidnight, "America/Los_Angeles"), "2026-10-19", "US expiry boundary must use local date, not UTC date");
+assert.equal(marketDateKey(nearUtcMidnight, "Asia/Kolkata"), "2026-10-20", "India expiry boundary must use local date, not browser/UTC date");
 
 assert.equal(local("2026-01-15", "09:00", "Europe/London").toISOString(), "2026-01-15T09:00:00.000Z", "UK winter time should use GMT");
 assert.equal(local("2026-07-15", "09:00", "Europe/London").toISOString(), "2026-07-15T08:00:00.000Z", "UK summer time should use BST");
