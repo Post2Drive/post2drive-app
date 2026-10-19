@@ -104,7 +104,7 @@ export default function SettingsPage() {
     }
   }
 
-  if (loadError) return <main style={{ padding: 24 }}><p role="alert">{loadError}</p><button type="button" onClick={() => router.refresh()}>Retry</button></main>;
+  if (loadError) return <main style={{ padding: 24 }}><p role="alert">{loadError}</p><button type="button" onClick={() => window.location.reload()}>Retry</button></main>;
   if (!account) return <p>Loading account settings…</p>;
 
   const marketProfile = getLocalisationProfile({ country: account.country, currency: account.currency });
