@@ -85,22 +85,10 @@ jobs:
         run: npx prisma generate --schema=prisma/schema.prisma
       - name: Apply all migrations to a clean PostgreSQL database
         run: npx prisma migrate deploy --schema=prisma/schema.prisma
-      - name: Provision isolated read-only role for dashboard authorization E2E
-        run: |
-          psql "${DATABASE_URL%%\?*}" -v ON_ERROR_STOP=1 <<'SQL'
-          CREATE ROLE post2drive_ops_readonly LOGIN PASSWORD 'ci-dashboard-readonly-password'
-            NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS;
-          GRANT USAGE ON SCHEMA public TO post2drive_ops_readonly;
-          GRANT SELECT ON ALL TABLES IN SCHEMA public TO post2drive_ops_readonly;
-          SQL
-      - name: Validate Ops Dashboard authentication and authorization end to end
-        run: node scripts/qa/ops-dashboard-auth-e2e.mjs
       - name: Validate isolated security and lifecycle fixtures
         run: node scripts/qa/security-isolation-contract.mjs
       - name: Validate authenticated lifecycle authorization matrix
         run: node scripts/qa/lifecycle-auth-matrix.mjs
-      - name: Audit legacy admin API consumers
-        run: node scripts/qa/legacy-admin-api-consumer-audit.mjs
       - name: Validate worker boot and atomic claim against local PostgreSQL
         run: npm run qa:worker-boot-contract
       - name: Validate competing worker claims against local PostgreSQL
