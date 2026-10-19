@@ -154,6 +154,10 @@ try {
   ];
   for (const [path, method, body] of outsiderCases) {
     const before = await snapshot();
+    const anonymous = await api(path, method, null, body);
+    assert.equal(anonymous.status, 401, method + " " + path + ": anonymous HTTP request must return 401");
+    assert.deepEqual(await snapshot(), before, method + " " + path + ": anonymous request changed protected state");
+
     const response = await api(path, method, outsiderCookie, body);
     assert.ok(denyStatuses.has(response.status),
       method + " " + path + ": unrelated authenticated account must be denied (got " + response.status + ")");
