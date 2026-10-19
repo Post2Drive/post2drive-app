@@ -2,6 +2,8 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { PrismaClient } from "@prisma/client";
+import vm from "node:vm";
+import ts from "typescript";
 
 const source = (path) => readFileSync(path, "utf8");
 const auth = source("lib/auth.ts");
@@ -31,7 +33,89 @@ assert.match(evidence, /if \(!isParty && !admin\)/,
   "incident evidence reads must reject unrelated accounts");
 assert.match(evidence, /where: \{ id: evidenceId, jobId, incidentId \}/,
   "evidence lookup must be scoped to the requested incident");
-console.log("Security route contracts passed (source-level; not an authenticated HTTP test).");
+
+function loadTypeScriptModule(path, mocks) {
+  const compiled = ts.transpileModule(source(path), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true },
+    fileName: path,
+  }).outputText;
+  const module = { exports: {} };
+  const mockRequire = (name) => {
+    if (!(name in mocks)) throw new Error(`Unexpected dependency in isolated test: ${name}`);
+    return mocks[name];
+  };
+  vm.runInNewContext(compiled, {
+    module, exports: module.exports, require: mockRequire, console,
+    Headers, Request, Response, URL, Date, Promise, setTimeout, clearTimeout,
+  }, { filename: path });
+  return module.exports;
+}
+
+// Execute the actual NextAuth callbacks with an isolated Prisma fake to prove that
+// an already-issued token is revoked on refresh after deletion is requested.
+let accountState = { deletionRequestedAt: new Date("2026-01-01T00:00:00.000Z") };
+const fakePrisma = {
+  account: { findUnique: async () => accountState },
+  vehicle: {
+    findMany: async ({ where }) => { assert.equal(where.accountId, "acct-active"); return []; },
+    create: async () => { throw new Error("Deleted account must never create a vehicle"); },
+  },
+};
+const identityProvider = () => ({ id: "credentials" });
+const authModule = loadTypeScriptModule("lib/auth.ts", {
+  "next-auth/providers/credentials": identityProvider,
+  "bcryptjs": { compare: async () => false },
+  "@/lib/prisma": { prisma: fakePrisma },
+  "@/lib/emailVerification": { emailVerificationEnabled: () => false },
+  "@/lib/rateLimit": { checkRateLimit: async () => ({ allowed: true }), clientNetworkIdentity: () => "fixture" },
+  "@/lib/qaRunAuthorization": { isAuthorizedQaRunId: async () => false },
+});
+const callbacks = authModule.authOptions.callbacks;
+const revokedToken = await callbacks.jwt({ token: { accountId: "acct-deleted" } });
+assert.equal(revokedToken.accountDeleted, true, "existing JWT must be marked revoked after deletion request");
+assert.equal(await callbacks.session({ session: { user: {} }, token: revokedToken }), null,
+  "revoked existing JWT must not produce a session");
+accountState = null;
+const missingAccountToken = await callbacks.jwt({ token: { accountId: "acct-missing" } });
+assert.equal(missingAccountToken.accountDeleted, true, "missing account must revoke an existing JWT");
+accountState = { deletionRequestedAt: null };
+const activeToken = await callbacks.jwt({ token: { accountId: "acct-active" } });
+assert.equal(activeToken.accountDeleted, false, "active account must keep a valid session");
+const activeSession = await callbacks.session({ session: { user: {} }, token: activeToken });
+assert.equal(activeSession.user.accountId, "acct-active", "active session must retain its own account identity");
+console.log("Isolated NextAuth callback tests passed: deleted/missing accounts revoked; active account preserved.");
+
+// Execute the actual vehicle route handlers with a mocked session and Prisma.
+// Deleted accounts must receive 401 before vehicle reads or writes are attempted.
+let vehicleAccount = { id: "acct-deleted", deletionRequestedAt: new Date("2026-01-01T00:00:00.000Z"), type: "both" };
+let vehicleReads = 0;
+let vehicleWrites = 0;
+fakePrisma.account.findUnique = async () => vehicleAccount;
+fakePrisma.vehicle.findMany = async ({ where }) => { vehicleReads++; assert.equal(where.accountId, "acct-active"); return []; };
+fakePrisma.vehicle.create = async () => { vehicleWrites++; return {}; };
+const routeModule = loadTypeScriptModule("app/api/vehicles/route.ts", {
+  "@/lib/apiMetrics": { withApiMetrics: (_name, handler) => handler },
+  "next/server": { NextResponse: { json: (body, init = {}) => ({ body, status: init.status ?? 200 }) } },
+  "next-auth": { getServerSession: async () => ({ user: { accountId: vehicleAccount.id } }) },
+  "@/lib/auth": { authOptions: {} },
+  "@/lib/prisma": { prisma: fakePrisma },
+  "@/lib/vehicles": { VEHICLE_TYPES: ["van", "truck", "car"] },
+  "@/lib/localisation": { getLocalisationProfile: () => null, getJurisdictionOptions: () => [] },
+  "@/lib/vehicleDates": { marketDateKey: () => "2026-10-20", parseOptionalDateField: () => ({ date: null, dateKey: null, error: null }) },
+});
+const deletedGet = await routeModule.GET(new Request("https://fixture.invalid/api/vehicles"));
+assert.equal(deletedGet.status, 401, "deleted account vehicle GET must be unauthorized");
+const deletedPost = await routeModule.POST(new Request("https://fixture.invalid/api/vehicles", {
+  method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({}),
+}));
+assert.equal(deletedPost.status, 401, "deleted account vehicle POST must be unauthorized");
+assert.equal(vehicleReads, 0, "deleted account must not read vehicles");
+assert.equal(vehicleWrites, 0, "deleted account must not write vehicles");
+vehicleAccount = { id: "acct-active", deletionRequestedAt: null, type: "both" };
+const activeGet = await routeModule.GET(new Request("https://fixture.invalid/api/vehicles"));
+assert.equal(activeGet.status, 200, "active account vehicle GET should proceed");
+assert.equal(vehicleReads, 1, "active vehicle read must be scoped to that account");
+console.log("Isolated vehicle route tests passed: deletion-requested GET/POST rejected; active read account-scoped.");
 
 // Use only the CI DATABASE_URL, which points at the ephemeral PostgreSQL service.
 // The uniquely named fixture table is created and dropped by this test; no app tables or QA records are touched.
