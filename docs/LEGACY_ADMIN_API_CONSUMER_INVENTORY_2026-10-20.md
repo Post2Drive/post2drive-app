@@ -8,6 +8,12 @@
 - `scripts/qa/legacy-admin-api-consumer-audit.mjs` scans tracked app/runtime source for the retired API path and dashboard component symbol, and verifies the tombstone and redirect. CI runs this audit.
 - The replacement standalone dashboard uses its own `/admin-access/api/metrics` route. The app's `/api/internal/admin-bridge` requires a timestamp, nonce, HMAC signature, and replay protection; protected admin page routes redirect to `/admin-access`.
 
+## Read-only Railway HTTP log check
+
+- Inspected the Post2Drive Web staging service's Railway HTTP proxy logs from 2026-10-19 19:40 UTC through 2026-10-20 21:06 UTC. The returned sample contained 34 HTTP entries and **zero** requests to `/api/admin/performance` after the tombstone deployment.
+- A broader returned sample contained 10 requests to that path on 2026-10-18 around 21:29 UTC, alternating HTTP 401 and 403. Their timing/status pattern matches the two old authenticated/unauthenticated QA route-matrix probes, which this branch changes to expect HTTP 410.
+- This is bounded proxy-log evidence, not proof of zero consumers over all time or in third-party systems. No request IPs or user-agent data are copied into this inventory.
+
 ## Limits and remaining external checks
 
 This establishes an in-repository runtime inventory only. Repository search cannot prove there are no consumers outside this repository. Before any eventual removal of the tombstone, an operator must check:
