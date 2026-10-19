@@ -127,6 +127,13 @@ contains("app/settings/page.tsx", "required\n            autoComplete=\"current-
 contains("app/settings/page.tsx", "required\n            minLength={8}\n            autoComplete=\"new-password\"", "password change must require a minimum-length new password");
 contains("app/settings/page.tsx", "Could not load account settings.", "account settings load failure must be visible and recoverable");
 
+
+contains("app/jobs/page.tsx", "Another job action is still in progress. Please wait.", "duplicate lifecycle clicks must explain why another action was ignored");
+contains("app/jobs/page.tsx", "A bid submission is already in progress. Please wait.", "duplicate bid submissions must provide visible feedback");
+contains("app/jobs/page.tsx", "A rating submission is already in progress. Please wait.", "duplicate rating submissions must provide visible feedback");
+contains("app/jobs/page.tsx", "Network error. Could not load bids.", "bid loading must handle network failures without an unhandled rejection");
+contains("app/jobs/page.tsx", "setOpenBids((current) => ({", "bid loading must merge results without overwriting another job's bid state");
+
 // These are explicit cross-market exceptions, not feature parity gaps: India
 // pricing is separate, the UK trial is UK-only, and compliance can vary locally.
 contains("lib/promotion.ts", "if (!isUkAccount(account))", "UK promotion rules must remain explicit");
