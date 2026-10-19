@@ -78,6 +78,9 @@ contains("app/api/signup/route.ts", "marketForAccount({ country, currency })", "
 contains("app/api/jobs/route.ts", "isSupportedMarket(account)", "job posting must validate the stored account market");
 contains("app/api/jobs/route.ts", "validateJobInput(body, account)", "job posting must use market-aware validation");
 contains("app/api/vehicles/route.ts", "getLocalisationProfile({ country: account.country, currency: account.currency })", "vehicle registration must use market-specific terminology/rules");
+contains("lib/auth.ts", "select: { deletionRequestedAt: true }", "JWT refresh must re-check persisted account deletion state");
+contains("lib/auth.ts", "if (!account || account.deletionRequestedAt) return null;", "deleted or missing accounts must have existing JWT sessions revoked");
+contains("app/api/vehicles/route.ts", "if (!account || account.deletionRequestedAt) return null;", "vehicle reads and writes must reject accounts pending deletion");
 contains("app/api/jobs/[id]/bid/route.ts", "requireJobMarketAccess", "bidding must enforce same-market boundaries");
 contains("app/api/jobs/[id]/accept/route.ts", "requireJobMarketAccess", "job acceptance must enforce same-market boundaries");
 contains("app/api/subscription/create-payment/route.ts", "createPendingSubscriptionPayment", "all eligible markets need the shared subscription request path");
