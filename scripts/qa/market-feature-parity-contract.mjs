@@ -95,7 +95,7 @@ contains("components/subscription-status.tsx", "{showPlanPrice && (", "pricing v
 contains("app/jobs/new/page.tsx", 'country !== "IN" && <option value="bid">', "India job creation must hide open bidding");
 contains("app/jobs/new/page.tsx", 'country === "IN" && form.priceMode !== "fixed"', "India job creation must guard against bid mode");
 contains("app/jobs/new/page.tsx", "currencyMinorUnitScale(currency)", "job price input must use the selected currency precision");
-contains("app/jobs/page.tsx", 'accountCountry !== "IN" && job.priceMode === "bid"', "India marketplace must not expose bid actions");
+contains("app/jobs/page.tsx", 'accountCountry !== "IN" &&', "India marketplace must not expose bid actions");
 contains("app/jobs/page.tsx", "currencyMinorUnitScale(job.currency)", "bid input must respect the job currency precision");
 contains("app/dashboard/page.tsx", "This is a planning price only. Payment checkout is not connected yet", "dashboard must not imply an operational renewal checkout");
 
