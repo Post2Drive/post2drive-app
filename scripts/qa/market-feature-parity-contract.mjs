@@ -107,6 +107,9 @@ contains("app/vehicles/page.tsx", "marketProfile?.inspectionHelp", "inspection e
 contains("app/vehicles/page.tsx", "!expiryDatesOptional && Boolean(marketProfile?.inspectionRequiredAtCountryLevel)", "inspection expiry requirements must respect market rules and tester exceptions");
 contains("app/vehicles/page.tsx", 'field("Insurance valid until", "insuranceValidUntil", "date", !expiryDatesOptional)', "insurance expiry must be required for non-test accounts");
 contains("app/vehicles/page.tsx", "getJurisdictionAuthority(market.country, form.registrationRegion, market.currency)", "vehicle onboarding must show the applicable jurisdiction authority");
+contains("app/vehicles/page.tsx", "const [loadError, setLoadError] = useState(\"\")", "vehicle list loading failures must be isolated from submission errors");
+contains("app/vehicles/page.tsx", "setLoadError(\"\")", "vehicle list retry must clear a previous load error");
+contains("app/vehicles/page.tsx", "onClick={() => void loadVehicles()}", "vehicle list loading failures must offer an explicit retry");
 
 contains("app/jobs/page.tsx", "const actionInFlight = useRef(false)", "lifecycle UI must guard against duplicate in-flight actions");
 contains("app/jobs/page.tsx", "if (actionInFlight.current) {", "repeated lifecycle clicks must not dispatch a second mutation");
