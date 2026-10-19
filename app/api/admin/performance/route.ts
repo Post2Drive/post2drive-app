@@ -77,12 +77,11 @@ async function GETHandler(request: Request) {
           FROM qa_test_events e
           JOIN qa_test_runs r ON r.id=e.run_id
           WHERE r.status IN ('completed', 'failed')
-            AND e.run_id IN (SELECT id FROM qa_test_runs ORDER BY started_at DESC LIMIT 100)
         )
-        SELECT "runId", country, "runStatus", scenario, action, path, expected, actual, 1::int AS count
+        SELECT "runId", country, "runStatus", scenario, action, method, path, expected, actual, 1::int AS count
         FROM recent_events
         WHERE issue_rank=1 AND passed=false
-        ORDER BY "runStartedAt" DESC, scenario, action
+        ORDER BY "runStartedAt" DESC, scenario, action, method
         LIMIT 100
       `),
       prisma.$queryRawUnsafe<any[]>(`SELECT a.id,a."companyName",a.type::text AS type,a."lastActivityAt",a."createdAt",count(DISTINCT ja.id)::int AS "activityCount" FROM "Account" a LEFT JOIN qa_test_accounts q ON q.account_id=a.id LEFT JOIN "JobActivity" ja ON ja."actorId"=a.id AND ja."createdAt">=now()-($1::int*interval '1 day') WHERE q.account_id IS NULL GROUP BY a.id ORDER BY "activityCount" DESC,a."lastActivityAt" DESC LIMIT 15`, String(days))
