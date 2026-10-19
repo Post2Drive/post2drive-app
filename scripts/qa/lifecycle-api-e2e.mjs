@@ -12,7 +12,7 @@ const jobIds = [];
 let server;
 let serverOutput = "";
 let base = "";
-let poster, driver, outsider, lifecycleJob, bidJob, bid, incident, evidence, posterVehicle;
+let poster, driver, outsider, lifecycleJob, bidJob, bid, incident, evidence, posterVehicle, driverVehicle;
 
 async function snapshot() {
   const [jobRows, bidCount, activityCount, evidenceCount, vehicleCount, notificationCount] = await Promise.all([
@@ -80,7 +80,6 @@ try {
     vehicleType: "van", price: 100, currency: "GBP", crossBorder: false,
   }});
   jobIds.push(lifecycleJob.id, bidJob.id);
-  bid = await prisma.bid.create({ data: { jobId: bidJob.id, bidderId: driver.id, amount: 95, status: "active" }});
   incident = await prisma.jobActivity.create({ data: {
     jobId: lifecycleJob.id, actorId: poster.id, action: "INCIDENT_REPORTED",
     description: "isolated incident fixture", metadata: { reason: "isolated fixture" },
@@ -94,6 +93,12 @@ try {
   posterVehicle = await prisma.vehicle.create({ data: {
     accountId: poster.id, vehicleType: "van", regPlate: "CI-" + suffix,
     verificationStatus: "verified",
+  }});
+  driverVehicle = await prisma.vehicle.create({ data: {
+    accountId: driver.id, vehicleType: "van", regPlate: "CID-" + suffix,
+    verificationStatus: "verified", verifiedAt: new Date(),
+    motValidUntil: new Date("2035-12-31T00:00:00.000Z"),
+    insuranceValidUntil: new Date("2035-12-31T00:00:00.000Z"),
   }});
 
   const port = 32000 + (process.pid % 15000);
@@ -119,6 +124,13 @@ try {
   const outsiderCookie = await makeCookie(outsider.id);
   const posterCookie = await makeCookie(poster.id);
   const driverCookie = await makeCookie(driver.id);
+
+  const placedBidResponse = await api("/api/jobs/" + bidJob.id + "/bid", "POST", driverCookie, { amount: 95 });
+  assert.ok([200, 201].includes(placedBidResponse.status),
+    "eligible authenticated driver should place a bid (got " + placedBidResponse.status + "): " + await placedBidResponse.text());
+  const placedBidBody = await placedBidResponse.json();
+  assert.ok(placedBidBody.bid?.id, "successful bid response must return the created bid ID");
+  bid = { id: placedBidBody.bid.id };
 
   // Establish that the signed JWT is accepted, and the vehicle collection is
   // account-scoped rather than exposing another account's records.
