@@ -112,10 +112,10 @@ contains("app/jobs/page.tsx", "const actionInFlight = useRef(false)", "lifecycle
 contains("app/jobs/page.tsx", "if (actionInFlight.current) {", "repeated lifecycle clicks must not dispatch a second mutation");
 contains("app/jobs/page.tsx", "finally {\n      actionInFlight.current = false;", "lifecycle action lock must be released after success or failure");
 contains("app/jobs/page.tsx", "const bidInFlight = useRef(false)", "bid submission must guard against duplicate in-flight requests");
-contains("app/jobs/page.tsx", "if (bidInFlight.current) return;", "repeated bid clicks must not submit a second bid");
+contains("app/jobs/page.tsx", "if (bidInFlight.current) {", "repeated bid clicks must not submit a second bid");
 contains("app/jobs/page.tsx", "finally {\n      bidInFlight.current = false;", "bid submission lock must be released after success or failure");
 contains("app/jobs/page.tsx", "const ratingInFlight = useRef(false)", "rating submission must guard against duplicate in-flight requests");
-contains("app/jobs/page.tsx", "if (ratingInFlight.current) return;", "repeated rating clicks must not submit a second rating");
+contains("app/jobs/page.tsx", "if (ratingInFlight.current) {", "repeated rating clicks must not submit a second rating");
 contains("app/jobs/page.tsx", "finally {\n      ratingInFlight.current = false;", "rating submission lock must be released after success or failure");
 contains("app/dashboard/page.tsx", "This is a planning price only. Payment checkout is not connected yet", "dashboard must not imply an operational renewal checkout");
 
