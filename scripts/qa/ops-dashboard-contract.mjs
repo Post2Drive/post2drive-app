@@ -81,7 +81,7 @@ for (const [name, pattern] of [
   ["only latest failing outcome remains active", /WHERE issue_rank=1 AND passed=false/],
   ["passing checks clear active issues without deleting history", /A later pass clears the active issue; skipped or absent checks do not/],
   ["failed QA issue query is not rendered as zero active issues", /qaFailuresAvailable===false\?'<div class="notice">Active QA issue status unavailable/],
-  ["read-only boundary logs effective privilege evidence", /sequence privileges=\\${identity\.sequence_privileges}; role memberships=\\${identity\.role_memberships}/],
+  ["read-only boundary logs effective privilege evidence", /sequence privileges=\$\{identity\.sequence_privileges\}; role memberships=\$\{identity\.role_memberships\}/],
   ["active QA issue table is rendered", /table\(d\.qaFailures/],
   ["vehicle compliance metrics", /"motExpired"/],
   ["source provenance and limitations", /External logistics industry trends/],
