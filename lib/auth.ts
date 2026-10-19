@@ -97,20 +97,22 @@ export const authOptions: NextAuthOptions = {
         token.country = (user as any).country;
       }
 
-      // JWT sessions can outlive a browser sign-out. Re-check the persisted
-      // account state on every session refresh so account deletion revokes
-      // already-issued tokens rather than relying on client-side sign-out.
+      // Re-check persisted account state on every session refresh. NextAuth's
+      // JWT callback must return a JWT, so mark revoked tokens and reject them
+      // in the session callback instead of returning null from this callback.
       if (token.accountId) {
         const account = await prisma.account.findUnique({
           where: { id: String(token.accountId) },
           select: { deletionRequestedAt: true },
         });
-        if (!account || account.deletionRequestedAt) return null;
+        token.accountDeleted = !account || Boolean(account.deletionRequestedAt);
       }
 
       return token;
     },
     async session({ session, token }) {
+      if (token.accountDeleted) return null as any;
+
       if (session.user) {
         (session.user as any).id = token.id;
         (session.user as any).accountId = token.accountId;
