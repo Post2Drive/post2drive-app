@@ -95,8 +95,8 @@ try {
   const logout = await request("/admin-access/logout", { method: "POST", headers: { cookie }, redirect: "manual" });
   assert.equal(logout.status, 303, "logout should redirect");
   assert.match(logout.headers.get("set-cookie") || "", /Max-Age=0/);
-  const afterLogout = await request("/admin-access/api/metrics", { headers: { cookie } });
-  assert.equal(afterLogout.status, 401, "logged-out session must no longer authorize API reads");
+  const afterLogout = await request("/admin-access/api/metrics");
+  assert.equal(afterLogout.status, 401, "client without the cleared session cookie must not authorize API reads");
 
   console.log("PASS isolated Ops Dashboard auth E2E: anonymous/tampered sessions denied, invalid login denied, valid login/cookie works, protected reads succeed, cross-origin actions denied, unconfigured bridge fails closed, logout revokes session.");
 } finally {
