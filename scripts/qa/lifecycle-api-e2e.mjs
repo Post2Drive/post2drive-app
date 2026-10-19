@@ -177,6 +177,15 @@ try {
     assert.deepEqual(after, before, method + " " + path + ": denied request changed lifecycle/ownership/evidence/vehicle/notification state");
   }
 
+  // An authenticated poster may accept the driver's valid bid; the unrelated
+  // account above must not be able to accept that same bid.
+  const acceptedBid = await api("/api/jobs/" + bidJob.id + "/bids/" + bid.id + "/accept", "POST", posterCookie, {});
+  assert.ok([200, 201].includes(acceptedBid.status),
+    "poster should accept the valid driver bid (got " + acceptedBid.status + "): " + await acceptedBid.text());
+  const acceptedBidJob = await prisma.job.findUnique({ where: { id: bidJob.id } });
+  assert.equal(acceptedBidJob.status, "accepted", "bid acceptance should claim the job");
+  assert.equal(acceptedBidJob.acceptedById, driver.id, "bid acceptance should assign the bidding driver");
+
   // Exercise the actual authenticated HTTP lifecycle with separate poster and
   // driver JWTs. This stays entirely in the ephemeral CI database.
   const pickup = await api("/api/jobs/" + lifecycleJob.id + "/confirm-pickup", "POST", driverCookie, {});
