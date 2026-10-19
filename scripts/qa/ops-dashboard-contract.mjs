@@ -75,6 +75,11 @@ for (const [name, pattern] of [
 
   ["QA history is retained when a draft is deleted", /No QA runs, steps, accounts, events, or reports will be deleted/],
   ["retained QA failure history", /qa_test_events/],
+  ["active QA issues show latest recorded outcome", /row_number\(\) OVER/],
+  ["active QA identity includes market and route expectation", /e\.scenario, e\.action, e\.method, e\.path, e\.expected_statuses/],
+  ["only latest failing outcome remains active", /WHERE issue_rank=1 AND passed=false/],
+  ["passing checks clear active issues without deleting history", /A later pass clears the active issue; skipped or absent checks do not/],
+  ["active QA issues include market and run context", /\[\["country","Market"\],\["scenario","Scenario"\]/],
   ["vehicle compliance metrics", /"motExpired"/],
   ["source provenance and limitations", /External logistics industry trends/],
   ["seasonality and risk intelligence section", /Seasonality & risk intelligence/],
