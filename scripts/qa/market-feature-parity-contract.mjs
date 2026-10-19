@@ -90,6 +90,11 @@ contains("components/subscription-pricing.tsx", "checkout is not connected", "pr
 contains("components/subscription-status.tsx", "No payment provider is connected yet", "pending payment must not imply a real charge was taken");
 contains("components/subscription-status.tsx", "const showPlanPrice = formattedPrice !== null", "expired paid markets must see their configured plan price");
 contains("components/subscription-status.tsx", "{showPlanPrice && (", "pricing visibility must not be limited to the UK trial");
+
+// User-facing job form must not offer an India workflow that server validation rejects.
+contains("app/jobs/new/page.tsx", 'country !== "IN" && <option value="bid">', "India job creation must hide open bidding");
+contains("app/jobs/new/page.tsx", 'country === "IN" && form.priceMode !== "fixed"', "India job creation must guard against bid mode");
+contains("app/jobs/new/page.tsx", "currencyMinorUnitScale(currency)", "job price input must use the selected currency precision");
 contains("app/dashboard/page.tsx", "This is a planning price only. Payment checkout is not connected yet", "dashboard must not imply an operational renewal checkout");
 
 // These are explicit cross-market exceptions, not feature parity gaps: India
