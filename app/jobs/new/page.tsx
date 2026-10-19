@@ -451,7 +451,7 @@ function ReviewSummary({ form, currency, date, timeZoneLabel, country }: { count
     ["Vehicle", vehicleTypeLabel(form.vehicleType, country)],
     ["Weight", form.weightKg ? `${form.weightKg} ${profile?.weightUnit ?? "kg"}` : "Not specified"],
     ["Dimensions", form.dimensions || "Not specified"],
-    ["Pricing", `${formatMarketCurrency(Number(form.price || 0), { country, currency })} · ${form.priceMode === "bid" ? "Guide price / open to bids" : "Fixed price"}`],
+    ["Pricing", `${formatMarketCurrency(Number(form.price || 0), { country, currency })} · ${form.priceMode === "bid" ? "Guide price / open to bids" : country === "IN" ? "Fixed quote" : "Fixed price"}`],
     ["Pickup contact", form.pickupContactName || "Not specified"],
     ["Drop-off contact", form.dropoffContactName || "Not specified"],
     ["Instructions", form.notes || "None"],
