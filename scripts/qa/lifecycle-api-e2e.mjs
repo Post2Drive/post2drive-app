@@ -129,14 +129,14 @@ try {
     pickup: "CI fixture pickup", dropoff: "CI fixture dropoff",
     jobDate: new Date(Date.now() + 86_400_000), pickupTime: "10:00", dropoffTime: "14:00",
     pickupTimeZone: "Europe/London", dropoffTimeZone: "Europe/London",
-    vehicleType: "van", price: 100, currency: "GBP", crossBorder: false,
+    vehicleType: "Small van (SWB)", price: 100, currency: "GBP", crossBorder: false,
   }});
   bidJob = await prisma.job.create({ data: {
     posterId: poster.id, status: "open", priceMode: "bid",
     pickup: "CI bid pickup", dropoff: "CI bid dropoff",
     jobDate: new Date(Date.now() + 172_800_000), pickupTime: "10:00", dropoffTime: "14:00",
     pickupTimeZone: "Europe/London", dropoffTimeZone: "Europe/London",
-    vehicleType: "van", price: 100, currency: "GBP", crossBorder: false,
+    vehicleType: "Small van (SWB)", price: 100, currency: "GBP", crossBorder: false,
   }});
   jobIds.push(lifecycleJob.id, bidJob.id);
   const baseFixtureJob = {
@@ -147,7 +147,7 @@ try {
     dropoffTime: "14:00",
     pickupTimeZone: "Europe/London",
     dropoffTimeZone: "Europe/London",
-    vehicleType: "van",
+    vehicleType: "Small van (SWB)",
     price: 100,
     currency: "GBP",
     crossBorder: false,
@@ -185,11 +185,11 @@ try {
     content: Buffer.from("hello"),
   }});
   posterVehicle = await prisma.vehicle.create({ data: {
-    accountId: poster.id, vehicleType: "van", regPlate: "CI-" + suffix,
+    accountId: poster.id, vehicleType: "Small van (SWB)", regPlate: "CI-" + suffix,
     verificationStatus: "verified",
   }});
   driverVehicle = await prisma.vehicle.create({ data: {
-    accountId: driver.id, vehicleType: "van", regPlate: "CID-" + suffix,
+    accountId: driver.id, vehicleType: "Small van (SWB)", regPlate: "CID-" + suffix,
     verificationStatus: "verified", verifiedAt: new Date(),
     motValidUntil: new Date("2035-12-31T00:00:00.000Z"),
     insuranceValidUntil: new Date("2035-12-31T00:00:00.000Z"),
@@ -229,7 +229,7 @@ try {
     jobDate: new Date(Date.now() + 2 * 86_400_000).toISOString().slice(0, 10),
     pickupTime: "10:00", dropoffTime: "14:00",
     pickupTimeZone: "Europe/London", dropoffTimeZone: "Europe/London",
-    vehicleType: "van", price: 100, priceMode: "bid", currency: "GBP", crossBorder: false,
+    vehicleType: "Small van (SWB)", price: 100, priceMode: "bid", currency: "GBP", crossBorder: false,
   });
   if (editResponse.status !== 200) {
     throw new Error("poster should edit their open job (got " + editResponse.status + "): " + await editResponse.text());
@@ -273,7 +273,7 @@ try {
       pickup: "Attacker edit", dropoff: "CI bid dropoff",
       jobDate: new Date(Date.now() + 2 * 86_400_000).toISOString().slice(0, 10),
       pickupTime: "10:00", dropoffTime: "14:00", pickupTimeZone: "Europe/London", dropoffTimeZone: "Europe/London",
-      vehicleType: "van", price: 100, priceMode: "bid", currency: "GBP", crossBorder: false,
+      vehicleType: "Small van (SWB)", price: 100, priceMode: "bid", currency: "GBP", crossBorder: false,
     }],
     ["/api/jobs/" + lifecycleJob.id + "/payment/mark-paid", "POST", {}],
     ["/api/jobs/" + lifecycleJob.id + "/payment/confirm-received", "POST", {}],
@@ -416,7 +416,7 @@ try {
   const deletedGet = await api("/api/vehicles", "GET", outsiderCookie);
   assert.equal(deletedGet.status, 401, "pre-existing JWT must not read vehicles after deletion request");
   const deletedPost = await api("/api/vehicles", "POST", outsiderCookie, {
-    vehicleType: "van", regPlate: "DEL-" + suffix,
+    vehicleType: "Small van (SWB)", regPlate: "DEL-" + suffix,
   });
   assert.equal(deletedPost.status, 401, "pre-existing JWT must not create vehicles after deletion request");
   assert.equal(await prisma.vehicle.count({ where: { accountId: outsider.id } }), 0,
