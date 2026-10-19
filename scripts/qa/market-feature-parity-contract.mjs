@@ -98,6 +98,9 @@ contains("app/jobs/new/page.tsx", 'country === "IN" ? "Fixed quote" : "Fixed pri
 contains("app/jobs/new/page.tsx", "currencyMinorUnitScale(currency)", "job price input must use the selected currency precision");
 contains("app/jobs/page.tsx", 'accountCountry !== "IN" &&', "India marketplace must not expose bid actions");
 contains("app/jobs/page.tsx", "currencyMinorUnitScale(job.currency)", "bid input must respect the job currency precision");
+contains("app/jobs/page.tsx", "const actionInFlight = useRef(false)", "lifecycle UI must guard against duplicate in-flight actions");
+contains("app/jobs/page.tsx", "if (actionInFlight.current) return false;", "repeated lifecycle clicks must not dispatch a second mutation");
+contains("app/jobs/page.tsx", "finally {\n      actionInFlight.current = false;", "lifecycle action lock must be released after success or failure");
 contains("app/dashboard/page.tsx", "This is a planning price only. Payment checkout is not connected yet", "dashboard must not imply an operational renewal checkout");
 
 // These are explicit cross-market exceptions, not feature parity gaps: India
