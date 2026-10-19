@@ -47,6 +47,8 @@ jobs:
         run: npm run qa:campaign-builder-contract
       - name: Validate lifecycle, incident, and market-guard contracts
         run: npm run qa:lifecycle-contract
+      - name: Validate isolated security and lifecycle fixtures
+        run: node scripts/qa/security-isolation-contract.mjs
       - name: Validate signup display ID collision retries
         run: npm run qa:signup-display-id-retry
       - name: Validate signup, jobs, bidding, status, payments and vehicle workflows
