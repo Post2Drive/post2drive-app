@@ -15,18 +15,19 @@ let base = "";
 let poster, driver, outsider, lifecycleJob, bidJob, bid, incident, evidence, posterVehicle, driverVehicle;
 
 async function snapshot() {
-  const [jobRows, bidCount, activityCount, evidenceCount, vehicleCount, notificationCount] = await Promise.all([
+  const [jobRows, jobCount, bidCount, activityCount, evidenceCount, vehicleCount, notificationCount] = await Promise.all([
     prisma.job.findMany({
       where: { id: { in: jobIds } },
       select: { id: true, posterId: true, acceptedById: true, status: true, priceMode: true, deliveryMarkedById: true, paidMarkedAt: true, receivedConfirmedAt: true },
     }),
+    prisma.job.count({ where: { posterId: { in: accountIds } } }),
     prisma.bid.count({ where: { jobId: { in: jobIds } } }),
     prisma.jobActivity.count({ where: { jobId: { in: jobIds } } }),
     prisma.incidentEvidence.count({ where: { jobId: { in: jobIds } } }),
     prisma.vehicle.count({ where: { accountId: { in: accountIds } } }),
     prisma.notification.count({ where: { accountId: { in: accountIds } } }),
   ]);
-  return { jobRows, bidCount, activityCount, evidenceCount, vehicleCount, notificationCount };
+  return { jobRows, jobCount, bidCount, activityCount, evidenceCount, vehicleCount, notificationCount };
 }
 async function makeCookie(accountId) {
   const token = await encode({
@@ -126,8 +127,9 @@ try {
   const driverCookie = await makeCookie(driver.id);
 
   const placedBidResponse = await api("/api/jobs/" + bidJob.id + "/bid", "POST", driverCookie, { amount: 95 });
-  assert.ok([200, 201].includes(placedBidResponse.status),
-    "eligible authenticated driver should place a bid (got " + placedBidResponse.status + "): " + await placedBidResponse.text());
+  if (![200, 201].includes(placedBidResponse.status)) {
+    throw new Error("eligible authenticated driver should place a bid (got " + placedBidResponse.status + "): " + await placedBidResponse.text());
+  }
   const placedBidBody = await placedBidResponse.json();
   assert.ok(placedBidBody.bid?.id, "successful bid response must return the created bid ID");
   bid = { id: placedBidBody.bid.id };
