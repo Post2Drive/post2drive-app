@@ -4,6 +4,7 @@ import { Script } from "node:vm";
 
 const server = readFileSync(new URL("../../ops-dashboard/server.mjs", import.meta.url), "utf8");
 const proxyRoute = readFileSync(new URL("../../app/admin-access/[[...path]]/route.ts", import.meta.url), "utf8");
+const retiredPerformanceApi = readFileSync(new URL("../../app/api/admin/performance/route.ts", import.meta.url), "utf8");
 const bridge = readFileSync(new URL("../../app/api/internal/admin-bridge/route.ts", import.meta.url), "utf8");
 const migration = readFileSync(new URL("../../prisma/migrations/20261017183000_admin_audit_events/migration.sql", import.meta.url), "utf8");
 const pkg = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8"));
@@ -74,6 +75,12 @@ for (const [name, pattern] of [
 
   ["QA history is retained when a draft is deleted", /No QA runs, steps, accounts, events, or reports will be deleted/],
   ["retained QA failure history", /qa_test_events/],
+  ["active QA issues show latest recorded outcome", /row_number\(\) OVER/],
+  ["a check clears only when all events in its latest run pass", /bool_and\(e\.passed\) AS passed/],
+  ["active QA identity includes market and route expectation", /e\.scenario, e\.action, e\.method, e\.path, e\.expected_statuses/],
+  ["only latest failing outcome remains active", /WHERE issue_rank=1 AND passed=false/],
+  ["passing checks clear active issues without deleting history", /A later pass clears the active issue; skipped or absent checks do not/],
+  ["active QA issue table is rendered", /table\(d\.qaFailures/],
   ["vehicle compliance metrics", /"motExpired"/],
   ["source provenance and limitations", /External logistics industry trends/],
   ["seasonality and risk intelligence section", /Seasonality & risk intelligence/],
@@ -96,6 +103,15 @@ assert.match(proxyRoute, /127\.0\.0\.1:3101/);
 assert.match(proxyRoute, /ENABLE_EMBEDDED_OPS_DASHBOARD/);
 assert.match(proxyRoute, /Same-origin admin request required/);
 assert.match(proxyRoute, /OPS_DASHBOARD_URL/);
+assert.match(server, /current_user AS username/);
+assert.match(server, /unexpected database role/);
+assert.match(server, /writable table privileges detected/);
+assert.match(server, /sequence privileges detected/);
+assert.match(server, /role membership detected/);
+assert.match(server, /DEPLOYMENT_ENVIRONMENT === "staging" && identity.database !== "post2drive_qa"/);
+assert.doesNotMatch(retiredPerformanceApi, /prisma|queryRaw|withApiMetrics/);
+assert.match(retiredPerformanceApi, /status: 410/);
+assert.match(retiredPerformanceApi, /replacement:/);
 assert.match(bridge, /authenticateBridge/);
 assert.match(bridge, /timingSafeEqual/);
 assert.match(bridge, /rateLimitBucket\.create/);

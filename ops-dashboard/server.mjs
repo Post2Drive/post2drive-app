@@ -4,7 +4,7 @@ import { PrismaClient } from "@prisma/client";
 
 const dashboardDatabaseUrl = process.env.OPS_DASHBOARD_DATABASE_URL;
 if (!dashboardDatabaseUrl) {
-  console.error("OPS_DASHBOARD_DATABASE_URL is required; refusing to use the application database credentials.");
+  console.error("OPS_DASHBOARD_DATABASE_URL is required; use a dedicated read-only database role, never application database credentials.");
   process.exit(1);
 }
 const prisma = new PrismaClient({ datasources: { db: { url: dashboardDatabaseUrl } }, log: ["error"] });
@@ -31,10 +31,6 @@ if (!PASSWORD || PASSWORD.length < 16) {
 }
 if (!SESSION_SECRET || SESSION_SECRET.length < 32) {
   console.error("OPS_DASHBOARD_SESSION_SECRET is required and must be at least 32 characters.");
-  process.exit(1);
-}
-if (!process.env.DATABASE_URL) {
-  console.error("DATABASE_URL is required. Use a dedicated read-only database role.");
   process.exit(1);
 }
 
@@ -361,7 +357,7 @@ td.bad{background:#FFFFFF!important;color:#D62828!important}
 <button class="primary" type="submit" id="qaCampaignSave">Save draft</button><span id="qaCampaignFormMessage" class="muted" role="status"></span></form>
 <h3>Saved plans</h3><div class="scroll" id="qaCampaignsTable">Loading…</div>
 <h3>Campaign steps and measured results</h3><div class="scroll" id="qaCampaignSteps">Loading…</div></section>
-<div class="grid two"><section class="panel"><h2>Latest QA runs</h2><div class="scroll" id="qa"></div></section><section class="panel"><h2>Latest failed QA scenarios</h2><div class="scroll" id="qaFailures"></div></section><section class="panel"><h2>Operational exceptions</h2><p class="muted">Recent API 5xx errors and failed QA scenarios. Incident and notification feeds are marked when not wired.</p><div id="exceptions"></div></section><section class="panel"><h2>Commercial activity</h2><p class="muted">Recorded subscription payment statuses; not provider-reconciled revenue.</p><div id="payments"></div></section></div>
+<div class="grid two"><section class="panel"><h2>Latest QA runs</h2><div class="scroll" id="qa"></div></section><section class="panel"><h2>Active QA issues</h2><p class="muted">Latest recorded outcome per market and check. A later pass clears the active issue; skipped or absent checks do not. Failed run history remains preserved.</p><div class="scroll" id="qaFailures"></div></section><section class="panel"><h2>Operational exceptions</h2><p class="muted">Recent API 5xx errors and failed QA scenarios. Incident and notification feeds are marked when not wired.</p><div id="exceptions"></div></section><section class="panel"><h2>Commercial activity</h2><p class="muted">Recorded subscription payment statuses; not provider-reconciled revenue.</p><div id="payments"></div></section></div>
 <div id="people" class="section"><div><h2>Tester operations & access codes</h2><p>Pending applications and aggregate code-redemption history.</p></div></div><div class="grid two"><section class="panel"><h2>Pending tester applications</h2><div class="scroll" id="testerApplications"></div></section><section class="panel"><div class="section"><h2>Tester access-code history</h2><button id="generateTesterCode" class="primary" type="button">Generate code</button></div><div class="scroll" id="testerCodes"></div><p id="actionBridgeStatus" class="muted"></p></section></div><div id="incident-workbench" class="section"><div><h2>Incident review queue</h2><p>Read-only oversight; incident decisions require the secured application-side action bridge.</p></div></div><section class="panel"><div class="scroll" id="incidentQueue"></div><p class="muted">No decisions are written from this reporting service. Resolution actions must use the application workflow so lifecycle constraints, audit history and notifications remain enforced.</p></section><div id="research" class="section"><div><h2>Market research</h2><p>Aggregated optional responses by market, question and answer; individual response records are not exposed here.</p></div></div><section class="panel"><div class="scroll" id="researchResults"></div></section><div id="countries" class="section"><div><h2>Countries & research</h2><p>Country readiness requires dated evidence for every launch gate. Missing evidence is never treated as passed.</p></div></div><div class="grid two"><section class="panel"><h2>Launch readiness by market</h2><p class="muted">Status is evidence-based and defaults to Not assessed.</p><div class="scroll" id="readinessSummary"></div></section><section class="panel"><h2>Selected market launch gates</h2><p class="muted">A gate is verified only with status, review date and evidence reference.</p><div class="scroll" id="readinessDetail"></div></section></div><div id="intelligence" class="section"><div><h2>Logistics intelligence</h2><p>Industry context is separate from platform metrics.</p></div></div>
 <div class="grid two"><section class="panel"><h2>Country snapshot & data coverage</h2><div id="marketSnapshot"></div></section><section class="panel"><h2>Industry sources to monitor</h2><p class="muted">Selected-market official data and operational notices. These are reference links, not ingested live metrics.</p><div class="source-tools"><input id="sourceSearch" type="search" placeholder="Search this market’s sources…" aria-label="Search industry sources"><span id="sourceCount" class="status" aria-live="polite"></span></div><div id="sources"></div></section><section class="panel"><h2>Emerging platform patterns</h2><p class="muted">Computed only from available first-party observations; low-volume signals are labelled.</p><div id="patterns"></div></section><section class="panel"><h2>Cross-country comparison</h2><p class="muted">Side-by-side metrics from the same time window.</p><div class="scroll" id="comparison"></div></section></div>
 <div class="section"><div><h2>Seasonality & risk intelligence</h2><p>Planning signals for recurring demand peaks and logistics disruptions. External data feeds are not connected; the calendar is a planning guide, not a live alert or forecast.</p></div></div>
@@ -484,7 +480,7 @@ function renderSeasonality(market) {
   ["scenarioJobs","scenarioDrivers","scenarioDemand","scenarioSupply","scenarioDays"].forEach(id=>$(id).oninput=calculate);
   calculate();
 }
-function render(d){current=d;const m=d.market||{code:"ALL",name:"Global",currency:"mixed"};const o=d.overview||{};$("title").textContent=m.code==="ALL"?"Global operations overview":m.name+" logistics & operations";$("subtitle").textContent=(m.code==="ALL"?"All supported markets":m.name+" · "+m.currency)+" · "+d.windowDays+" day window · country filter is reporting-only";$("updated").textContent="Updated "+new Date(d.generatedAt).toLocaleString()+" · "+(d.dataCoverage||"Coverage varies")+(d.cache?(d.cache.ageSeconds===0?" · fresh DB read":" · cached "+d.cache.ageSeconds+"s"):"");$("filterSummary").textContent="Filters · "+(m.code==="ALL"?"Global":m.name)+" · "+(d.windowDays===1?"24 hours":d.windowDays+" days");$("warning").innerHTML=d.warnings?.length?'<div class="notice">'+d.warnings.map(safe).join("<br>")+'</div>':"";$("kpis").innerHTML=[kpi("Total accounts",fmt(o.totalAccounts),"Synthetic QA accounts excluded"),kpi("User profiles",fmt(o.totalUsers),"Login profiles; may exceed account count"),kpi("New accounts",fmt(o.newAccounts),"Selected period"),kpi("Active accounts",fmt(o.activeAccounts),"Last 7 days"),kpi("Driver-capable accounts",fmt(o.drivers),"Driver or mixed account type"),kpi("Jobs posted",fmt(o.jobs),"Created in selected window"),kpi("Open jobs",fmt(o.openJobs),"Current open state"),kpi("Bids",fmt(o.bids),"Recorded bid submissions"),kpi("Bid coverage",pct(o.jobsWithBids,o.jobs),"Jobs with ≥1 bid / jobs posted"),kpi("Completed jobs",fmt(o.completedJobs),"Current completed state"),kpi("API requests",fmt(o.apiRequests),"Observed, non-QA telemetry"),kpi("API 5xx errors",fmt(o.api5xx),"Observed server errors")].join("");$("growth").innerHTML=lineChart(d.growth||[],"day","count");$("jobs").innerHTML=bars(d.jobStatuses||[]);$("supply").innerHTML=bars([{label:"Poster-capable accounts",count:o.posters},{label:"Driver-capable accounts",count:o.drivers},{label:"Jobs posted in window",count:o.jobs},{label:"Bids in window",count:o.bids},{label:"Jobs with bids",count:o.jobsWithBids}]);$("accounts").innerHTML=bars(d.accountTypes||[])+ '<h3>Verification status</h3>'+bars(d.verificationStatuses||[]);$("apiTrend").innerHTML=lineChart(d.apiHourly||[],"hour","requests")+'<h3>Errors by hour</h3>'+bars((d.apiHourly||[]).map(x=>({label:x.hour,count:x.errors})));$("routes").innerHTML=table(d.routes,[["route","Route"],["method","Method"],["count","Requests"],["p95Ms","P95",null,d=>dur(d)],["serverErrors","5xx",r=>Number(r)>0]]);$("errors").innerHTML=table(d.recentErrors,[["createdAt","Time",null,v=>new Date(v).toLocaleString()],["method","Method"],["route","Route"],["statusCode","Status",v=>Number(v)>=500]]);$("vehicles").innerHTML=bars([{label:"Vehicle records",count:o.vehicles},{label:"Verified",count:o.vehiclesVerified},{label:"MOT expired",count:o.motExpired},{label:"Insurance expired",count:o.insuranceExpired},{label:"MOT expires in 30d",count:o.motExpiring30d},{label:"Insurance expires in 30d",count:o.insuranceExpiring30d}]);$("qa").innerHTML=table(d.qaRuns,[["startedAt","Started",null,v=>v?new Date(v).toLocaleString():"—"],["status","Status",v=>String(v).toLowerCase().includes("fail")],["targetAccounts","Target accounts"],["createdAccounts","Created"],["successfulChecks","Passed"],["failedChecks","Failed",v=>Number(v)>0],["durationMs","Duration",null,v=>dur(v)]]);$("qaFailures").innerHTML=table(d.qaFailures,[["scenario","Scenario"],["action","Action"],["path","Path"],["expected","Expected"],["actual","Actual"],["count","Count",v=>Number(v)>0]]);$("exceptions").innerHTML=(d.recentErrors?.length?'<div class="insight">Observed '+fmt(d.recentErrors.length)+' recent server-error events in this reporting window. Review endpoint and deployment logs before assigning cause.</div>':'<div class="insight">No recent instrumented 5xx events in the returned sample. This is not an uptime guarantee.</div>')+(d.qaFailures?.length?'<div class="insight">'+fmt(d.qaFailures.length)+' failed QA scenario groups are retained in the latest run.</div>':'<div class="empty">No failed scenario rows returned; QA table coverage must be confirmed.</div>')+'<div class="notice">Notification rows show in-app creation/read status, not confirmed email/SMS delivery. Railway health and external delivery receipts are not yet integrated.</div>';$("payments").innerHTML=bars(d.paymentStatuses||[]);$("testerApplications").innerHTML='<table><thead><tr><th>Submitted</th><th>Company</th><th>Market</th><th>Plan</th><th>Vehicles</th><th>Verification</th><th>Email verified</th><th>Review actions</th></tr></thead><tbody>'+(d.testerApplications||[]).map(x=>'<tr><td>'+safe(x.createdAt?new Date(x.createdAt).toLocaleString():"—")+'</td><td>'+safe(x.companyName)+'</td><td>'+safe(x.country)+'</td><td>'+safe(x.planType)+'</td><td>'+safe(x.vehicleCount)+'</td><td>'+safe(x.verificationStatus)+'</td><td>'+safe(x.allEmailsVerified===true?"Yes":"No / unavailable")+'</td><td><button type="button" data-admin-action="tester-approve" data-account-id="'+safe(x.id)+'" '+(d.adminActionsEnabled?"":"disabled")+'>Approve</button> <button type="button" data-admin-action="tester-reject" data-account-id="'+safe(x.id)+'" '+(d.adminActionsEnabled?"":"disabled")+'>Reject</button></td></tr>').join("")+'</tbody></table>'+(d.adminActionsEnabled?"":'<p class="notice">Actions disabled until the signed application bridge and its secrets are configured.</p>');;$("generateTesterCode").disabled=!d.adminActionsEnabled;$("actionBridgeStatus").textContent=d.adminActionsEnabled?"Secure application action bridge configured.":"Read-only mode: set POST2DRIVE_APP_URL and OPS_DASHBOARD_BRIDGE_SECRET on this service to enable protected actions.";$("testerCodes").innerHTML=table(d.testerCodes,[["status","Code status"],["count","Codes"],["redeemed","Redeemed"],["oldestCreatedAt","Oldest created",null,v=>v?new Date(v).toLocaleDateString():"—"],["latestCreatedAt","Latest created",null,v=>v?new Date(v).toLocaleDateString():"—"]]);$("incidentQueue").innerHTML='<table><thead><tr><th>Reported</th><th>Incident</th><th>Job</th><th>Job status</th><th>Route</th><th>Review status</th><th>Outcome</th><th>Resolution notes</th><th>Action</th></tr></thead><tbody>'+(d.incidentQueue||[]).map(x=>'<tr><td>'+safe(x.createdAt?new Date(x.createdAt).toLocaleString():"—")+'</td><td>'+safe(x.metadata?.reason||x.description||"Incident")+'</td><td>'+safe(x.jobId)+'</td><td>'+safe(x.jobStatus)+'</td><td>'+safe(x.pickup)+' → '+safe(x.dropoff)+'</td><td>'+safe(x.hasResolution?"Decision recorded":"Needs review")+'</td><td><select data-outcome-for="'+safe(x.incidentId)+'"><option value="no_further_action">No further action</option><option value="resume">Resume</option><option value="reassign">Reassign</option><option value="return_goods">Return goods</option><option value="delivery_dispute">Delivery dispute</option><option value="payment_dispute">Payment dispute</option><option value="terminate_with_incident">Terminate with incident</option></select></td><td><textarea data-notes-for="'+safe(x.incidentId)+'" rows="2" maxlength="4000" placeholder="Required decision notes" '+(d.adminActionsEnabled&&!x.hasResolution?"":"disabled")+ '></textarea></td><td><button type="button" data-resolve-incident="1" data-incident-id="'+safe(x.incidentId)+'" data-job-id="'+safe(x.jobId)+'" '+(d.adminActionsEnabled&&!x.hasResolution?"":"disabled")+'>Record decision</button></td></tr>').join("")+'</tbody></table>'+(d.adminActionsEnabled?"":'<p class="notice">Incident actions disabled until the signed application bridge and its secrets are configured.</p>');;$("researchResults").innerHTML=table(d.researchResults,[["market","Market"],["question","Question / field"],["answer","Answer"],["responses","Responses"]]);$("marketSnapshot").innerHTML='<p><b>'+safe(m.name)+'</b> · currency '+safe(m.currency||"mixed")+'</p><p class="muted">First-party platform data is filtered by account country. External freight-market numeric series are not connected yet.</p><div class="insight">Observed accounts: '+fmt(o.totalAccounts)+' · jobs in window: '+fmt(o.jobs)+' · bids: '+fmt(o.bids)+'. '+(o.totalAccounts<30?"Low platform sample: avoid treating conversion or growth as a national industry trend.":"Use platform behaviour as a product signal only; it does not represent the whole country's logistics sector.")+'</div><p class="muted">Source coverage: '+safe(d.externalCoverage||"Official source links only; live industry data pending.")+'</p>';const drawIndustrySources=()=>{
+function render(d){current=d;const m=d.market||{code:"ALL",name:"Global",currency:"mixed"};const o=d.overview||{};$("title").textContent=m.code==="ALL"?"Global operations overview":m.name+" logistics & operations";$("subtitle").textContent=(m.code==="ALL"?"All supported markets":m.name+" · "+m.currency)+" · "+d.windowDays+" day window · country filter is reporting-only";$("updated").textContent="Updated "+new Date(d.generatedAt).toLocaleString()+" · "+(d.dataCoverage||"Coverage varies")+(d.cache?(d.cache.ageSeconds===0?" · fresh DB read":" · cached "+d.cache.ageSeconds+"s"):"");$("filterSummary").textContent="Filters · "+(m.code==="ALL"?"Global":m.name)+" · "+(d.windowDays===1?"24 hours":d.windowDays+" days");$("warning").innerHTML=d.warnings?.length?'<div class="notice">'+d.warnings.map(safe).join("<br>")+'</div>':"";$("kpis").innerHTML=[kpi("Total accounts",fmt(o.totalAccounts),"Synthetic QA accounts excluded"),kpi("User profiles",fmt(o.totalUsers),"Login profiles; may exceed account count"),kpi("New accounts",fmt(o.newAccounts),"Selected period"),kpi("Active accounts",fmt(o.activeAccounts),"Last 7 days"),kpi("Driver-capable accounts",fmt(o.drivers),"Driver or mixed account type"),kpi("Jobs posted",fmt(o.jobs),"Created in selected window"),kpi("Open jobs",fmt(o.openJobs),"Current open state"),kpi("Bids",fmt(o.bids),"Recorded bid submissions"),kpi("Bid coverage",pct(o.jobsWithBids,o.jobs),"Jobs with ≥1 bid / jobs posted"),kpi("Completed jobs",fmt(o.completedJobs),"Current completed state"),kpi("API requests",fmt(o.apiRequests),"Observed, non-QA telemetry"),kpi("API 5xx errors",fmt(o.api5xx),"Observed server errors")].join("");$("growth").innerHTML=lineChart(d.growth||[],"day","count");$("jobs").innerHTML=bars(d.jobStatuses||[]);$("supply").innerHTML=bars([{label:"Poster-capable accounts",count:o.posters},{label:"Driver-capable accounts",count:o.drivers},{label:"Jobs posted in window",count:o.jobs},{label:"Bids in window",count:o.bids},{label:"Jobs with bids",count:o.jobsWithBids}]);$("accounts").innerHTML=bars(d.accountTypes||[])+ '<h3>Verification status</h3>'+bars(d.verificationStatuses||[]);$("apiTrend").innerHTML=lineChart(d.apiHourly||[],"hour","requests")+'<h3>Errors by hour</h3>'+bars((d.apiHourly||[]).map(x=>({label:x.hour,count:x.errors})));$("routes").innerHTML=table(d.routes,[["route","Route"],["method","Method"],["count","Requests"],["p95Ms","P95",null,d=>dur(d)],["serverErrors","5xx",r=>Number(r)>0]]);$("errors").innerHTML=table(d.recentErrors,[["createdAt","Time",null,v=>new Date(v).toLocaleString()],["method","Method"],["route","Route"],["statusCode","Status",v=>Number(v)>=500]]);$("vehicles").innerHTML=bars([{label:"Vehicle records",count:o.vehicles},{label:"Verified",count:o.vehiclesVerified},{label:"MOT expired",count:o.motExpired},{label:"Insurance expired",count:o.insuranceExpired},{label:"MOT expires in 30d",count:o.motExpiring30d},{label:"Insurance expires in 30d",count:o.insuranceExpiring30d}]);$("qa").innerHTML=table(d.qaRuns,[["startedAt","Started",null,v=>v?new Date(v).toLocaleString():"—"],["status","Status",v=>String(v).toLowerCase().includes("fail")],["targetAccounts","Target accounts"],["createdAccounts","Created"],["successfulChecks","Passed"],["failedChecks","Failed",v=>Number(v)>0],["durationMs","Duration",null,v=>dur(v)]]);$("qaFailures").innerHTML=table(d.qaFailures,[["country","Market"],["scenario","Scenario"],["action","Action"],["method","Method"],["path","Route"],["expected","Expected"],["actual","Latest actual"],["runStatus","Run status"]]);$("exceptions").innerHTML=(d.recentErrors?.length?'<div class="insight">Observed '+fmt(d.recentErrors.length)+' recent server-error events in this reporting window. Review endpoint and deployment logs before assigning cause.</div>':'<div class="insight">No recent instrumented 5xx events in the returned sample. This is not an uptime guarantee.</div>')+(d.qaFailures?.length?'<div class="insight">'+fmt(d.qaFailures.length)+' active QA issues remain after considering the latest recorded outcome for each check. Prior events remain in QA history.</div>':'<div class="empty">No active QA issues from recorded outcomes. Missing or skipped checks do not clear an existing issue.</div>')+'<div class="notice">Notification rows show in-app creation/read status, not confirmed email/SMS delivery. Railway health and external delivery receipts are not yet integrated.</div>';$("payments").innerHTML=bars(d.paymentStatuses||[]);$("testerApplications").innerHTML='<table><thead><tr><th>Submitted</th><th>Company</th><th>Market</th><th>Plan</th><th>Vehicles</th><th>Verification</th><th>Email verified</th><th>Review actions</th></tr></thead><tbody>'+(d.testerApplications||[]).map(x=>'<tr><td>'+safe(x.createdAt?new Date(x.createdAt).toLocaleString():"—")+'</td><td>'+safe(x.companyName)+'</td><td>'+safe(x.country)+'</td><td>'+safe(x.planType)+'</td><td>'+safe(x.vehicleCount)+'</td><td>'+safe(x.verificationStatus)+'</td><td>'+safe(x.allEmailsVerified===true?"Yes":"No / unavailable")+'</td><td><button type="button" data-admin-action="tester-approve" data-account-id="'+safe(x.id)+'" '+(d.adminActionsEnabled?"":"disabled")+'>Approve</button> <button type="button" data-admin-action="tester-reject" data-account-id="'+safe(x.id)+'" '+(d.adminActionsEnabled?"":"disabled")+'>Reject</button></td></tr>').join("")+'</tbody></table>'+(d.adminActionsEnabled?"":'<p class="notice">Actions disabled until the signed application bridge and its secrets are configured.</p>');;$("generateTesterCode").disabled=!d.adminActionsEnabled;$("actionBridgeStatus").textContent=d.adminActionsEnabled?"Secure application action bridge configured.":"Read-only mode: set POST2DRIVE_APP_URL and OPS_DASHBOARD_BRIDGE_SECRET on this service to enable protected actions.";$("testerCodes").innerHTML=table(d.testerCodes,[["status","Code status"],["count","Codes"],["redeemed","Redeemed"],["oldestCreatedAt","Oldest created",null,v=>v?new Date(v).toLocaleDateString():"—"],["latestCreatedAt","Latest created",null,v=>v?new Date(v).toLocaleDateString():"—"]]);$("incidentQueue").innerHTML='<table><thead><tr><th>Reported</th><th>Incident</th><th>Job</th><th>Job status</th><th>Route</th><th>Review status</th><th>Outcome</th><th>Resolution notes</th><th>Action</th></tr></thead><tbody>'+(d.incidentQueue||[]).map(x=>'<tr><td>'+safe(x.createdAt?new Date(x.createdAt).toLocaleString():"—")+'</td><td>'+safe(x.metadata?.reason||x.description||"Incident")+'</td><td>'+safe(x.jobId)+'</td><td>'+safe(x.jobStatus)+'</td><td>'+safe(x.pickup)+' → '+safe(x.dropoff)+'</td><td>'+safe(x.hasResolution?"Decision recorded":"Needs review")+'</td><td><select data-outcome-for="'+safe(x.incidentId)+'"><option value="no_further_action">No further action</option><option value="resume">Resume</option><option value="reassign">Reassign</option><option value="return_goods">Return goods</option><option value="delivery_dispute">Delivery dispute</option><option value="payment_dispute">Payment dispute</option><option value="terminate_with_incident">Terminate with incident</option></select></td><td><textarea data-notes-for="'+safe(x.incidentId)+'" rows="2" maxlength="4000" placeholder="Required decision notes" '+(d.adminActionsEnabled&&!x.hasResolution?"":"disabled")+ '></textarea></td><td><button type="button" data-resolve-incident="1" data-incident-id="'+safe(x.incidentId)+'" data-job-id="'+safe(x.jobId)+'" '+(d.adminActionsEnabled&&!x.hasResolution?"":"disabled")+'>Record decision</button></td></tr>').join("")+'</tbody></table>'+(d.adminActionsEnabled?"":'<p class="notice">Incident actions disabled until the signed application bridge and its secrets are configured.</p>');;$("researchResults").innerHTML=table(d.researchResults,[["market","Market"],["question","Question / field"],["answer","Answer"],["responses","Responses"]]);$("marketSnapshot").innerHTML='<p><b>'+safe(m.name)+'</b> · currency '+safe(m.currency||"mixed")+'</p><p class="muted">First-party platform data is filtered by account country. External freight-market numeric series are not connected yet.</p><div class="insight">Observed accounts: '+fmt(o.totalAccounts)+' · jobs in window: '+fmt(o.jobs)+' · bids: '+fmt(o.bids)+'. '+(o.totalAccounts<30?"Low platform sample: avoid treating conversion or growth as a national industry trend.":"Use platform behaviour as a product signal only; it does not represent the whole country's logistics sector.")+'</div><p class="muted">Source coverage: '+safe(d.externalCoverage||"Official source links only; live industry data pending.")+'</p>';const drawIndustrySources=()=>{
   const q=$("sourceSearch").value.trim().toLowerCase();
   const list=(d.sources||[]).filter(x=>[x.name,x.url,sourceDomain(x.url),sourceCategory(x)].some(v=>String(v||"").toLowerCase().includes(q))).sort((a,b)=>sourceCategory(a).localeCompare(sourceCategory(b))||String(a.name).localeCompare(String(b.name)));
   $("sourceCount").textContent=list.length+" source"+(list.length===1?"":"s");
@@ -714,7 +710,43 @@ async function metricsUncached(url) {
     safeQuery("API routes",`SELECT route,method,count(*)::int AS count,count(*) FILTER(WHERE "statusCode">=500)::int AS "serverErrors",round(avg("durationMs"))::int AS "avgMs",percentile_disc(.95) WITHIN GROUP(ORDER BY "durationMs")::int AS "p95Ms" FROM "ApiRequestMetric" WHERE "qaRunId" IS NULL AND "createdAt">=now()-($1::int*interval '1 day') GROUP BY route,method ORDER BY "p95Ms" DESC LIMIT 20`,days),
     safeQuery("Recent API errors",`SELECT method,route,"statusCode","createdAt" FROM "ApiRequestMetric" WHERE "qaRunId" IS NULL AND "statusCode">=500 AND "createdAt">=now()-($1::int*interval '1 day') ORDER BY "createdAt" DESC LIMIT 20`,days),
     safeQuery("QA runs",`SELECT id,status,target_accounts AS "targetAccounts",created_accounts AS "createdAccounts",successful_checks AS "successfulChecks",failed_checks AS "failedChecks",duration_ms AS "durationMs",started_at AS "startedAt",finished_at AS "finishedAt" FROM qa_test_runs ORDER BY started_at DESC LIMIT 20`),
-    safeQuery("QA failures",`SELECT scenario,action,path,expected_statuses AS expected,actual_status AS actual,count(*)::int AS count FROM qa_test_events WHERE passed=false AND run_id=(SELECT id FROM qa_test_runs ORDER BY started_at DESC LIMIT 1) GROUP BY scenario,action,path,expected_statuses,actual_status ORDER BY count DESC LIMIT 30`),
+    safeQuery("Active QA issues",`
+       WITH check_runs AS (
+         SELECT
+           e.run_id AS "runId",
+           COALESCE(r.summary->>'country', r.summary->>'marketCode', r.summary->>'marketLabel', 'Not recorded') AS country,
+           r.status AS "runStatus",
+           e.scenario,
+           e.action,
+           e.method,
+           e.path,
+           e.expected_statuses AS expected,
+           max(e.actual_status) FILTER (WHERE e.passed=false) AS actual,
+           bool_and(e.passed) AS passed,
+           max(e.created_at) AS "eventCreatedAt",
+           max(e.id) AS "eventId",
+           r.started_at AS "runStartedAt"
+         FROM qa_test_events e
+         JOIN qa_test_runs r ON r.id=e.run_id
+         WHERE r.status IN ('completed', 'failed')
+         GROUP BY
+           e.run_id,
+           COALESCE(r.summary->>'country', r.summary->>'marketCode', r.summary->>'marketLabel', 'Not recorded'),
+           r.status, e.scenario, e.action, e.method, e.path, e.expected_statuses, r.started_at
+       ), ranked_checks AS (
+         SELECT check_runs.*,
+           row_number() OVER (
+             PARTITION BY country, scenario, action, method, path, expected
+             ORDER BY "runStartedAt" DESC, "eventCreatedAt" DESC, "eventId" DESC
+           ) AS issue_rank
+         FROM check_runs
+       )
+       SELECT "runId", country, "runStatus", scenario, action, method, path, expected, actual
+       FROM ranked_checks
+       WHERE issue_rank=1 AND passed=false
+       ORDER BY "runStartedAt" DESC, scenario, action, method
+       LIMIT 100
+     `),
     safeQuery("Subscription payments",`SELECT sp.status AS label,count(*)::int AS count FROM "SubscriptionPayment" sp JOIN "Account" a ON a.id=sp."accountId" LEFT JOIN qa_test_accounts qa ON qa.account_id=a.id WHERE qa.account_id IS NULL AND ($1::text IS NULL OR a.country=$1) AND sp."createdAt">=now()-($2::int*interval '1 day') GROUP BY sp.status ORDER BY count DESC`,country,days),
     safeQuery("Vehicle summary",`SELECT count(*)::int AS total FROM "Vehicle" v JOIN "Account" a ON a.id=v."accountId" LEFT JOIN qa_test_accounts qa ON qa.account_id=a.id WHERE qa.account_id IS NULL AND ($1::text IS NULL OR a.country=$1)`,country),
     safeQuery("Activity summary",`SELECT action AS label,count(*)::int AS count FROM "JobActivity" ja JOIN "Job" j ON j.id=ja."jobId" JOIN "Account" a ON a.id=j."posterId" LEFT JOIN qa_test_accounts qa ON qa.account_id=a.id WHERE qa.account_id IS NULL AND ($1::text IS NULL OR a.country=$1) AND ja."createdAt">=now()-($2::int*interval '1 day') GROUP BY action ORDER BY count DESC LIMIT 15`,country,days),
@@ -878,5 +910,81 @@ const server = http.createServer(async (req,res) => {
     return send(res,status,JSON.stringify({error:status===400?e.message:"Internal dashboard error"}),"application/json");
   }
 });
-server.listen(PORT,"0.0.0.0",()=>console.log(`Post2Drive Ops Dashboard listening on ${PORT}`));
+async function startServer() {
+  try {
+    await prisma.$connect();
+    const [identity] = await prisma.$queryRawUnsafe(`
+      SELECT
+        current_database() AS database,
+        current_user AS username,
+        r.rolcanlogin AS can_login,
+        r.rolsuper AS is_superuser,
+        r.rolcreatedb AS can_create_database,
+        r.rolcreaterole AS can_create_roles,
+        r.rolinherit AS inherits_roles,
+        r.rolreplication AS can_replicate,
+        r.rolbypassrls AS bypasses_rls,
+        has_schema_privilege(current_user, 'public', 'CREATE') AS can_create_in_public,
+        (SELECT count(*)::int FROM pg_tables t WHERE t.schemaname = 'public') AS public_tables,
+        (SELECT count(*)::int FROM pg_tables t
+          WHERE t.schemaname = 'public'
+            AND has_table_privilege(current_user, quote_ident(t.schemaname) || '.' || quote_ident(t.tablename), 'SELECT')
+        ) AS readable_tables,
+        (SELECT count(*)::int FROM pg_tables t
+          WHERE t.schemaname = 'public' AND (
+            has_table_privilege(current_user, quote_ident(t.schemaname) || '.' || quote_ident(t.tablename), 'INSERT')
+            OR has_table_privilege(current_user, quote_ident(t.schemaname) || '.' || quote_ident(t.tablename), 'UPDATE')
+            OR has_table_privilege(current_user, quote_ident(t.schemaname) || '.' || quote_ident(t.tablename), 'DELETE')
+            OR has_table_privilege(current_user, quote_ident(t.schemaname) || '.' || quote_ident(t.tablename), 'TRUNCATE')
+            OR has_table_privilege(current_user, quote_ident(t.schemaname) || '.' || quote_ident(t.tablename), 'REFERENCES')
+            OR has_table_privilege(current_user, quote_ident(t.schemaname) || '.' || quote_ident(t.tablename), 'TRIGGER')
+          )
+        ) AS writable_tables,
+        (SELECT count(*)::int FROM pg_class c
+          JOIN pg_namespace n ON n.oid = c.relnamespace
+          WHERE n.nspname = 'public' AND c.relkind = 'S' AND (
+            has_sequence_privilege(current_user, c.oid, 'USAGE')
+            OR has_sequence_privilege(current_user, c.oid, 'SELECT')
+            OR has_sequence_privilege(current_user, c.oid, 'UPDATE')
+          )
+        ) AS sequence_privileges,
+        (SELECT count(*)::int FROM pg_auth_members m
+          JOIN pg_roles member_role ON member_role.oid = m.member
+          WHERE member_role.rolname = current_user
+        ) AS role_memberships
+      FROM pg_roles r
+      WHERE r.rolname = current_user
+    `);
+    if (!identity) throw new Error("Database role identity could not be verified.");
+
+    const problems = [];
+    if (identity.username !== "post2drive_ops_readonly") problems.push("unexpected database role");
+    if (!identity.can_login || identity.is_superuser || identity.can_create_database ||
+        identity.can_create_roles || identity.inherits_roles || identity.can_replicate ||
+        identity.bypasses_rls || identity.can_create_in_public) {
+      problems.push("database role has elevated attributes or schema privileges");
+    }
+    if (Number(identity.public_tables) === 0 || Number(identity.readable_tables) !== Number(identity.public_tables)) {
+      problems.push("not all public tables are readable");
+    }
+    if (Number(identity.writable_tables) !== 0) problems.push("writable table privileges detected");
+    if (Number(identity.sequence_privileges) !== 0) problems.push("sequence privileges detected");
+    if (Number(identity.role_memberships) !== 0) problems.push("database role membership detected");
+    if (process.env.DEPLOYMENT_ENVIRONMENT === "staging" && identity.database !== "post2drive_qa") {
+      problems.push("staging dashboard is not connected to post2drive_qa");
+    }
+    if (problems.length) throw new Error(problems.join("; "));
+
+    console.log(`Ops dashboard read-only boundary verified for database ${identity.database} as ${identity.username} (${identity.readable_tables ?? "unknown"} tables checked).`);
+    server.listen(PORT, "0.0.0.0", () => console.log(`Post2Drive Ops Dashboard listening on ${PORT}`));
+  } catch (error) {
+    console.error(
+      "Ops dashboard startup blocked: OPS_DASHBOARD_DATABASE_URL must use the restricted read-only role on the intended database.",
+      error instanceof Error ? error.message : "unknown error"
+    );
+    await prisma.$disconnect().catch(() => {});
+    process.exit(1);
+  }
+}
+startServer();
 for (const sig of ["SIGTERM","SIGINT"]) process.on(sig,async()=>{server.close();await prisma.$disconnect();process.exit(0);});
