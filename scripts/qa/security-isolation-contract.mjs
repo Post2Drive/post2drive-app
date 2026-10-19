@@ -29,7 +29,7 @@ assert.match(bidAccept, /if \(claimed\.count !== 1\)/,
   "bid acceptance must reject a lost race");
 assert.match(evidence, /if \(!isParty && !admin\)/,
   "incident evidence reads must reject unrelated accounts");
-assert.match(evidence, /where: \{ id: evidenceId, incidentId: incidentId \}/,
+assert.match(evidence, /where: \\{ id: evidenceId, jobId, incidentId \\}/,
   "evidence lookup must be scoped to the requested incident");
 console.log("Security route contracts passed (source-level; not an authenticated HTTP test).");
 
