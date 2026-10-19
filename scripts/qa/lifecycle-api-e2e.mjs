@@ -12,7 +12,7 @@ const jobIds = [];
 let server;
 let serverOutput = "";
 let base = "";
-let poster, driver, outsider, lifecycleJob, bidJob, bid, incident, evidence, posterVehicle, driverVehicle;
+let poster, driver, outsider, lifecycleJob, bidJob, bid, incident, evidence, posterVehicle, driverVehicle, incidentJob, cancelJob, acceptJob, unassignJob, rejectJob;
 
 async function snapshot() {
   const [jobRows, jobCount, bidCount, activityCount, evidenceCount, vehicleCount, notificationCount] = await Promise.all([
@@ -77,6 +77,13 @@ async function api(path, method, cookie, body) {
     signal: AbortSignal.timeout(8000),
   });
 }
+async function apiFormData(path, method, cookie, formData) {
+  const headers = {};
+  if (cookie) headers.cookie = cookie;
+  return fetch(base + path, {
+    method, headers, body: formData, cache: "no-store", signal: AbortSignal.timeout(8000),
+  });
+}
 const denyStatuses = new Set([400, 401, 403, 404, 409, 422]);
 try {
   poster = await prisma.account.create({ data: {
@@ -127,6 +134,41 @@ try {
     vehicleType: "van", price: 100, currency: "GBP", crossBorder: false,
   }});
   jobIds.push(lifecycleJob.id, bidJob.id);
+  const baseFixtureJob = {
+    posterId: poster.id,
+    pickup: "CI alternative pickup",
+    dropoff: "CI alternative dropoff",
+    pickupTime: "10:00",
+    dropoffTime: "14:00",
+    pickupTimeZone: "Europe/London",
+    dropoffTimeZone: "Europe/London",
+    vehicleType: "van",
+    price: 100,
+    currency: "GBP",
+    crossBorder: false,
+    priceMode: "fixed",
+  };
+  incidentJob = await prisma.job.create({ data: {
+    ...baseFixtureJob, status: "accepted", acceptedById: driver.id,
+    jobDate: new Date(Date.now() + 3 * 86_400_000),
+  }});
+  cancelJob = await prisma.job.create({ data: {
+    ...baseFixtureJob, status: "open",
+    jobDate: new Date(Date.now() + 4 * 86_400_000),
+  }});
+  acceptJob = await prisma.job.create({ data: {
+    ...baseFixtureJob, status: "open",
+    jobDate: new Date(Date.now() + 10 * 86_400_000), pickupTime: "16:00", dropoffTime: "18:00",
+  }});
+  unassignJob = await prisma.job.create({ data: {
+    ...baseFixtureJob, status: "accepted", acceptedById: driver.id,
+    jobDate: new Date(Date.now() + 5 * 86_400_000),
+  }});
+  rejectJob = await prisma.job.create({ data: {
+    ...baseFixtureJob, status: "delivered", acceptedById: driver.id, deliveryMarkedById: driver.id,
+    jobDate: new Date(Date.now() + 6 * 86_400_000),
+  }});
+  jobIds.push(incidentJob.id, cancelJob.id, acceptJob.id, unassignJob.id, rejectJob.id);
   incident = await prisma.jobActivity.create({ data: {
     jobId: lifecycleJob.id, actorId: poster.id, action: "INCIDENT_REPORTED",
     description: "isolated incident fixture", metadata: { reason: "isolated fixture" },
@@ -172,6 +214,24 @@ try {
   const posterCookie = await signIn(posterUser.email);
   const driverCookie = await signIn(driverUser.email);
 
+  const posterJobRead = await api("/api/jobs/" + lifecycleJob.id, "GET", posterCookie);
+  assert.equal(posterJobRead.status, 200, "poster may read their own job");
+  const driverActivityRead = await api("/api/jobs/" + lifecycleJob.id + "/activity", "GET", driverCookie);
+  assert.equal(driverActivityRead.status, 200, "assigned driver may read job activity");
+
+  const editResponse = await api("/api/jobs/" + bidJob.id + "/edit", "PATCH", posterCookie, {
+    pickup: "Updated CI bid pickup", dropoff: "Updated CI bid dropoff",
+    jobDate: new Date(Date.now() + 2 * 86_400_000).toISOString().slice(0, 10),
+    pickupTime: "10:00", dropoffTime: "14:00",
+    pickupTimeZone: "Europe/London", dropoffTimeZone: "Europe/London",
+    vehicleType: "van", price: 100, priceMode: "bid", currency: "GBP", crossBorder: false,
+  });
+  if (editResponse.status !== 200) {
+    throw new Error("poster should edit their open job (got " + editResponse.status + "): " + await editResponse.text());
+  }
+  assert.equal((await prisma.job.findUnique({ where: { id: bidJob.id } })).pickup, "Updated CI bid pickup",
+    "authorized edit should persist the poster's updated pickup");
+
   const placedBidResponse = await api("/api/jobs/" + bidJob.id + "/bid", "POST", driverCookie, { amount: 95 });
   if (![200, 201].includes(placedBidResponse.status)) {
     throw new Error("eligible authenticated driver should place a bid (got " + placedBidResponse.status + "): " + await placedBidResponse.text());
@@ -179,8 +239,10 @@ try {
   const placedBidBody = await placedBidResponse.json();
   assert.ok(placedBidBody.bid?.id, "successful bid response must return the created bid ID");
   bid = { id: placedBidBody.bid.id };
+  const posterBidsRead = await api("/api/jobs/" + bidJob.id + "/bids", "GET", posterCookie);
+  assert.equal(posterBidsRead.status, 200, "poster may read bids for their own job");
 
-  // Establish that the signed JWT is accepted, and the vehicle collection is
+  // Establish that the credentials session is accepted, and the vehicle collection is
   // account-scoped rather than exposing another account's records.
   const ownVehicles = await api("/api/vehicles", "GET", outsiderCookie);
   assert.equal(ownVehicles.status, 200, "active authenticated account should read its vehicle collection");
@@ -233,6 +295,77 @@ try {
   const acceptedBidJob = await prisma.job.findUnique({ where: { id: bidJob.id } });
   assert.equal(acceptedBidJob.status, "accepted", "bid acceptance should claim the job");
   assert.equal(acceptedBidJob.acceptedById, driver.id, "bid acceptance should assign the bidding driver");
+
+  const cancelled = await api("/api/jobs/" + cancelJob.id + "/cancel", "POST", posterCookie, {});
+  assert.ok([200, 201].includes(cancelled.status), "poster should cancel an open job (got " + cancelled.status + "): " + await cancelled.text());
+  assert.equal((await prisma.job.findUnique({ where: { id: cancelJob.id } })).status, "cancelled",
+    "authorized poster cancellation should persist cancelled state");
+
+  const acceptedFixed = await api("/api/jobs/" + acceptJob.id + "/accept", "POST", driverCookie, {});
+  assert.ok([200, 201].includes(acceptedFixed.status), "eligible driver should accept an open fixed job (got " + acceptedFixed.status + "): " + await acceptedFixed.text());
+  let acceptedFixedRow = await prisma.job.findUnique({ where: { id: acceptJob.id } });
+  assert.equal(acceptedFixedRow.status, "accepted", "fixed-job acceptance should claim the open job");
+  assert.equal(acceptedFixedRow.acceptedById, driver.id, "fixed-job acceptance should assign the authenticated driver");
+
+  const driverBackout = await api("/api/jobs/" + acceptJob.id + "/driver-cancel", "POST", driverCookie, {});
+  assert.ok([200, 201].includes(driverBackout.status), "assigned driver should be able to withdraw before pickup (got " + driverBackout.status + "): " + await driverBackout.text());
+  assert.equal((await prisma.job.findUnique({ where: { id: acceptJob.id } })).status, "open",
+    "driver withdrawal should reopen the job");
+
+  const unassigned = await api("/api/jobs/" + unassignJob.id + "/unassign", "POST", posterCookie, {});
+  assert.ok([200, 201].includes(unassigned.status), "poster should unassign a driver before pickup (got " + unassigned.status + "): " + await unassigned.text());
+  assert.equal((await prisma.job.findUnique({ where: { id: unassignJob.id } })).status, "open",
+    "poster unassignment should reopen the job");
+
+  const rejectedDelivery = await api("/api/jobs/" + rejectJob.id + "/reject-delivered", "POST", posterCookie, {});
+  assert.ok([200, 201].includes(rejectedDelivery.status), "poster should reject the driver's delivery marker (got " + rejectedDelivery.status + "): " + await rejectedDelivery.text());
+  assert.equal((await prisma.job.findUnique({ where: { id: rejectJob.id } })).status, "in_transit",
+    "delivery rejection should return the job to in_transit without erasing the marker");
+
+  const reportedIncidentResponse = await api("/api/jobs/" + incidentJob.id + "/incidents", "POST", posterCookie, {
+    reason: "vehicle_breakdown", description: "Isolated CI vehicle breakdown",
+    requestedOutcome: "terminate_job", location: "CI fixture route",
+  });
+  if (reportedIncidentResponse.status !== 201) {
+    throw new Error("job party should report an incident (got " + reportedIncidentResponse.status + "): " + await reportedIncidentResponse.text());
+  }
+  const reportedIncident = (await reportedIncidentResponse.json()).incident;
+  assert.ok(reportedIncident?.id, "incident report should return a persistent incident ID");
+  const incidentRead = await api("/api/jobs/" + incidentJob.id + "/incidents", "GET", driverCookie);
+  assert.equal(incidentRead.status, 200, "assigned driver may read the incident history");
+
+  const incidentUpdate = await api("/api/jobs/" + incidentJob.id + "/incidents/updates", "POST", driverCookie, {
+    incidentId: reportedIncident.id, description: "Driver confirms the vehicle breakdown.",
+  });
+  assert.equal(incidentUpdate.status, 201, "assigned driver may append an incident update");
+
+  const evidenceForm = new FormData();
+  evidenceForm.append("file", new Blob(["%PDF-1.4\n% isolated CI evidence\n%%EOF\n"], { type: "application/pdf" }), "ci-evidence.pdf");
+  const evidenceUpload = await apiFormData(
+    "/api/jobs/" + incidentJob.id + "/incidents/" + reportedIncident.id + "/evidence",
+    "POST", posterCookie, evidenceForm,
+  );
+  if (evidenceUpload.status !== 201) {
+    throw new Error("job party should upload incident evidence (got " + evidenceUpload.status + "): " + await evidenceUpload.text());
+  }
+  const uploadedEvidence = (await evidenceUpload.json()).evidence;
+  assert.ok(uploadedEvidence?.id, "evidence upload should return an evidence ID");
+  const evidenceDownload = await api(
+    "/api/jobs/" + incidentJob.id + "/incidents/" + reportedIncident.id + "/evidence/" + uploadedEvidence.id,
+    "GET", driverCookie,
+  );
+  assert.equal(evidenceDownload.status, 200, "assigned driver may download incident evidence");
+  assert.equal(evidenceDownload.headers.get("cache-control"), "private, no-store", "evidence download must not be cached publicly");
+  assert.equal(evidenceDownload.headers.get("x-content-type-options"), "nosniff", "evidence download must disable content sniffing");
+
+  const terminated = await api("/api/jobs/" + incidentJob.id + "/incidents/terminate", "POST", posterCookie, {
+    incidentId: reportedIncident.id, reason: "vehicle_breakdown", notes: "Vehicle cannot safely continue.",
+  });
+  if (terminated.status !== 200) {
+    throw new Error("job party should terminate through its incident workflow (got " + terminated.status + "): " + await terminated.text());
+  }
+  assert.equal((await prisma.job.findUnique({ where: { id: incidentJob.id } })).status, "cancelled",
+    "incident termination should cancel the active job while preserving incident history");
 
   // Exercise the actual authenticated HTTP lifecycle with separate poster and
   // driver JWTs. This stays entirely in the ephemeral CI database.
