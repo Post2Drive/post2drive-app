@@ -176,7 +176,7 @@ try {
   jobIds.push(incidentJob.id, cancelJob.id, acceptJob.id, unassignJob.id, rejectJob.id);
   incident = await prisma.jobActivity.create({ data: {
     jobId: lifecycleJob.id, actorId: poster.id, action: "INCIDENT_REPORTED",
-    description: "isolated incident fixture", metadata: { reason: "isolated fixture" },
+    description: "isolated incident fixture", metadata: { reason: "vehicle_breakdown" },
   }});
   evidence = await prisma.incidentEvidence.create({ data: {
     jobId: lifecycleJob.id, incidentId: incident.id, uploadedById: poster.id,
@@ -279,9 +279,9 @@ try {
     ["/api/jobs/" + lifecycleJob.id + "/payment/confirm-received", "POST", {}],
     ["/api/jobs/" + lifecycleJob.id + "/incidents", "GET"],
     ["/api/jobs/" + incidentJob.id + "/incidents", "POST", { description: "Attacker incident", reason: "vehicle_breakdown", requestedOutcome: "terminate_job" }],
-    ["/api/jobs/" + incidentJob.id + "/incidents/terminate", "POST", { incidentId: incident.id, reason: "isolated fixture", notes: "Attacker termination" }],
-    ["/api/jobs/" + incidentJob.id + "/incidents/updates", "POST", { incidentId: incident.id, description: "Attacker update" }],
-    ["/api/jobs/" + incidentJob.id + "/incidents/" + incident.id + "/evidence", "POST", { __formData: true }],
+    ["/api/jobs/" + lifecycleJob.id + "/incidents/terminate", "POST", { incidentId: incident.id, reason: "vehicle_breakdown", notes: "Attacker termination" }],
+    ["/api/jobs/" + lifecycleJob.id + "/incidents/updates", "POST", { incidentId: incident.id, description: "Attacker update" }],
+    ["/api/jobs/" + lifecycleJob.id + "/incidents/" + incident.id + "/evidence", "POST", { __formData: true }],
     ["/api/jobs/" + lifecycleJob.id + "/incidents/" + incident.id + "/evidence/" + evidence.id, "GET"],
   ];
   for (const [path, method, body] of outsiderCases) {
