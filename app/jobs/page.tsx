@@ -319,7 +319,10 @@ export default function JobsPage() {
     path: string,
     confirmMsg?: string
   ) {
-    if (actionInFlight.current) return false;
+    if (actionInFlight.current) {
+      setMessage("Another job action is still in progress. Please wait.");
+      return false;
+    }
     actionInFlight.current = true;
 
     if (
@@ -506,7 +509,10 @@ export default function JobsPage() {
   async function handleBid(
     jobId: string
   ) {
-    if (bidInFlight.current) return;
+    if (bidInFlight.current) {
+      setMessage("A bid submission is already in progress. Please wait.");
+      return;
+    }
     bidInFlight.current = true;
     setMessage("");
 
@@ -568,25 +574,21 @@ export default function JobsPage() {
   async function loadBids(
     jobId: string
   ) {
-    const res =
-      await fetch(
-        `/api/jobs/${jobId}/bids`
-      );
+    try {
+      const res = await fetch(`/api/jobs/${jobId}/bids`);
+      const data = await res.json().catch(() => ({}));
 
-    const data =
-      await res.json();
+      if (!res.ok) {
+        setMessage(data.error || "Could not load bids.");
+        return;
+      }
 
-    if (res.ok) {
-      setOpenBids({
-        ...openBids,
-        [jobId]:
-          data.bids || [],
-      });
-    } else {
-      setMessage(
-        data.error ||
-          "Could not load bids."
-      );
+      setOpenBids((current) => ({
+        ...current,
+        [jobId]: data.bids || [],
+      }));
+    } catch {
+      setMessage("Network error. Could not load bids.");
     }
   }
 
@@ -610,7 +612,10 @@ export default function JobsPage() {
   async function submitRating(
     jobId: string
   ) {
-    if (ratingInFlight.current) return;
+    if (ratingInFlight.current) {
+      setMessage("A rating submission is already in progress. Please wait.");
+      return;
+    }
     ratingInFlight.current = true;
     setMessage("");
 
