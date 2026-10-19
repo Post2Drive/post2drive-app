@@ -303,3 +303,52 @@ try {
   await prisma.$executeRawUnsafe(`DROP TABLE IF EXISTS ${table}`).catch(() => {});
   await prisma.$disconnect();
 }
+
+
+// Exercise the actual pickup-confirmation handler under contention. A poster and
+// driver may both click confirm, but the accepted -> in_transit CAS must have one winner.
+let pickupSessionAccountId = "poster-a";
+let pickupJob = {
+  id: "job-pickup-race", posterId: "poster-a", acceptedById: "driver-b", status: "accepted",
+};
+let pickupAuditEvents = 0;
+const pickupTx = {
+  job: {
+    updateMany: async ({ where, data }) => {
+      if (pickupJob.id !== where.id || pickupJob.status !== where.status ||
+          pickupJob.acceptedById !== where.acceptedById) return { count: 0 };
+      pickupJob = { ...pickupJob, ...data };
+      return { count: 1 };
+    },
+    findUniqueOrThrow: async () => ({ ...pickupJob }),
+  },
+  jobActivity: { create: async () => { pickupAuditEvents++; return {}; } },
+  notification: { create: async () => ({}) },
+};
+const pickupRoute = loadTypeScriptModule("app/api/jobs/[id]/confirm-pickup/route.ts", {
+  "@/lib/apiMetrics": { withApiMetrics: (_name, handler) => handler },
+  "@/lib/jobMarket": { requireJobMarketAccess: async () => null },
+  "next/server": { NextResponse: { json: (body, init = {}) => new Response(JSON.stringify(body), { status: init.status ?? 200, headers: { "content-type": "application/json" } }) } },
+  "next-auth": { getServerSession: async () => ({ user: { accountId: pickupSessionAccountId } }) },
+  "@/lib/auth": { authOptions: {} },
+  "@/lib/prisma": {
+    prisma: {
+      job: { findUnique: async ({ where }) => where.id === pickupJob.id ? { ...pickupJob } : null },
+      $transaction: async (callback) => callback(pickupTx),
+    },
+  },
+});
+const confirmPickup = () => pickupRoute.POST(new Request("https://fixture.invalid/api/jobs/job-pickup-race/confirm-pickup", { method: "POST" }), { params: Promise.resolve({ id: "job-pickup-race" }) });
+const pickupRace = await Promise.all([confirmPickup(), confirmPickup()]);
+assert.deepEqual(pickupRace.map((response) => response.status).sort(), [200, 409],
+  "concurrent pickup confirmations must produce one success and one stale-transition conflict");
+assert.equal(pickupJob.status, "in_transit", "winning pickup confirmation must move the job to in_transit");
+assert.equal(pickupAuditEvents, 1, "only the winning pickup confirmation may write an audit event");
+
+pickupJob = { id: "job-pickup-race", posterId: "poster-a", acceptedById: "driver-b", status: "accepted" };
+pickupSessionAccountId = "unrelated-account";
+const outsiderPickup = await confirmPickup();
+assert.equal(outsiderPickup.status, 403, "unrelated account must not confirm pickup");
+assert.equal(pickupJob.status, "accepted", "unauthorized pickup confirmation must not mutate job state");
+assert.equal(pickupAuditEvents, 1, "unauthorized pickup confirmation must not add an audit event");
+console.log("Isolated pickup route tests passed: concurrent confirmation has one winner; outsider denied.");
