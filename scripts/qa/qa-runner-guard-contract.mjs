@@ -90,8 +90,8 @@ try {
   const qaWorker = readFileSync("scripts/qa/worker.ts", "utf8");
   assert.ok(qaRunner.includes('getMarket(countryCode)'), "QA runner must resolve the selected country from supported markets");
   assert.ok(qaRunner.includes('process.env.QA_MARKET_COUNTRY || "GB"'), "QA runner must support an explicit per-country test selection");
-  assert.ok(qaRunner.includes("country: market.country, currency: market.currency"), "synthetic accounts must use the selected market currency");
-  assert.ok(qaRunner.includes("currency: market.currency"), "synthetic jobs must use the selected market currency");
+  assert.ok(qaRunner.includes("country: selectedMarket.country, currency: selectedMarket.currency") || qaRunner.includes("country: market.country, currency: market.currency"), "synthetic accounts must use the selected market currency");
+  assert.ok(qaRunner.includes("currency: selectedMarket.currency") || qaRunner.includes("currency: market.currency"), "synthetic jobs must use the selected market currency");
   assert.ok(qaRoute.includes('crypto.randomUUID();'), "QA run IDs must use high entropy");
   assert.ok(qaRunner.includes('const routeMatrixTarget = testType === "synthetic-accounts" ? 0 : testIterations'), "API-load and workflow-e2e modes must use their configured iteration target");
   assert.ok(qaRunner.includes('Array.from({ length: testType === "synthetic-accounts" ? accountTarget : 0 }, (_, i) => i)'), "only the synthetic-account mode provisions its configured bounded pool");
