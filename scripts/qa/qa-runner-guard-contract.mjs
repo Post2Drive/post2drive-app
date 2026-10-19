@@ -89,8 +89,8 @@ try {
   const qaWorker = readFileSync("scripts/qa/worker.ts", "utf8");
   assert.ok(qaRunner.includes('getMarket(countryCode)'), "QA runner must resolve the selected country from supported markets");
   assert.ok(qaRunner.includes('process.env.QA_MARKET_COUNTRY || "GB"'), "QA runner must support an explicit per-country test selection");
-  assert.ok(qaRunner.includes("country: market.country, currency: market.currency"), "synthetic accounts must use the selected market currency");
-  assert.ok(qaRunner.includes("currency: market.currency"), "synthetic jobs must use the selected market currency");
+  assert.ok(qaRunner.includes("country: selectedMarket.country, currency: selectedMarket.currency"), "synthetic accounts must use the selected market currency");
+  assert.ok(qaRunner.includes("currency: selectedMarket.currency"), "synthetic jobs must use the selected market currency");
   assert.ok(qaRoute.includes('crypto.randomUUID();'), "QA run IDs must use high entropy");
   assert.ok(qaRunner.includes("const routeMatrixTarget = 10_000"), "each country run must target 10,000 API route scenarios");
   assert.ok(qaRunner.includes("Array.from({ length: 10_000 }, (_, i) => i)"), "each country run must provision 10,000 synthetic accounts");
