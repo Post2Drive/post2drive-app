@@ -221,6 +221,7 @@ export default function JobsPage() {
   // Prevent repeated clicks from dispatching duplicate lifecycle mutations.
   const actionInFlight = useRef(false);
   const bidInFlight = useRef(false);
+  const ratingInFlight = useRef(false);
 
   const [bidAmounts, setBidAmounts] =
     useState<
@@ -609,54 +610,62 @@ export default function JobsPage() {
   async function submitRating(
     jobId: string
   ) {
+    if (ratingInFlight.current) return;
+    ratingInFlight.current = true;
     setMessage("");
 
-    const input =
-      ratingInputs[jobId] || {
-        stars: "5",
-        comment: "",
-      };
+    try {
+      const input =
+        ratingInputs[jobId] || {
+          stars: "5",
+          comment: "",
+        };
 
-    const res =
-      await fetch(
-        "/api/ratings",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-          body:
-            JSON.stringify({
-              jobId,
-              stars:
-                input.stars,
-              comment:
-                input.comment,
-            }),
-        }
-      );
+      const res =
+        await fetch(
+          "/api/ratings",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body:
+              JSON.stringify({
+                jobId,
+                stars:
+                  input.stars,
+                comment:
+                  input.comment,
+              }),
+          }
+        );
 
-    const data =
-      await res.json();
+      const data =
+        await res.json();
 
-    if (!res.ok) {
+      if (!res.ok) {
+        setMessage(
+          data.error ||
+            "Could not submit rating."
+        );
+
+        return;
+      }
+
       setMessage(
-        data.error ||
-          "Could not submit rating."
+        "Rating submitted."
       );
 
-      return;
+      setRatedJobs({
+        ...ratedJobs,
+        [jobId]: true,
+      });
+    } catch {
+      setMessage("Could not submit rating.");
+    } finally {
+      ratingInFlight.current = false;
     }
-
-    setMessage(
-      "Rating submitted."
-    );
-
-    setRatedJobs({
-      ...ratedJobs,
-      [jobId]: true,
-    });
   }
 
   const activeTab =
