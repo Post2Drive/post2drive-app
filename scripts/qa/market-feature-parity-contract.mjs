@@ -98,6 +98,13 @@ contains("app/jobs/new/page.tsx", 'country === "IN" ? "Fixed quote" : "Fixed pri
 contains("app/jobs/new/page.tsx", "currencyMinorUnitScale(currency)", "job price input must use the selected currency precision");
 contains("app/jobs/page.tsx", 'accountCountry !== "IN" &&', "India marketplace must not expose bid actions");
 contains("app/jobs/page.tsx", "currencyMinorUnitScale(job.currency)", "bid input must respect the job currency precision");
+contains("app/vehicles/page.tsx", "required={Boolean(marketProfile?.jurisdictionSelectionRequired)}", "required vehicle jurisdictions must be enforced in the user-facing form");
+contains("app/vehicles/page.tsx", "getJurisdictionOptions(market.country)", "vehicle onboarding must use market-specific jurisdiction choices");
+contains("app/vehicles/page.tsx", "marketProfile?.inspectionHelp", "inspection expiry fields must explain market-specific requirements");
+contains("app/vehicles/page.tsx", "!expiryDatesOptional && Boolean(marketProfile?.inspectionRequiredAtCountryLevel)", "inspection expiry requirements must respect market rules and tester exceptions");
+contains("app/vehicles/page.tsx", 'field("Insurance valid until", "insuranceValidUntil", "date", !expiryDatesOptional)', "insurance expiry must be required for non-test accounts");
+contains("app/vehicles/page.tsx", "getJurisdictionAuthority(market.country, form.registrationRegion, market.currency)", "vehicle onboarding must show the applicable jurisdiction authority");
+
 contains("app/jobs/page.tsx", "const actionInFlight = useRef(false)", "lifecycle UI must guard against duplicate in-flight actions");
 contains("app/jobs/page.tsx", "if (actionInFlight.current) return false;", "repeated lifecycle clicks must not dispatch a second mutation");
 contains("app/jobs/page.tsx", "finally {\n      actionInFlight.current = false;", "lifecycle action lock must be released after success or failure");
