@@ -352,3 +352,44 @@ assert.equal(outsiderPickup.status, 403, "unrelated account must not confirm pic
 assert.equal(pickupJob.status, "accepted", "unauthorized pickup confirmation must not mutate job state");
 assert.equal(pickupAuditEvents, 1, "unauthorized pickup confirmation must not add an audit event");
 console.log("Isolated pickup route tests passed: concurrent confirmation has one winner; outsider denied.");
+
+
+// Exercise the real bid-accept route's poster authorization with an unrelated
+// account. The route must reject before any transaction or bid assignment.
+let bidAcceptSessionAccountId = "unrelated-account";
+const bidAcceptJob = {
+  id: "job-bid-private", posterId: "poster-a", acceptedById: null, status: "open",
+  priceMode: "bid", currency: "GBP", jobDate: new Date("2026-11-01T00:00:00.000Z"),
+  pickupTime: "10:00", pickupTimeZone: "Europe/London", vehicleType: "van",
+};
+let bidAcceptTransactions = 0;
+const bidAcceptRoute = loadTypeScriptModule("app/api/jobs/[id]/bids/[bidId]/accept/route.ts", {
+  "@/lib/apiMetrics": { withApiMetrics: (_name, handler) => handler },
+  "@/lib/jobMarket": { requireJobMarketAccess: async () => null },
+  "@/lib/jobAccess": {
+    getJobPickupAtForAccount: async () => new Date("2026-11-01T10:00:00.000Z"),
+    pickupAccessError: () => null,
+  },
+  "@/lib/access": { getAccountAccess: async () => ({ allowed: true }) },
+  "next/server": { NextResponse: { json: (body, init = {}) => new Response(JSON.stringify(body), { status: init.status ?? 200, headers: { "content-type": "application/json" } }) } },
+  "next-auth": { getServerSession: async () => ({ user: { accountId: bidAcceptSessionAccountId } }) },
+  "@/lib/auth": { authOptions: {} },
+  "@/lib/prisma": {
+    prisma: {
+      job: { findUnique: async ({ where }) => where.id === bidAcceptJob.id ? { ...bidAcceptJob } : null },
+      bid: { findUnique: async () => { throw new Error("Outsider must be rejected before bid lookup"); } },
+      $transaction: async () => { bidAcceptTransactions++; throw new Error("Outsider must never enter transaction"); },
+    },
+  },
+  "@/lib/opportunities": { expireJobOpportunities: async () => {} },
+  "@/lib/localisation": { getLocalisationProfile: () => ({ timeZone: "Europe/London" }) },
+  "@/lib/vehicleDates": { marketDateKey: () => "2026-11-01" },
+});
+const outsiderBidAccept = await bidAcceptRoute.POST(
+  new Request("https://fixture.invalid/api/jobs/job-bid-private/bids/bid-1/accept", { method: "POST" }),
+  { params: Promise.resolve({ id: "job-bid-private", bidId: "bid-1" }) },
+);
+assert.equal(outsiderBidAccept.status, 403, "unrelated account must not accept a bid on another account's job");
+assert.equal(bidAcceptTransactions, 0, "unauthorized bid acceptance must not start a transaction");
+assert.equal(bidAcceptJob.status, "open", "unauthorized bid acceptance must leave job open");
+console.log("Isolated bid acceptance authorization test passed: unrelated poster denied before bid lookup or mutation.");
