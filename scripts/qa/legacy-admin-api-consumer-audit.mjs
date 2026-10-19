@@ -10,11 +10,19 @@ const scan = (pattern, paths) => {
   throw new Error("git grep failed: " + (result.stderr || result.error?.message || result.status));
 };
 
-const liveCallerMatches = scan("(/api/admin/performance|/admin/performance\\?days)", [
+const allPathMatches = scan("(/api/admin/performance|/admin/performance\\?days)", [
   "app", "components", "lib", "ops-dashboard",
 ]);
-assert.deepEqual(liveCallerMatches, [],
-  "Retired /api/admin/performance still has an application/runtime caller:\n" + liveCallerMatches.join("\n"));
+// The only remaining path strings are intentional QA route-matrix probes. They
+// assert HTTP 410 for both anonymous and authenticated requests. No live UI,
+// library, or dashboard server may call the retired endpoint.
+const qaProbes = allPathMatches.filter((line) => line.includes(":lib/qaRunner.ts:"));
+const runtimeMatches = allPathMatches.filter((line) => !line.includes(":lib/qaRunner.ts:"));
+assert.deepEqual(runtimeMatches, [],
+  "Retired /api/admin/performance still has an application/runtime caller:\n" + runtimeMatches.join("\n"));
+assert.equal(qaProbes.length, 2, "expected exactly two QA probes for the retired tombstone");
+assert.ok(qaProbes.every((line) => line.includes("retired-admin-performance") && line.includes("expected: [410]")),
+  "QA probes must document the tombstone's 410 behavior:\n" + qaProbes.join("\n"));
 
 const componentReferences = scan("PerformanceDashboard", ["app", "components", "lib"]);
 assert.deepEqual(componentReferences, [],
@@ -26,5 +34,5 @@ assert.match(tombstone, /replacement:\s*"\/admin-access"/, "legacy endpoint must
 const page = readFileSync("app/admin/performance/page.tsx", "utf8");
 assert.match(page, /redirect\("\/admin-access"\)/, "legacy page must redirect to the replacement dashboard");
 
-console.log("PASS legacy admin API audit: no in-repository runtime caller; orphaned component removed; 410 tombstone and redirect preserved.");
+console.log("PASS legacy admin API audit: no live runtime caller; exactly two QA probes expect 410; orphaned component removed; tombstone and redirect preserved.");
 console.log("LIMIT: this scan covers tracked app/runtime source, not external bookmarks, reverse proxies, monitoring, scheduled jobs, or third-party integrations.");
