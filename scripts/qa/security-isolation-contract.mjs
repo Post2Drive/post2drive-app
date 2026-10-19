@@ -222,6 +222,59 @@ assert.equal(cancelJob.status, "accepted", "unauthorized cancellation must leave
 assert.equal(cancellationAuditEvents, 1, "unauthorized cancellation must not add an audit event");
 console.log("Isolated lifecycle route tests passed: concurrent cancellation has one winner; outsider cancellation denied.");
 
+
+// Exercise the real delivery-confirmation route under concurrent requests. Both
+// callers see the delivered state, but the conditional delivered -> completed
+// transition must allow only one audit event and one successful response.
+let deliverySessionAccountId = "poster-a";
+let deliveryJob = {
+  id: "job-delivery-race", posterId: "poster-a", acceptedById: "driver-b",
+  status: "delivered", deliveryMarkedById: "driver-b",
+};
+let deliveryAuditEvents = 0;
+const deliveryTx = {
+  job: {
+    updateMany: async ({ where, data }) => {
+      if (deliveryJob.id !== where.id || deliveryJob.status !== where.status ||
+          deliveryJob.deliveryMarkedById !== where.deliveryMarkedById) return { count: 0 };
+      deliveryJob = { ...deliveryJob, ...data };
+      return { count: 1 };
+    },
+    findUniqueOrThrow: async () => ({ ...deliveryJob }),
+  },
+  jobActivity: { create: async () => { deliveryAuditEvents++; return {}; } },
+  notification: { create: async () => ({}) },
+};
+const deliveryRoute = loadTypeScriptModule("app/api/jobs/[id]/confirm-delivered/route.ts", {
+  "@/lib/apiMetrics": { withApiMetrics: (_name, handler) => handler },
+  "@/lib/jobMarket": { requireJobMarketAccess: async () => null },
+  "next/server": { NextResponse: { json: (body, init = {}) => new Response(JSON.stringify(body), { status: init.status ?? 200, headers: { "content-type": "application/json" } }) } },
+  "next-auth": { getServerSession: async () => ({ user: { accountId: deliverySessionAccountId } }) },
+  "@/lib/auth": { authOptions: {} },
+  "@/lib/prisma": {
+    prisma: {
+      job: { findUnique: async ({ where }) => where.id === deliveryJob.id ? { ...deliveryJob } : null },
+      $transaction: async (callback) => callback(deliveryTx),
+    },
+  },
+  "@/lib/referrals": { qualifyReferralFromCompletedJob: async () => null },
+});
+const confirmDelivery = () => deliveryRoute.POST(new Request("https://fixture.invalid/api/jobs/job-delivery-race/confirm-delivered", { method: "POST" }), { params: Promise.resolve({ id: "job-delivery-race" }) });
+const deliveryRace = await Promise.all([confirmDelivery(), confirmDelivery()]);
+assert.deepEqual(deliveryRace.map((response) => response.status).sort(), [200, 409],
+  "two simultaneous delivery confirmations must produce one success and one conflict");
+assert.equal(deliveryJob.status, "completed", "winning confirmation must complete the job");
+assert.equal(deliveryAuditEvents, 1, "only the winning confirmation may write one lifecycle audit event");
+
+// A non-party must not confirm or complete the job.
+deliveryJob = { id: "job-delivery-race", posterId: "poster-a", acceptedById: "driver-b", status: "delivered", deliveryMarkedById: "driver-b" };
+deliverySessionAccountId = "unrelated-account";
+const outsiderDelivery = await confirmDelivery();
+assert.equal(outsiderDelivery.status, 403, "unrelated account must not confirm delivery");
+assert.equal(deliveryJob.status, "delivered", "unauthorized confirmation must not change delivery state");
+assert.equal(deliveryAuditEvents, 1, "unauthorized confirmation must not add an audit event");
+console.log("Isolated delivery route tests passed: concurrent confirmation has one winner; outsider confirmation denied.");
+
 // Use only the CI DATABASE_URL, which points at the ephemeral PostgreSQL service.
 // The uniquely named fixture table is created and dropped by this test; no app tables or QA records are touched.
 const prisma = new PrismaClient();
