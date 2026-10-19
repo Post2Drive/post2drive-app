@@ -121,3 +121,5 @@ jobs:
         run: npx tsc --noEmit
       - name: Build Next.js production bundle
         run: npm run build
+      - name: Validate lifecycle APIs over authenticated HTTP against isolated CI database
+        run: node scripts/qa/lifecycle-api-e2e.mjs
