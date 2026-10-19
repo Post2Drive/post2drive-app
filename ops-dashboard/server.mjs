@@ -33,10 +33,6 @@ if (!SESSION_SECRET || SESSION_SECRET.length < 32) {
   console.error("OPS_DASHBOARD_SESSION_SECRET is required and must be at least 32 characters.");
   process.exit(1);
 }
-if (!process.env.DATABASE_URL) {
-  console.error("DATABASE_URL is required. Use a dedicated read-only database role.");
-  process.exit(1);
-}
 
 const markets = [
   ["GB","United Kingdom","GBP"],["IN","India","INR"],["AT","Austria","EUR"],["BE","Belgium","EUR"],["BG","Bulgaria","BGN"],["HR","Croatia","EUR"],["CY","Cyprus","EUR"],["EE","Estonia","EUR"],["FI","Finland","EUR"],["FR","France","EUR"],["DE","Germany","EUR"],["GR","Greece","EUR"],["IE","Ireland","EUR"],["IT","Italy","EUR"],["LV","Latvia","EUR"],["LT","Lithuania","EUR"],["LU","Luxembourg","EUR"],["MT","Malta","EUR"],["NL","Netherlands","EUR"],["PT","Portugal","EUR"],["SK","Slovakia","EUR"],["SI","Slovenia","EUR"],["ES","Spain","EUR"],["AD","Andorra","EUR"],["MC","Monaco","EUR"],["SM","San Marino","EUR"],["VA","Vatican City","EUR"],["XK","Kosovo","EUR"],["ME","Montenegro","EUR"],["CZ","Czechia","CZK"],["DK","Denmark","DKK"],["HU","Hungary","HUF"],["IS","Iceland","ISK"],["NO","Norway","NOK"],["PL","Poland","PLN"],["RO","Romania","RON"],["SE","Sweden","SEK"],["CH","Switzerland","CHF"],["TR","Türkiye","TRY"],["US","United States","USD"],["CA","Canada","CAD"],["AU","Australia","AUD"],["NZ","New Zealand","NZD"]
@@ -878,5 +874,73 @@ const server = http.createServer(async (req,res) => {
     return send(res,status,JSON.stringify({error:status===400?e.message:"Internal dashboard error"}),"application/json");
   }
 });
-server.listen(PORT,"0.0.0.0",()=>console.log(`Post2Drive Ops Dashboard listening on ${PORT}`));
+async function startServer() {
+  try {
+    await prisma.$connect();
+    const [identity] = await prisma.$queryRawUnsafe(`
+      SELECT
+        current_database() AS database,
+        current_user AS username,
+        r.rolcanlogin AS can_login,
+        r.rolsuper AS is_superuser,
+        r.rolcreatedb AS can_create_database,
+        r.rolcreaterole AS can_create_roles,
+        r.rolinherit AS inherits_roles,
+        r.rolreplication AS can_replicate,
+        r.rolbypassrls AS bypasses_rls,
+        has_schema_privilege(current_user, 'public', 'CREATE') AS can_create_in_public,
+        (SELECT count(*)::int FROM pg_tables t
+          WHERE t.schemaname = 'public' AND (
+            has_table_privilege(current_user, quote_ident(t.schemaname) || '.' || quote_ident(t.tablename), 'INSERT')
+            OR has_table_privilege(current_user, quote_ident(t.schemaname) || '.' || quote_ident(t.tablename), 'UPDATE')
+            OR has_table_privilege(current_user, quote_ident(t.schemaname) || '.' || quote_ident(t.tablename), 'DELETE')
+            OR has_table_privilege(current_user, quote_ident(t.schemaname) || '.' || quote_ident(t.tablename), 'TRUNCATE')
+            OR has_table_privilege(current_user, quote_ident(t.schemaname) || '.' || quote_ident(t.tablename), 'REFERENCES')
+            OR has_table_privilege(current_user, quote_ident(t.schemaname) || '.' || quote_ident(t.tablename), 'TRIGGER')
+          )
+        ) AS writable_tables,
+        (SELECT count(*)::int FROM pg_class c
+          JOIN pg_namespace n ON n.oid = c.relnamespace
+          WHERE n.nspname = 'public' AND c.relkind = 'S' AND (
+            has_sequence_privilege(current_user, c.oid, 'USAGE')
+            OR has_sequence_privilege(current_user, c.oid, 'SELECT')
+            OR has_sequence_privilege(current_user, c.oid, 'UPDATE')
+          )
+        ) AS sequence_privileges,
+        (SELECT count(*)::int FROM pg_auth_members m
+          JOIN pg_roles member_role ON member_role.oid = m.member
+          WHERE member_role.rolname = current_user
+        ) AS role_memberships
+      FROM pg_roles r
+      WHERE r.rolname = current_user
+    `);
+    if (!identity) throw new Error("Database role identity could not be verified.");
+
+    const problems = [];
+    if (identity.username !== "post2drive_ops_readonly") problems.push("unexpected database role");
+    if (!identity.can_login || identity.is_superuser || identity.can_create_database ||
+        identity.can_create_roles || identity.inherits_roles || identity.can_replicate ||
+        identity.bypasses_rls || identity.can_create_in_public) {
+      problems.push("database role has elevated attributes or schema privileges");
+    }
+    if (Number(identity.writable_tables) !== 0) problems.push("writable table privileges detected");
+    if (Number(identity.sequence_privileges) !== 0) problems.push("sequence privileges detected");
+    if (Number(identity.role_memberships) !== 0) problems.push("database role membership detected");
+    if (process.env.DEPLOYMENT_ENVIRONMENT === "staging" && identity.database !== "post2drive_qa") {
+      problems.push("staging dashboard is not connected to post2drive_qa");
+    }
+    if (problems.length) throw new Error(problems.join("; "));
+
+    console.log(`Ops dashboard read-only boundary verified for database ${identity.database} as ${identity.username} (${identity.readable_tables ?? "unknown"} tables checked).`);
+    server.listen(PORT, "0.0.0.0", () => console.log(`Post2Drive Ops Dashboard listening on ${PORT}`));
+  } catch (error) {
+    console.error(
+      "Ops dashboard startup blocked: OPS_DASHBOARD_DATABASE_URL must use the restricted read-only role on the intended database.",
+      error instanceof Error ? error.message : "unknown error"
+    );
+    await prisma.$disconnect().catch(() => {});
+    process.exit(1);
+  }
+}
+startServer();
 for (const sig of ["SIGTERM","SIGINT"]) process.on(sig,async()=>{server.close();await prisma.$disconnect();process.exit(0);});
