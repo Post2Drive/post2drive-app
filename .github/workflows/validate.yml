@@ -87,7 +87,7 @@ jobs:
         run: npx prisma migrate deploy --schema=prisma/schema.prisma
       - name: Provision isolated read-only role for dashboard authorization E2E
         run: |
-          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          psql "${DATABASE_URL%%\?*}" -v ON_ERROR_STOP=1 <<'SQL'
           CREATE ROLE post2drive_ops_readonly LOGIN PASSWORD 'ci-dashboard-readonly-password'
             NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS;
           GRANT USAGE ON SCHEMA public TO post2drive_ops_readonly;
