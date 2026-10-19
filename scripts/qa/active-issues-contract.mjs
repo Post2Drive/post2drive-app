@@ -6,9 +6,9 @@ const route = readFileSync("app/api/admin/performance/route.ts", "utf8");
 const dashboard = readFileSync("app/admin/performance/performance-dashboard.tsx", "utf8");
 const queryStart = route.indexOf("WITH recent_events AS (");
 assert.ok(queryStart >= 0, "performance API must define the active QA issues query");
-const queryEnd = route.indexOf("LIMIT 100", queryStart);
-assert.ok(queryEnd > queryStart, "active QA issues query must cap the displayed issue list");
-const query = route.slice(queryStart, queryEnd + "LIMIT 100".length);
+const queryEnd = route.indexOf("\n        LIMIT 100\n", queryStart);
+assert.ok(queryEnd > queryStart, "active QA issues query must cap the displayed issue list at exactly 100 rows");
+const query = route.slice(queryStart, queryEnd + "\n        LIMIT 100".length);
 
 assert.ok(query.includes("WHERE r.status IN ('completed', 'failed')"), "only finalized QA runs may resolve an issue");
 assert.ok(query.includes("e.method"), "issue identity must include HTTP method");
