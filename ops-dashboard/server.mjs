@@ -711,7 +711,7 @@ async function metricsUncached(url) {
     safeQuery("Recent API errors",`SELECT method,route,"statusCode","createdAt" FROM "ApiRequestMetric" WHERE "qaRunId" IS NULL AND "statusCode">=500 AND "createdAt">=now()-($1::int*interval '1 day') ORDER BY "createdAt" DESC LIMIT 20`,days),
     safeQuery("QA runs",`SELECT id,status,target_accounts AS "targetAccounts",created_accounts AS "createdAccounts",successful_checks AS "successfulChecks",failed_checks AS "failedChecks",duration_ms AS "durationMs",started_at AS "startedAt",finished_at AS "finishedAt" FROM qa_test_runs ORDER BY started_at DESC LIMIT 20`),
     safeQuery("Active QA issues",`
-       WITH recent_events AS (
+       WITH check_runs AS (
          SELECT
            e.run_id AS "runId",
            COALESCE(r.summary->>'country', r.summary->>'marketCode', r.summary->>'marketLabel', 'Not recorded') AS country,
@@ -721,23 +721,28 @@ async function metricsUncached(url) {
            e.method,
            e.path,
            e.expected_statuses AS expected,
-           e.actual_status AS actual,
-           e.passed,
-           e.created_at AS "eventCreatedAt",
-           e.id AS "eventId",
-           r.started_at AS "runStartedAt",
-           row_number() OVER (
-             PARTITION BY
-               COALESCE(r.summary->>'country', r.summary->>'marketCode', r.summary->>'marketLabel', 'Not recorded'),
-               e.scenario, e.action, e.method, e.path, e.expected_statuses
-             ORDER BY r.started_at DESC, e.created_at DESC, e.id DESC
-           ) AS issue_rank
+           max(e.actual_status) FILTER (WHERE e.passed=false) AS actual,
+           bool_and(e.passed) AS passed,
+           max(e.created_at) AS "eventCreatedAt",
+           max(e.id) AS "eventId",
+           r.started_at AS "runStartedAt"
          FROM qa_test_events e
          JOIN qa_test_runs r ON r.id=e.run_id
          WHERE r.status IN ('completed', 'failed')
+         GROUP BY
+           e.run_id,
+           COALESCE(r.summary->>'country', r.summary->>'marketCode', r.summary->>'marketLabel', 'Not recorded'),
+           r.status, e.scenario, e.action, e.method, e.path, e.expected_statuses, r.started_at
+       ), ranked_checks AS (
+         SELECT check_runs.*,
+           row_number() OVER (
+             PARTITION BY country, scenario, action, method, path, expected
+             ORDER BY "runStartedAt" DESC, "eventCreatedAt" DESC, "eventId" DESC
+           ) AS issue_rank
+         FROM check_runs
        )
        SELECT "runId", country, "runStatus", scenario, action, method, path, expected, actual
-       FROM recent_events
+       FROM ranked_checks
        WHERE issue_rank=1 AND passed=false
        ORDER BY "runStartedAt" DESC, scenario, action, method
        LIMIT 100
