@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { setTimeout as delay } from "node:timers/promises";
 import { PrismaClient } from "@prisma/client";
-import { encode } from "next-auth/jwt";
+import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 const suffix = process.pid + "-" + Date.now();
@@ -29,15 +29,41 @@ async function snapshot() {
   ]);
   return { jobRows, jobCount, bidCount, activityCount, evidenceCount, vehicleCount, notificationCount };
 }
-async function makeCookie(accountId) {
-  const token = await encode({
-    token: { sub: accountId, accountId, accountDeleted: false, email: accountId + "@example.invalid" },
-    secret: process.env.NEXTAUTH_SECRET,
-    maxAge: 3600,
-    salt: "next-auth.session-token",
+const getSetCookies = (response) => {
+  if (typeof response.headers.getSetCookie === "function") return response.headers.getSetCookie();
+  const single = response.headers.get("set-cookie");
+  return single ? [single] : [];
+};
+async function signIn(email) {
+  const csrfResponse = await fetch(base + "/api/auth/csrf", { cache: "no-store", signal: AbortSignal.timeout(8000) });
+  assert.equal(csrfResponse.status, 200, "NextAuth CSRF endpoint must be available");
+  const csrf = await csrfResponse.json();
+  const csrfCookie = getSetCookies(csrfResponse).map((value) => value.split(";")[0]).join("; ");
+  assert.ok(csrfCookie, "NextAuth must issue a CSRF cookie");
+  const callback = await fetch(base + "/api/auth/callback/credentials", {
+    method: "POST",
+    headers: {
+      cookie: csrfCookie,
+      "content-type": "application/x-www-form-urlencoded",
+      "x-auth-return-redirect": "true",
+    },
+    body: new URLSearchParams({
+      csrfToken: csrf.csrfToken,
+      callbackUrl: base,
+      email,
+      password: "ci-e2e-password-12345",
+    }),
+    redirect: "manual",
+    signal: AbortSignal.timeout(8000),
   });
-  // NextAuth selects the cookie name from URL/security configuration; provide both variants in this isolated HTTP harness.
-  return "next-auth.session-token=" + token + "; __Secure-next-auth.session-token=" + token;
+  const sessionCookies = getSetCookies(callback).filter((value) =>
+    /^(?:__Secure-)?next-auth\.session-token=/.test(value)
+  );
+  if (!sessionCookies.length) {
+    throw new Error("Real NextAuth credentials sign-in did not issue a session cookie (HTTP " +
+      callback.status + "): " + (await callback.text()).slice(0, 500));
+  }
+  return sessionCookies.map((value) => value.split(";")[0]).join("; ");
 }
 async function api(path, method, cookie, body) {
   const headers = {};
@@ -72,6 +98,19 @@ try {
     subscriptionStartedAt: new Date(), subscriptionEndsAt: new Date("2035-12-31T00:00:00.000Z"),
   }});
   accountIds.push(poster.id, driver.id, outsider.id);
+  const passwordHash = await bcrypt.hash("ci-e2e-password-12345", 8);
+  const posterUser = await prisma.user.create({ data: {
+    accountId: poster.id, name: "CI Poster", email: "ci-poster-" + suffix + "@example.invalid",
+    phone: "poster-" + suffix, passwordHash, emailVerifiedAt: new Date(),
+  }});
+  const driverUser = await prisma.user.create({ data: {
+    accountId: driver.id, name: "CI Driver", email: "ci-driver-" + suffix + "@example.invalid",
+    phone: "driver-" + suffix, passwordHash, emailVerifiedAt: new Date(),
+  }});
+  const outsiderUser = await prisma.user.create({ data: {
+    accountId: outsider.id, name: "CI Outsider", email: "ci-outsider-" + suffix + "@example.invalid",
+    phone: "outsider-" + suffix, passwordHash, emailVerifiedAt: new Date(),
+  }});
 
   lifecycleJob = await prisma.job.create({ data: {
     posterId: poster.id, acceptedById: driver.id, status: "accepted", priceMode: "fixed",
@@ -129,9 +168,9 @@ try {
   }
   assert.equal(ready, true, "isolated Next.js app must become ready:\n" + serverOutput);
 
-  const outsiderCookie = await makeCookie(outsider.id);
-  const posterCookie = await makeCookie(poster.id);
-  const driverCookie = await makeCookie(driver.id);
+  const outsiderCookie = await signIn(outsiderUser.email);
+  const posterCookie = await signIn(posterUser.email);
+  const driverCookie = await signIn(driverUser.email);
 
   const placedBidResponse = await api("/api/jobs/" + bidJob.id + "/bid", "POST", driverCookie, { amount: 95 });
   if (![200, 201].includes(placedBidResponse.status)) {
@@ -248,6 +287,7 @@ try {
     await prisma.vehicle.deleteMany({ where: { accountId: { in: accountIds } } }).catch(() => {});
     await prisma.notification.deleteMany({ where: { accountId: { in: accountIds } } }).catch(() => {});
     await prisma.job.deleteMany({ where: { OR: [{ id: { in: jobIds } }, { posterId: { in: accountIds } }] } }).catch(() => {});
+    await prisma.user.deleteMany({ where: { accountId: { in: accountIds } } }).catch(() => {});
     await prisma.account.deleteMany({ where: { id: { in: accountIds } } }).catch(() => {});
   }
   await prisma.$disconnect();
