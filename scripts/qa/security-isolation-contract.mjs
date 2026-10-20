@@ -32,6 +32,10 @@ assert.doesNotMatch(accountGet, /\b(?:isTester|testerApprovalStatus|promotionPar
   "account settings must not expose internal QA, trial, subscription, or legal-state fields unnecessarily");
 assert.match(source("app/api/account/route.ts"), /Invalid request body\./,
   "malformed account PATCH JSON must return a controlled 400 response");
+assert.match(source("app/api/account/route.ts"), /boundedString\(name, 120\)[\s\S]*?marketingConsent !== undefined && typeof marketingConsent !== "boolean"/,
+  "account PATCH must validate field types and bounds before persistence");
+assert.match(source("app/api/account/route.ts"), /if \(typeof name === "string"\) userData\.name = name\.trim\(\)/,
+  "account PATCH must support intentionally clearing profile names");
 assert.doesNotMatch(accountGet, /include: \{/,
   "account details API must not return the full Account model by default");
 assert.match(accountGet, /users:\s*\{[\s\S]*?where: \{ id: userId \}/,
