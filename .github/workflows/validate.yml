@@ -77,6 +77,8 @@ jobs:
         run: |
           psql "postgresql://postgres:postgres@localhost:5432/post2drive" -v run_id=ci-no-such-run -f scripts/qa/cleanup-inventory.sql > /tmp/qa-inventory.txt
           grep -q "(0 rows)" /tmp/qa-inventory.txt
+      - name: Validate accessible design contracts
+        run: npm run qa:design-accessibility
       - name: Type-check TypeScript
         run: npx tsc --noEmit
       - name: Build Next.js production bundle
