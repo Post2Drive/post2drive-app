@@ -55,3 +55,12 @@ Apply the Apple Design Skill as a product-wide design-review standard to the Nex
 - No browser or device render has been inspected for this change.
 - No typecheck, build, accessibility scan, or QA suite has been run in this environment yet.
 - The initial full-product findings are source-review targets, not confirmed runtime defects.
+
+
+## Additional implementation progress
+
+- **Personalized welcome:** the signed-in landing screen now uses the authenticated session's display name, with a neutral fallback if it is absent; the hardcoded personal greeting was removed.
+- **Dashboard overview:** the metric cards now use a responsive auto-fit grid and shared design tokens, with a consistent hover and keyboard-focus treatment. This is a presentation-only change; the underlying metric queries and destinations are unchanged.
+- **Login consistency:** the login form now uses the shared `.auth-page` responsive authentication layout so global field sizing, focus styling, and form surface styles apply consistently.
+
+These are source changes awaiting the current commit's typecheck and secret scan, plus browser/device and broader regression validation. No claim of visual/accessibility conformance is made until those checks are performed.
