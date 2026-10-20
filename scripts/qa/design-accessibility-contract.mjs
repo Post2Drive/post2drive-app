@@ -46,6 +46,9 @@ assert.match(nav, /aria-controls="mobile-more-menu"/, "More disclosure must iden
 assert.match(nav, /id="mobile-more-menu"[^>]*hidden=\{!moreOpen\}/, "More disclosure target must exist while collapsed and be hidden");
 assert.match(css, /\.mobile-more-menu\[hidden\]\s*\{\s*display: none;/, "Collapsed More menu must not remain visible");
 
+const dashboard = read("app/dashboard/page.tsx");
+assert.match(dashboard, /export default async function DashboardPage\([\s\S]*?return \([\s\S]*?<main/, "Dashboard must expose a main landmark");
+
 const jobs = read("app/jobs/page.tsx");
 assert.match(jobs, /aria-pressed=\{tab === t\.key\}/, "Job filters must expose their selected state");
 assert.match(jobs, /aria-label="Filter jobs by status"/, "Job filters must have an accessible group name");
