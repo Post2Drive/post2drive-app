@@ -32,6 +32,8 @@ assert.doesNotMatch(accountGet, /\b(?:isTester|testerApprovalStatus|promotionPar
   "account settings must not expose internal QA, trial, subscription, or legal-state fields unnecessarily");
 assert.match(source("app/api/account/route.ts"), /Invalid request body\./,
   "malformed account PATCH JSON must return a controlled 400 response");
+assert.match(accountRoute, /const parsed = await req\.json\(\);[\s\S]*?if \(!parsed \|\| typeof parsed !== "object" \|\| Array\.isArray\(parsed\)\)[\s\S]*?body = parsed as \{ currentPassword\?: unknown; confirm\?: unknown \}/,
+  "account DELETE must reject null, arrays, and primitive JSON bodies with a controlled 400 response");
 assert.match(source("app/api/account/route.ts"), /boundedString\(name, 120\)[\s\S]*?marketingConsent !== undefined && typeof marketingConsent !== "boolean"/,
   "account PATCH must validate field types and bounds before persistence");
 assert.match(source("app/api/account/route.ts"), /if \(typeof name === "string"\) userData\.name = name\.trim\(\)/,
