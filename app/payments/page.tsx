@@ -79,6 +79,7 @@ export default function PaymentsPage() {
   const [busy, setBusy] = useState<string | null>(null);
 
   async function load() {
+    setLoading(true);
     try {
       setError("");
 
@@ -204,6 +205,9 @@ export default function PaymentsPage() {
         <div role="alert" style={errorStyle}>
           {error || "Payment information is unavailable."}
         </div>
+        <button type="button" onClick={() => void load()} disabled={loading} style={secondaryButton}>
+          {loading ? "Retrying…" : "Retry loading payments"}
+        </button>
       </main>
     );
   }
