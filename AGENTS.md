@@ -22,3 +22,21 @@ Use the principles Purpose, Agency, Responsibility, Familiarity, Flexibility, Si
 - Add or update regression tests for behavior changes. Report precisely which checks ran and their outcomes; never claim a check passed without evidence.
 - Do not merge pull requests, change default branches, deploy, or run destructive production/staging QA without explicit authorization.
 - Treat source-only findings as preliminary until verified in a running browser/device.
+
+## Persistent coding skills
+
+For every substantive coding task, follow `.agents/skills/codex-workflow/SKILL.md` and load the specialist skill(s) that match the task. These are project-local instructions and are intended to be used automatically, without the user needing to name a skill.
+
+Routing:
+- Unknown failures: `.agents/skills/debugging/SKILL.md`
+- Code/PR review: `.agents/skills/code-review/SKILL.md`
+- Next.js App Router: `.agents/skills/nextjs-review/SKILL.md`
+- React components/hooks: `.agents/skills/react-review/SKILL.md`
+- Auth/security/data exposure: `.agents/skills/security-analysis/SKILL.md`
+- New behavior/bug fixes: `.agents/skills/test-driven-development/SKILL.md`
+- DB/API integration: `.agents/skills/integration-testing/SKILL.md`
+- Browser E2E/responsive UI: `.agents/skills/browser-testing/SKILL.md`
+- Accessibility: `.agents/skills/accessibility-review/SKILL.md` plus the Apple Design Skill.
+- Incident postmortems: `.agents/skills/root-cause-analysis/SKILL.md`
+
+Do not claim tests passed without evidence. Never merge, deploy, change the default branch, or delete/force-update branches without explicit user approval.
