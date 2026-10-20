@@ -2,7 +2,7 @@ name: CodeQL
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, "audit/**"]
   push:
     branches: [main, "feature/**", "security/**", "audit/**"]
   workflow_dispatch:
