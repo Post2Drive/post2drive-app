@@ -49,13 +49,8 @@ export default function MainNav() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="main-nav-link"
+                  className={`main-nav-link${active ? " is-active" : ""}`}
                   aria-current={active ? "page" : undefined}
-                  style={{
-                    fontWeight: active ? 700 : 600,
-                    color: active ? "var(--color-primary-action)" : "var(--color-text)",
-                    background: active ? "var(--color-action-soft)" : "transparent",
-                  }}
                 >
                   {link.label}
                 </Link>
@@ -69,7 +64,7 @@ export default function MainNav() {
         className="mobile-bottom-nav"
         aria-label="Mobile navigation"
         onKeyDown={(event) => {
-          if (event.key === "Escape") {
+          if (event.key === "Escape" && moreOpen) {
             setMoreOpen(false);
             moreButtonRef.current?.focus();
           }
@@ -105,7 +100,7 @@ export default function MainNav() {
           <span>More</span>
         </button>
         {moreOpen && (
-          <div id="mobile-more-menu" className="mobile-more-menu" aria-label="More navigation">
+          <div id="mobile-more-menu" className="mobile-more-menu" role="group" aria-label="More navigation links">
             {mobileMore.map((link) => {
               const active = isActive(pathname, link.href);
               return (
