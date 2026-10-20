@@ -189,7 +189,7 @@ export default function PaymentsPage() {
   if (loading) {
     return (
       <main style={pageStyle}>
-        <p>Loading payments...</p>
+        <p role="status" aria-live="polite">Loading payments...</p>
       </main>
     );
   }
@@ -201,7 +201,7 @@ export default function PaymentsPage() {
 
         <h1>Payments</h1>
 
-        <div style={errorStyle}>
+        <div role="alert" style={errorStyle}>
           {error || "Payment information is unavailable."}
         </div>
       </main>
@@ -239,13 +239,13 @@ export default function PaymentsPage() {
       </div>
 
       {message && (
-        <div style={successStyle}>
+        <div role="status" aria-live="polite" style={successStyle}>
           {message}
         </div>
       )}
 
       {error && (
-        <div style={errorStyle}>
+        <div role="alert" style={errorStyle}>
           {error}
         </div>
       )}
