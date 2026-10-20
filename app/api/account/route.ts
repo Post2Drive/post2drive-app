@@ -25,6 +25,8 @@ async function GETHandler() {
 
   const accountId =
     (session.user as any).accountId;
+  const userId =
+    (session.user as any).id;
 
   // Return only fields the settings/account UI needs. Do not serialize the
   // complete Account model: internal trial counters, QA state, lifecycle flags,
@@ -64,6 +66,9 @@ async function GETHandler() {
         subscriptionEndsAt: true,
         createdAt: true,
         users: {
+          // Only return the profile belonging to this session. Returning the
+          // first account member can expose another member's PII in fleet accounts.
+          where: { id: userId },
           select: {
             id: true,
             name: true,
