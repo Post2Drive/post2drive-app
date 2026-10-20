@@ -597,6 +597,10 @@ main table tr:hover td {
     outline-offset: 1px;
   }
 
+  .mobile-more-menu[hidden] {
+    display: none;
+  }
+
   .mobile-more-menu {
     position: absolute;
     right: 8px;
