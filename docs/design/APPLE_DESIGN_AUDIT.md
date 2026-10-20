@@ -59,14 +59,13 @@
 ## Latest automated validation evidence
 
 For code-bearing commit `118ce3d67ab36ee69b0c258b3f0817165fc56d30`:
-- **TypeScript type-check:** passed in GitHub Actions run `39500380337`.
+- **TypeScript type-check:** passed in GitHub Actions Validate run `39502467318`.
 - **Next.js production build:** passed in the same run.
-- **Reliability, health, lifecycle/market guards, supported-market isolation, country matrix, QA runner guard, worker lifecycle/claims, Prisma schema/client, clean-database migrations, staging-schema migrations, and read-only QA cleanup inventory:** passed in the same workflow.
-- **Repository/history secret scan:** passed in run `39500380377`.
-- **Automated accessibility scan:** not yet evidenced.
+- **Reliability, health, lifecycle/market guards, supported-market isolation, country matrix, QA runner guard, worker lifecycle/claims, Prisma schema/client, clean-database migrations, staging-schema migrations, read-only QA cleanup inventory, and the new design-accessibility source contract:** passed in the same workflow.
+- **Repository/history secret scan:** passed in run `39502467600`.
+- **Automated rendered-page accessibility scan:** not yet evidenced.
 - **Browser/device visual and keyboard review:** not yet performed.
-- **Full route-by-route QA:** not yet evidenced; existing CI contracts do not substitute for the complete design audit.
-- **Current browser/device and full route QA:** not yet performed. The source-contract test is intentionally not a substitute for axe/WCAG runtime scanning or manual keyboard/screen-reader review.
+- **Full route-by-route QA:** not yet evidenced; CI contracts do not substitute for the complete design audit.
 - **Account deletion/PATCH concurrency and password-change session revocation:** remain separate open security gates and are not claimed as fixed by this design branch.
 
 ## Release gates
