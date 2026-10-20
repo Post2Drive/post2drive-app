@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -19,60 +19,98 @@ export default function SettingsPage() {
   });
   const [pwForm, setPwForm] = useState({ currentPassword: "", newPassword: "" });
   const [message, setMessage] = useState("");
+  const [saveError, setSaveError] = useState("");
   const [pwMessage, setPwMessage] = useState("");
+  const [pwError, setPwError] = useState("");
+  const [loadingAccount, setLoadingAccount] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [passwordBusy, setPasswordBusy] = useState(false);
   const [deleteForm, setDeleteForm] = useState({ currentPassword: "", confirm: "" });
   const [deleteMessage, setDeleteMessage] = useState("");
   const [deleteBusy, setDeleteBusy] = useState(false);
 
-  useEffect(() => {
-    fetch("/api/account")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.account) {
-          setAccount(data.account);
-          const user = data.account.users?.[0];
-          setForm({
-            name: user?.name || "",
-            phone: user?.phone || "",
-            companyName: data.account.companyName,
-            country: data.account.country,
-            currency: data.account.currency,
-            marketingConsent: data.account.marketingConsent,
-          });
-        }
+  const loadAccount = useCallback(async () => {
+    setLoadingAccount(true);
+    setLoadError("");
+    try {
+      const response = await fetch("/api/account", { cache: "no-store" });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.account) {
+        throw new Error(data.error || "Could not load account settings. Try again.");
+      }
+      setAccount(data.account);
+      const user = data.account.users?.[0];
+      setForm({
+        name: user?.name || "",
+        phone: user?.phone || "",
+        companyName: data.account.companyName,
+        country: data.account.country,
+        currency: data.account.currency,
+        marketingConsent: data.account.marketingConsent,
       });
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : "Could not load account settings. Try again.");
+    } finally {
+      setLoadingAccount(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void loadAccount();
+  }, [loadAccount]);
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
     setMessage("");
-    const res = await fetch("/api/account", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: form.name, phone: form.phone, companyName: form.companyName, marketingConsent: form.marketingConsent }),
-    });
-    const data = await res.json();
-    setMessage(res.ok ? "Saved." : data.error || "Something went wrong.");
+    setSaveError("");
+    setSaving(true);
+    try {
+      const response = await fetch("/api/account", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: form.name, phone: form.phone, companyName: form.companyName, marketingConsent: form.marketingConsent }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setSaveError(data.error || "Could not save account settings. Try again.");
+        return;
+      }
+      setMessage("Saved.");
+    } catch {
+      setSaveError("Network error. Check your connection and try again.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function handlePasswordChange(e: React.FormEvent) {
     e.preventDefault();
     setPwMessage("");
-    const res = await fetch("/api/account", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(pwForm),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      setPwMessage(data.error || "Something went wrong.");
-      return;
+    setPwError("");
+    setPasswordBusy(true);
+    try {
+      const response = await fetch("/api/account", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(pwForm),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setPwError(data.error || "Could not update password. Try again.");
+        return;
+      }
+      setPwMessage("Password updated.");
+      setPwForm({ currentPassword: "", newPassword: "" });
+    } catch {
+      setPwError("Network error. Check your connection and try again.");
+    } finally {
+      setPasswordBusy(false);
     }
-    setPwMessage("Password updated.");
-    setPwForm({ currentPassword: "", newPassword: "" });
   }
 
-  if (!account) return <p role="status" aria-live="polite">Loading account settings…</p>;
+  if (loadingAccount) return <main style={{ maxWidth: 500, padding: 24 }}><p role="status" aria-live="polite">Loading account settings…</p></main>;
+  if (loadError || !account) return <main style={{ maxWidth: 500, padding: 24 }}><h1>Account settings</h1><p role="alert">{loadError || "Account settings are unavailable."}</p><button type="button" onClick={() => void loadAccount()}>Try again</button></main>;
 
   return (
     <div style={{ maxWidth: 500 }}>
@@ -113,8 +151,9 @@ export default function SettingsPage() {
           />
           I'd like to hear about other offers and updates
         </label>
+        {saveError && <p role="alert">{saveError}</p>}
         {message && <p role="status" aria-live="polite">{message}</p>}
-        <button type="submit">Save</button>
+        <button type="submit" disabled={saving}>{saving ? "Saving…" : "Save"}</button>
       </form>
 
       <h3 style={{ marginTop: 32 }}>Change password</h3>
@@ -138,8 +177,9 @@ export default function SettingsPage() {
             onChange={(e) => setPwForm({ ...pwForm, newPassword: e.target.value })}
           />
         </label>
+        {pwError && <p role="alert">{pwError}</p>}
         {pwMessage && <p role="status" aria-live="polite">{pwMessage}</p>}
-        <button type="submit">Change password</button>
+        <button type="submit" disabled={passwordBusy}>{passwordBusy ? "Updating…" : "Change password"}</button>
       </form>
 
       <h3 style={{ marginTop: 32 }}>Subscription</h3>
