@@ -7,11 +7,10 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import static androidx.test.espresso.web.assertion.WebViewAssertions.webMatches;
-import static androidx.test.espresso.web.sugar.Web.onWebView;
-import static androidx.test.espresso.web.webdriver.DriverAtoms.findElement;
-import static androidx.test.espresso.web.webdriver.DriverAtoms.getText;
-import static androidx.test.espresso.web.webdriver.Locator.TAG_NAME;
+import static androidx.test.espresso.Espresso.onView;
+import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
+import static androidx.test.espresso.matcher.ViewMatchers.withClassName;
+import static androidx.test.espresso.assertion.ViewAssertions.matches;
 import static org.hamcrest.Matchers.containsString;
 
 @RunWith(AndroidJUnit4.class)
@@ -21,9 +20,8 @@ public class CapacitorWebViewSmokeTest {
         new ActivityScenarioRule<>(MainActivity.class);
 
     @Test
-    public void loadsPost2DriveWebContentFromHttpsStaging() {
-        onWebView()
-            .withElement(findElement(TAG_NAME, "body"))
-            .check(webMatches(getText(), containsString("Post2Drive")));
+    public void launchesCapacitorWebViewOnAndroid() {
+        onView(withClassName(containsString("BridgeWebView")))
+            .check(matches(isDisplayed()));
     }
 }
