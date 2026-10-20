@@ -106,7 +106,7 @@ assert.match(settings, /aria-labelledby="delete-account-heading"/, "Destructive 
 assert.match(settings, /autoComplete="off" autoCapitalize="characters" spellCheck=\{false\}/, "Typed deletion confirmation must not be silently transformed by browser helpers");
 
 const research = read("app/admin/research/page.tsx");
-assert.match(research, /isTesterAdmin\(\)\) redirect\("\/dashboard"\)/, "India research dashboard must be administrator-only");
+assert.match(research, /if \(!\(await isTesterAdmin\(\)\)\) redirect/, "India research dashboard must be administrator-only");
 assert.match(research, /deletionRequestedAt: null/, "Research aggregates must exclude accounts marked for deletion");
 assert.match(research, /select: \{ marketResearch: true \}/, "Research dashboard must not fetch account identifiers");
 assert.match(research, /No optional market-research responses yet/, "Research dashboard must communicate its empty state");
