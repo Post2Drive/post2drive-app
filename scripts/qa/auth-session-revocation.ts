@@ -53,6 +53,7 @@ async function isSessionRevoked(token: any) {
   return { checked, session };
 }
 
+async function run() {
 try {
   // Credential change: an already-issued token must be revoked when its
   // version no longer matches the database.
@@ -91,3 +92,9 @@ try {
   }
   await prisma.$disconnect();
 }
+}
+
+void run().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
