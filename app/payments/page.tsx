@@ -520,9 +520,10 @@ function SummaryCard({
 function Empty({ text }: { text: string }) {
   return (
     <div
+      role="status"
       style={{
         padding: 20,
-        color: "#777",
+        color: "var(--color-muted)",
         border: "1px dashed var(--color-border)",
         borderRadius: 8,
         marginTop: 12,
