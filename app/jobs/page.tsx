@@ -210,6 +210,8 @@ export default function JobsPage() {
   const [loading, setLoading] =
     useState(true);
 
+  const [loadError, setLoadError] = useState("");
+
   const [message, setMessage] =
     useState("");
 
@@ -268,9 +270,9 @@ export default function JobsPage() {
   const canPost = true;
 
   async function loadJobs() {
+    setLoading(true);
+    setLoadError("");
     try {
-      setLoading(true);
-
       const res =
         await fetch(
           "/api/jobs"
@@ -280,20 +282,13 @@ export default function JobsPage() {
         await res.json();
 
       if (!res.ok) {
-        setMessage(
-          data.error ||
-            "Could not load jobs."
-        );
+        setLoadError(data.error || "Could not load jobs. Try again.");
         return;
       }
 
-      setJobs(
-        data.jobs || []
-      );
+      setJobs(data.jobs || []);
     } catch {
-      setMessage(
-        "Could not load jobs."
-      );
+      setLoadError("Could not load jobs. Check your connection and try again.");
     } finally {
       setLoading(false);
     }
@@ -747,11 +742,20 @@ export default function JobsPage() {
         </p>
       )}
 
+      {loadError && (
+        <div role="alert" aria-live="assertive">
+          <p>{loadError}</p>
+          <button type="button" onClick={() => void loadJobs()} disabled={loading}>
+            {loading ? "Retrying…" : "Retry loading jobs"}
+          </button>
+        </div>
+      )}
+
       {loading && (
         <p role="status" aria-live="polite">Loading jobs…</p>
       )}
 
-      {!loading &&
+      {!loading && !loadError &&
         visibleJobs.length ===
           0 && (
           <p role="status">No jobs in this category.</p>
