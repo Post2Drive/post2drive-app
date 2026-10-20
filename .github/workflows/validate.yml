@@ -55,6 +55,8 @@ jobs:
         run: npm run qa:market-isolation
       - name: Validate QA isolation with large retained account pools
         run: npm run qa:qa-isolation-contract
+      - name: Validate account lifecycle concurrency and session revocation
+        run: npm run qa:security-isolation-contract
       - name: Validate all-market feature parity
         run: npm run qa:market-parity
       - name: Validate country matrix across all supported markets
