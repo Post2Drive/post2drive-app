@@ -30,6 +30,8 @@ assert.match(accountGet, /select: \{/,
   "account details API must explicitly select fields rather than serialize the full model");
 assert.doesNotMatch(accountGet, /include: \{/,
   "account details API must not return the full Account model by default");
+assert.match(accountGet, /users:\s*\{[\s\S]*?where: \{ id: userId \}/,
+  "account settings must return the current session user's profile, not an arbitrary fleet member");
 assert.match(nextConfig, /Content-Security-Policy-Report-Only/,
   "a report-only CSP must be present while compatibility is assessed");
 assert.match(nextConfig, /object-src 'none'/,
