@@ -97,7 +97,6 @@ export default function MainNav() {
           ref={moreButtonRef}
           type="button"
           className={`mobile-nav-more${moreActive ? " is-active" : ""}`}
-          aria-haspopup="true"
           aria-expanded={moreOpen}
           aria-controls="mobile-more-menu"
           onClick={() => setMoreOpen((open) => !open)}
