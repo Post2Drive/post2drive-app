@@ -1,6 +1,6 @@
 # Post2Drive Apple Design Skill audit and implementation tracker
 
-**Status:** In progress. Latest verified source commit before the current navigation refinement, `aa79714938e15ec2a764261bb0e5a102d87eed55`, passed the repository's TypeScript/Next.js production build workflow and secret scan. The current navigation refinement must receive its own checks. Browser/device validation, automated accessibility scanning, and complete screen-by-screen review remain release gates.
+**Status:** In progress. The latest previously verified audit baseline, `ac6163710f4ef8e7e215756626e4a8bca0fb3e11`, passed the repository Validate workflow (including TypeScript, Next.js production build, market-isolation/country-matrix contracts, worker/migration checks) and secret scan. Subsequent accessibility-focused CSS and screen-state changes are awaiting their own checks. Automated accessibility scanning, browser/device validation, and complete screen-by-screen review remain release gates.
 
 ## Standard and method
 
@@ -42,7 +42,10 @@
 
 - Added the pinned Apple Design Skill submodule and root `AGENTS.md` requiring the skill for future UI/UX work.
 - Mobile navigation: four primary destinations, More menu for secondary destinations, active-route semantics, safe-area padding, touch-sized links, visible focus and reduced-motion rules.
-- Mobile More menu: Escape closes an open menu and returns focus to its trigger; the links group now has an accessible name. Current changes are awaiting CI.
+- Mobile More menu: Escape closes an open menu and returns focus to its trigger; the links group now has an accessible name.
+- Global accessibility pass (source-level): darkened positive/warning semantic colors, replaced faint focus outlines with solid focus indicators, and applied reduced-motion preferences globally.
+- Status communication: payment success/error and loading states now expose status/alert semantics; vehicle and account-settings loading states are announced; account save/password feedback uses a polite live region.
+- Authentication usability: login and password-change fields now provide browser autofill semantics; dashboard greeting has a neutral fallback for missing profile names.
 - Dashboard: responsive metric-card grid using shared CSS tokens and focus/hover treatment.
 - Home greeting: session-derived name with neutral fallback.
 - Login: shared responsive authentication layout.
@@ -51,7 +54,7 @@
 
 ## Latest automated validation evidence
 
-For commit `aa79714938e15ec2a764261bb0e5a102d87eed55`:
+For commit `ac6163710f4ef8e7e215756626e4a8bca0fb3e11` (before the latest accessibility-focused source edits):
 - **TypeScript type-check:** passed in GitHub Actions run `39500380337`.
 - **Next.js production build:** passed in the same run.
 - **Reliability, health, lifecycle/market guards, supported-market isolation, country matrix, QA runner guard, worker lifecycle/claims, Prisma schema/client, clean-database migrations, staging-schema migrations, and read-only QA cleanup inventory:** passed in the same workflow.
@@ -59,7 +62,7 @@ For commit `aa79714938e15ec2a764261bb0e5a102d87eed55`:
 - **Automated accessibility scan:** not yet evidenced.
 - **Browser/device visual and keyboard review:** not yet performed.
 - **Full route-by-route QA:** not yet evidenced; existing CI contracts do not substitute for the complete design audit.
-- **Current navigation refinement:** new commit(s) after `aa79714938e15ec2a764261bb0e5a102d87eed55`; must pass their own typecheck/build and secret scan before calling them validated.
+- **Latest accessibility-focused source edits:** typecheck/build and secret-scan results not yet available for the current branch head; do not treat the older green workflow as validation of these edits.
 
 ## Release gates
 
