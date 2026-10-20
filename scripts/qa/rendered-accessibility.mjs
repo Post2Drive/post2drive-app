@@ -22,11 +22,14 @@ const failures = [];
 const prisma = new PrismaClient();
 const browser = await chromium.launch({ headless: true });
 let accountId;
+let foreignAccountId;
 let jobId;
 let completedJobId;
 let vehicleId;
 const testId = randomUUID();
 const displayId = `QA-E2E-${testId}`;
+const foreignDisplayId = `QA-UK-${testId}`;
+const foreignProfileRoute = `/profile/${foreignDisplayId}`;
 const email = "qa-rendered-browser@post2drive.invalid";
 const password = "QA-test-only-password-42!";
 
@@ -87,6 +90,16 @@ try {
     },
   });
   accountId = account.id;
+  const foreignAccount = await prisma.account.create({
+    data: {
+      type: "both",
+      companyName: "QA foreign market fixture",
+      displayId: foreignDisplayId,
+      country: "GB",
+      currency: "GBP",
+    },
+  });
+  foreignAccountId = foreignAccount.id;
 
   for (const viewport of viewports) {
     const context = await browser.newContext({
@@ -119,9 +132,13 @@ try {
       ...authenticatedRoutes,
       ...(jobId ? [`/jobs/${jobId}/edit`, `/jobs/${jobId}/incidents`] : []),
       `/profile/${displayId}`,
+      foreignProfileRoute,
     ];
     for (const route of routesForViewport) {
       await scanRoute(page, route, viewport);
+      if (route === foreignProfileRoute) {
+        await page.getByRole("alert").filter({ hasText: "Profile not found in your marketplace." }).waitFor({ state: "visible" });
+      }
       if (route === "/jobs/new" && viewport.width === 320) {
         await page.getByLabel(/Pickup location/).fill("Hyderabad, Telangana");
         await page.getByLabel(/Drop-off location/).fill("Vijayawada, Andhra Pradesh");
@@ -224,6 +241,7 @@ try {
   if (vehicleId) await prisma.vehicle.deleteMany({ where: { id: vehicleId } }).catch(() => {});
   if (jobId) await prisma.job.deleteMany({ where: { id: jobId } }).catch(() => {});
   if (completedJobId) await prisma.job.deleteMany({ where: { id: completedJobId } }).catch(() => {});
+  if (foreignAccountId) await prisma.account.deleteMany({ where: { id: foreignAccountId } }).catch(() => {});
   if (accountId) await prisma.account.deleteMany({ where: { id: accountId } }).catch(() => {});
   await prisma.$disconnect();
 }
