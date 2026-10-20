@@ -70,6 +70,16 @@ const vehicles = read("app/vehicles/page.tsx");
 assert.match(vehicles, /role="status">No vehicles registered yet\./, "Vehicle empty state must be announced as status");
 assert.match(vehicles, /Retry loading vehicles/, "Vehicle loading failures must offer recovery");
 assert.match(vehicles, /minHeight: 44/, "Vehicle submit button must meet the minimum target height");
+assert.match(vehicles, /aria-labelledby="vehicle-registration-heading"/, "Vehicle form must have a programmatic name");
+assert.match(vehicles, /id="vehicle-registration-heading"/, "Vehicle registration form must have a visible heading");
+assert.match(vehicles, /role="region" aria-label="Registered vehicles"/, "Registered vehicles must have a named region");
+assert.match(vehicles, /timeZone: "UTC"/, "Date-only vehicle expiry values must not shift across viewer time zones");
+
+const requirements = read("app/requirements/page.tsx");
+assert.match(requirements, /role="region" aria-label="Posted requirements"/, "Posted requirements must have a named region");
+assert.match(requirements, /aria-label=\{\`Edit requirement: \$\{routeLabel\}\`\}/, "Repeated edit links must identify their route");
+assert.match(requirements, /aria-label=\{\`View \$\{routeLabel\} in marketplace\`\}/, "Repeated marketplace links must identify their route");
+assert.match(requirements, /aria-label=\{\`View incident history for \$\{routeLabel\}\`\}/, "Repeated incident links must identify their route");
 
 const jobCreate = read("app/jobs/new/page.tsx");
 assert.match(jobCreate, /stepHeadingRef\.current\?\.focus\(\)/, "Job wizard must move focus to each new step");
@@ -85,4 +95,4 @@ const login = read("app/login/page.tsx");
 assert.match(login, /autoComplete="email"/, "Login email must support autofill");
 assert.match(login, /autoComplete="current-password"/, "Login password must support password managers");
 
-console.log("Design accessibility source contracts passed (contrast, focus, motion, navigation, filters, signup, payments, and login).");
+console.log("Design accessibility source contracts passed (contrast, focus, motion, navigation, forms, route-specific actions, signup, payments, vehicles, and login).");
