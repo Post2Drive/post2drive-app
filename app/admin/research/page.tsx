@@ -109,6 +109,7 @@ export default async function AdminResearchPage() {
             <h2 id={`research-question-${index + 1}`} style={{ marginTop: 0, fontSize: 19 }}>{question.title}</h2>
             {rows.length === 0 ? <p role="status">No answers to this question yet.</p> : (
               <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+                <caption style={{ textAlign: "left", padding: 10, color: "var(--color-muted)" }}>Responses by answer for {question.title}</caption>
                 <thead><tr><th scope="col" style={{ padding: 10 }}>Answer</th><th scope="col" style={{ padding: 10 }}>Responses</th><th scope="col" style={{ padding: 10 }}>Share of answers</th></tr></thead>
                 <tbody>{rows.map((row) => (
                   <tr key={row.value}>
