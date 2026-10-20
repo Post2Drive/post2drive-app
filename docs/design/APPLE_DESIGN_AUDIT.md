@@ -1,6 +1,6 @@
 # Post2Drive Apple Design Skill audit and implementation tracker
 
-**Status:** In progress. Security changes passed Validate run `39504055744` and Security Scan run `39504055778` at code-bearing commit `1a628bdcbd8bf0fb1fef87a494f72af949eac812`. Follow-up accessibility changes now add recoverable vehicle and payment loading, status semantics for vehicle/payment empty states, and focus movement on signup/job-posting wizard step changes; these newest changes need their own CI run. Automated rendered-page accessibility scanning, browser/device validation, and complete screen-by-screen review remain release gates.
+**Status:** In progress. Commit `7fa75cf659c8d67c57c94d4095a98cad1dc2d651` passed Validate run `39504619519` and Security Scan run `39504619497`. The passing Validate run includes the account mutation concurrency regression, session-version migration, accessibility source contracts, vehicle/payment recovery, signup/job-posting step focus, TypeScript, and the production build. Automated rendered-page accessibility scanning, browser/device validation, and complete screen-by-screen review remain release gates.
 
 ## Standard and method
 
@@ -23,7 +23,7 @@
 |---|---|---|---|
 | P0 | Authentication, authorization, market integrity | Do not infer security from visual UI. Verify server-side authorization, account ownership, and country/currency isolation for every changed flow. Design refactors must not loosen permissions or market boundaries. | Run market-isolation, country-matrix, auth and lifecycle regressions; inspect API authorization boundaries. Any failure blocks release. |
 | P0 | Accessibility across all screens | Full product-wide keyboard, accessible-name, focus-order, contrast, error-announcement, zoom/text-scaling and screen-reader audit is not complete. | Run an automated accessibility scan on key routes and manually test keyboard + screen reader; record route, browser, viewport and outcomes. |
-| P0 | Account mutation concurrency and session revocation | Implemented on this branch: PATCH and DELETE take the same account-row lock and re-check active state inside the transaction; password changes increment `User.sessionVersion`; JWT validation compares the persisted version and rejects deleted accounts; successful password change signs out and asks the user to sign in again. PostgreSQL concurrency/session-version regression coverage has been added; Validate and Security Scan passed for code-bearing commit `1a628bdcbd8bf0fb1fef87a494f72af949eac812`. | Require the new CI race test, migration, TypeScript/build and secret scan to pass; confirm stale tokens return no session. Browser/session integration and independent security review remain release gates. |
+| P0 | Account mutation concurrency and session revocation | Implemented on this branch: PATCH and DELETE take the same account-row lock and re-check active state inside the transaction; password changes increment `User.sessionVersion`; JWT validation compares the persisted version and rejects deleted accounts; successful password change signs out and asks the user to sign in again. PostgreSQL concurrency/session-version regression coverage has been added; Validate and Security Scan passed for commit `7fa75cf659c8d67c57c94d4095a98cad1dc2d651`. | Require the new CI race test, migration, TypeScript/build and secret scan to pass; confirm stale tokens return no session. Browser/session integration and independent security review remain release gates. |
 | P1 | Mobile navigation | Primary navigation was crowded. It is now reduced to Home, Marketplace, Post a Job and Vehicles; secondary links are in More. Active-page state, safe-area padding, touch sizing and Escape handling exist. Recent refinement gives More links an accessible group name and only returns focus when Escape closes an open menu. | At 320, 375, 430 and 700 px; test keyboard, touch, active routes, India-only Requirements, safe area, page-content obstruction and Escape focus return. Current refinement's CI is pending. |
 | P1 | Jobs / marketplace lifecycle | Dense filters and lifecycle actions risk unclear hierarchy. Filters expose group/pressed semantics. Loading, failure, empty, success and destructive-action messaging still need a full announcement/recovery audit. | Test every status and owner/driver role; confirm messages are announced, actions are understandable, destructive actions are confirmed, and retries do not duplicate state changes. |
 | P1 | Signup | Progress semantics and error alert exist; market-dependent steps, optional research, verification and terms require end-to-end keyboard/focus testing. Step changes should make the new heading and validation feedback discoverable without disrupting screen readers. | Exercise every market and step, invalid form, back/continue, optional step, submission, network failure, verification resend and 200% zoom. Confirm no market/pricing behavior changes. |
@@ -64,16 +64,15 @@
 
 ## Latest automated validation evidence
 
-For code-bearing commit `1a628bdcbd8bf0fb1fef87a494f72af949eac812`:
-- **TypeScript type-check:** passed in GitHub Actions Validate run `39504055744`.
+For commit `7fa75cf659c8d67c57c94d4095a98cad1dc2d651`:
+- **TypeScript type-check:** passed in GitHub Actions Validate run `39504619519`.
 - **Next.js production build:** passed in the same run.
 - **Account mutation race regression:** passed against local CI PostgreSQL in the same run. It covers deletion-first (a waiting PATCH is rejected) and PATCH-first (deletion waits and anonymizes the last committed profile state).
-- **Prisma schema validation and client generation:** passed.
-- **Clean-database migration deploy, including `User.sessionVersion`:** passed.
-- **Market-isolation/country-matrix, worker lifecycle/atomic claims, staging-schema migration, read-only QA inventory, design-accessibility source contracts, and lifecycle source contracts:** passed in the same workflow.
-- **Repository/history secret scan:** passed in run `39504055778`.
-- **Password-change session revocation:** source guards and session-version persistence contract passed. Browser-level verification that every stale JWT returns no session is still recommended.
-- **Rendered-page accessibility scan, browser/device visual and keyboard review, Android/Capacitor testing, and full route-by-route QA:** not yet evidenced.
+- **Prisma schema validation/client generation and clean-database migration deploy, including `User.sessionVersion`:** passed.
+- **Market-isolation/country-matrix, worker lifecycle/atomic claims, staging-schema migration, read-only QA inventory, lifecycle source contracts, and design-accessibility source contracts:** passed.
+- **Repository/history secret scan:** passed in run `39504619497`.
+- **Accessibility improvements with source-contract coverage:** skip navigation, contrast-token thresholds, visible focus, reduced-motion, 44px targets, payment/vehicle recovery and empty states, and focus transitions in signup/job-posting wizards.
+- **Still outstanding:** rendered-page accessibility scan, browser/device visual and keyboard review, Android/Capacitor testing, full route-by-route QA, and runtime browser confirmation that stale JWT sessions are rejected after password changes/deletion.
 
 ## Release gates
 
