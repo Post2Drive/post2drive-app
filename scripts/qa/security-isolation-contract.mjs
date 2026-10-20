@@ -28,6 +28,10 @@ assert.match(accountGet, /deletionRequestedAt: null/,
   "account details must not be returned for an account pending deletion");
 assert.match(accountGet, /select: \{/,
   "account details API must explicitly select fields rather than serialize the full model");
+assert.doesNotMatch(accountGet, /\b(?:isTester|testerApprovalStatus|promotionParticipant|trialStartedAt|trialEndsAt|freeEndsAt|subscriptionPlanKey|subscriptionStartedAt|subscriptionEndsAt|termsAcceptedAt|termsVersion)\s*:/,
+  "account settings must not expose internal QA, trial, subscription, or legal-state fields unnecessarily");
+assert.match(source("app/api/account/route.ts"), /Invalid request body\./,
+  "malformed account PATCH JSON must return a controlled 400 response");
 assert.doesNotMatch(accountGet, /include: \{/,
   "account details API must not return the full Account model by default");
 assert.match(accountGet, /users:\s*\{[\s\S]*?where: \{ id: userId \}/,
