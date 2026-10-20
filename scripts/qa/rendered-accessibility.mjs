@@ -88,10 +88,11 @@ try {
   accountId = account.id;
 
   for (const viewport of viewports) {
-    const page = await browser.newPage({
+    const context = await browser.newContext({
       viewport: { width: viewport.width, height: viewport.height },
       reducedMotion: "reduce",
     });
+    const page = await context.newPage();
     page.setDefaultTimeout(10_000);
     page.on("pageerror", error => failures.push(`[${viewport.label}] browser exception: ${error.message}`));
 
@@ -162,7 +163,7 @@ try {
       await page.getByText("No jobs in this category.").waitFor({ state: "visible" });
       await page.unroute("**/api/jobs");
     }
-    await page.close();
+    await context.close();
 
     // Keep the smallest viewport as an empty-state pass; populate the local CI
     // account afterwards so later viewport passes cover realistic job cards.
