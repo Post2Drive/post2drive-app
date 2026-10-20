@@ -2,8 +2,8 @@
   --color-primary: #102A43;
   --color-primary-action: #1976D2;
   --color-primary-action-hover: #1565C0;
-  --color-positive: #00897B;
-  --color-warning: #F9A825;
+  --color-positive: #00796B;
+  --color-warning: #8A5A00;
   --color-danger: #D32F2F;
 
   --color-background: #F4F7FA;
@@ -211,7 +211,7 @@ main textarea::placeholder {
 main input:focus,
 main select:focus,
 main textarea:focus {
-  outline: 2px solid rgba(25, 118, 210, 0.18);
+  outline: 2px solid var(--color-primary-action);
   border-color: var(--color-primary-action);
 }
 
@@ -300,7 +300,7 @@ main a:focus-visible,
 main input:focus-visible,
 main select:focus-visible,
 main textarea:focus-visible {
-  outline: 3px solid rgba(25, 118, 210, 0.18);
+  outline: 3px solid var(--color-primary-action);
   outline-offset: 2px;
 }
 
@@ -311,6 +311,24 @@ main table tr:hover td {
 @media (max-width: 700px) {
   main section {
     max-width: 100%;
+  }
+}
+
+/* Global keyboard focus: use a solid, high-contrast indicator rather than a faint translucent ring. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 3px solid var(--color-primary-action);
+  outline-offset: 3px;
+}
+
+/* Honor the user's motion preference across the application, not only selected cards. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
 
