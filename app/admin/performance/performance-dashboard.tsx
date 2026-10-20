@@ -208,7 +208,7 @@ export default function PerformanceDashboard() {
           {key:"label",label:"Status"},
           {key:"currency",label:"Currency"},
           {key:"count",label:"Records",render:(v:any)=>num(v)},
-          {key:"amountPence",label:"Record total",render:(v:any,row:Row)=>String(row.currency||"")+" "+(Number(v||0)/100).toFixed(2)}
+          {key:"amountMinorUnits",label:"Record total",render:(v:any,row:Row)=>String(row.currency||"")+" "+(Number(v||0)/100).toFixed(2)}
         ]}/>
       </Section>
     </div>
