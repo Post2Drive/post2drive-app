@@ -78,7 +78,7 @@ For commit `7fa75cf659c8d67c57c94d4095a98cad1dc2d651`:
 
 - India requirements: added a named region and route-specific accessible names for repeated Edit, Marketplace and Incident links; each status has a readable text label.
 - Vehicle onboarding: added a visible heading associated with the registration form, a named region for registered vehicles, disabled browser autofill for registration plates, and stable UTC rendering for date-only expiry values.
-- Payments: added job-specific accessible names to Mark as paid and Confirm received actions, disabled Refresh during loading, removed a hard-coded Arial override, and changed card surfaces/muted text to shared theme tokens.
+- Payments: added job-specific accessible names to Mark as paid and Confirm received actions, disabled Refresh during loading while keeping existing payment context visible during refresh and announcing progress, removed a hard-coded Arial override, and changed card surfaces/muted text to shared theme tokens.
 - Account settings: changed section headings to a consistent second-level hierarchy, named the destructive section, reused danger/surface tokens, and disabled browser capitalization/spellchecking helpers for the typed DELETE confirmation.
 - Design accessibility source contracts now guard these new route names, semantic regions, theme tokens, date handling and settings behavior. CI must pass for the latest head before these additions are considered validated.
 
