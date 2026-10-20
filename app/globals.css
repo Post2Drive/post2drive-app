@@ -287,8 +287,12 @@ main strong {
 main input,
 main select,
 main textarea {
-  min-height: 42px;
+  min-height: 44px;
   padding: 9px 11px;
+}
+
+main button {
+  min-height: 44px;
 }
 
 main button:not(:disabled):hover {
