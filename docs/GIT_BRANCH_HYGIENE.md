@@ -59,3 +59,31 @@ The comparison of `audit/account-lifecycle-race-session-revocation-final3` to `f
 - Inventory and dependency relationships recorded for repeatable review.
 - No branch was deleted, renamed, force-updated or merged.
 - No deployment or destructive QA was performed.
+
+## Confirmed PR #12 / PR #41 file overlap
+
+A direct `main...feature/country-localisation-audit` versus `main...design/apple-hig-foundation` comparison found **20 shared modified paths** out of 115 localisation files and 37 design files. These are not safe for whole-file overlay:
+
+- `.github/workflows/validate.yml`
+- `app/dashboard/page.tsx`
+- `app/globals.css`
+- `app/jobs/new/page.tsx`
+- `app/jobs/page.tsx`
+- `app/layout.tsx`
+- `app/login/page.tsx`
+- `app/main-nav.tsx`
+- `app/page.tsx`
+- `app/payments/page.tsx`
+- `app/pricing/page.tsx`
+- `app/profile/[id]/page.tsx`
+- `app/requirements/page.tsx`
+- `app/settings/page.tsx`
+- `app/signup/page.tsx`
+- `app/vehicles/page.tsx`
+- `components/subscription-pricing.tsx`
+- `package.json`
+- `prisma/schema.prisma`
+- `scripts/qa/lifecycle-contract.mjs`
+
+**Recommended integration strategy:** establish a clean integration branch from the intended current base, integrate the localisation/country-matrix changes and resolve PR #12's actual conflicts first; then port/reconcile PR #41's design and accessibility edits on top, preserving both sets of behavior in the 20 overlapping paths. Re-run market-specific contract tests and browser checks together. Keep the branch unmerged and undeployed until the owner explicitly approves.
+
