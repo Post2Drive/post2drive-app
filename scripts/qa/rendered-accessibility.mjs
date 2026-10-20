@@ -11,7 +11,7 @@ const databaseUrl = new URL(process.env.DATABASE_URL || "");
 assert.ok(["localhost", "127.0.0.1"].includes(databaseUrl.hostname), "E2E fixture must use local CI PostgreSQL");
 const baseURL = process.env.POST2DRIVE_BASE_URL || "http://localhost:3000";
 const publicRoutes = ["/", "/login", "/signup"];
-const authenticatedRoutes = ["/", "/dashboard", "/jobs", "/jobs/new", "/vehicles", "/payments", "/settings", "/requirements"];
+const authenticatedRoutes = ["/", "/dashboard", "/jobs", "/jobs/new", "/vehicles", "/payments", "/settings", "/requirements", "/admin", "/admin/performance", "/admin/testers", "/admin/research", "/admin/incidents"];
 const viewports = [
   { width: 320, height: 800, label: "small mobile" },
   { width: 390, height: 844, label: "mobile" },
@@ -24,7 +24,7 @@ const browser = await chromium.launch({ headless: true });
 let accountId;
 let jobId;
 const testId = randomUUID();
-const email = `qa-rendered-${testId}@post2drive.invalid`;
+const email = "qa-rendered-browser@post2drive.invalid";
 const password = "QA-test-only-password-42!";
 
 async function scanRoute(page, route, viewport) {
