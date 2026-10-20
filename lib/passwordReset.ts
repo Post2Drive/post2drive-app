@@ -55,7 +55,8 @@ export async function createPasswordResetToken(userId: string, accountId: string
 export async function sendPasswordResetEmail(email: string, name: string, token: string) {
   const apiKey = process.env.RESEND_API_KEY?.trim();
   const from = process.env.EMAIL_FROM?.trim();
-  const baseUrl = (process.env.NEXTAUTH_URL?.trim() || "").replace(/\\/+$/, "");
+  let baseUrl = process.env.NEXTAUTH_URL?.trim() || "";
+  while (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
   if (!apiKey || !from || !baseUrl) throw new Error("Password reset email delivery is not configured.");
 
   const resetUrl = `${baseUrl}/reset-password?token=${encodeURIComponent(token)}`;
