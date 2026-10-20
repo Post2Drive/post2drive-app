@@ -1,6 +1,6 @@
 # Post2Drive Apple Design Skill audit and implementation tracker
 
-**Status:** In progress. The current branch now includes a shared account-row lock for PATCH/DELETE, a PostgreSQL concurrency regression, and per-user JWT session-version revocation after password changes or account deletion. Validate and Security Scan are running for code-bearing commit `6e89ec0fd04be1d21287084ac97ad58f6d96a3f8`; do not treat these changes as verified until those checks finish. Automated rendered-page accessibility scanning, browser/device validation, and complete screen-by-screen review remain release gates.
+**Status:** In progress. The current branch now includes a shared account-row lock for PATCH/DELETE, a PostgreSQL concurrency regression, and per-user JWT session-version revocation after password changes or account deletion. Validate and Security Scan are running for code-bearing commit `15f5c243513f85b3eaf81991d459d0a046fae663`; do not treat these changes as verified until those checks finish. Automated rendered-page accessibility scanning, browser/device validation, and complete screen-by-screen review remain release gates.
 
 ## Standard and method
 
@@ -67,7 +67,7 @@ For previous code-bearing commit `118ce3d67ab36ee69b0c258b3f0817165fc56d30`:
 - **Reliability, health, lifecycle/market guards, supported-market isolation, country matrix, QA runner guard, worker lifecycle/claims, Prisma schema/client, clean-database migrations, staging-schema migrations, read-only QA cleanup inventory, and design-accessibility source contract:** passed in the same workflow.
 - **Repository/history secret scan:** passed in run `39502467600`.
 
-For current code-bearing commit `6e89ec0fd04be1d21287084ac97ad58f6d96a3f8`:
+For current code-bearing commit `15f5c243513f85b3eaf81991d459d0a046fae663`:
 - **Validate:** in progress. This run includes the session-version migration and the PostgreSQL account mutation concurrency regression.
 - **Security Scan:** in progress at last check.
 - **Rendered-page accessibility scan, browser/device visual and keyboard review, Android/Capacitor testing, and full route-by-route QA:** not yet evidenced.
