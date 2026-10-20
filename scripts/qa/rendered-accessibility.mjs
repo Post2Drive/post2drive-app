@@ -36,7 +36,11 @@ const password = "QA-test-only-password-42!";
 async function scanRoute(page, route, viewport) {
   const response = await page.goto(new URL(route, baseURL).toString(), { waitUntil: "networkidle" });
   assert.ok(response && response.status() < 400, `${route} should load successfully at ${viewport.label}`);
-  await page.locator("main h1").first().waitFor({ state: "visible" });
+  try {
+    await page.locator("main h1").first().waitFor({ state: "visible" });
+  } catch (error) {
+    throw new Error(`${route} did not render a visible main heading at ${viewport.label}: ${error instanceof Error ? error.message : String(error)}`);
+  }
 
   const overflow = await page.evaluate(() => ({
     documentWidth: document.documentElement.scrollWidth,
