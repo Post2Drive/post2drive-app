@@ -64,3 +64,15 @@ Apply the Apple Design Skill as a product-wide design-review standard to the Nex
 - **Login consistency:** the login form now uses the shared `.auth-page` responsive authentication layout so global field sizing, focus styling, and form surface styles apply consistently.
 
 These are source changes awaiting the current commit's typecheck and secret scan, plus browser/device and broader regression validation. No claim of visual/accessibility conformance is made until those checks are performed.
+
+
+- **Mobile menu keyboard handling:** Escape now closes the More menu and restores focus to its trigger; the trigger exposes expanded state and popup semantics.
+- **Job status filters:** filters are labeled as a group, expose their selected state through `aria-pressed`, wrap on narrow screens, and have a minimum 44px height.
+- **Signup progress:** the multi-step progress indicator now exposes the current step, total steps, and step name through progressbar accessibility attributes.
+
+## Additional HIG references applied
+- `references/hig/accessibility.md` — Mobility and Cognitive: keyboard operation, focus continuity, meaningful state announcements.
+- `references/hig/layout.md` — Visual hierarchy, Adaptability, and Guides and safe areas.
+- `references/hig/typography.md` — Ensuring legibility and Conveying hierarchy.
+- `references/hig/tab-bars.md` — Best practices for prioritizing primary navigation; adapted to a web/Android bottom navigation pattern rather than copying native iOS UI.
+- `references/cross-platform.md` — Translate principles to Post2Drive's web and Capacitor environment.
