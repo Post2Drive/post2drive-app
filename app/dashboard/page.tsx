@@ -231,7 +231,7 @@ export default async function DashboardPage() {
             }}
           >
             Welcome,{" "}
-            {session.user?.name}
+            {session.user?.name?.trim() || "there"}
           </h1>
 
           <p
