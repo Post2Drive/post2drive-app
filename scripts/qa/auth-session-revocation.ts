@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { PrismaClient } from "@prisma/client";
-import { authOptions } from "../lib/auth";
+import { authOptions } from "../../lib/auth";
 
 if (process.env.CI !== "true") throw new Error("Auth session revocation regression must run in CI.");
 const databaseUrl = new URL(process.env.DATABASE_URL || "");
