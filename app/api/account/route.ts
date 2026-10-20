@@ -246,9 +246,9 @@ async function PATCHHandler(
   const updated = await prisma.$transaction(async (tx) => {
     const lifecycleGate = await tx.account.updateMany({
       where: { id: accountId, deletionRequestedAt: null },
-      // This deliberate no-op write acquires a row lock and makes the
-      // deletion-state predicate atomic with the profile/password writes.
-      data: { companyName: account.companyName },
+      // Reassert the lifecycle flag itself instead of writing a previously
+      // read companyName value, which could overwrite a concurrent profile edit.
+      data: { deletionRequestedAt: null },
     });
     if (lifecycleGate.count !== 1) return false;
 
