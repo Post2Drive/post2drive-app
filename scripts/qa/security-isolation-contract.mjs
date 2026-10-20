@@ -111,6 +111,34 @@ const authModule = loadTypeScriptModule("lib/auth.ts", {
   "@/lib/qaRunAuthorization": { isAuthorizedQaRunId: async () => false },
 });
 const callbacks = authModule.authOptions.callbacks;
+
+// Exercise malformed DELETE payloads against the real route handler with
+// isolated dependencies; malformed input must fail before any database read.
+const malformedDeleteModule = loadTypeScriptModule("app/api/account/route.ts", {
+  "@/lib/apiMetrics": { withApiMetrics: (_name, handler) => handler },
+  "next/server": { NextResponse: { json: (body, init = {}) => ({ body, status: init.status ?? 200 }) } },
+  "next-auth": { getServerSession: async () => ({ user: { id: "user-1", accountId: "acct-active" } }) },
+  "bcryptjs": { compare: async () => true, hash: async () => "fixture-hash" },
+  "crypto": { randomBytes: () => ({ toString: () => "fixture" }) },
+  "@/lib/market": { isSupportedMarket: () => true },
+  "@/lib/auth": { authOptions: {} },
+  "@prisma/client": { Prisma: { DbNull: null } },
+  "@/lib/prisma": { prisma: fakePrisma },
+  "@/lib/uk": { isUkAccount: () => false, isUkPromotionLocked: () => false },
+});
+for (const malformedBody of ["{", "null", "[]", "42"]) {
+  const malformedResponse = await malformedDeleteModule.DELETE(
+    new Request("https://fixture.invalid/api/account", {
+      method: "DELETE",
+      headers: { "content-type": "application/json" },
+      body: malformedBody,
+    }),
+  );
+  assert.equal(malformedResponse.status, 400,
+    "malformed or non-object DELETE JSON must return 400: " + malformedBody);
+}
+console.log("Isolated account DELETE payload tests passed: malformed, null, array, and primitive bodies return 400.");
+
 const revokedToken = await callbacks.jwt({ token: { accountId: "acct-deleted" } });
 assert.equal(revokedToken.accountDeleted, true, "existing JWT must be marked revoked after deletion request");
 assert.equal(await callbacks.session({ session: { user: {} }, token: revokedToken }), null,
