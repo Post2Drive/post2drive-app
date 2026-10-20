@@ -94,6 +94,16 @@ try {
 
     for (const route of publicRoutes) await scanRoute(page, route, viewport);
 
+    if (viewport.width === 320) {
+      await page.goto(new URL("/signup", baseURL).toString(), { waitUntil: "networkidle" });
+      await page.getByLabel("Choose your market").selectOption("IN");
+      await page.getByLabel("Registered company name").fill("QA accessibility fixture business");
+      await page.getByRole("button", { name: "Continue" }).click();
+      await page.waitForFunction(() => document.activeElement?.textContent?.trim() === "Vehicles & capacity");
+      await page.getByRole("button", { name: "Back" }).click();
+      await page.waitForFunction(() => document.activeElement?.textContent?.trim() === "Business setup");
+    }
+
     await page.goto(new URL("/login", baseURL).toString(), { waitUntil: "networkidle" });
     await page.getByLabel("Email", { exact: true }).fill(email);
     await page.getByLabel("Password", { exact: true }).fill(password);
@@ -102,6 +112,17 @@ try {
 
     for (const route of authenticatedRoutes) {
       await scanRoute(page, route, viewport);
+      if (route === "/jobs/new" && viewport.width === 320) {
+        await page.getByLabel(/Pickup location/).fill("Hyderabad, Telangana");
+        await page.getByLabel(/Drop-off location/).fill("Vijayawada, Andhra Pradesh");
+        await page.getByLabel(/Pickup date/).fill("2026-10-23");
+        await page.getByLabel(/Pickup time/).fill("10:00");
+        await page.getByRole("button", { name: "Continue" }).click();
+        await page.waitForFunction(() => document.activeElement?.textContent?.trim() === "What needs moving?");
+        await page.getByLabel(/Total job price/).fill("2500");
+        await page.getByRole("button", { name: "Continue" }).click();
+        await page.waitForFunction(() => document.activeElement?.textContent?.trim() === "Contacts, notes & review");
+      }
       if (route === "/dashboard" && viewport.width <= 700) {
         const more = page.locator(".mobile-nav-more");
         await more.click();
