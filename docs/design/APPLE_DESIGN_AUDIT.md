@@ -48,6 +48,7 @@
 - Status communication: payment success/error and loading states now expose status/alert semantics; vehicle, account-settings, and marketplace loading states are announced; marketplace empty-state, account save/password feedback, and signup verification resend feedback use status announcements.
 - Account recovery: account settings now surface load/save/password failures, provide a retry action when initial loading fails, prevent duplicate save/password submissions while busy, and retain password-manager autocomplete hints.
 - Touch and disclosure semantics: form controls/buttons use a 44px minimum height; the mobile More menu remains in the DOM while collapsed so `aria-controls` always points to an existing element, with an explicit hidden-state rule.
+- Keyboard bypass: the shared layout now provides a skip-to-main-content link and a programmatically focusable target, so keyboard users can bypass repeated navigation.
 - Authentication usability: login and password-change fields now provide browser autofill semantics; dashboard greeting has a neutral fallback for missing profile names.
 - Regression guard: added `scripts/qa/design-accessibility-contract.mjs`, wired it into `qa:all` and the Validate workflow. It checks contrast-token ratios, global focus/reduced-motion rules, minimum control sizes, navigation/filter/progress semantics, and selected loading/error announcements.
 - Dashboard: responsive metric-card grid using shared CSS tokens and focus/hover treatment.
