@@ -44,8 +44,9 @@
 - Mobile navigation: four primary destinations, More menu for secondary destinations, active-route semantics, safe-area padding, touch-sized links, visible focus and reduced-motion rules.
 - Mobile More menu: Escape closes an open menu and returns focus to its trigger; the links group now has an accessible name.
 - Global accessibility pass (source-level): darkened positive/warning semantic colors, replaced faint focus outlines with solid focus indicators, and applied reduced-motion preferences globally.
-- Status communication: payment success/error and loading states now expose status/alert semantics; vehicle and account-settings loading states are announced; account save/password feedback uses a polite live region.
+- Status communication: payment success/error and loading states now expose status/alert semantics; vehicle, account-settings, and marketplace loading states are announced; marketplace empty-state, account save/password feedback, and signup verification resend feedback use status announcements.
 - Authentication usability: login and password-change fields now provide browser autofill semantics; dashboard greeting has a neutral fallback for missing profile names.
+- Regression guard: added `scripts/qa/design-accessibility-contract.mjs`, wired it into `qa:all` and the Validate workflow. It checks contrast-token ratios, global focus/reduced-motion rules, navigation/filter/progress semantics, and selected loading/error announcements.
 - Dashboard: responsive metric-card grid using shared CSS tokens and focus/hover treatment.
 - Home greeting: session-derived name with neutral fallback.
 - Login: shared responsive authentication layout.
@@ -62,7 +63,7 @@ For commit `ac6163710f4ef8e7e215756626e4a8bca0fb3e11` (before the latest accessi
 - **Automated accessibility scan:** not yet evidenced.
 - **Browser/device visual and keyboard review:** not yet performed.
 - **Full route-by-route QA:** not yet evidenced; existing CI contracts do not substitute for the complete design audit.
-- **Latest accessibility-focused source edits:** typecheck/build and secret-scan results not yet available for the current branch head; do not treat the older green workflow as validation of these edits.
+- **Latest accessibility-focused source edits:** source-contract checks were independently reviewed against the current GitHub file contents, including contrast calculations. GitHub Actions has not returned a run for the current branch head; TypeScript/build, full QA, and secret scan remain unverified for these newest edits. The source-contract script itself has not yet been executed in CI.
 
 ## Release gates
 
