@@ -116,6 +116,7 @@ export default function VehiclesPage() {
           style={fieldStyle}
           type={type}
           name={name}
+          autoComplete={name === "regPlate" ? "off" : undefined}
           value={form[name]}
           required={required}
           min={type === "number" ? 1 : undefined}
@@ -140,7 +141,8 @@ export default function VehiclesPage() {
       {error && <p role="alert" style={{ color: "var(--color-danger, #b91c1c)" }}>{error}</p>}
       {message && <p role="status">{message}</p>}
 
-      <form onSubmit={submit} style={{ border: "1px solid var(--color-border)", borderRadius: 12, padding: 20 }}>
+      <form aria-labelledby="vehicle-registration-heading" onSubmit={submit} style={{ border: "1px solid var(--color-border)", borderRadius: 12, padding: 20 }}>
+        <h2 id="vehicle-registration-heading" style={{ marginTop: 0 }}>Register a vehicle</h2>
         <label style={{ display: "block", fontSize: 14 }}>
           Vehicle type
           <select
@@ -187,14 +189,14 @@ export default function VehiclesPage() {
       <h2 style={{ marginTop: 32 }}>Your vehicles</h2>
       {loading && <p role="status" aria-live="polite">Loading vehicles…</p>}
       {!loading && !loadError && vehicles.length === 0 && <p role="status">No vehicles registered yet.</p>}
-      <div style={{ display: "grid", gap: 12 }}>
+      <div role="region" aria-label="Registered vehicles" style={{ display: "grid", gap: 12 }}>
         {vehicles.map((vehicle) => (
           <section key={vehicle.id} style={{ border: "1px solid var(--color-border)", borderRadius: 10, padding: 16 }}>
             <strong>{vehicle.vehicleType} — {vehicle.regPlate}</strong>
             <p>Status: <strong>{vehicle.verificationStatus}</strong></p>
             <p>{[vehicle.make, vehicle.model, vehicle.mamKg ? `${vehicle.mamKg} kg MAM` : null].filter(Boolean).join(" · ") || "No additional vehicle details"}</p>
-            <p>MOT expiry: {vehicle.motValidUntil ? new Date(vehicle.motValidUntil).toLocaleDateString() : "Not recorded"}</p>
-            <p>Insurance expiry: {vehicle.insuranceValidUntil ? new Date(vehicle.insuranceValidUntil).toLocaleDateString() : "Not recorded"}</p>
+            <p>MOT expiry: {vehicle.motValidUntil ? new Intl.DateTimeFormat("en-GB", { timeZone: "UTC", day: "2-digit", month: "short", year: "numeric" }).format(new Date(vehicle.motValidUntil)) : "Not recorded"}</p>
+            <p>Insurance expiry: {vehicle.insuranceValidUntil ? new Intl.DateTimeFormat("en-GB", { timeZone: "UTC", day: "2-digit", month: "short", year: "numeric" }).format(new Date(vehicle.insuranceValidUntil)) : "Not recorded"}</p>
           </section>
         ))}
       </div>
