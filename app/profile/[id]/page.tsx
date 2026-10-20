@@ -96,7 +96,7 @@ export default function ProfilePage() {
       <ul style={{ listStyle: "none", padding: 0 }}>
         {recentRatings.map((rating: any) => (
           <li key={rating.id} style={{ borderBottom: "1px solid var(--color-border)", padding: "8px 0" }}>
-            <p aria-label={`${rating.stars} out of 5 stars`}>{"★".repeat(rating.stars)}</p>
+            <p><span aria-hidden="true">{"★".repeat(rating.stars)}</span> <span>{rating.stars} out of 5 stars</span></p>
             {rating.comment && <p>{rating.comment}</p>}
             <p style={{ color: "var(--color-muted)", fontSize: 12 }}>{new Date(rating.createdAt).toLocaleDateString()}</p>
           </li>
