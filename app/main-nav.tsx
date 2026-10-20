@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -24,6 +24,7 @@ export default function MainNav() {
   const pathname = usePathname();
   const { data: session, status } = useSession();
   const [moreOpen, setMoreOpen] = useState(false);
+  const moreButtonRef = useRef<HTMLButtonElement>(null);
   const country = (session?.user as any)?.country;
   const links = country === "IN"
     ? [...baseLinks.slice(0, 2), { href: "/requirements", label: "My Requirements" }, ...baseLinks.slice(2)]
@@ -68,7 +69,10 @@ export default function MainNav() {
         className="mobile-bottom-nav"
         aria-label="Mobile navigation"
         onKeyDown={(event) => {
-          if (event.key === "Escape") setMoreOpen(false);
+          if (event.key === "Escape") {
+            setMoreOpen(false);
+            moreButtonRef.current?.focus();
+          }
         }}
       >
         {mobilePrimary.map((link) => {
@@ -90,6 +94,7 @@ export default function MainNav() {
           );
         })}
         <button
+          ref={moreButtonRef}
           type="button"
           className={`mobile-nav-more${moreActive ? " is-active" : ""}`}
           aria-haspopup="true"
