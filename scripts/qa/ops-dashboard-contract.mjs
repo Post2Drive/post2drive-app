@@ -132,4 +132,6 @@ assert.match(bridge, /campaign\.status !== "draft"/);
 assert.match(bridge, /WITH queue_lock AS MATERIALIZED/);
 assert.match(migration, /CREATE TABLE "AdminAuditEvent"/);
 assert.match(migration, /AdminAuditEvent_createdAt_idx/);
+assert.ok(server.includes('String(x.action||"check")+" · active QA issue"'), "attention queue uses an actual QA issue label");
+assert.ok(!server.includes('String(x.count||0)+" failed check(s)"'), "attention queue must not display a fabricated zero failed-check count");
 console.log("Ops dashboard contract checks passed.");
