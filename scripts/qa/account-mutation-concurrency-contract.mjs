@@ -69,11 +69,11 @@ async function createFixture() {
 }
 
 async function lockActiveAccount(tx, accountId) {
-  return tx.$queryRaw(Prisma.sql\`
+  return tx.$queryRaw(Prisma.sql`
     SELECT "id" FROM "Account"
-    WHERE "id" = \${accountId} AND "deletionRequestedAt" IS NULL
+    WHERE "id" = ${accountId} AND "deletionRequestedAt" IS NULL
     FOR UPDATE
-  \`);
+  `);
 }
 
 try {
