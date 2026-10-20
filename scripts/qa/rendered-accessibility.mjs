@@ -165,6 +165,7 @@ try {
     // Keep the smallest viewport as an empty-state pass; populate the local CI
     // account afterwards so later viewport passes cover realistic job cards.
     if (viewport.width === 320) {
+      assert.ok(accountId, "local browser QA account must exist before creating the job fixture");
       const job = await prisma.job.create({
         data: {
           posterId: accountId,
