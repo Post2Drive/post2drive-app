@@ -31,6 +31,8 @@ for (const name of ["color-text", "color-muted", "color-primary-action", "color-
 
 assert.match(css, /:where\(a, button, input, select, textarea, summary, \[tabindex\]\):focus-visible[\s\S]*?outline: 3px solid var\(--color-primary-action\)/, "Global keyboard focus must use a solid high-contrast indicator");
 assert.match(css, /prefers-reduced-motion:\s*reduce/, "Global reduced-motion support is required");
+assert.match(css, /main input,[\s\S]*?min-height: 44px/, "Form controls must meet the 44px minimum target height");
+assert.match(css, /main button \{\s*min-height: 44px;/, "Buttons must meet the 44px minimum target height");
 
 const nav = read("app/main-nav.tsx");
 assert.match(nav, /aria-current=\{active \? "page" : undefined\}/, "Navigation must expose the current page");
