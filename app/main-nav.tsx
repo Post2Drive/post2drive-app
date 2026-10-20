@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -14,85 +15,45 @@ const baseLinks = [
   { href: "/admin", label: "Admin" },
 ];
 
+function isActive(pathname: string, href: string) {
+  return pathname === href ||
+    (href === "/jobs" && pathname.startsWith("/jobs/") && pathname !== "/jobs/new");
+}
+
 export default function MainNav() {
   const pathname = usePathname();
   const { data: session, status } = useSession();
+  const [moreOpen, setMoreOpen] = useState(false);
   const country = (session?.user as any)?.country;
   const links = country === "IN"
     ? [...baseLinks.slice(0, 2), { href: "/requirements", label: "My Requirements" }, ...baseLinks.slice(2)]
     : baseLinks;
+  const mobilePrimary = links.filter((link) =>
+    ["/dashboard", "/jobs", "/jobs/new", "/vehicles"].includes(link.href)
+  );
+  const mobileMore = links.filter((link) => !mobilePrimary.some((item) => item.href === link.href));
+  const moreActive = mobileMore.some((link) => isActive(pathname, link.href));
 
   if (status !== "authenticated") return null;
 
   return (
     <>
-      <header
-        style={{
-          position: "sticky",
-          top: 0,
-          zIndex: 50,
-          background: "var(--color-surface)",
-          borderBottom: "1px solid var(--color-border)",
-        }}
-      >
-        <nav
-          aria-label="Main navigation"
-          style={{
-            maxWidth: 1100,
-            margin: "0 auto",
-            minHeight: 64,
-            padding: "0 20px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 20,
-          }}
-        >
-          <Link
-            href="/dashboard"
-            style={{
-              color: "var(--color-primary)",
-              textDecoration: "none",
-              fontSize: 21,
-              fontWeight: 800,
-              whiteSpace: "nowrap",
-            }}
-          >
-            Post2Drive
-          </Link>
-
-          <div
-            className="desktop-nav"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-            }}
-          >
+      <header className="main-nav-header">
+        <nav className="main-nav-inner" aria-label="Main navigation">
+          <Link href="/dashboard" className="main-nav-brand">Post2Drive</Link>
+          <div className="desktop-nav">
             {links.map((link) => {
-              const active =
-                pathname === link.href ||
-                (link.href === "/jobs" &&
-                  pathname.startsWith("/jobs/") &&
-                  pathname !== "/jobs/new");
-
+              const active = isActive(pathname, link.href);
               return (
                 <Link
                   key={link.href}
                   href={link.href}
                   className="main-nav-link"
+                  aria-current={active ? "page" : undefined}
                   style={{
-                    padding: "9px 12px",
-                    borderRadius: 8,
-                    textDecoration: "none",
-                    fontSize: 14,
                     fontWeight: active ? 700 : 600,
-                    color: active
-                      ? "var(--color-primary-action)"
-                      : "var(--color-text)",
-                    background: active
-                      ? "#EAF3FF"
-                      : "transparent",
+                    color: active ? "var(--color-primary-action)" : "var(--color-text)",
+                    background: active ? "var(--color-action-soft)" : "transparent",
                   }}
                 >
                   {link.label}
@@ -104,34 +65,55 @@ export default function MainNav() {
       </header>
 
       <nav className="mobile-bottom-nav" aria-label="Mobile navigation">
-        {links.map((link) => {
-          const active =
-            pathname === link.href ||
-            (link.href === "/jobs" &&
-              pathname.startsWith("/jobs/") &&
-              pathname !== "/jobs/new");
-
+        {mobilePrimary.map((link) => {
+          const active = isActive(pathname, link.href);
           return (
             <Link
               key={link.href}
               href={link.href}
               className="mobile-nav-link"
+              aria-current={active ? "page" : undefined}
+              onClick={() => setMoreOpen(false)}
               style={{
-                flex: 1,
-                textAlign: "center",
-                padding: "9px 3px 8px",
-                textDecoration: "none",
-                fontSize: 11,
                 fontWeight: active ? 800 : 600,
-                color: active
-                  ? "var(--color-primary-action)"
-                  : "var(--color-muted)",
+                color: active ? "var(--color-primary-action)" : "var(--color-muted)",
               }}
             >
               {link.label}
             </Link>
           );
         })}
+        <button
+          type="button"
+          className="mobile-nav-more"
+          aria-expanded={moreOpen}
+          aria-controls="mobile-more-menu"
+          onClick={() => setMoreOpen((open) => !open)}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") setMoreOpen(false);
+          }}
+        >
+          <span aria-hidden="true">•••</span>
+          <span>More</span>
+        </button>
+        {moreOpen && (
+          <div id="mobile-more-menu" className="mobile-more-menu" aria-label="More navigation">
+            {mobileMore.map((link) => {
+              const active = isActive(pathname, link.href);
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="mobile-more-link"
+                  aria-current={active ? "page" : undefined}
+                  onClick={() => setMoreOpen(false)}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
+          </div>
+        )}
       </nav>
     </>
   );
