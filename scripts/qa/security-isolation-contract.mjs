@@ -11,6 +11,8 @@ const vehicles = source("app/api/vehicles/route.ts");
 const jobAccept = source("app/api/jobs/[id]/accept/route.ts");
 const bidAccept = source("app/api/jobs/[id]/bids/[bidId]/accept/route.ts");
 const evidence = source("app/api/jobs/[id]/incidents/[incidentId]/evidence/[evidenceId]/route.ts");
+const accountRoute = source("app/api/account/route.ts");
+const accountGet = accountRoute.split("async function PATCHHandler")[0];
 
 // These source-level assertions protect the real application paths against regressions.
 assert.match(auth, /token\.accountDeleted = !account \|\| Boolean\(account\.deletionRequestedAt\)/,
@@ -21,6 +23,12 @@ assert.match(vehicles, /if \(!account \|\| account\.deletionRequestedAt\) return
   "vehicle GET and POST must reject accounts pending deletion");
 assert.match(vehicles, /where: \{ accountId: account\.id \}/,
   "vehicle listing must scope records to the authenticated account");
+assert.match(accountGet, /deletionRequestedAt: null/,
+  "account details must not be returned for an account pending deletion");
+assert.match(accountGet, /select: \{/,
+  "account details API must explicitly select fields rather than serialize the full model");
+assert.doesNotMatch(accountGet, /include: \{/,
+  "account details API must not return the full Account model by default");
 assert.match(jobAccept, /tx\.job\.updateMany\([\s\S]*?status: "open"[\s\S]*?priceMode: "fixed"/,
   "fixed-job acceptance must use a conditional atomic claim");
 assert.match(jobAccept, /if \(\s*updated\.count !== 1\s*\)/,
