@@ -25,23 +25,31 @@ export function passwordResetDeliveryConfigured() {
   );
 }
 
-export async function createPasswordResetToken(userId: string) {
+export async function createPasswordResetToken(userId: string, accountId: string) {
   const cooldownSince = new Date(Date.now() - 60 * 1000);
-  const recentlySent = await prisma.passwordResetToken.findFirst({
-    where: { userId, lastSentAt: { gt: cooldownSince } },
-    select: { id: true },
-  });
-  if (recentlySent) return null;
-
   const token = randomBytes(32).toString("hex");
   const tokenHash = passwordResetTokenHash(token);
   const expiresAt = new Date(Date.now() + TOKEN_LIFETIME_MS);
 
-  await prisma.$transaction([
-    prisma.passwordResetToken.deleteMany({ where: { userId } }),
-    prisma.passwordResetToken.create({ data: { userId, tokenHash, expiresAt } }),
-  ]);
-  return { token, tokenHash, expiresAt };
+  return prisma.$transaction(async (tx) => {
+    // Use the same account-row gate as PATCH, DELETE and reset completion so
+    // a concurrent deletion cannot leave a reset token for an anonymized user.
+    const gate = await tx.account.updateMany({
+      where: { id: accountId, deletionRequestedAt: null },
+      data: { deletionRequestedAt: null },
+    });
+    if (gate.count !== 1) return null;
+
+    const recentlySent = await tx.passwordResetToken.findFirst({
+      where: { userId, lastSentAt: { gt: cooldownSince } },
+      select: { id: true },
+    });
+    if (recentlySent) return null;
+
+    await tx.passwordResetToken.deleteMany({ where: { userId } });
+    await tx.passwordResetToken.create({ data: { userId, tokenHash, expiresAt } });
+    return { token, tokenHash, expiresAt };
+  });
 }
 
 export async function sendPasswordResetEmail(email: string, name: string, token: string) {
