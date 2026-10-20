@@ -22,6 +22,7 @@ const failures = [];
 const prisma = new PrismaClient();
 const browser = await chromium.launch({ headless: true });
 let accountId;
+let jobId;
 const testId = randomUUID();
 const email = `qa-rendered-${testId}@post2drive.invalid`;
 const password = "QA-test-only-password-42!";
@@ -110,7 +111,11 @@ try {
     await page.getByRole("button", { name: "Log in" }).click();
     await page.waitForURL(url => url.pathname === "/dashboard", { timeout: 15_000 });
 
-    for (const route of authenticatedRoutes) {
+    const routesForViewport = [
+      ...authenticatedRoutes,
+      ...(jobId ? [`/jobs/${jobId}/edit`, `/jobs/${jobId}/incidents`] : []),
+    ];
+    for (const route of routesForViewport) {
       await scanRoute(page, route, viewport);
       if (route === "/jobs/new" && viewport.width === 320) {
         await page.getByLabel(/Pickup location/).fill("Hyderabad, Telangana");
@@ -156,6 +161,27 @@ try {
       await page.unroute("**/api/jobs");
     }
     await page.close();
+
+    // Keep the smallest viewport as an empty-state pass; populate the local CI
+    // account afterwards so later viewport passes cover realistic job cards.
+    if (viewport.width === 320) {
+      const job = await prisma.job.create({
+        data: {
+          posterId: accountId,
+          pickup: "Hyderabad, Telangana",
+          dropoff: "Vijayawada, Andhra Pradesh",
+          jobDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          pickupTime: "10:00",
+          vehicleType: "Luton van",
+          price: 2500,
+          currency: "INR",
+          priceMode: "fixed",
+          crossBorder: false,
+          notes: "Local browser QA fixture; automatically deleted with its account.",
+        },
+      });
+      jobId = job.id;
+    }
   }
 } finally {
   await browser.close();
