@@ -100,8 +100,9 @@ export default function SettingsPage() {
         setPwError(data.error || "Could not update password. Try again.");
         return;
       }
-      setPwMessage("Password updated.");
+      setPwMessage("Password updated. Signing out all sessions…");
       setPwForm({ currentPassword: "", newPassword: "" });
+      await signOut({ callbackUrl: "/login?passwordChanged=1" });
     } catch {
       setPwError("Network error. Check your connection and try again.");
     } finally {
