@@ -187,7 +187,7 @@ export default function PaymentsPage() {
     );
   }, [data]);
 
-  if (loading) {
+  if (loading && !data) {
     return (
       <main style={pageStyle}>
         <p role="status" aria-live="polite">Loading payments...</p>
@@ -243,6 +243,8 @@ export default function PaymentsPage() {
           {loading ? "Refreshing…" : "Refresh"}
         </button>
       </div>
+
+      {loading && <p role="status" aria-live="polite">Refreshing payment information…</p>}
 
       {message && (
         <div role="status" aria-live="polite" style={successStyle}>
