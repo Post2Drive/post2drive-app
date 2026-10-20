@@ -104,24 +104,22 @@ export default function MainNav() {
           <span aria-hidden="true">•••</span>
           <span>More</span>
         </button>
-        {moreOpen && (
-          <div id="mobile-more-menu" className="mobile-more-menu" role="group" aria-label="More navigation links">
-            {mobileMore.map((link) => {
-              const active = isActive(pathname, link.href);
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className="mobile-more-link"
-                  aria-current={active ? "page" : undefined}
-                  onClick={() => setMoreOpen(false)}
-                >
-                  {link.label}
-                </Link>
-              );
-            })}
-          </div>
-        )}
+        <div id="mobile-more-menu" className="mobile-more-menu" hidden={!moreOpen} role="group" aria-label="More navigation links">
+          {mobileMore.map((link) => {
+            const active = isActive(pathname, link.href);
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="mobile-more-link"
+                aria-current={active ? "page" : undefined}
+                onClick={() => setMoreOpen(false)}
+              >
+                {link.label}
+              </Link>
+            );
+          })}
+        </div>
       </nav>
     </>
   );
