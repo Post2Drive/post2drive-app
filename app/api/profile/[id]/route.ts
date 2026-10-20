@@ -68,7 +68,14 @@ async function GETHandler(
       prisma.job.count({ where: { posterId: target.id, status: "completed" } }),
     ]);
 
-    const { id: _accountId, currency: _currency, ...publicAccount } = target;
+    const publicAccount = {
+      companyName: target.companyName,
+      displayId: target.displayId,
+      isSoleTrader: target.isSoleTrader,
+      country: target.country,
+      createdAt: target.createdAt,
+      vehicles: target.vehicles,
+    };
     return NextResponse.json({
       account: publicAccount,
       avgRating: ratingAggregate._avg.stars,
