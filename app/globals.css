@@ -318,6 +318,28 @@ main table tr:hover td {
   }
 }
 
+/* Keyboard users can bypass repeated navigation and move directly to page content. */
+.skip-link {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 1000;
+  transform: translateY(-200%);
+  padding: 12px 16px;
+  border: 2px solid var(--color-surface);
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: var(--color-surface);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.skip-link:focus-visible {
+  transform: translateY(0);
+  outline: 3px solid var(--color-primary-action);
+  outline-offset: 3px;
+}
+
 /* Global keyboard focus: use a solid, high-contrast indicator rather than a faint translucent ring. */
 :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
   outline: 3px solid var(--color-primary-action);
