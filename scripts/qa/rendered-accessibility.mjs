@@ -256,14 +256,51 @@ try {
   await browser.close();
   if (vehicleId) await prisma.vehicle.deleteMany({ where: { id: vehicleId } }).catch(error => failures.push(`QA vehicle cleanup failed: ${error instanceof Error ? error.message : String(error)}`));
   const fixtureJobIds = [jobId, completedJobId].filter(Boolean);
-  if (fixtureJobIds.length) {
+  const fixtureAccountIds = [accountId, foreignAccountId].filter(Boolean);
+  let linkedJobIds = [];
+  if (fixtureAccountIds.length) {
     try {
-      // Bid and Rating do not cascade on Job deletion. Remove them explicitly
-      // before deleting fixtures so Account cleanup cannot leave FK violations.
+      // Browser journeys may create jobs through the API without assigning the
+      // returned ID to this script. Discover every job linked to our isolated
+      // fixture accounts before account deletion, not just the two direct ORM
+      // fixtures above.
+      linkedJobIds = (await prisma.job.findMany({
+        where: {
+          OR: [
+            { posterId: { in: fixtureAccountIds } },
+            { acceptedById: { in: fixtureAccountIds } },
+          ],
+        },
+        select: { id: true },
+      })).map(job => job.id);
+    } catch (error) {
+      failures.push(`QA linked-job inventory failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+  const cleanupJobIds = [...new Set([...fixtureJobIds, ...linkedJobIds])];
+  if (cleanupJobIds.length) {
+    try {
+      // Bid and Rating references do not cascade on Job deletion. Remove rows
+      // tied to fixture jobs/accounts before deleting the jobs and accounts.
       await prisma.$transaction([
-        prisma.bid.deleteMany({ where: { jobId: { in: fixtureJobIds } } }),
-        prisma.rating.deleteMany({ where: { jobId: { in: fixtureJobIds } } }),
-        prisma.job.deleteMany({ where: { id: { in: fixtureJobIds } } }),
+        prisma.bid.deleteMany({
+          where: {
+            OR: [
+              { jobId: { in: cleanupJobIds } },
+              { bidderId: { in: fixtureAccountIds } },
+            ],
+          },
+        }),
+        prisma.rating.deleteMany({
+          where: {
+            OR: [
+              { jobId: { in: cleanupJobIds } },
+              { raterId: { in: fixtureAccountIds } },
+              { rateeId: { in: fixtureAccountIds } },
+            ],
+          },
+        }),
+        prisma.job.deleteMany({ where: { id: { in: cleanupJobIds } } }),
       ]);
     } catch (error) {
       failures.push(`QA job fixture cleanup failed: ${error instanceof Error ? error.message : String(error)}`);
