@@ -39,32 +39,11 @@ async function GETHandler() {
       },
       select: {
         id: true,
-        type: true,
-        planType: true,
-        fleetVehicleCount: true,
         companyName: true,
-        companyNumber: true,
-        isSoleTrader: true,
         country: true,
         currency: true,
         displayId: true,
         marketingConsent: true,
-        marketingConsentAt: true,
-        termsAcceptedAt: true,
-        termsVersion: true,
-        verificationStatus: true,
-        verifiedAt: true,
-        isTester: true,
-        testerApprovalStatus: true,
-        promotionParticipant: true,
-        trialStartedAt: true,
-        trialEndsAt: true,
-        freeEndsAt: true,
-        subscriptionStatus: true,
-        subscriptionPlanKey: true,
-        subscriptionStartedAt: true,
-        subscriptionEndsAt: true,
-        createdAt: true,
         users: {
           // Only return the profile belonging to this session. Returning the
           // first account member can expose another member's PII in fleet accounts.
@@ -113,7 +92,16 @@ async function PATCHHandler(
   const userId =
     (session.user as any).id;
 
-  const body = await req.json();
+  let body: Record<string, unknown>;
+  try {
+    const parsed = await req.json();
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
+    }
+    body = parsed as Record<string, unknown>;
+  } catch {
+    return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
+  }
 
   const {
     name,
@@ -124,7 +112,7 @@ async function PATCHHandler(
     marketingConsent,
     currentPassword,
     newPassword,
-  } = body;
+  } = body as any;
 
   const account =
     await prisma.account.findUnique({
