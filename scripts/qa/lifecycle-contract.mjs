@@ -259,7 +259,7 @@ contains("prisma/migrations/20261021120000_add_user_session_version/migration.sq
 ]);
 contains("scripts/qa/account-mutation-concurrency-contract.mjs", [
   "must run only in CI",
-  "DELETE must be rejected when it waits behind a committed deletion",
+  "PATCH must be rejected when it waits behind a committed deletion",
   "deletion must anonymize the last committed profile state",
 ]);
 
