@@ -45,8 +45,10 @@
 - Mobile More menu: Escape closes an open menu and returns focus to its trigger; the links group now has an accessible name.
 - Global accessibility pass (source-level): darkened positive/warning semantic colors, replaced faint focus outlines with solid focus indicators, and applied reduced-motion preferences globally.
 - Status communication: payment success/error and loading states now expose status/alert semantics; vehicle, account-settings, and marketplace loading states are announced; marketplace empty-state, account save/password feedback, and signup verification resend feedback use status announcements.
+- Account recovery: account settings now surface load/save/password failures, provide a retry action when initial loading fails, prevent duplicate save/password submissions while busy, and retain password-manager autocomplete hints.
+- Touch and disclosure semantics: form controls/buttons use a 44px minimum height; the mobile More menu remains in the DOM while collapsed so `aria-controls` always points to an existing element, with an explicit hidden-state rule.
 - Authentication usability: login and password-change fields now provide browser autofill semantics; dashboard greeting has a neutral fallback for missing profile names.
-- Regression guard: added `scripts/qa/design-accessibility-contract.mjs`, wired it into `qa:all` and the Validate workflow. It checks contrast-token ratios, global focus/reduced-motion rules, navigation/filter/progress semantics, and selected loading/error announcements.
+- Regression guard: added `scripts/qa/design-accessibility-contract.mjs`, wired it into `qa:all` and the Validate workflow. It checks contrast-token ratios, global focus/reduced-motion rules, minimum control sizes, navigation/filter/progress semantics, and selected loading/error announcements.
 - Dashboard: responsive metric-card grid using shared CSS tokens and focus/hover treatment.
 - Home greeting: session-derived name with neutral fallback.
 - Login: shared responsive authentication layout.
@@ -63,7 +65,7 @@ For commit `ac6163710f4ef8e7e215756626e4a8bca0fb3e11` (before the latest accessi
 - **Automated accessibility scan:** not yet evidenced.
 - **Browser/device visual and keyboard review:** not yet performed.
 - **Full route-by-route QA:** not yet evidenced; existing CI contracts do not substitute for the complete design audit.
-- **Latest accessibility-focused source edits:** source-contract checks were independently reviewed against the current GitHub file contents, including contrast calculations. GitHub Actions has not returned a run for the current branch head; TypeScript/build, full QA, and secret scan remain unverified for these newest edits. The source-contract script itself has not yet been executed in CI.
+- **Latest accessibility-focused source edits:** source-contract checks and contrast calculations were independently reviewed against the current GitHub file contents. An intermediate commit (`5fff7be59cc6b34071b71971f47762bc4b60b9e2`) reached the new accessibility-contract step successfully and passed TypeScript; its production build is still in progress. Later account-recovery and test-tightening edits need their own exact-head validation. Do not treat intermediate checks as proof for the latest branch head.
 
 ## Release gates
 
