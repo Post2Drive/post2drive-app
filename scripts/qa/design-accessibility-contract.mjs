@@ -57,10 +57,21 @@ assert.match(signup, /role="progressbar"/, "Signup progress must expose progress
 assert.match(signup, /aria-valuenow=\{step \+ 1\}/, "Signup progress must expose the current step");
 assert.match(signup, /role="alert"/, "Signup errors must be announced");
 assert.match(signup, /role="status" aria-live="polite">\{resendMessage\}/, "Signup verification feedback must be announced");
+assert.match(signup, /stepHeadingRef\.current\?\.focus\(\)/, "Signup must move focus to the new step heading");
+assert.match(signup, /<h2 ref=\{stepHeadingRef\} tabIndex=\{-1\}/, "Signup step heading must be focusable");
 
 const payments = read("app/payments/page.tsx");
 assert.match(payments, /role="status" aria-live="polite"/, "Payment success/loading feedback must be announced");
 assert.match(payments, /role="alert"/, "Payment errors must be announced");
+
+const vehicles = read("app/vehicles/page.tsx");
+assert.match(vehicles, /role="status">No vehicles registered yet\./, "Vehicle empty state must be announced as status");
+assert.match(vehicles, /Retry loading vehicles/, "Vehicle loading failures must offer recovery");
+assert.match(vehicles, /minHeight: 44/, "Vehicle submit button must meet the minimum target height");
+
+const jobCreate = read("app/jobs/new/page.tsx");
+assert.match(jobCreate, /stepHeadingRef\.current\?\.focus\(\)/, "Job wizard must move focus to each new step");
+assert.match(jobCreate, /<h2 ref=\{stepHeadingRef\} tabIndex=\{-1\}/, "Job wizard headings must be focusable for step transitions");
 
 const settings = read("app/settings/page.tsx");
 assert.match(settings, /Could not load account settings\. Try again\./, "Account settings loading must have a recoverable error");
