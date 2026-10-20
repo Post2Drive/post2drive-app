@@ -64,7 +64,13 @@ export default function MainNav() {
         </nav>
       </header>
 
-      <nav className="mobile-bottom-nav" aria-label="Mobile navigation">
+      <nav
+        className="mobile-bottom-nav"
+        aria-label="Mobile navigation"
+        onKeyDown={(event) => {
+          if (event.key === "Escape") setMoreOpen(false);
+        }}
+      >
         {mobilePrimary.map((link) => {
           const active = isActive(pathname, link.href);
           return (
@@ -86,12 +92,10 @@ export default function MainNav() {
         <button
           type="button"
           className={`mobile-nav-more${moreActive ? " is-active" : ""}`}
+          aria-haspopup="true"
           aria-expanded={moreOpen}
           aria-controls="mobile-more-menu"
           onClick={() => setMoreOpen((open) => !open)}
-          onKeyDown={(event) => {
-            if (event.key === "Escape") setMoreOpen(false);
-          }}
         >
           <span aria-hidden="true">•••</span>
           <span>More</span>
