@@ -41,6 +41,12 @@ async function scanRoute(page, route, viewport) {
   } catch (error) {
     throw new Error(`${route} did not render a visible main heading at ${viewport.label}: ${error instanceof Error ? error.message : String(error)}`);
   }
+  if (route.startsWith("/profile/")) {
+    await page.waitForFunction(() => {
+      const heading = document.querySelector("main h1")?.textContent?.trim();
+      return Boolean(heading && heading !== "Public profile");
+    });
+  }
 
   const overflow = await page.evaluate(() => ({
     documentWidth: document.documentElement.scrollWidth,
