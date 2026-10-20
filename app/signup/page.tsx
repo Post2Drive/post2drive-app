@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { COUNTRIES, currencyForCountry } from "@/lib/currency";
 
@@ -10,6 +10,15 @@ type ResearchAnswers = { role: string; currentDiscovery: string; biggestChalleng
 export default function SignupPage() {
   const router = useRouter();
   const [step, setStep] = useState(0);
+  const stepHeadingRef = useRef<HTMLHeadingElement>(null);
+  const previousStepRef = useRef(step);
+
+  useEffect(() => {
+    if (previousStepRef.current !== step) {
+      previousStepRef.current = step;
+      stepHeadingRef.current?.focus();
+    }
+  }, [step]);
   const [form, setForm] = useState({
     name: "", email: "", phone: "", password: "", companyName: "",
     planType: "individual", fleetVehicleCount: "1", isSoleTrader: false,
@@ -124,7 +133,7 @@ export default function SignupPage() {
       <p><a href="/login">Continue to login</a></p>
     </div> : <form className="signup-form" onSubmit={(e) => { e.preventDefault(); if (step < steps.length - 1) next(); else void handleSubmit(); }}>
       <div className="signup-step-header">
-        <div><span>STEP {step + 1} OF {steps.length}</span><h2>{steps[step]}</h2></div>
+        <div><span>STEP {step + 1} OF {steps.length}</span><h2 ref={stepHeadingRef} tabIndex={-1}>{steps[step]}</h2></div>
         <span className="signup-step-market">{marketDisplay}</span>
       </div>
       <div className="signup-progress" role="progressbar" aria-label="Signup progress" aria-valuemin={1} aria-valuemax={steps.length} aria-valuenow={step + 1} aria-valuetext={`Step ${step + 1} of ${steps.length}: ${steps[step]}`}><span style={{ width: `${((step + 1) / steps.length) * 100}%` }} /></div>
