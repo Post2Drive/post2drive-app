@@ -34,7 +34,7 @@ const getSetCookies = (response) => {
   const single = response.headers.get("set-cookie");
   return single ? [single] : [];
 };
-async function signIn(email) {
+async function signIn(email, password = "ci-e2e-password-12345") {
   const csrfResponse = await fetch(base + "/api/auth/csrf", { cache: "no-store", signal: AbortSignal.timeout(8000) });
   assert.equal(csrfResponse.status, 200, "NextAuth CSRF endpoint must be available");
   const csrf = await csrfResponse.json();
@@ -51,7 +51,7 @@ async function signIn(email) {
       csrfToken: csrf.csrfToken,
       callbackUrl: base,
       email,
-      password: "ci-e2e-password-12345",
+      password,
     }),
     redirect: "manual",
     signal: AbortSignal.timeout(8000),
