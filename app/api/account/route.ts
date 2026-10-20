@@ -156,6 +156,9 @@ async function PATCHHandler(
     }, { status: 409 });
   }
 
+  // Stage all mutations in memory first. The transaction below acquires the
+  // account row as the lifecycle gate before changing either account or user data.
+  const userData: { name?: string; phone?: string; passwordHash?: string } = {};
   if (newPassword) {
     if (!currentPassword) {
       return NextResponse.json(
@@ -213,25 +216,11 @@ async function PATCHHandler(
         10
       );
 
-    await prisma.user.update({
-      where: {
-        id: userId,
-      },
-      data: {
-        passwordHash,
-      },
-    });
+    userData.passwordHash = passwordHash;
   }
 
-  const userData: { name?: string; phone?: string } = {};
   if (typeof name === "string") userData.name = name.trim();
   if (typeof phone === "string") userData.phone = phone.trim();
-  if (Object.keys(userData).length > 0) {
-    await prisma.user.update({
-      where: { id: userId },
-      data: userData,
-    });
-  }
 
   const accountData: any = {};
 
@@ -250,16 +239,29 @@ async function PATCHHandler(
       new Date();
   }
 
-  if (
-    Object.keys(accountData).length >
-    0
-  ) {
-    await prisma.account.update({
-      where: {
-        id: accountId,
-      },
-      data: accountData,
+  // PATCH and DELETE both lock/update the Account row first inside their
+  // transaction. If deletion wins, this conditional write affects zero rows;
+  // if PATCH wins, deletion waits and anonymizes the final committed profile.
+  const updated = await prisma.$transaction(async (tx) => {
+    const lifecycleGate = await tx.account.updateMany({
+      where: { id: accountId, deletionRequestedAt: null },
+      // This deliberate no-op write acquires a row lock and makes the
+      // deletion-state predicate atomic with the profile/password writes.
+      data: { companyName: account.companyName },
     });
+    if (lifecycleGate.count !== 1) return false;
+
+    if (Object.keys(userData).length > 0) {
+      await tx.user.update({ where: { id: userId }, data: userData });
+    }
+    if (Object.keys(accountData).length > 0) {
+      await tx.account.update({ where: { id: accountId }, data: accountData });
+    }
+    return true;
+  });
+
+  if (!updated) {
+    return NextResponse.json({ error: "Account not found." }, { status: 404 });
   }
 
   return NextResponse.json({
@@ -299,7 +301,15 @@ async function DELETEHandler(req: Request) {
   const stamp = new Date();
   const suffix = randomBytes(10).toString("hex");
   const anonymizedPasswordHash = await bcrypt.hash(randomBytes(48).toString("hex"), 10);
-  await prisma.$transaction(async (tx) => {
+  const deleted = await prisma.$transaction(async (tx) => {
+    // Claim the lifecycle transition before touching users, using the same lock
+    // order as PATCH to avoid both resurrection races and account/user deadlocks.
+    const claim = await tx.account.updateMany({
+      where: { id: accountId, deletionRequestedAt: null },
+      data: { deletionRequestedAt: stamp },
+    });
+    if (claim.count !== 1) return false;
+
     const users = await tx.user.findMany({ where: { accountId }, select: { id: true } });
     const userIds = users.map((item) => item.id);
     if (userIds.length) {
@@ -336,7 +346,12 @@ async function DELETEHandler(req: Request) {
         trialEndsAt: null,
       },
     });
+    return true;
   });
+
+  if (!deleted) {
+    return NextResponse.json({ error: "Account not found or already pending deletion." }, { status: 404 });
+  }
 
   return NextResponse.json({ success: true, message: "Account access has been disabled and personal account details anonymised. Limited job, payment and audit records may remain to protect other users and fulfil legal obligations." });
 }
