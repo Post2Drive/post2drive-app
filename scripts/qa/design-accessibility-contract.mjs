@@ -114,7 +114,12 @@ assert.match(research, /deletionRequestedAt: null/, "Research aggregates must ex
 assert.match(research, /select: \{ marketResearch: true \}/, "Research dashboard must not fetch account identifiers");
 assert.match(research, /No optional market-research responses yet/, "Research dashboard must communicate its empty state");
 
-const login = read("app/login/page.tsx");
+const profileApi = read("app/api/profile/[id]/route.ts");
+assert.match(profileApi, /getServerSession\(authOptions\)/, "Public profile API must require an authenticated session");
+assert.match(profileApi, /target\.country !== viewer\.country \|\| target\.currency !== viewer\.currency/, "Public profile API must enforce same-market access");
+assert.match(profileApi, /deletionRequestedAt: null/, "Deleted accounts must not be exposed through profile lookup");
+assert.doesNotMatch(profileApi, /passwordHash|marketResearch|email: true|phone: true|insuranceDocumentUrl|v5cDocumentUrl/, "Profile API must not select private account, contact or vehicle-document data");
+\nconst login = read("app/login/page.tsx");
 assert.match(login, /autoComplete="email"/, "Login email must support autofill");
 assert.match(login, /autoComplete="current-password"/, "Login password must support password managers");
 
