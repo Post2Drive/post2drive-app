@@ -10,7 +10,7 @@ const plans = [
 
 export default function SubscriptionPricing() {
   return (
-    <section style={{ background: "var(--color-surface)", border: "1px solid #D9E2EC", borderRadius: 14, padding: 24, boxShadow: "0 1px 3px rgba(16, 42, 67, 0.08)" }}>
+    <section style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: 14, padding: 24, boxShadow: "0 1px 3px rgba(16, 42, 67, 0.08)" }}>
       <div style={{ marginBottom: 18 }}>
         <h2 style={{ margin: 0, fontSize: 20, color: "var(--color-primary)" }}>Simple 7-day access</h2>
         <p style={{ margin: "8px 0 0", color: "var(--color-muted)", lineHeight: 1.5 }}>
