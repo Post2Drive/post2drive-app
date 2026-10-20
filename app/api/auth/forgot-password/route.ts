@@ -35,6 +35,7 @@ async function POSTHandler(req: Request) {
     where: { email },
     select: {
       id: true,
+      accountId: true,
       email: true,
       name: true,
       account: { select: { deletionRequestedAt: true } },
@@ -44,7 +45,7 @@ async function POSTHandler(req: Request) {
 
   let reset: Awaited<ReturnType<typeof createPasswordResetToken>> = null;
   try {
-    reset = await createPasswordResetToken(user.id);
+    reset = await createPasswordResetToken(user.id, user.accountId);
     if (!reset) return NextResponse.json(genericResponse);
     await sendPasswordResetEmail(user.email, user.name, reset.token);
   } catch (error) {
