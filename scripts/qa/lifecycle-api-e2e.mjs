@@ -215,9 +215,38 @@ try {
   }
   assert.equal(ready, true, "isolated Next.js app must become ready:\n" + serverOutput);
 
-  const outsiderCookie = await signIn(outsiderUser.email);
+  // Keep two independent credentials sessions for the same user, as if they
+  // were separate browser profiles. A password change must revoke both JWTs.
+  const firstOutsiderCookie = await signIn(outsiderUser.email);
+  const secondOutsiderCookie = await signIn(outsiderUser.email);
   const posterCookie = await signIn(posterUser.email);
   const driverCookie = await signIn(driverUser.email);
+
+  const oldSessionA = await api("/api/auth/session", "GET", firstOutsiderCookie);
+  const oldSessionB = await api("/api/auth/session", "GET", secondOutsiderCookie);
+  assert.ok((await oldSessionA.json())?.user?.email === outsiderUser.email,
+    "first independent browser session should be authenticated before password change");
+  assert.ok((await oldSessionB.json())?.user?.email === outsiderUser.email,
+    "second independent browser session should be authenticated before password change");
+
+  const passwordChanged = await api("/api/account", "PATCH", firstOutsiderCookie, {
+    currentPassword: "ci-e2e-password-12345",
+    newPassword: "ci-e2e-password-67890",
+  });
+  assert.equal(passwordChanged.status, 200,
+    "authenticated account should be able to change its password (got " + passwordChanged.status + "): " + await passwordChanged.text());
+
+  const revokedSessionA = await api("/api/auth/session", "GET", firstOutsiderCookie);
+  const revokedSessionB = await api("/api/auth/session", "GET", secondOutsiderCookie);
+  assert.equal(await revokedSessionA.text(), "null",
+    "password change must revoke the first pre-existing browser session");
+  assert.equal(await revokedSessionB.text(), "null",
+    "password change must revoke the second pre-existing browser session");
+
+  const outsiderCookie = await signIn(outsiderUser.email, "ci-e2e-password-67890");
+  const freshSession = await api("/api/auth/session", "GET", outsiderCookie);
+  assert.equal((await freshSession.json())?.user?.email, outsiderUser.email,
+    "re-login with the new password should create a valid fresh session");
 
   const posterJobRead = await api("/api/jobs/" + lifecycleJob.id, "GET", posterCookie);
   assert.equal(posterJobRead.status, 200, "poster may read their own job");
