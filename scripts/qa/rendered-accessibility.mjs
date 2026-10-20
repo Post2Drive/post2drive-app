@@ -100,7 +100,40 @@ try {
     await page.getByRole("button", { name: "Log in" }).click();
     await page.waitForURL(url => url.pathname === "/dashboard", { timeout: 15_000 });
 
-    for (const route of authenticatedRoutes) await scanRoute(page, route, viewport);
+    for (const route of authenticatedRoutes) {
+      await scanRoute(page, route, viewport);
+      if (route === "/dashboard" && viewport.width <= 700) {
+        const more = page.locator(".mobile-nav-more");
+        await more.click();
+        assert.equal(await more.getAttribute("aria-expanded"), "true", "mobile More button must expose expanded state");
+        assert.equal(await page.locator("#mobile-more-menu").isVisible(), true, "mobile More menu must open");
+        assert.equal(await page.getByRole("link", { name: "My Requirements" }).isVisible(), true, "India accounts must see My Requirements in More");
+        const menuAxe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "best-practice"]).analyze();
+        for (const violation of menuAxe.violations) failures.push(`mobile More menu (${viewport.label}) ${violation.impact || "unknown"}: ${violation.id} — ${violation.help}`);
+        await page.keyboard.press("Escape");
+        assert.equal(await more.getAttribute("aria-expanded"), "false", "Escape must collapse mobile More menu");
+        assert.equal(await page.locator("#mobile-more-menu").isVisible(), false, "Escape must hide mobile More menu");
+        assert.equal(await more.evaluate(element => element === document.activeElement), true, "Escape must return focus to More trigger");
+      }
+    }
+
+    if (viewport.width === 320) {
+      let failNextLoad = true;
+      await page.route("**/api/jobs", async route => {
+        if (failNextLoad) {
+          failNextLoad = false;
+          await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "Synthetic QA outage" }) });
+        } else {
+          await route.continue();
+        }
+      });
+      await page.goto(new URL("/jobs", baseURL).toString(), { waitUntil: "networkidle" });
+      await page.getByRole("alert").filter({ hasText: "Synthetic QA outage" }).waitFor({ state: "visible" });
+      assert.equal(await page.getByText("No jobs in this category.").count(), 0, "a failed marketplace load must not be shown as an empty list");
+      await page.getByRole("button", { name: "Retry loading jobs" }).click();
+      await page.getByText("No jobs in this category.").waitFor({ state: "visible" });
+      await page.unroute("**/api/jobs");
+    }
     await page.close();
   }
 } finally {
