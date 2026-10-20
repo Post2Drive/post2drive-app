@@ -20,7 +20,7 @@ export default function SubscriptionPricing() {
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 12 }}>
         {plans.map((plan) => (
-          <div key={plan.name} style={{ border: "1px solid #D9E2EC", borderRadius: 10, padding: 16, background: "var(--color-background)" }}>
+          <div key={plan.name} style={{ border: "1px solid var(--color-border)", borderRadius: 10, padding: 16, background: "var(--color-background)" }}>
             <h3 style={{ margin: "0 0 4px", fontSize: 14, color: "var(--color-muted)" }}>{plan.name}</h3>
             <div style={{ fontSize: 12, color: "var(--color-muted)", marginBottom: 12 }}>{plan.detail}</div>
             <div style={{ fontSize: 22, fontWeight: 700, color: "var(--color-primary)" }}>{plan.gbp}<span style={{ fontSize: 12, fontWeight: 500 }}> GBP</span></div>
