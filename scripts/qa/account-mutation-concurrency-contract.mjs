@@ -12,6 +12,10 @@ assert.ok(["localhost", "127.0.0.1"].includes(parsed.hostname), "test must use l
 assert.equal(parsed.port || "5432", "5432", "test must use the CI database port");
 
 const source = readFileSync("app/api/account/route.ts", "utf8");
+const authSource = readFileSync("lib/auth.ts", "utf8");
+const schemaSource = readFileSync("prisma/schema.prisma", "utf8");
+const settingsSource = readFileSync("app/settings/page.tsx", "utf8");
+const loginSource = readFileSync("app/login/page.tsx", "utf8");
 const patchStart = source.indexOf("async function PATCHHandler");
 const deleteStart = source.indexOf("async function DELETEHandler");
 assert.ok(patchStart >= 0 && deleteStart > patchStart, "both account mutation handlers must exist");
@@ -22,6 +26,14 @@ assert.match(patchSource, lockPattern, "PATCH must lock only a non-deleted accou
 assert.match(deleteSource, lockPattern, "DELETE must take the same non-deleted account row lock");
 assert.ok(deleteSource.indexOf("FOR UPDATE") < deleteSource.indexOf("bcrypt.compare"), "DELETE must verify the password after acquiring the account lock");
 assert.ok(patchSource.indexOf("FOR UPDATE") < patchSource.indexOf("tx.user.update"), "PATCH must lock the account before changing user data");
+assert.match(schemaSource, /sessionVersion Int @default\(0\)/, "users must have a session version");
+assert.match(authSource, /currentUser\.sessionVersion !== \(token as any\)\.sessionVersion/, "JWT validation must revoke mismatched session versions");
+assert.match(authSource, /currentUser\.account\.deletionRequestedAt/, "JWT validation must revoke deleted accounts");
+assert.match(authSource, /if \(\(token as any\)\.sessionRevoked\) return null as any/, "revoked JWTs must produce no server session");
+assert.match(patchSource, /sessionVersion: \{ increment: 1 \}/, "password changes must increment the session version");
+assert.match(deleteSource, /sessionVersion: \{ increment: 1 \}/, "account deletion must increment the session version");
+assert.match(settingsSource, /signOut\(\{ callbackUrl: "\/login\?passwordChanged=1" \}\)/, "password change must sign out all sessions");
+assert.match(loginSource, /Password updated\. Please sign in again with your new password\./, "login must explain password-change sign-out");
 
 const prisma = new PrismaClient();
 const fixtures = [];
@@ -99,7 +111,7 @@ try {
     assert.ok(account?.deletionRequestedAt, "account deletion marker must remain set");
   }
 
-  // PATCH wins first: DELETE waits for the same lock, then deletes the updated
+  // Password changes increment the version stored in JWTs. Existing token claims\n  // must stop matching the persisted version after this mutation.\n  {\n    const { accountId, userId } = await createFixture();\n    const before = await prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { sessionVersion: true } });\n    await prisma.user.update({ where: { id: userId }, data: { sessionVersion: { increment: 1 } } });\n    const after = await prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { sessionVersion: true } });\n    assert.equal(after.sessionVersion, before.sessionVersion + 1, "credential change must advance the per-user session version");\n    await prisma.account.update({ where: { id: accountId }, data: { deletionRequestedAt: new Date() } });\n    const deleted = await prisma.user.findUniqueOrThrow({ where: { id: userId }, include: { account: { select: { deletionRequestedAt: true } } } });\n    assert.ok(deleted.account.deletionRequestedAt, "account deletion marker must be queryable by JWT validation");\n  }\n\n  // PATCH wins first: DELETE waits for the same lock, then deletes the updated
   // state; there is no window where a post-deletion PATCH can commit.
   {
     const { accountId, userId } = await createFixture();
