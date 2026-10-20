@@ -186,6 +186,7 @@ try {
   }
 } finally {
   await browser.close();
+  if (jobId) await prisma.job.deleteMany({ where: { id: jobId } }).catch(() => {});
   if (accountId) await prisma.account.deleteMany({ where: { id: accountId } }).catch(() => {});
   await prisma.$disconnect();
 }
