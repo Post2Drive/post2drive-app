@@ -123,7 +123,38 @@ const activeToken = await callbacks.jwt({ token: { accountId: "acct-active" } })
 assert.equal(activeToken.accountDeleted, false, "active account must keep a valid session");
 const activeSession = await callbacks.session({ session: { user: {} }, token: activeToken });
 assert.equal(activeSession.user.accountId, "acct-active", "active session must retain its own account identity");
-console.log("Isolated NextAuth callback tests passed: deleted/missing accounts revoked; active account preserved.");
+
+let passwordState = new Date("2026-10-01T12:00:00.000Z");
+fakePrisma.user = {
+  findUnique: async () => ({ passwordChangedAt: passwordState }),
+};
+const oldPasswordSession = await callbacks.jwt({
+  token: {
+    id: "user-1",
+    accountId: "acct-active",
+    passwordChangedAt: new Date("2026-09-01T12:00:00.000Z").getTime(),
+  },
+});
+assert.equal(oldPasswordSession.passwordChanged, true,
+  "a JWT with an older password-change version must be revoked");
+assert.equal(await callbacks.session({ session: { user: {} }, token: oldPasswordSession }), null,
+  "a password-revoked JWT must not produce a session");
+const freshLogin = await callbacks.jwt({
+  token: {},
+  user: {
+    id: "user-1",
+    accountId: "acct-active",
+    accountType: "both",
+    currency: "GBP",
+    country: "GB",
+    passwordChangedAt: passwordState.getTime(),
+  },
+});
+assert.equal(freshLogin.passwordChanged, false,
+  "a fresh login must snapshot the current password-change version and remain valid");
+assert.ok(await callbacks.session({ session: { user: {} }, token: freshLogin }),
+  "a fresh login must produce a session after a password change");
+console.log("Isolated NextAuth callback tests passed: deletion and password-change revocation; fresh login preserved.");
 
 // Execute the actual vehicle route handlers with a mocked session and Prisma.
 // Deleted accounts must receive 401 before vehicle reads or writes are attempted.
