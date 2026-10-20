@@ -127,7 +127,7 @@ export default function SignupPage() {
         <div><span>STEP {step + 1} OF {steps.length}</span><h2>{steps[step]}</h2></div>
         <span className="signup-step-market">{marketDisplay}</span>
       </div>
-      <div className="signup-progress" aria-label={`Step ${step + 1} of ${steps.length}`}><span style={{ width: `${((step + 1) / steps.length) * 100}%` }} /></div>
+      <div className="signup-progress" role="progressbar" aria-label="Signup progress" aria-valuemin={1} aria-valuemax={steps.length} aria-valuenow={step + 1} aria-valuetext={`Step ${step + 1} of ${steps.length}: ${steps[step]}`}><span style={{ width: `${((step + 1) / steps.length) * 100}%` }} /></div>
 
       {step === 0 && <div className="signup-fields">
         <label>Choose your market<select required value={form.country} onChange={(e) => changeCountry(e.target.value)}><option value="" disabled>Choose a country</option>{COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}</select><small>This determines your marketplace, currency and local time zone. Cross-market matching is disabled.</small></label>
