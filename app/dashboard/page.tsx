@@ -26,14 +26,7 @@ function StatCard({
   href?: string;
 }) {
   const content = (
-    <div
-      style={{
-        border: "1px solid var(--color-border)",
-        borderRadius: 12,
-        padding: 18,
-        minWidth: 150,
-      }}
-    >
+    <div className="dashboard-stat-card">
       <div
         style={{
           fontSize: 13,
@@ -60,12 +53,6 @@ function StatCard({
       <Link
         href={href}
         className="dashboard-stat-link"
-        style={{
-          display: "block",
-          textDecoration: "none",
-          color: "inherit",
-          borderRadius: 12,
-        }}
       >
         {content}
       </Link>
@@ -275,14 +262,7 @@ export default async function DashboardPage() {
           Operations overview
         </h2>
 
-        <div
-          style={{
-            display: "flex",
-            gap: 14,
-            flexWrap: "wrap",
-            marginTop: 14,
-          }}
-        >
+        <div className="dashboard-stat-grid">
           <StatCard
             title="Jobs posted"
             value={totalPosted}
