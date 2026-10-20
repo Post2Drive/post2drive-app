@@ -26,12 +26,43 @@ async function GETHandler() {
   const accountId =
     (session.user as any).accountId;
 
+  // Return only fields the settings/account UI needs. Do not serialize the
+  // complete Account model: internal trial counters, QA state, lifecycle flags,
+  // and future schema additions should not become public API fields by default.
   const account =
     await prisma.account.findUnique({
       where: {
         id: accountId,
+        deletionRequestedAt: null,
       },
-      include: {
+      select: {
+        id: true,
+        type: true,
+        planType: true,
+        fleetVehicleCount: true,
+        companyName: true,
+        companyNumber: true,
+        isSoleTrader: true,
+        country: true,
+        currency: true,
+        displayId: true,
+        marketingConsent: true,
+        marketingConsentAt: true,
+        termsAcceptedAt: true,
+        termsVersion: true,
+        verificationStatus: true,
+        verifiedAt: true,
+        isTester: true,
+        testerApprovalStatus: true,
+        promotionParticipant: true,
+        trialStartedAt: true,
+        trialEndsAt: true,
+        freeEndsAt: true,
+        subscriptionStatus: true,
+        subscriptionPlanKey: true,
+        subscriptionStartedAt: true,
+        subscriptionEndsAt: true,
+        createdAt: true,
         users: {
           select: {
             id: true,
@@ -44,7 +75,7 @@ async function GETHandler() {
       },
     });
 
-  if (!account) {
+  if (!account || account.deletionRequestedAt) {
     return NextResponse.json(
       { error: "Account not found." },
       { status: 404 }
