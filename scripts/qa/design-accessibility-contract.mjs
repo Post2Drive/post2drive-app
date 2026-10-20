@@ -50,6 +50,7 @@ const dashboard = read("app/dashboard/page.tsx");
 assert.match(dashboard, /export default async function DashboardPage\([\s\S]*?return \([\s\S]*?<main/, "Dashboard must expose a main landmark");
 
 const jobs = read("app/jobs/page.tsx");
+assert.match(jobs, /export default function JobsPage\([\s\S]*?return \([\s\S]*?<main/, "Marketplace must expose a main landmark");
 assert.match(jobs, /aria-pressed=\{tab === t\.key\}/, "Job filters must expose their selected state");
 assert.match(jobs, /aria-label="Filter jobs by status"/, "Job filters must have an accessible group name");
 assert.match(jobs, /role="status" aria-live="polite">Loading jobs/, "Marketplace loading state must be announced");
