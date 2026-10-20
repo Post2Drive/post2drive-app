@@ -64,6 +64,8 @@ const payments = read("app/payments/page.tsx");
 assert.match(payments, /role="status" aria-live="polite"/, "Payment success/loading feedback must be announced");
 assert.match(payments, /role="alert"/, "Payment errors must be announced");
 assert.match(payments, /Retry loading payments/, "Payment load failures must offer a retry action");
+assert.match(payments, /if \(loading && !data\)/, "Payment refreshes must not discard already loaded context");
+assert.match(payments, /Refreshing payment information…/, "Payment refresh progress must be announced while existing content remains visible");
 assert.match(payments, /aria-label=\{\`Mark payment as paid for \$\{job.pickup\} to \$\{job.dropoff\}\`\}/, "Repeated payment actions must identify their job route");
 assert.match(payments, /aria-label=\{\`Confirm payment receipt for \$\{job.pickup\} to \$\{job.dropoff\}\`\}/, "Repeated receipt actions must identify their job route");
 assert.match(payments, /background: "var\(--color-surface\)"/, "Payment cards must use shared surface tokens");
