@@ -323,6 +323,8 @@ model User {
   emailVerifiedAt DateTime?
   phone          String
   passwordHash   String
+  // Existing JWTs issued before this timestamp are rejected on the next session refresh.
+  passwordChangedAt DateTime?
 
   role UserRole @default(owner)
 
