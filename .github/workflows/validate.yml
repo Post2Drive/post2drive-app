@@ -85,3 +85,24 @@ jobs:
         run: npx tsc --noEmit
       - name: Build Next.js production bundle
         run: npm run build
+
+      - name: Install browser-only accessibility test tools
+        run: npm install --no-save --package-lock=false tsx playwright @axe-core/playwright
+      - name: Install Chromium for rendered accessibility tests
+        run: npx playwright install --with-deps chromium
+      - name: Verify runtime JWT session revocation against CI PostgreSQL
+        run: npx tsx scripts/qa/auth-session-revocation.ts
+      - name: Start production build for rendered accessibility tests
+        run: |
+          npm run start > /tmp/post2drive-next.log 2>&1 &
+          echo $! > /tmp/post2drive-next.pid
+          for attempt in $(seq 1 60); do
+            if curl --silent --fail http://127.0.0.1:3000/login > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat /tmp/post2drive-next.log
+          exit 1
+      - name: Scan rendered public routes for accessibility and responsive regressions
+        run: node scripts/qa/rendered-accessibility.mjs
