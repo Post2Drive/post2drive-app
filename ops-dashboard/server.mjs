@@ -492,7 +492,7 @@ renderSeasonality(m,d.sources||[]);
 const queue=[];
 (d.recentErrors||[]).forEach(x=>queue.push({priority:"Critical",category:"API reliability",market:m.code==="ALL"?"Global":m.code,issue:String(x.statusCode)+" on "+x.method+" "+x.route,next:"Inspect route logs and compare against deploy/telemetry windows.",when:x.createdAt}));
 (d.incidentQueue||[]).filter(x=>!x.hasResolution).forEach(x=>queue.push({priority:"High",category:"Incident",market:x.market||"Unknown",issue:(x.metadata?.reason||"Reported incident")+" · job "+x.jobId,next:"Review evidence and resolve through the protected application workflow.",when:x.createdAt}));
-(d.qaFailures||[]).forEach(x=>queue.push({priority:"High",category:"QA regression",market:"Staging",issue:String(x.scenario||"Scenario")+" · "+String(x.count||0)+" failed check(s)",next:"Inspect retained run/event evidence; do not delete QA records.",when:"Latest recorded run"}));
+(d.qaFailures||[]).forEach(x=>queue.push({priority:"High",category:"QA regression",market:"Staging",issue:String(x.scenario||"Scenario")+" · "+String(x.action||"check")+" · active QA issue",next:"Inspect retained run/event evidence; do not delete QA records.",when:"Latest recorded run"}));
 (d.testerApplications||[]).forEach(x=>queue.push({priority:"Normal",category:"Tester review",market:x.country,issue:String(x.companyName||"Application")+" · "+String(x.vehicleCount||0)+" vehicle(s)",next:"Review application, vehicle evidence and email verification in the protected workflow.",when:x.createdAt}));
 if(Number(o.motExpired||0)>0||Number(o.insuranceExpired||0)>0)queue.push({priority:"High",category:"Vehicle compliance",market:m.code,issue:fmt(o.motExpired)+" MOT and "+fmt(o.insuranceExpired)+" insurance records expired",next:"Review affected records; stored expiry data is not independent verification.",when:"Current snapshot"});
 if(Number(o.motExpiring30d||0)>0||Number(o.insuranceExpiring30d||0)>0)queue.push({priority:"Normal",category:"Vehicle compliance",market:m.code,issue:fmt(o.motExpiring30d)+" MOT and "+fmt(o.insuranceExpiring30d)+" insurance records expire within 30 days",next:"Plan reminders and document review.",when:"Current snapshot"});
@@ -736,7 +736,7 @@ async function metricsUncached(url) {
        ), ranked_checks AS (
          SELECT check_runs.*,
            row_number() OVER (
-             PARTITION BY country, scenario, action, method, path, expected
+             PARTITION BY country, scenario, action, method, path
              ORDER BY "runStartedAt" DESC, "eventCreatedAt" DESC, "eventId" DESC
            ) AS issue_rank
          FROM check_runs
