@@ -47,3 +47,11 @@ jobs:
           node -e 'const c = require("./android/app/src/main/assets/capacitor.config.json"); if (c.server?.url !== "https://post2drive-web-staging.up.railway.app") throw new Error("Unexpected Capacitor server URL"); if (c.server?.cleartext) throw new Error("Cleartext traffic must remain disabled for staging"); console.log("Capacitor config is pinned to HTTPS staging; no deployment performed.");'
       - name: Compile Android debug APK
         run: cd android && ./gradlew --no-daemon assembleDebug
+      - name: Run Capacitor WebView smoke test on Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          script: cd android && ./gradlew --no-daemon connectedDebugAndroidTest
