@@ -51,6 +51,10 @@ assert.match(jobs, /aria-pressed=\{tab === t\.key\}/, "Job filters must expose t
 assert.match(jobs, /aria-label="Filter jobs by status"/, "Job filters must have an accessible group name");
 assert.match(jobs, /role="status" aria-live="polite">Loading jobs/, "Marketplace loading state must be announced");
 assert.match(jobs, /role="status">No jobs in this category/, "Marketplace empty state must be exposed as status");
+assert.match(jobs, /setLoadError\(data\.error \|\| "Could not load jobs\. Try again\."\)/, "Marketplace load failures must have distinct recoverable error state");
+assert.match(jobs, /role="alert" aria-live="assertive"/, "Marketplace load errors must be announced assertively");
+assert.match(jobs, /Retry loading jobs/, "Marketplace load failures must offer retry");
+assert.match(jobs, /!loading && !loadError/, "Marketplace error state must not be misreported as an empty result");
 
 const signup = read("app/signup/page.tsx");
 assert.match(signup, /role="progressbar"/, "Signup progress must expose progressbar semantics");
