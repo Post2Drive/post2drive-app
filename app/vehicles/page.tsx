@@ -182,7 +182,7 @@ export default function VehiclesPage() {
       </form>
 
       <h2 style={{ marginTop: 32 }}>Your vehicles</h2>
-      {loading && <p>Loading vehicles…</p>}
+      {loading && <p role="status" aria-live="polite">Loading vehicles…</p>}
       {!loading && vehicles.length === 0 && <p>No vehicles registered yet.</p>}
       <div style={{ display: "grid", gap: 12 }}>
         {vehicles.map((vehicle) => (
