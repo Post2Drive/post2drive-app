@@ -47,6 +47,8 @@ jobs:
           node -e 'const c = require("./android/app/src/main/assets/capacitor.config.json"); if (c.server?.url !== "https://post2drive-web-staging.up.railway.app") throw new Error("Unexpected Capacitor server URL"); if (c.server?.cleartext) throw new Error("Cleartext traffic must remain disabled for staging"); console.log("Capacitor config is pinned to HTTPS staging; no deployment performed.");'
       - name: Compile Android debug APK
         run: cd android && ./gradlew --no-daemon assembleDebug
+      - name: Confirm the existing staging homepage is reachable
+        run: curl --fail --silent --show-error --location --retry 3 --retry-delay 5 --max-time 30 https://post2drive-web-staging.up.railway.app | grep -qi "Post2Drive"
       - name: Run Capacitor WebView smoke test on Android emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
