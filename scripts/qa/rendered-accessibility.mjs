@@ -115,7 +115,7 @@ try {
       if (route === "/jobs/new" && viewport.width === 320) {
         await page.getByLabel(/Pickup location/).fill("Hyderabad, Telangana");
         await page.getByLabel(/Drop-off location/).fill("Vijayawada, Andhra Pradesh");
-        await page.getByLabel(/Pickup date/).fill("2026-10-23");
+        await page.getByLabel(/Pickup date/).fill(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10));
         await page.getByLabel(/Pickup time/).fill("10:00");
         await page.getByRole("button", { name: "Continue" }).click();
         await page.waitForFunction(() => document.activeElement?.textContent?.trim() === "What needs moving?");
