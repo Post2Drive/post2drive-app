@@ -1,78 +1,82 @@
-# Post2Drive design audit and implementation tracker
+# Post2Drive Apple Design Skill audit and implementation tracker
 
-**Status:** In progress — source review only; browser/device verification and automated checks are still required.
+**Status:** In progress. Latest verified source commit before the current navigation refinement, `aa79714938e15ec2a764261bb0e5a102d87eed55`, passed the repository's TypeScript/Next.js production build workflow and secret scan. The current navigation refinement must receive its own checks. Browser/device validation, automated accessibility scanning, and complete screen-by-screen review remain release gates.
 
-## Scope
+## Standard and method
 
-Apply the Apple Design Skill as a product-wide design-review standard to the Next.js web app and Capacitor/Android experience. Use transferable HIG principles, not iOS-only UI conventions. Keep product behavior, market separation, authentication, payments, and delivery lifecycle intact.
+- Required product-wide reference: pinned Apple Design Skill submodule at `.agents/skills/apple-design`.
+- Required references: `references/hig/accessibility.md`, `layout.md`, `typography.md`, `color.md`, and `references/cross-platform.md`.
+- Add 3–6 relevant references per screen/interaction. Relevant references considered include `tab-bars.md`, `entering-data.md`, `design-principles.md`, and `designing-for-ios.md`.
+- Apply Purpose, Agency, Responsibility, Familiarity, Flexibility, Simplicity, Craft, and Delight. Use transferable principles, not iOS-only controls, for the Next.js/Capacitor web and Android product.
+- Protect authentication, permissions, payments, market separation, and job/delivery lifecycle. Source review is not proof of rendered conformance.
 
-## First implementation: mobile navigation
+## Risk scale
 
-### Observed issues in source
-- The mobile bottom bar previously displayed every destination at once (7 links, or 8 for India), with 11px labels and narrow flex items.
-- The navigation had repeated inline layout styling and no explicit current-page state.
-- The fixed bar needs to account for the device safe area and must not obscure page content.
+- **P0 Critical:** likely blocks safe/equitable use, exposes data, breaks a core task, or creates a serious accessibility barrier. Must be resolved or explicitly accepted before release.
+- **P1 High:** core workflow or important accessibility/responsive failure; resolve before release.
+- **P2 Medium:** meaningful usability, consistency, or resilience issue; resolve before broad release.
+- **P3 Low:** polish and maintainability; schedule after higher-risk items.
 
-### Changes on this branch
-- Reduced the persistent mobile destinations to Home, Marketplace, Post a Job, and Vehicles.
-- Moved Payments, Account, Admin, and India-specific My Requirements into a clearly labeled, expandable More menu.
-- Added active-page semantics, visible active states, keyboard focus styling, 44px+ menu-row hit areas, safe-area padding, and reduced-motion handling.
-- Kept the complete desktop navigation destinations and URL routes unchanged.
+## Risk-ranked findings and required changes
 
-### Design references to use when reviewing
-- .agents/skills/apple-design/references/hig/accessibility.md — keyboard access, labels, hit regions, contrast.
-- .agents/skills/apple-design/references/hig/layout.md — responsive layout and safe areas.
-- .agents/skills/apple-design/references/hig/typography.md — readable type hierarchy.
-- .agents/skills/apple-design/references/hig/color.md — semantic color and contrast.
-- .agents/skills/apple-design/references/hig/tab-bars.md — top-level navigation principles; adapt to the web/Android context.
-- .agents/skills/apple-design/references/cross-platform.md — translate platform conventions to this stack.
-
-## Prioritized full-product audit
-
-| Priority | Area | Source-level concern / review target | Required verification |
+| Risk | Section | Finding / required change | Evidence / acceptance test |
 |---|---|---|---|
-| P0 | Accessibility | Audit every interactive screen for keyboard access, focus visibility, accessible names, error announcements, and contrast | Automated accessibility scan plus keyboard/manual checks |
-| P1 | Mobile navigation | Validate the More menu, active route, small widths, safe areas, and menu dismissal | Browser/device checks at narrow and large widths; keyboard testing |
-| P1 | Dashboard | Dashboard is a large, dense surface with multiple metrics and operational sections | Validate hierarchy around the next action, active work, and exceptions |
-| P1 | Job lifecycle | Jobs screen contains many statuses and lifecycle actions | Verify action priority, status clarity, confirmations, and recoverability |
-| P1 | Signup and login | Multi-step signup has market-dependent content, validation, and account verification states | Test all steps, keyboard order, field errors, loading and recovery states |
-| P1 | Market integrity | Country and currency choices affect available marketplace and pricing behavior | Run country matrix and market-isolation regression tests after UI changes |
-| P2 | Design tokens and CSS | Global stylesheet has accumulated repeated responsive/control overrides | Inventory token use first; consolidate incrementally with visual regression coverage |
-| P2 | Personalization | Check that greetings and account context derive from the authenticated session | Test signed-in, signed-out, and missing-profile states |
-| P2 | Empty/loading/error states | Review listings, dashboard, payments, vehicles, and verification states | Confirm clear next actions and no reliance on color alone |
-| P2 | Android wrapper | Check safe-area behavior, viewport sizing, touch ergonomics, and back navigation | Validate on an actual Android/Capacitor build or emulator |
+| P0 | Authentication, authorization, market integrity | Do not infer security from visual UI. Verify server-side authorization, account ownership, and country/currency isolation for every changed flow. Design refactors must not loosen permissions or market boundaries. | Run market-isolation, country-matrix, auth and lifecycle regressions; inspect API authorization boundaries. Any failure blocks release. |
+| P0 | Accessibility across all screens | Full product-wide keyboard, accessible-name, focus-order, contrast, error-announcement, zoom/text-scaling and screen-reader audit is not complete. | Run an automated accessibility scan on key routes and manually test keyboard + screen reader; record route, browser, viewport and outcomes. |
+| P1 | Mobile navigation | Primary navigation was crowded. It is now reduced to Home, Marketplace, Post a Job and Vehicles; secondary links are in More. Active-page state, safe-area padding, touch sizing and Escape handling exist. Recent refinement gives More links an accessible group name and only returns focus when Escape closes an open menu. | At 320, 375, 430 and 700 px; test keyboard, touch, active routes, India-only Requirements, safe area, page-content obstruction and Escape focus return. Current refinement's CI is pending. |
+| P1 | Jobs / marketplace lifecycle | Dense filters and lifecycle actions risk unclear hierarchy. Filters expose group/pressed semantics. Loading, failure, empty, success and destructive-action messaging still need a full announcement/recovery audit. | Test every status and owner/driver role; confirm messages are announced, actions are understandable, destructive actions are confirmed, and retries do not duplicate state changes. |
+| P1 | Signup | Progress semantics and error alert exist; market-dependent steps, optional research, verification and terms require end-to-end keyboard/focus testing. Step changes should make the new heading and validation feedback discoverable without disrupting screen readers. | Exercise every market and step, invalid form, back/continue, optional step, submission, network failure, verification resend and 200% zoom. Confirm no market/pricing behavior changes. |
+| P1 | Login / session | Shared auth layout improves consistency, but focus, error state, password-manager/autofill, narrow viewport and keyboard operation need runtime checks. | Test valid/invalid credentials, loading and server failure, autofill, mobile keyboard and visible focus. |
+| P1 | Dashboard | Responsive metric grid is implemented. The next action, active work, exceptions and operational information hierarchy remain to be checked with realistic data and zoom. | Review empty, sparse and high-volume accounts at mobile/tablet/desktop widths; ensure cards wrap without horizontal scrolling and links have visible focus. |
+| P1 | Forms, payments, vehicles, requirements, admin | These screens have not had a complete control-by-control audit. Check field labels/help/errors, status communication, confirmation for consequential actions, permission-aware content, and useful empty/loading/error recovery. | Build a route inventory and verify each screen in keyboard, touch and screen-reader passes; validate role/country-specific views. |
+| P2 | Color and typography | Global palette/tokens exist, but actual contrast ratios and text scaling have not been measured across every state. Muted text, disabled states, selected tabs and color-only status cues need particular attention. | Measure text/non-text contrast against WCAG 2.2 AA; test 200% zoom and browser text scaling; never use color alone to convey status. |
+| P2 | Responsive layout and safe areas | Fixed mobile navigation and safe-area spacing exist, but overlap/scroll behavior is not runtime-verified. Check landscape, virtual keyboard, browser chrome and short-height screens. | Device/emulator checks for portrait/landscape, small viewport, keyboard-open forms, safe areas and bottom content reachability. |
+| P2 | Empty/loading/error states | Empty-state and failure recovery patterns need consistent next steps; errors must be announced and loading should not appear as a blank or frozen page. | For each major route, simulate slow network, API error, no data and retry; assert visible, announced message and clear recovery action. |
+| P2 | CSS tokens and cascade | `app/globals.css` has accumulated repeated/overlapping rules and some inline styles remain. Consolidate incrementally only with baseline screenshots and no behavior change. | Inventory duplicate selectors/tokens, add visual regression snapshots, then consolidate in small commits; re-run build and visual tests. |
+| P2 | Personalization | Home greeting now uses the session name with a neutral fallback. Verify missing/blank name, session loading, signed-out and long-name cases. | Test session states and narrow widths; no personal data should leak between sessions. |
+| P2 | Android / Capacitor | Native wrapper-specific viewport, keyboard, back navigation, touch and safe-area behavior is unverified. | Test a built app/emulator, not only responsive browser emulation; validate Android back behavior and keyboard viewport changes. |
+| P3 | Motion and polish | Reduced-motion overrides exist for selected navigation/cards; audit all transitions, loading indicators and animated state changes. | With reduced motion enabled, ensure nonessential motion is removed and state changes remain clear. |
+| P3 | Copy and familiarity | Review labels, button verbs, jargon, and consistent terminology for poster/driver/haulier roles and regional markets. | Content review with representative tasks; preserve legally or commercially meaningful terms. |
+
+## Implemented on `design/apple-hig-foundation`
+
+- Added the pinned Apple Design Skill submodule and root `AGENTS.md` requiring the skill for future UI/UX work.
+- Mobile navigation: four primary destinations, More menu for secondary destinations, active-route semantics, safe-area padding, touch-sized links, visible focus and reduced-motion rules.
+- Mobile More menu: Escape closes an open menu and returns focus to its trigger; the links group now has an accessible name. Current changes are awaiting CI.
+- Dashboard: responsive metric-card grid using shared CSS tokens and focus/hover treatment.
+- Home greeting: session-derived name with neutral fallback.
+- Login: shared responsive authentication layout.
+- Jobs filters: labelled group, button types, `aria-pressed`, wrapping and 44px minimum height.
+- Signup: progressbar role, min/max/current values and step name.
+
+## Latest automated validation evidence
+
+For commit `aa79714938e15ec2a764261bb0e5a102d87eed55`:
+- **TypeScript type-check:** passed in GitHub Actions run `39500380337`.
+- **Next.js production build:** passed in the same run.
+- **Reliability, health, lifecycle/market guards, supported-market isolation, country matrix, QA runner guard, worker lifecycle/claims, Prisma schema/client, clean-database migrations, staging-schema migrations, and read-only QA cleanup inventory:** passed in the same workflow.
+- **Repository/history secret scan:** passed in run `39500380377`.
+- **Automated accessibility scan:** not yet evidenced.
+- **Browser/device visual and keyboard review:** not yet performed.
+- **Full route-by-route QA:** not yet evidenced; existing CI contracts do not substitute for the complete design audit.
+- **Current navigation refinement:** new commit(s) after `aa79714938e15ec2a764261bb0e5a102d87eed55`; must pass their own typecheck/build and secret scan before calling them validated.
 
 ## Release gates
 
-1. Run formatting/lint/typecheck/build commands that are actually defined in the repository and report exact results.
-2. Run the relevant QA contracts, including npm run qa:all, after confirming the environment/dependencies support them.
-3. Add regression coverage for any changed navigation behavior and verify all mobile navigation routes.
-4. Do a browser/device visual review; source inspection alone is not proof of correct rendering.
-5. Keep the work on a review branch and open a PR only when the branch is coherent. Do not merge or deploy without explicit authorization.
+1. Run all repository-defined QA contracts, including `npm run qa:all`, in a supported environment and record exact results.
+2. Add or update regression tests for changed behavior; test mobile navigation across routes and markets.
+3. Run automated accessibility checks and manual keyboard/screen-reader review.
+4. Review screenshots in browser and on a real/emulated Android device at narrow, standard and large viewports; include 200% zoom and reduced motion.
+5. Re-check contrast and all loading, empty, error and success states.
+6. Keep changes on the review branch and PR. Do not merge, change the default branch, deploy, or run destructive production/staging QA without explicit authorization.
 
-## Current limitations
+## Reference index
 
-- No browser or device render has been inspected for this change.
-- No typecheck, build, accessibility scan, or QA suite has been run in this environment yet.
-- The initial full-product findings are source-review targets, not confirmed runtime defects.
-
-
-## Additional implementation progress
-
-- **Personalized welcome:** the signed-in landing screen now uses the authenticated session's display name, with a neutral fallback if it is absent; the hardcoded personal greeting was removed.
-- **Dashboard overview:** the metric cards now use a responsive auto-fit grid and shared design tokens, with a consistent hover and keyboard-focus treatment. This is a presentation-only change; the underlying metric queries and destinations are unchanged.
-- **Login consistency:** the login form now uses the shared `.auth-page` responsive authentication layout so global field sizing, focus styling, and form surface styles apply consistently.
-
-These are source changes awaiting the current commit's typecheck and secret scan, plus browser/device and broader regression validation. No claim of visual/accessibility conformance is made until those checks are performed.
-
-
-- **Mobile menu keyboard handling:** Escape now closes the More menu and restores focus to its trigger; the trigger exposes expanded state and popup semantics.
-- **Job status filters:** filters are labeled as a group, expose their selected state through `aria-pressed`, wrap on narrow screens, and have a minimum 44px height.
-- **Signup progress:** the multi-step progress indicator now exposes the current step, total steps, and step name through progressbar accessibility attributes.
-
-## Additional HIG references applied
-- `references/hig/accessibility.md` — Mobility and Cognitive: keyboard operation, focus continuity, meaningful state announcements.
-- `references/hig/layout.md` — Visual hierarchy, Adaptability, and Guides and safe areas.
-- `references/hig/typography.md` — Ensuring legibility and Conveying hierarchy.
-- `references/hig/tab-bars.md` — Best practices for prioritizing primary navigation; adapted to a web/Android bottom navigation pattern rather than copying native iOS UI.
-- `references/cross-platform.md` — Translate principles to Post2Drive's web and Capacitor environment.
+- `.agents/skills/apple-design/references/hig/accessibility.md` — Mobility, Cognitive, labels, focus, hit regions.
+- `.agents/skills/apple-design/references/hig/layout.md` — Visual hierarchy, Adaptability, Guides and safe areas.
+- `.agents/skills/apple-design/references/hig/typography.md` — Ensuring legibility, Conveying hierarchy, Dynamic Type.
+- `.agents/skills/apple-design/references/hig/color.md` — semantic color and contrast.
+- `.agents/skills/apple-design/references/hig/tab-bars.md` — Best practices for prioritizing primary navigation, adapted for web/Android.
+- `.agents/skills/apple-design/references/hig/entering-data.md` — form entry, validation and feedback.
+- `.agents/skills/apple-design/references/hig/design-principles.md` — product design principles.
+- `.agents/skills/apple-design/references/cross-platform.md` — translating principles across platforms.
