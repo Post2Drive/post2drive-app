@@ -158,7 +158,7 @@ async function PATCHHandler(
 
   // Stage all mutations in memory first. The transaction below acquires the
   // account row as the lifecycle gate before changing either account or user data.
-  const userData: { name?: string; phone?: string; passwordHash?: string } = {};
+  const userData: { name?: string; phone?: string; passwordHash?: string; passwordChangedAt?: Date } = {};
   if (newPassword) {
     if (!currentPassword) {
       return NextResponse.json(
@@ -217,6 +217,7 @@ async function PATCHHandler(
       );
 
     userData.passwordHash = passwordHash;
+    userData.passwordChangedAt = new Date();
   }
 
   if (typeof name === "string") userData.name = name.trim();
