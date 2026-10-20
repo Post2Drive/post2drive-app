@@ -97,6 +97,19 @@ export const authOptions: NextAuthOptions = {
         token.country = (user as any).country;
       }
 
+      // Password changes revoke every previously issued JWT. The policy is
+      // intentionally global per user: all devices must authenticate again.
+      if (token.id) {
+        const authUser = await prisma.user.findUnique({
+          where: { id: String(token.id) },
+          select: { passwordChangedAt: true },
+        });
+        const issuedAtMs = typeof token.iat === "number" ? token.iat * 1000 : null;
+        token.passwordChanged = !authUser ||
+          Boolean(authUser.passwordChangedAt && issuedAtMs !== null &&
+            issuedAtMs < authUser.passwordChangedAt.getTime());
+      }
+
       // Re-check persisted account state on every session refresh. NextAuth's
       // JWT callback must return a JWT, so mark revoked tokens and reject them
       // in the session callback instead of returning null from this callback.
@@ -111,7 +124,7 @@ export const authOptions: NextAuthOptions = {
       return token;
     },
     async session({ session, token }) {
-      if (token.accountDeleted) return null as any;
+      if (token.accountDeleted || token.passwordChanged) return null as any;
 
       if (session.user) {
         (session.user as any).id = token.id;
