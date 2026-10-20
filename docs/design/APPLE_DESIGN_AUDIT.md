@@ -1,6 +1,6 @@
 # Post2Drive Apple Design Skill audit and implementation tracker
 
-**Status:** In progress. Code-bearing commit `118ce3d67ab36ee69b0c258b3f0817165fc56d30` passed Validate run `39502467318` (including the new design-accessibility source contract, TypeScript, Next.js production build, market-isolation/country-matrix contracts, worker and migration checks) and Security Scan run `39502467600`. This tracker update is documentation-only; automated rendered-page accessibility scanning, browser/device validation, and complete screen-by-screen review remain release gates.
+**Status:** In progress. The current branch now includes a shared account-row lock for PATCH/DELETE, a PostgreSQL concurrency regression, and per-user JWT session-version revocation after password changes or account deletion. Validate and Security Scan are running for code-bearing commit `6e89ec0fd04be1d21287084ac97ad58f6d96a3f8`; do not treat these changes as verified until those checks finish. Automated rendered-page accessibility scanning, browser/device validation, and complete screen-by-screen review remain release gates.
 
 ## Standard and method
 
@@ -23,7 +23,7 @@
 |---|---|---|---|
 | P0 | Authentication, authorization, market integrity | Do not infer security from visual UI. Verify server-side authorization, account ownership, and country/currency isolation for every changed flow. Design refactors must not loosen permissions or market boundaries. | Run market-isolation, country-matrix, auth and lifecycle regressions; inspect API authorization boundaries. Any failure blocks release. |
 | P0 | Accessibility across all screens | Full product-wide keyboard, accessible-name, focus-order, contrast, error-announcement, zoom/text-scaling and screen-reader audit is not complete. | Run an automated accessibility scan on key routes and manually test keyboard + screen reader; record route, browser, viewport and outcomes. |
-| P0 | Account mutation concurrency and session revocation | The previously identified account-deletion/PATCH race and password-change session-revocation policy are separate security gates; this design branch has not resolved them. | Document the password-change revocation policy; add server-side concurrency regression coverage for DELETE versus PATCH and session invalidation tests. Release remains blocked until independently verified. |
+| P0 | Account mutation concurrency and session revocation | Implemented on this branch: PATCH and DELETE take the same account-row lock and re-check active state inside the transaction; password changes increment `User.sessionVersion`; JWT validation compares the persisted version and rejects deleted accounts; successful password change signs out and asks the user to sign in again. PostgreSQL concurrency/session-version regression coverage has been added; current-head CI is pending. | Require the new CI race test, migration, TypeScript/build and secret scan to pass; confirm stale tokens return no session. Browser/session integration and independent security review remain release gates. |
 | P1 | Mobile navigation | Primary navigation was crowded. It is now reduced to Home, Marketplace, Post a Job and Vehicles; secondary links are in More. Active-page state, safe-area padding, touch sizing and Escape handling exist. Recent refinement gives More links an accessible group name and only returns focus when Escape closes an open menu. | At 320, 375, 430 and 700 px; test keyboard, touch, active routes, India-only Requirements, safe area, page-content obstruction and Escape focus return. Current refinement's CI is pending. |
 | P1 | Jobs / marketplace lifecycle | Dense filters and lifecycle actions risk unclear hierarchy. Filters expose group/pressed semantics. Loading, failure, empty, success and destructive-action messaging still need a full announcement/recovery audit. | Test every status and owner/driver role; confirm messages are announced, actions are understandable, destructive actions are confirmed, and retries do not duplicate state changes. |
 | P1 | Signup | Progress semantics and error alert exist; market-dependent steps, optional research, verification and terms require end-to-end keyboard/focus testing. Step changes should make the new heading and validation feedback discoverable without disrupting screen readers. | Exercise every market and step, invalid form, back/continue, optional step, submission, network failure, verification resend and 200% zoom. Confirm no market/pricing behavior changes. |
@@ -45,6 +45,8 @@
 - Mobile navigation: four primary destinations, More menu for secondary destinations, active-route semantics, safe-area padding, touch-sized links, visible focus and reduced-motion rules.
 - Mobile More menu: Escape closes an open menu and returns focus to its trigger; the links group now has an accessible name.
 - Global accessibility pass (source-level): darkened positive/warning semantic colors, replaced faint focus outlines with solid focus indicators, and applied reduced-motion preferences globally.
+- Account mutation safety: PATCH and DELETE serialize on a shared `Account` row lock and perform their state checks/writes within the same transaction; deletion revalidates the current password after acquiring the lock.
+- Session revocation policy: changing a password invalidates all existing JWT sessions, including the current one; the UI signs out and returns the user to login with an explanatory message. Account deletion also increments session versions, and JWT validation rejects deleted accounts. Pre-version JWTs fail closed and require sign-in.
 - Status communication: payment success/error and loading states now expose status/alert semantics; vehicle, account-settings, and marketplace loading states are announced; marketplace empty-state, account save/password feedback, and signup verification resend feedback use status announcements.
 - Account recovery: account settings now surface load/save/password failures, provide a retry action when initial loading fails, prevent duplicate save/password submissions while busy, and retain password-manager autocomplete hints.
 - Touch and disclosure semantics: form controls/buttons use a 44px minimum height; the mobile More menu remains in the DOM while collapsed so `aria-controls` always points to an existing element, with an explicit hidden-state rule.
@@ -59,15 +61,17 @@
 
 ## Latest automated validation evidence
 
-For code-bearing commit `118ce3d67ab36ee69b0c258b3f0817165fc56d30`:
+For previous code-bearing commit `118ce3d67ab36ee69b0c258b3f0817165fc56d30`:
 - **TypeScript type-check:** passed in GitHub Actions Validate run `39502467318`.
 - **Next.js production build:** passed in the same run.
-- **Reliability, health, lifecycle/market guards, supported-market isolation, country matrix, QA runner guard, worker lifecycle/claims, Prisma schema/client, clean-database migrations, staging-schema migrations, read-only QA cleanup inventory, and the new design-accessibility source contract:** passed in the same workflow.
+- **Reliability, health, lifecycle/market guards, supported-market isolation, country matrix, QA runner guard, worker lifecycle/claims, Prisma schema/client, clean-database migrations, staging-schema migrations, read-only QA cleanup inventory, and design-accessibility source contract:** passed in the same workflow.
 - **Repository/history secret scan:** passed in run `39502467600`.
-- **Automated rendered-page accessibility scan:** not yet evidenced.
-- **Browser/device visual and keyboard review:** not yet performed.
-- **Full route-by-route QA:** not yet evidenced; CI contracts do not substitute for the complete design audit.
-- **Account deletion/PATCH concurrency and password-change session revocation:** remain separate open security gates and are not claimed as fixed by this design branch.
+
+For current code-bearing commit `6e89ec0fd04be1d21287084ac97ad58f6d96a3f8`:
+- **Validate:** in progress. This run includes the session-version migration and the PostgreSQL account mutation concurrency regression.
+- **Security Scan:** in progress at last check.
+- **Rendered-page accessibility scan, browser/device visual and keyboard review, Android/Capacitor testing, and full route-by-route QA:** not yet evidenced.
+- **Account mutation/session revocation:** implementation and tests are present, but the current-head run must pass before this gate can be considered CI-verified.
 
 ## Release gates
 
