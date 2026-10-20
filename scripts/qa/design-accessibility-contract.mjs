@@ -121,7 +121,16 @@ assert.match(profileApi, /target\.country !== viewer\.country \|\| target\.curre
 assert.match(profileApi, /deletionRequestedAt: null/, "Deleted accounts must not be exposed through profile lookup");
 assert.doesNotMatch(profileApi, /passwordHash|marketResearch|email: true|phone: true|insuranceDocumentUrl|v5cDocumentUrl/, "Profile API must not select private account, contact or vehicle-document data");
 
-const login = read("app/login/page.tsx");
+const profilePage = read("app/profile/[id]/page.tsx");
+assert.match(profilePage, /<main/, "Public profile page must expose a main landmark");
+assert.match(profilePage, /role="status" aria-live="polite"/, "Profile loading must be announced");
+assert.match(profilePage, /role="alert"/, "Profile errors must be announced");
+assert.match(profilePage, /Retry loading profile/, "Profile failures must offer retry");
+
+const pricing = read("components/subscription-pricing.tsx");
+assert.match(pricing, /<h3[^>]*>\{plan\.name\}<\/h3>/, "Pricing tiers must have semantic headings");
+assert.doesNotMatch(pricing, /#6B7C93|#102A43|#D9E2EC|#F4F7FA|#00695C|#EAF4F3/, "Pricing cards must use shared design tokens instead of hard-coded theme colors");
+\nconst login = read("app/login/page.tsx");
 assert.match(login, /autoComplete="email"/, "Login email must support autofill");
 assert.match(login, /autoComplete="current-password"/, "Login password must support password managers");
 
