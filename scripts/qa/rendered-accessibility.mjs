@@ -182,7 +182,13 @@ try {
           failNextLoad = false;
           await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "Synthetic QA outage" }) });
         } else {
-          await route.continue();
+          // Make the recovery response deterministic: this test is about the UI
+          // leaving its error state, not the live database's job inventory.
+          await route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify({ jobs: [] }),
+          });
         }
       });
       await page.goto(new URL("/jobs", baseURL).toString(), { waitUntil: "networkidle" });
@@ -248,11 +254,23 @@ try {
   }
 } finally {
   await browser.close();
-  if (vehicleId) await prisma.vehicle.deleteMany({ where: { id: vehicleId } }).catch(() => {});
-  if (jobId) await prisma.job.deleteMany({ where: { id: jobId } }).catch(() => {});
-  if (completedJobId) await prisma.job.deleteMany({ where: { id: completedJobId } }).catch(() => {});
-  if (foreignAccountId) await prisma.account.deleteMany({ where: { id: foreignAccountId } }).catch(() => {});
-  if (accountId) await prisma.account.deleteMany({ where: { id: accountId } }).catch(() => {});
+  if (vehicleId) await prisma.vehicle.deleteMany({ where: { id: vehicleId } }).catch(error => failures.push(`QA vehicle cleanup failed: ${error instanceof Error ? error.message : String(error)}`));
+  const fixtureJobIds = [jobId, completedJobId].filter((id): id is string => Boolean(id));
+  if (fixtureJobIds.length) {
+    try {
+      // Bid and Rating do not cascade on Job deletion. Remove them explicitly
+      // before deleting fixtures so Account cleanup cannot leave FK violations.
+      await prisma.$transaction([
+        prisma.bid.deleteMany({ where: { jobId: { in: fixtureJobIds } } }),
+        prisma.rating.deleteMany({ where: { jobId: { in: fixtureJobIds } } }),
+        prisma.job.deleteMany({ where: { id: { in: fixtureJobIds } } }),
+      ]);
+    } catch (error) {
+      failures.push(`QA job fixture cleanup failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+  if (foreignAccountId) await prisma.account.deleteMany({ where: { id: foreignAccountId } }).catch(error => failures.push(`QA foreign account cleanup failed: ${error instanceof Error ? error.message : String(error)}`));
+  if (accountId) await prisma.account.deleteMany({ where: { id: accountId } }).catch(error => failures.push(`QA account cleanup failed: ${error instanceof Error ? error.message : String(error)}`));
   await prisma.$disconnect();
 }
 
