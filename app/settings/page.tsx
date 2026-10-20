@@ -114,14 +114,14 @@ export default function SettingsPage() {
   if (loadError || !account) return <main style={{ maxWidth: 500, padding: 24 }}><h1>Account settings</h1><p role="alert">{loadError || "Account settings are unavailable."}</p><button type="button" onClick={() => void loadAccount()}>Try again</button></main>;
 
   return (
-    <div style={{ maxWidth: 500 }}>
+    <main style={{ maxWidth: 500, padding: "0 16px 48px" }}>
       <p>
         <Link href="/jobs" className="button-link button-link-secondary">← Back to jobs</Link>
       </p>
       <h1>Account settings</h1>
       <p style={{ color: "var(--color-muted)" }}>{account.displayId}</p>
 
-      <h3>Profile</h3>
+      <h2>Profile</h2>
       <form onSubmit={handleSave} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <label>
           Your name
@@ -157,7 +157,7 @@ export default function SettingsPage() {
         <button type="submit" disabled={saving}>{saving ? "Saving…" : "Save"}</button>
       </form>
 
-      <h3 style={{ marginTop: 32 }}>Change password</h3>
+      <h2 style={{ marginTop: 32 }}>Change password</h2>
       <form onSubmit={handlePasswordChange} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <label>
           Current password
@@ -183,13 +183,13 @@ export default function SettingsPage() {
         <button type="submit" disabled={passwordBusy}>{passwordBusy ? "Updating…" : "Change password"}</button>
       </form>
 
-      <h3 style={{ marginTop: 32 }}>Subscription</h3>
+      <h2 style={{ marginTop: 32 }}>Subscription</h2>
       <p style={{ color: "var(--color-muted)" }}>
         UK paid access is offered in 7-day periods after the promotional period ends. Payment processing is not yet enabled in this rebuild.
       </p>
 
-      <section style={{ marginTop: 36, padding: 18, border: "1px solid #E2B9B9", borderRadius: 12, background: "#FFF8F8" }}>
-        <h3 style={{ marginTop: 0, color: "var(--color-danger)" }}>Delete account</h3>
+      <section aria-labelledby="delete-account-heading" style={{ marginTop: 36, padding: 18, border: "1px solid var(--color-danger)", borderRadius: 12, background: "var(--color-surface)" }}>
+        <h2 id="delete-account-heading" style={{ marginTop: 0, color: "var(--color-danger)" }}>Delete account</h2>
         <p>You'll be signed out and your personal account details will be anonymised. Limited job, incident, payment and audit records may remain to protect other users and meet legal obligations. This cannot be undone through the app.</p>
         <form onSubmit={async (event) => {
           event.preventDefault(); setDeleteMessage(""); setDeleteBusy(true);
@@ -203,11 +203,11 @@ export default function SettingsPage() {
           finally { setDeleteBusy(false); }
         }} style={{ display: "grid", gap: 10 }}>
           <label>Current password<input type="password" required autoComplete="current-password" value={deleteForm.currentPassword} onChange={(e) => setDeleteForm({ ...deleteForm, currentPassword: e.target.value })} /></label>
-          <label>Type DELETE to confirm<input required value={deleteForm.confirm} onChange={(e) => setDeleteForm({ ...deleteForm, confirm: e.target.value })} /></label>
+          <label>Type DELETE to confirm<input required autoComplete="off" autoCapitalize="characters" spellCheck={false} value={deleteForm.confirm} onChange={(e) => setDeleteForm({ ...deleteForm, confirm: e.target.value })} /></label>
           {deleteMessage && <p role="alert">{deleteMessage}</p>}
           <button type="submit" disabled={deleteBusy || deleteForm.confirm !== "DELETE"} style={{ background: "var(--color-danger)", borderColor: "var(--color-danger)" }}>{deleteBusy ? "Deleting…" : "Permanently anonymise account"}</button>
         </form>
       </section>
-    </div>
+    </main>
   );
 }
