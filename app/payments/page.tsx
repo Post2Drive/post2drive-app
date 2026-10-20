@@ -235,10 +235,12 @@ export default function PaymentsPage() {
         </div>
 
         <button
-          onClick={load}
+          type="button"
+          onClick={() => void load()}
+          disabled={loading}
           style={secondaryButton}
         >
-          Refresh
+          {loading ? "Refreshing…" : "Refresh"}
         </button>
       </div>
 
@@ -350,6 +352,8 @@ export default function PaymentsPage() {
                     </span>
                   ) : (
                     <button
+                      type="button"
+                      aria-label={`Mark payment as paid for ${job.pickup} to ${job.dropoff}`}
                       onClick={() => markPaid(job.id)}
                       disabled={busy === job.id}
                       style={primaryButton}
@@ -454,6 +458,8 @@ export default function PaymentsPage() {
                     </span>
                   ) : (
                     <button
+                      type="button"
+                      aria-label={`Confirm payment receipt for ${job.pickup} to ${job.dropoff}`}
                       onClick={() => confirmReceived(job.id)}
                       disabled={
                         busy === job.id ||
@@ -542,7 +548,6 @@ const pageStyle: React.CSSProperties = {
   maxWidth: 1000,
   margin: "0 auto",
   padding: "24px 16px 60px",
-  fontFamily: "Arial, sans-serif",
 };
 
 const summaryGrid: React.CSSProperties = {
@@ -554,18 +559,18 @@ const summaryGrid: React.CSSProperties = {
 };
 
 const summaryCard: React.CSSProperties = {
-  border: "1px solid #e5e7eb",
+  border: "1px solid var(--color-border)",
   borderRadius: 10,
   padding: 16,
-  background: "#fff",
+  background: "var(--color-surface)",
 };
 
 const sectionStyle: React.CSSProperties = {
   marginTop: 22,
-  border: "1px solid #e5e7eb",
+  border: "1px solid var(--color-border)",
   borderRadius: 12,
   padding: 18,
-  background: "#fff",
+  background: "var(--color-surface)",
 };
 
 const sectionHeading: React.CSSProperties = {
@@ -577,7 +582,7 @@ const summaryLine: React.CSSProperties = {
   display: "flex",
   gap: 14,
   flexWrap: "wrap",
-  color: "#555",
+  color: "var(--color-muted)",
   fontSize: 14,
   paddingBottom: 14,
   borderBottom: "1px solid var(--color-border)",
