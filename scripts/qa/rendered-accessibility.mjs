@@ -10,7 +10,7 @@ assert.equal(process.env.CI, "true", "Rendered browser QA must run only in CI.")
 const databaseUrl = new URL(process.env.DATABASE_URL || "");
 assert.ok(["localhost", "127.0.0.1"].includes(databaseUrl.hostname), "E2E fixture must use local CI PostgreSQL");
 const baseURL = process.env.POST2DRIVE_BASE_URL || "http://localhost:3000";
-const publicRoutes = ["/", "/login", "/signup"];
+const publicRoutes = ["/", "/login", "/signup", "/pricing", "/privacy", "/terms", "/verify-email"];
 const authenticatedRoutes = ["/", "/dashboard", "/jobs", "/jobs/new", "/vehicles", "/payments", "/settings", "/requirements", "/admin", "/admin/performance", "/admin/testers", "/admin/research", "/admin/incidents"];
 const viewports = [
   { width: 320, height: 800, label: "small mobile" },
@@ -26,6 +26,7 @@ let jobId;
 let completedJobId;
 let vehicleId;
 const testId = randomUUID();
+const displayId = `QA-E2E-${testId}`;
 const email = "qa-rendered-browser@post2drive.invalid";
 const password = "QA-test-only-password-42!";
 
@@ -71,7 +72,7 @@ try {
     data: {
       type: "both",
       companyName: "QA rendered accessibility fixture",
-      displayId: `QA-E2E-${testId}`,
+      displayId,
       country: "IN",
       currency: "INR",
       users: {
@@ -117,6 +118,7 @@ try {
     const routesForViewport = [
       ...authenticatedRoutes,
       ...(jobId ? [`/jobs/${jobId}/edit`, `/jobs/${jobId}/incidents`] : []),
+      `/profile/${displayId}`,
     ];
     for (const route of routesForViewport) {
       await scanRoute(page, route, viewport);
