@@ -40,11 +40,14 @@ assert.match(nav, /aria-controls="mobile-more-menu"/, "More disclosure must iden
 const jobs = read("app/jobs/page.tsx");
 assert.match(jobs, /aria-pressed=\{tab === t\.key\}/, "Job filters must expose their selected state");
 assert.match(jobs, /aria-label="Filter jobs by status"/, "Job filters must have an accessible group name");
+assert.match(jobs, /role="status" aria-live="polite">Loading jobs/, "Marketplace loading state must be announced");
+assert.match(jobs, /role="status">No jobs in this category/, "Marketplace empty state must be exposed as status");
 
 const signup = read("app/signup/page.tsx");
 assert.match(signup, /role="progressbar"/, "Signup progress must expose progressbar semantics");
 assert.match(signup, /aria-valuenow=\{step \+ 1\}/, "Signup progress must expose the current step");
 assert.match(signup, /role="alert"/, "Signup errors must be announced");
+assert.match(signup, /role="status" aria-live="polite">\{resendMessage\}/, "Signup verification feedback must be announced");
 
 const payments = read("app/payments/page.tsx");
 assert.match(payments, /role="status" aria-live="polite"/, "Payment success/loading feedback must be announced");
