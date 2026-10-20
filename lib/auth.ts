@@ -83,6 +83,7 @@ export const authOptions: NextAuthOptions = {
           accountType: "both",
           currency: user.account.currency,
           country: user.account.country,
+          passwordChangedAt: user.passwordChangedAt?.getTime() ?? null,
         } as any;
       },
     }),
@@ -95,19 +96,22 @@ export const authOptions: NextAuthOptions = {
         token.accountType = (user as any).accountType;
         token.currency = (user as any).currency;
         token.country = (user as any).country;
+        token.passwordChangedAt = (user as any).passwordChangedAt ?? null;
       }
 
-      // Password changes revoke every previously issued JWT. The policy is
-      // intentionally global per user: all devices must authenticate again.
+      // Compare the timestamp snapshot embedded at sign-in with the persisted
+      // value on every JWT refresh. This revokes legacy and active sessions on
+      // all devices without relying on second-resolution JWT iat timestamps.
       if (token.id) {
         const authUser = await prisma.user.findUnique({
           where: { id: String(token.id) },
           select: { passwordChangedAt: true },
         });
-        const issuedAtMs = typeof token.iat === "number" ? token.iat * 1000 : null;
+        const currentPasswordChangedAt = authUser?.passwordChangedAt?.getTime() ?? null;
+        const tokenPasswordChangedAt =
+          typeof token.passwordChangedAt === "number" ? token.passwordChangedAt : null;
         token.passwordChanged = !authUser ||
-          Boolean(authUser.passwordChangedAt && issuedAtMs !== null &&
-            issuedAtMs < authUser.passwordChangedAt.getTime());
+          tokenPasswordChangedAt !== currentPasswordChangedAt;
       }
 
       // Re-check persisted account state on every session refresh. NextAuth's
