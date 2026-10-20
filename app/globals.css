@@ -1,6 +1,6 @@
 :root {
   --color-primary: #102A43;
-  --color-primary-action: #1976D2;
+  --color-primary-action: #1769AA;
   --color-primary-action-hover: #1565C0;
   --color-positive: #00796B;
   --color-warning: #8A5A00;
@@ -9,7 +9,7 @@
   --color-background: #F4F7FA;
   --color-surface: #FFFFFF;
   --color-text: #172B4D;
-  --color-muted: #6B7C93;
+  --color-muted: #5E7187;
   --color-border: #D9E2EC;
 
   --radius-sm: 6px;
