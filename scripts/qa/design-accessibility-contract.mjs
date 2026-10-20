@@ -63,6 +63,7 @@ assert.match(signup, /<h2 ref=\{stepHeadingRef\} tabIndex=\{-1\}/, "Signup step 
 const payments = read("app/payments/page.tsx");
 assert.match(payments, /role="status" aria-live="polite"/, "Payment success/loading feedback must be announced");
 assert.match(payments, /role="alert"/, "Payment errors must be announced");
+assert.match(payments, /function Empty\(\{ text \}: \{ text: string \}\)[\s\S]*?role="status"[\s\S]*?color: "var\(--color-muted\)"/, "Payment empty states must be announced with readable muted text");
 
 const vehicles = read("app/vehicles/page.tsx");
 assert.match(vehicles, /role="status">No vehicles registered yet\./, "Vehicle empty state must be announced as status");
