@@ -142,7 +142,7 @@ async function PATCHHandler(req: Request) {
         return { status: 400, error: "New password must be at least 8 characters." } as const;
       }
       const passwordHash = await bcrypt.hash(newPassword, 10);
-      await tx.user.update({ where: { id: userId }, data: { passwordHash } });
+      await tx.user.update({ where: { id: userId }, data: { passwordHash, sessionVersion: { increment: 1 } } });
     }
 
     if (name || phone) {
@@ -244,6 +244,7 @@ async function DELETEHandler(req: Request) {
           email: `deleted+${suffix}@post2drive.invalid`,
           phone: "",
           passwordHash: anonymizedPasswordHash,
+          sessionVersion: { increment: 1 },
           emailVerifiedAt: null,
         },
       });
