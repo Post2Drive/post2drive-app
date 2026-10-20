@@ -421,7 +421,7 @@ try {
          WHERE id = 'account-1' AND deletion_requested_at IS NULL RETURNING id`,
       );
       if (claimed.length !== 1) return false;
-      await tx.$queryRawUnsafe("SELECT pg_sleep(0.1)");
+      await tx.$queryRawUnsafe("SELECT 1 FROM pg_sleep(0.1)");
       await tx.$executeRawUnsafe(
         `UPDATE ${lifecycleTable}
          SET company_name = 'Patched company', personal_name = 'Patched user',
