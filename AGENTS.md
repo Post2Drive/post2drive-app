@@ -2,7 +2,7 @@
 
 ## Product-wide design standard
 
-For every UI/UX task, design review, visual change, or front-end refactor in Post2Drive, read and apply the Apple Design Skill at `.agents/skills/apple-design/SKILL.md`. The skill is a design standard for transferable principles; Post2Drive is a Next.js web application with an Android/Capacitor target, so do not impose native-iOS-only conventions where they do not fit the platform.
+For every UI/UX task, design review, visual change, or front-end refactor in Post2Drive, read and apply the Apple Design Skill at `.agents/skills/apple-design/SKILL.md`. After checkout, initialize submodules with `git submodule update --init --recursive` if the skill directory is absent. The skill is a design standard for transferable principles; Post2Drive is a Next.js web application with an Android/Capacitor target, so do not impose native-iOS-only conventions where they do not fit the platform.
 
 Before a review or substantial UI change, read the skill's required references:
 - `references/hig/accessibility.md`
