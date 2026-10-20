@@ -14,7 +14,7 @@ export default function PricingPage() {
           style={{
             margin: 0,
             fontSize: 32,
-            color: "#102A43",
+            color: "var(--color-primary)",
           }}
         >
           Pricing by market
@@ -23,7 +23,7 @@ export default function PricingPage() {
         <p
           style={{
             margin: "8px 0 0",
-            color: "#6B7C93",
+            color: "var(--color-muted)",
           }}
         >
           The UK 7-day model applies across all supported markets except India, using each market’s local currency and the same numeric price tiers. India pricing remains separate.
