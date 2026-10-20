@@ -255,7 +255,7 @@ try {
 } finally {
   await browser.close();
   if (vehicleId) await prisma.vehicle.deleteMany({ where: { id: vehicleId } }).catch(error => failures.push(`QA vehicle cleanup failed: ${error instanceof Error ? error.message : String(error)}`));
-  const fixtureJobIds = [jobId, completedJobId].filter((id): id is string => Boolean(id));
+  const fixtureJobIds = [jobId, completedJobId].filter(Boolean);
   if (fixtureJobIds.length) {
     try {
       // Bid and Rating do not cascade on Job deletion. Remove them explicitly
