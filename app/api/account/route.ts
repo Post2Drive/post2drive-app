@@ -114,6 +114,22 @@ async function PATCHHandler(
     newPassword,
   } = body as any;
 
+  // Validate user-controlled values before bcrypt or Prisma receives them.
+  const boundedString = (value: unknown, maxLength: number) =>
+    value === undefined || (typeof value === "string" && value.length <= maxLength);
+  if (
+    !boundedString(name, 120) ||
+    !boundedString(phone, 40) ||
+    !boundedString(companyName, 160) ||
+    !boundedString(country, 2) ||
+    !boundedString(currency, 3) ||
+    !boundedString(currentPassword, 1024) ||
+    !boundedString(newPassword, 1024) ||
+    (marketingConsent !== undefined && typeof marketingConsent !== "boolean")
+  ) {
+    return NextResponse.json({ error: "One or more settings fields are invalid." }, { status: 400 });
+  }
+
   const account =
     await prisma.account.findUnique({
       where: {
@@ -207,23 +223,20 @@ async function PATCHHandler(
     });
   }
 
-  if (name || phone) {
+  const userData: { name?: string; phone?: string } = {};
+  if (typeof name === "string") userData.name = name.trim();
+  if (typeof phone === "string") userData.phone = phone.trim();
+  if (Object.keys(userData).length > 0) {
     await prisma.user.update({
-      where: {
-        id: userId,
-      },
-      data: {
-        ...(name && { name }),
-        ...(phone && { phone }),
-      },
+      where: { id: userId },
+      data: userData,
     });
   }
 
   const accountData: any = {};
 
-  if (companyName) {
-    accountData.companyName =
-      companyName;
+  if (typeof companyName === "string") {
+    accountData.companyName = companyName.trim();
   }
 
   if (
