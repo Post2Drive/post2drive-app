@@ -279,7 +279,15 @@ async function DELETEHandler(req: Request) {
   if (!accountId || !userId) return NextResponse.json({ error: "Invalid session." }, { status: 401 });
 
   let body: { currentPassword?: unknown; confirm?: unknown };
-  try { body = await req.json(); } catch { return NextResponse.json({ error: "Invalid request body." }, { status: 400 }); }
+  try {
+    const parsed = await req.json();
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
+    }
+    body = parsed as { currentPassword?: unknown; confirm?: unknown };
+  } catch {
+    return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
+  }
   if (body.confirm !== "DELETE") return NextResponse.json({ error: "Type DELETE to confirm account deletion." }, { status: 400 });
   if (typeof body.currentPassword !== "string" || !body.currentPassword) return NextResponse.json({ error: "Your current password is required." }, { status: 400 });
 
