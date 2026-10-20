@@ -57,6 +57,12 @@ const payments = read("app/payments/page.tsx");
 assert.match(payments, /role="status" aria-live="polite"/, "Payment success/loading feedback must be announced");
 assert.match(payments, /role="alert"/, "Payment errors must be announced");
 
+const settings = read("app/settings/page.tsx");
+assert.match(settings, /Could not load account settings\. Try again\./, "Account settings loading must have a recoverable error");
+assert.match(settings, /role="alert">\{saveError\}/, "Account save errors must be announced");
+assert.match(settings, /role="alert">\{pwError\}/, "Password update errors must be announced");
+assert.match(settings, /disabled=\{saving\}/, "Duplicate account-save submissions must be prevented while saving");
+
 const login = read("app/login/page.tsx");
 assert.match(login, /autoComplete="email"/, "Login email must support autofill");
 assert.match(login, /autoComplete="current-password"/, "Login password must support password managers");
