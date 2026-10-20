@@ -623,3 +623,10 @@ main table tr:hover td {
     scroll-behavior: auto !important;
   }
 }
+
+@media (max-width: 700px) {
+  .mobile-nav-more.is-active {
+    background: var(--color-action-soft);
+    color: var(--color-primary-action);
+  }
+}
