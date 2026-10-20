@@ -733,7 +733,7 @@ export default function JobsPage() {
       </div>
 
       {message && (
-        <p>{message}</p>
+        <p role="status" aria-live="polite">{message}</p>
       )}
 
       {accountCountry && (
@@ -748,16 +748,13 @@ export default function JobsPage() {
       )}
 
       {loading && (
-        <p>Loading...</p>
+        <p role="status" aria-live="polite">Loading jobs…</p>
       )}
 
       {!loading &&
         visibleJobs.length ===
           0 && (
-          <p>
-            No jobs in this
-            category.
-          </p>
+          <p role="status">No jobs in this category.</p>
         )}
 
       <ul
