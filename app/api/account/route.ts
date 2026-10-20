@@ -75,7 +75,7 @@ async function GETHandler() {
       },
     });
 
-  if (!account || account.deletionRequestedAt) {
+  if (!account) {
     return NextResponse.json(
       { error: "Account not found." },
       { status: 404 }
@@ -128,7 +128,7 @@ async function PATCHHandler(
       },
     });
 
-  if (!account) {
+  if (!account || account.deletionRequestedAt) {
     return NextResponse.json(
       { error: "Account not found." },
       { status: 404 }
