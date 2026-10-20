@@ -1,6 +1,6 @@
 # Post2Drive Apple Design Skill audit and implementation tracker
 
-**Status:** In progress. Security changes passed Validate run `39504055744` and Security Scan run `39504055778` at code-bearing commit `1a628bdcbd8bf0fb1fef87a494f72af949eac812`. Follow-up accessibility changes now add recoverable vehicle loading, status semantics for the vehicle empty state, and focus movement on signup/job-posting wizard step changes; these newest changes need their own CI run. Automated rendered-page accessibility scanning, browser/device validation, and complete screen-by-screen review remain release gates.
+**Status:** In progress. Security changes passed Validate run `39504055744` and Security Scan run `39504055778` at code-bearing commit `1a628bdcbd8bf0fb1fef87a494f72af949eac812`. Follow-up accessibility changes now add recoverable vehicle and payment loading, status semantics for vehicle/payment empty states, and focus movement on signup/job-posting wizard step changes; these newest changes need their own CI run. Automated rendered-page accessibility scanning, browser/device validation, and complete screen-by-screen review remain release gates.
 
 ## Standard and method
 
@@ -58,6 +58,7 @@
 - Login: shared responsive authentication layout.
 - Jobs filters: labelled group, button types, `aria-pressed`, wrapping and 44px minimum height.
 - Vehicle onboarding: separate loading failure from submission errors, provide a retry action, expose the empty state as a status, and use a 44px submit target.
+- Payments: add a retry action when the initial load fails, announce refresh/loading state, and expose empty-result cards as statuses with the shared readable muted-text token.
 - Multi-step forms: signup and job-posting wizards move focus to the newly rendered step heading, making progress changes discoverable to keyboard and assistive-technology users.
 - Signup: progressbar role, min/max/current values and step name.
 
