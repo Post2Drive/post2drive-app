@@ -72,7 +72,7 @@ export default function SettingsPage() {
     setPwForm({ currentPassword: "", newPassword: "" });
   }
 
-  if (!account) return <p>Loading...</p>;
+  if (!account) return <p role="status" aria-live="polite">Loading account settings…</p>;
 
   return (
     <div style={{ maxWidth: 500 }}>
@@ -113,7 +113,7 @@ export default function SettingsPage() {
           />
           I'd like to hear about other offers and updates
         </label>
-        {message && <p>{message}</p>}
+        {message && <p role="status" aria-live="polite">{message}</p>}
         <button type="submit">Save</button>
       </form>
 
@@ -123,6 +123,7 @@ export default function SettingsPage() {
           Current password
           <input
             type="password"
+            autoComplete="current-password"
             value={pwForm.currentPassword}
             onChange={(e) => setPwForm({ ...pwForm, currentPassword: e.target.value })}
           />
@@ -131,12 +132,13 @@ export default function SettingsPage() {
           New password
           <input
             type="password"
+            autoComplete="new-password"
             minLength={8}
             value={pwForm.newPassword}
             onChange={(e) => setPwForm({ ...pwForm, newPassword: e.target.value })}
           />
         </label>
-        {pwMessage && <p>{pwMessage}</p>}
+        {pwMessage && <p role="status" aria-live="polite">{pwMessage}</p>}
         <button type="submit">Change password</button>
       </form>
 
