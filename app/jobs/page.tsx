@@ -645,7 +645,7 @@ export default function JobsPage() {
         );
 
   return (
-    <div
+    <main
       style={{
         maxWidth: 760,
       }}
@@ -1646,6 +1646,6 @@ export default function JobsPage() {
           }
         )}
       </ul>
-    </div>
+    </main>
   );
 }
