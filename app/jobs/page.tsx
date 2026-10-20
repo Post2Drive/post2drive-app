@@ -693,36 +693,38 @@ export default function JobsPage() {
       </div>
 
       <div
+        role="group"
+        aria-label="Filter jobs by status"
         style={{
           display: "flex",
+          flexWrap: "wrap",
           gap: 4,
-          borderBottom:
-            "1px solid #ccc",
+          borderBottom: "1px solid var(--color-border)",
           marginBottom: 12,
         }}
       >
         {TABS.map((t) => (
           <button
             key={t.key}
-            onClick={() =>
-              setTab(t.key)
-            }
+            type="button"
+            aria-pressed={tab === t.key}
+            onClick={() => setTab(t.key)}
             style={{
-              padding:
-                "6px 12px",
+              minHeight: 44,
+              padding: "10px 14px",
               border: "none",
-              borderBottom:
-                tab === t.key
-                  ? "2px solid #333"
-                  : "2px solid transparent",
-              background:
-                "none",
-              fontWeight:
-                tab === t.key
-                  ? 700
-                  : 400,
-              cursor:
-                "pointer",
+              borderBottom: tab === t.key
+                ? "2px solid var(--color-primary-action)"
+                : "2px solid transparent",
+              background: tab === t.key
+                ? "var(--color-action-soft)"
+                : "transparent",
+              color: tab === t.key
+                ? "var(--color-primary-action)"
+                : "var(--color-text)",
+              borderRadius: "8px 8px 0 0",
+              fontWeight: tab === t.key ? 700 : 500,
+              cursor: "pointer",
             }}
           >
             {t.label}
