@@ -369,6 +369,70 @@ try {
   ]);
   assert.equal(claims[0].length + claims[1].length, 1,
     "two concurrent transitions must yield exactly one successful atomic claim");
+  // Exercise the account-first lifecycle gate against PostgreSQL itself. The
+  // two transactions intentionally overlap; regardless of winner, DELETE must
+  // leave the final row anonymized and a late PATCH must not restore PII.
+  const lifecycleFixture = `account_lifecycle_fixture_${process.pid}_${Date.now()}`;
+  const lifecycleTable = `"${lifecycleFixture}"`;
+  await prisma.$executeRawUnsafe(`CREATE TABLE ${lifecycleTable} (
+    id text PRIMARY KEY,
+    deletion_requested_at timestamptz NULL,
+    company_name text NOT NULL,
+    personal_name text NOT NULL,
+    password_hash text NOT NULL,
+    password_changed_at timestamptz NULL
+  )`);
+  try {
+    await prisma.$executeRawUnsafe(
+      `INSERT INTO ${lifecycleTable} (id, company_name, personal_name, password_hash)
+       VALUES ('account-1', 'Original company', 'Original user', 'old-hash')`,
+    );
+    const patch = prisma.$transaction(async (tx) => {
+      const claimed = await tx.$queryRawUnsafe(
+        `UPDATE ${lifecycleTable} SET company_name = company_name
+         WHERE id = 'account-1' AND deletion_requested_at IS NULL RETURNING id`,
+      );
+      if (claimed.length !== 1) return false;
+      await tx.$queryRawUnsafe("SELECT pg_sleep(0.1)");
+      await tx.$executeRawUnsafe(
+        `UPDATE ${lifecycleTable}
+         SET company_name = 'Patched company', personal_name = 'Patched user',
+             password_hash = 'new-hash', password_changed_at = NOW()
+         WHERE id = 'account-1'`,
+      );
+      return true;
+    });
+    const deletion = prisma.$transaction(async (tx) => {
+      const claimed = await tx.$queryRawUnsafe(
+        `UPDATE ${lifecycleTable}
+         SET deletion_requested_at = NOW()
+         WHERE id = 'account-1' AND deletion_requested_at IS NULL RETURNING id`,
+      );
+      if (claimed.length !== 1) return false;
+      await tx.$executeRawUnsafe(
+        `UPDATE ${lifecycleTable}
+         SET company_name = 'Deleted account', personal_name = 'Deleted user',
+             password_hash = 'anonymized-hash', password_changed_at = NOW()
+         WHERE id = 'account-1'`,
+      );
+      return true;
+    });
+    const [patchWon, deleteWon] = await Promise.all([patch, deletion]);
+    assert.ok(patchWon || deleteWon, "at least one lifecycle transition must win");
+    assert.equal(deleteWon, true, "DELETE must win or follow PATCH after waiting for the account row");
+    const finalRows = await prisma.$queryRawUnsafe(
+      `SELECT deletion_requested_at, company_name, personal_name, password_hash
+       FROM ${lifecycleTable} WHERE id = 'account-1'`,
+    );
+    assert.equal(finalRows.length, 1);
+    assert.ok(finalRows[0].deletion_requested_at, "final state must be pending deletion");
+    assert.equal(finalRows[0].company_name, "Deleted account");
+    assert.equal(finalRows[0].personal_name, "Deleted user");
+    assert.equal(finalRows[0].password_hash, "anonymized-hash");
+    console.log("Isolated PostgreSQL account lifecycle fixture passed: overlapping PATCH/DELETE leaves anonymized final state.");
+  } finally {
+    await prisma.$executeRawUnsafe(`DROP TABLE IF EXISTS ${lifecycleTable}`).catch(() => {});
+  }
   console.log("Isolated PostgreSQL security fixtures passed: cross-account claim rejected; concurrent lifecycle claim has one winner.");
 } finally {
   await prisma.$executeRawUnsafe(`DROP TABLE IF EXISTS ${table}`).catch(() => {});
