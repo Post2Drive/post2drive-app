@@ -1,6 +1,6 @@
 # Post2Drive Apple Design Skill audit and implementation tracker
 
-**Status:** In progress. The latest previously verified audit baseline, `ac6163710f4ef8e7e215756626e4a8bca0fb3e11`, passed the repository Validate workflow (including TypeScript, Next.js production build, market-isolation/country-matrix contracts, worker/migration checks) and secret scan. Subsequent accessibility-focused CSS and screen-state changes are awaiting their own checks. Automated accessibility scanning, browser/device validation, and complete screen-by-screen review remain release gates.
+**Status:** In progress. Code-bearing commit `118ce3d67ab36ee69b0c258b3f0817165fc56d30` passed Validate run `39502467318` (including the new design-accessibility source contract, TypeScript, Next.js production build, market-isolation/country-matrix contracts, worker and migration checks) and Security Scan run `39502467600`. This tracker update is documentation-only; automated rendered-page accessibility scanning, browser/device validation, and complete screen-by-screen review remain release gates.
 
 ## Standard and method
 
@@ -23,6 +23,7 @@
 |---|---|---|---|
 | P0 | Authentication, authorization, market integrity | Do not infer security from visual UI. Verify server-side authorization, account ownership, and country/currency isolation for every changed flow. Design refactors must not loosen permissions or market boundaries. | Run market-isolation, country-matrix, auth and lifecycle regressions; inspect API authorization boundaries. Any failure blocks release. |
 | P0 | Accessibility across all screens | Full product-wide keyboard, accessible-name, focus-order, contrast, error-announcement, zoom/text-scaling and screen-reader audit is not complete. | Run an automated accessibility scan on key routes and manually test keyboard + screen reader; record route, browser, viewport and outcomes. |
+| P0 | Account mutation concurrency and session revocation | The previously identified account-deletion/PATCH race and password-change session-revocation policy are separate security gates; this design branch has not resolved them. | Document the password-change revocation policy; add server-side concurrency regression coverage for DELETE versus PATCH and session invalidation tests. Release remains blocked until independently verified. |
 | P1 | Mobile navigation | Primary navigation was crowded. It is now reduced to Home, Marketplace, Post a Job and Vehicles; secondary links are in More. Active-page state, safe-area padding, touch sizing and Escape handling exist. Recent refinement gives More links an accessible group name and only returns focus when Escape closes an open menu. | At 320, 375, 430 and 700 px; test keyboard, touch, active routes, India-only Requirements, safe area, page-content obstruction and Escape focus return. Current refinement's CI is pending. |
 | P1 | Jobs / marketplace lifecycle | Dense filters and lifecycle actions risk unclear hierarchy. Filters expose group/pressed semantics. Loading, failure, empty, success and destructive-action messaging still need a full announcement/recovery audit. | Test every status and owner/driver role; confirm messages are announced, actions are understandable, destructive actions are confirmed, and retries do not duplicate state changes. |
 | P1 | Signup | Progress semantics and error alert exist; market-dependent steps, optional research, verification and terms require end-to-end keyboard/focus testing. Step changes should make the new heading and validation feedback discoverable without disrupting screen readers. | Exercise every market and step, invalid form, back/continue, optional step, submission, network failure, verification resend and 200% zoom. Confirm no market/pricing behavior changes. |
@@ -57,7 +58,7 @@
 
 ## Latest automated validation evidence
 
-For commit `ac6163710f4ef8e7e215756626e4a8bca0fb3e11` (before the latest accessibility-focused source edits):
+For code-bearing commit `118ce3d67ab36ee69b0c258b3f0817165fc56d30`:
 - **TypeScript type-check:** passed in GitHub Actions run `39500380337`.
 - **Next.js production build:** passed in the same run.
 - **Reliability, health, lifecycle/market guards, supported-market isolation, country matrix, QA runner guard, worker lifecycle/claims, Prisma schema/client, clean-database migrations, staging-schema migrations, and read-only QA cleanup inventory:** passed in the same workflow.
@@ -65,7 +66,8 @@ For commit `ac6163710f4ef8e7e215756626e4a8bca0fb3e11` (before the latest accessi
 - **Automated accessibility scan:** not yet evidenced.
 - **Browser/device visual and keyboard review:** not yet performed.
 - **Full route-by-route QA:** not yet evidenced; existing CI contracts do not substitute for the complete design audit.
-- **Latest accessibility-focused source edits:** source-contract checks and contrast calculations were independently reviewed against the current GitHub file contents. An intermediate commit (`5fff7be59cc6b34071b71971f47762bc4b60b9e2`) reached the new accessibility-contract step successfully and passed TypeScript; its production build is still in progress. Later account-recovery and test-tightening edits need their own exact-head validation. Do not treat intermediate checks as proof for the latest branch head.
+- **Current browser/device and full route QA:** not yet performed. The source-contract test is intentionally not a substitute for axe/WCAG runtime scanning or manual keyboard/screen-reader review.
+- **Account deletion/PATCH concurrency and password-change session revocation:** remain separate open security gates and are not claimed as fixed by this design branch.
 
 ## Release gates
 
