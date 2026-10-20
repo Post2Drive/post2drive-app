@@ -254,6 +254,10 @@ async function PATCHHandler(
 
     if (Object.keys(userData).length > 0) {
       await tx.user.update({ where: { id: userId }, data: userData });
+      if (userData.passwordHash) {
+        // A direct password change invalidates every outstanding email reset link.
+        await tx.passwordResetToken.deleteMany({ where: { userId } });
+      }
     }
     if (Object.keys(accountData).length > 0) {
       await tx.account.update({ where: { id: accountId }, data: accountData });
