@@ -2,6 +2,7 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { setTimeout as delay } from "node:timers/promises";
+import { createHash } from "node:crypto";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
@@ -243,10 +244,45 @@ try {
   assert.equal(await revokedSessionB.text(), "null",
     "password change must revoke the second pre-existing browser session");
 
-  const outsiderCookie = await signIn(outsiderUser.email, "ci-e2e-password-67890");
-  const freshSession = await api("/api/auth/session", "GET", outsiderCookie);
+  const firstFreshCookie = await signIn(outsiderUser.email, "ci-e2e-password-67890");
+  const freshSession = await api("/api/auth/session", "GET", firstFreshCookie);
   assert.equal((await freshSession.json())?.user?.email, outsiderUser.email,
     "re-login with the new password should create a valid fresh session");
+
+  const unknownForgot = await api("/api/auth/forgot-password", "POST", null, { email: "not-a-real-account@example.invalid" });
+  assert.equal(unknownForgot.status, 200, "forgot-password request should not disclose whether an account exists");
+  assert.match((await unknownForgot.json()).message, /If an account exists/i,
+    "forgot-password request should return a generic response");
+
+  // Seed a one-hour reset token in the isolated database to exercise the real
+  // reset HTTP handler without depending on a live email provider.
+  const resetToken = "ci-reset-token-" + suffix;
+  const resetTokenHash = createHash("sha256").update(resetToken).digest("hex");
+  await prisma.passwordResetToken.create({ data: {
+    userId: outsiderUser.id,
+    tokenHash: resetTokenHash,
+    expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+    lastSentAt: new Date(),
+  } });
+  const resetResponse = await api("/api/auth/reset-password", "POST", null, {
+    token: resetToken, password: "ci-e2e-password-reset-12345",
+  });
+  assert.equal(resetResponse.status, 200,
+    "valid reset token should update password and revoke sessions (got " + resetResponse.status + "): " + await resetResponse.text());
+  assert.equal(await (await api("/api/auth/session", "GET", firstFreshCookie)).text(), "null",
+    "password reset must revoke an existing browser session");
+  const reusedReset = await api("/api/auth/reset-password", "POST", null, {
+    token: resetToken, password: "ci-e2e-password-reused-12345",
+  });
+  assert.equal(reusedReset.status, 400, "a consumed reset token must not be reusable");
+  await assert.rejects(
+    () => signIn(outsiderUser.email, "ci-e2e-password-67890"),
+    /did not issue a session cookie/,
+    "the previous password must no longer authenticate after reset",
+  );
+  const outsiderCookie = await signIn(outsiderUser.email, "ci-e2e-password-reset-12345");
+  assert.equal((await (await api("/api/auth/session", "GET", outsiderCookie)).json())?.user?.email, outsiderUser.email,
+    "new password should create a valid session after reset");
 
   const posterJobRead = await api("/api/jobs/" + lifecycleJob.id, "GET", posterCookie);
   assert.equal(posterJobRead.status, 200, "poster may read their own job");
