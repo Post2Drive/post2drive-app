@@ -18,8 +18,8 @@ const nextConfig = source("next.config.js");
 // These source-level assertions protect the real application paths against regressions.
 assert.match(auth, /token\.accountDeleted = !account \|\| Boolean\(account\.deletionRequestedAt\)/,
   "JWT refresh must mark deleted or missing accounts as revoked");
-assert.match(auth, /if \(token\.accountDeleted\) return null as any/,
-  "revoked pre-existing JWTs must not yield a session");
+assert.match(auth, /if \(token\.accountDeleted \|\| token\.passwordChanged\) return null as any/,
+  "deleted accounts and password-revoked JWTs must not yield a session");
 assert.match(vehicles, /if \(!account \|\| account\.deletionRequestedAt\) return null/,
   "vehicle GET and POST must reject accounts pending deletion");
 assert.match(vehicles, /where: \{ accountId: account\.id \}/,
