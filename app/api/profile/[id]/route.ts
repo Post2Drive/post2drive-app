@@ -32,33 +32,36 @@ async function GETHandler(
     const { id: displayId } = await params;
     const target = await prisma.account.findFirst({
       where: { displayId, deletionRequestedAt: null },
-      select: {
-        id: true,
-        companyName: true,
-        displayId: true,
-        isSoleTrader: true,
-        country: true,
-        currency: true,
-        createdAt: true,
-        vehicles: {
-          orderBy: { createdAt: "desc" },
-          take: 20,
-          select: { id: true, vehicleType: true, regPlate: true },
-        },
-        ratingsReceived: {
-          orderBy: { createdAt: "desc" },
-          take: 5,
-          select: { id: true, stars: true, comment: true, createdAt: true },
-        },
-      },
+      select: { id: true, country: true, currency: true },
     });
 
-    // Do not disclose whether an account exists in another marketplace.
+    // Do not fetch any profile, vehicle or rating details until market access
+    // is confirmed. A foreign-market account is indistinguishable from missing.
     if (!target || target.country !== viewer.country || target.currency !== viewer.currency) {
       return NextResponse.json({ error: "Profile not found in your marketplace." }, { status: 404 });
     }
 
-    const [ratingAggregate, jobsPosted, jobsCompleted] = await Promise.all([
+    const [profile, ratingAggregate, jobsPosted, jobsCompleted] = await Promise.all([
+      prisma.account.findUnique({
+        where: { id: target.id },
+        select: {
+          companyName: true,
+          displayId: true,
+          isSoleTrader: true,
+          country: true,
+          createdAt: true,
+          vehicles: {
+            orderBy: { createdAt: "desc" },
+            take: 20,
+            select: { id: true, vehicleType: true, regPlate: true },
+          },
+          ratingsReceived: {
+            orderBy: { createdAt: "desc" },
+            take: 5,
+            select: { id: true, stars: true, comment: true, createdAt: true },
+          },
+        },
+      }),
       prisma.rating.aggregate({
         where: { rateeId: target.id },
         _avg: { stars: true },
@@ -68,19 +71,15 @@ async function GETHandler(
       prisma.job.count({ where: { posterId: target.id, status: "completed" } }),
     ]);
 
-    const publicAccount = {
-      companyName: target.companyName,
-      displayId: target.displayId,
-      isSoleTrader: target.isSoleTrader,
-      country: target.country,
-      createdAt: target.createdAt,
-      vehicles: target.vehicles,
-    };
+    if (!profile) {
+      return NextResponse.json({ error: "Profile not found in your marketplace." }, { status: 404 });
+    }
+
     return NextResponse.json({
-      account: publicAccount,
+      account: profile,
       avgRating: ratingAggregate._avg.stars,
       ratingCount: ratingAggregate._count._all,
-      recentRatings: target.ratingsReceived,
+      recentRatings: profile.ratingsReceived,
       jobsPosted,
       jobsCompleted,
     });
