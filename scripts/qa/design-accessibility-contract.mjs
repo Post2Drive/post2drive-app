@@ -94,6 +94,10 @@ assert.match(settings, /Could not load account settings\. Try again\./, "Account
 assert.match(settings, /role="alert">\{saveError\}/, "Account save errors must be announced");
 assert.match(settings, /role="alert">\{pwError\}/, "Password update errors must be announced");
 assert.match(settings, /disabled=\{saving\}/, "Duplicate account-save submissions must be prevented while saving");
+assert.match(settings, /<h2>Profile<\/h2>/, "Account settings sections must follow a logical heading hierarchy");
+assert.match(settings, /<h2 style=\{\{ marginTop: 32 \}\}>Change password<\/h2>/, "Password settings must use a second-level heading");
+assert.match(settings, /aria-labelledby="delete-account-heading"/, "Destructive account section must have a programmatic name");
+assert.match(settings, /autoComplete="off" autoCapitalize="characters" spellCheck=\{false\}/, "Typed deletion confirmation must not be silently transformed by browser helpers");
 
 const login = read("app/login/page.tsx");
 assert.match(login, /autoComplete="email"/, "Login email must support autofill");
