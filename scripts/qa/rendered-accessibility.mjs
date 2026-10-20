@@ -23,6 +23,8 @@ const prisma = new PrismaClient();
 const browser = await chromium.launch({ headless: true });
 let accountId;
 let jobId;
+let completedJobId;
+let vehicleId;
 const testId = randomUUID();
 const email = "qa-rendered-browser@post2drive.invalid";
 const password = "QA-test-only-password-42!";
@@ -182,11 +184,43 @@ try {
         },
       });
       jobId = job.id;
+      const completedJob = await prisma.job.create({
+        data: {
+          posterId: accountId,
+          pickup: "Vijayawada, Andhra Pradesh",
+          dropoff: "Guntur, Andhra Pradesh",
+          jobDate: new Date(Date.now() - 24 * 60 * 60 * 1000),
+          pickupTime: "10:00",
+          vehicleType: "Luton van",
+          price: 500,
+          currency: "INR",
+          priceMode: "fixed",
+          crossBorder: false,
+          status: "completed",
+          notes: "Local completed-payment QA fixture; automatically deleted.",
+        },
+      });
+      completedJobId = completedJob.id;
+      const vehicle = await prisma.vehicle.create({
+        data: {
+          accountId,
+          vehicleType: "Luton van",
+          regPlate: `QA-${testId.slice(0, 8)}`,
+          ownershipType: "owned",
+          make: "QA",
+          model: "Test vehicle",
+          motValidUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+          insuranceValidUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+        },
+      });
+      vehicleId = vehicle.id;
     }
   }
 } finally {
   await browser.close();
+  if (vehicleId) await prisma.vehicle.deleteMany({ where: { id: vehicleId } }).catch(() => {});
   if (jobId) await prisma.job.deleteMany({ where: { id: jobId } }).catch(() => {});
+  if (completedJobId) await prisma.job.deleteMany({ where: { id: completedJobId } }).catch(() => {});
   if (accountId) await prisma.account.deleteMany({ where: { id: accountId } }).catch(() => {});
   await prisma.$disconnect();
 }
