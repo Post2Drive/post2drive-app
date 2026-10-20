@@ -30,8 +30,14 @@ jobs:
         run: npm ci
       - name: Install Android SDK platform and build tools
         run: |
-          yes | sdkmanager --licenses >/dev/null
-          sdkmanager "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          SDKMANAGER="$(find "$SDK_ROOT" -path '*/bin/sdkmanager' -type f -print -quit)"
+          if [ -z "$SDKMANAGER" ]; then
+            echo "Android SDK command-line tools were not found under $SDK_ROOT"
+            exit 1
+          fi
+          yes | "$SDKMANAGER" --licenses >/dev/null
+          "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" "platform-tools"
       - name: Sync Capacitor with explicit staging URL
         env:
           CAPACITOR_SERVER_URL: https://post2drive-web-staging.up.railway.app
