@@ -630,3 +630,12 @@ main table tr:hover td {
     color: var(--color-primary-action);
   }
 }
+
+/* Preserve horizontal desktop navigation after moving layout out of inline styles. */
+@media (min-width: 701px) {
+  .desktop-nav {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+}
