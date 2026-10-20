@@ -24,7 +24,7 @@ export default async function HomePage() {
           }}
         >
           <h1 style={{ margin: 0, color: "var(--color-primary)" }}>
-            Hello, Ganesh
+            Hello, {session.user.name?.trim() || "there"}
           </h1>
 
           <p style={{ color: "var(--color-muted)", marginTop: 8 }}>
