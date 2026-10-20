@@ -1,6 +1,6 @@
 # Post2Drive Apple Design Skill audit and implementation tracker
 
-**Status:** In progress. Commit `7fa75cf659c8d67c57c94d4095a98cad1dc2d651` passed Validate run `39504619519` and Security Scan run `39504619497`. The passing Validate run includes the account mutation concurrency regression, session-version migration, accessibility source contracts, vehicle/payment recovery, signup/job-posting step focus, TypeScript, and the production build. Automated rendered-page accessibility scanning, browser/device validation, and complete screen-by-screen review remain release gates.
+**Status:** In progress. Foundational code commit `7fa75cf659c8d67c57c94d4095a98cad1dc2d651` passed Validate run `39504619519` and Security Scan run `39504619497`; docs-only follow-up `d486651179377de37a6ce5a3617f1dbf48b44132` also passed Validate run `39504879512` and Security Scan run `39504879471`. Subsequent review-branch refinements improve requirement action names, vehicle form structure/date rendering, payment action names/theme tokens, and account-settings heading hierarchy/deletion confirmation. Validation for the newest changes is pending; do not treat them as validated until their own CI completes. Automated rendered-page accessibility scanning, browser/device validation, and complete screen-by-screen review remain release gates.
 
 ## Standard and method
 
@@ -73,6 +73,14 @@ For commit `7fa75cf659c8d67c57c94d4095a98cad1dc2d651`:
 - **Repository/history secret scan:** passed in run `39504619497`.
 - **Accessibility improvements with source-contract coverage:** skip navigation, contrast-token thresholds, visible focus, reduced-motion, 44px targets, payment/vehicle recovery and empty states, and focus transitions in signup/job-posting wizards.
 - **Still outstanding:** rendered-page accessibility scan, browser/device visual and keyboard review, Android/Capacitor testing, full route-by-route QA, and runtime browser confirmation that stale JWT sessions are rejected after password changes/deletion.
+
+## Latest review-branch refinements (validation pending)
+
+- India requirements: added a named region and route-specific accessible names for repeated Edit, Marketplace and Incident links; each status has a readable text label.
+- Vehicle onboarding: added a visible heading associated with the registration form, a named region for registered vehicles, disabled browser autofill for registration plates, and stable UTC rendering for date-only expiry values.
+- Payments: added job-specific accessible names to Mark as paid and Confirm received actions, disabled Refresh during loading, removed a hard-coded Arial override, and changed card surfaces/muted text to shared theme tokens.
+- Account settings: changed section headings to a consistent second-level hierarchy, named the destructive section, reused danger/surface tokens, and disabled browser capitalization/spellchecking helpers for the typed DELETE confirmation.
+- Design accessibility source contracts now guard these new route names, semantic regions, theme tokens, date handling and settings behavior. CI must pass for the latest head before these additions are considered validated.
 
 ## Release gates
 
