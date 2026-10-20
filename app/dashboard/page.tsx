@@ -207,7 +207,7 @@ export default async function DashboardPage() {
     acceptedDelivered;
 
   return (
-    <div
+    <main
       style={{
         maxWidth: 1200,
         margin: "0 auto",
@@ -583,6 +583,6 @@ export default async function DashboardPage() {
         </Link>
         <Link href="/vehicles" className="button-link button-link-secondary">Vehicles &amp; Verification</Link>
       </div>
-    </div>
+    </main>
   );
 }
