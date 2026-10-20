@@ -51,6 +51,11 @@ export default function MainNav() {
                   href={link.href}
                   className={`main-nav-link${active ? " is-active" : ""}`}
                   aria-current={active ? "page" : undefined}
+                  style={{
+                    fontWeight: active ? 700 : 600,
+                    color: active ? "var(--color-primary-action)" : "var(--color-text)",
+                    background: active ? "var(--color-action-soft)" : "transparent",
+                  }}
                 >
                   {link.label}
                 </Link>
