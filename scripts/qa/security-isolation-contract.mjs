@@ -32,6 +32,19 @@ assert.doesNotMatch(accountGet, /\b(?:isTester|testerApprovalStatus|promotionPar
   "account settings must not expose internal QA, trial, subscription, or legal-state fields unnecessarily");
 assert.match(source("app/api/account/route.ts"), /Invalid request body\./,
   "malformed account PATCH JSON must return a controlled 400 response");
+assert.match(accountRoute, /const lifecycleGate = await tx\.account\.updateMany\([\s\S]*?deletionRequestedAt: null[\s\S]*?if \(lifecycleGate\.count !== 1\)/,
+  "PATCH must conditionally claim the account lifecycle row before mutating profile data");
+assert.match(accountRoute, /const claim = await tx\.account\.updateMany\([\s\S]*?deletionRequestedAt: null[\s\S]*?data: \{ deletionRequestedAt: stamp \}[\s\S]*?if \(claim\.count !== 1\)[\s\S]*?tx\.user\.findMany/,
+  "DELETE must claim the same account row before anonymizing user data");
+assert.match(accountRoute, /userData\.passwordChangedAt = new Date\(\)/,
+  "password hash and revocation timestamp must be persisted together");
+assert.match(auth, /token\.passwordChangedAt = \(user as any\)\.passwordChangedAt \?\? null/,
+  "a newly authenticated JWT must snapshot the persisted password-change version");
+assert.match(auth, /tokenPasswordChangedAt !== currentPasswordChangedAt/,
+  "a JWT from before the last password change must be rejected");
+assert.match(auth, /if \(token\.accountDeleted \|\| token\.passwordChanged\) return null as any/,
+  "deleted accounts and password-revoked sessions must not yield a session");
+
 assert.match(accountRoute, /const parsed = await req\.json\(\);[\s\S]*?if \(!parsed \|\| typeof parsed !== "object" \|\| Array\.isArray\(parsed\)\)[\s\S]*?body = parsed as \{ currentPassword\?: unknown; confirm\?: unknown \}/,
   "account DELETE must reject null, arrays, and primitive JSON bodies with a controlled 400 response");
 assert.match(source("app/api/account/route.ts"), /boundedString\(name, 120\)[\s\S]*?marketingConsent !== undefined && typeof marketingConsent !== "boolean"/,
