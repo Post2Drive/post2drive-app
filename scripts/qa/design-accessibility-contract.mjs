@@ -130,7 +130,8 @@ assert.match(profilePage, /Retry loading profile/, "Profile failures must offer 
 const pricing = read("components/subscription-pricing.tsx");
 assert.match(pricing, /<h3[^>]*>\{plan\.name\}<\/h3>/, "Pricing tiers must have semantic headings");
 assert.doesNotMatch(pricing, /#6B7C93|#102A43|#D9E2EC|#F4F7FA|#00695C|#EAF4F3/, "Pricing cards must use shared design tokens instead of hard-coded theme colors");
-\nconst login = read("app/login/page.tsx");
+
+const login = read("app/login/page.tsx");
 assert.match(login, /autoComplete="email"/, "Login email must support autofill");
 assert.match(login, /autoComplete="current-password"/, "Login password must support password managers");
 
