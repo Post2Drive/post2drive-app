@@ -1,6 +1,6 @@
 # Post2Drive Apple Design Skill audit and implementation tracker
 
-**Status:** In progress. Code-bearing commit `1a628bdcbd8bf0fb1fef87a494f72af949eac812` passed Validate run `39504055744` and Security Scan run `39504055778`. This includes the shared account-row lock for PATCH/DELETE, the PostgreSQL concurrency regression, the session-version migration, TypeScript and the Next.js production build. Automated rendered-page accessibility scanning, browser/device validation, and complete screen-by-screen review remain release gates.
+**Status:** In progress. Security changes passed Validate run `39504055744` and Security Scan run `39504055778` at code-bearing commit `1a628bdcbd8bf0fb1fef87a494f72af949eac812`. Follow-up accessibility changes now add recoverable vehicle loading, status semantics for the vehicle empty state, and focus movement on signup/job-posting wizard step changes; these newest changes need their own CI run. Automated rendered-page accessibility scanning, browser/device validation, and complete screen-by-screen review remain release gates.
 
 ## Standard and method
 
@@ -57,6 +57,8 @@
 - Home greeting: session-derived name with neutral fallback.
 - Login: shared responsive authentication layout.
 - Jobs filters: labelled group, button types, `aria-pressed`, wrapping and 44px minimum height.
+- Vehicle onboarding: separate loading failure from submission errors, provide a retry action, expose the empty state as a status, and use a 44px submit target.
+- Multi-step forms: signup and job-posting wizards move focus to the newly rendered step heading, making progress changes discoverable to keyboard and assistive-technology users.
 - Signup: progressbar role, min/max/current values and step name.
 
 ## Latest automated validation evidence
