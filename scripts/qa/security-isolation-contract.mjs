@@ -16,9 +16,9 @@ const accountGet = accountRoute.split("async function PATCHHandler")[0];
 const nextConfig = source("next.config.js");
 
 // These source-level assertions protect the real application paths against regressions.
-assert.match(auth, /\(token as any\)\.accountDeleted = !account \|\| Boolean\(account\.deletionRequestedAt\)/|\| Boolean\(account\.deletionRequestedAt\)/,
+assert.match(auth, /\(token as any\)\.accountDeleted = !account \|\| Boolean\(account\.deletionRequestedAt\)/,
   "JWT refresh must mark deleted or missing accounts as revoked");
-assert.match(auth, /if \(token\.accountDeleted \|\| token\.passwordChanged\) return null as any/,
+assert.match(auth, /if \(\(token as any\)\.accountDeleted \|\| \(token as any\)\.passwordChanged\) return null as any/,
   "deleted accounts and password-revoked JWTs must not yield a session");
 assert.match(vehicles, /if \(!account \|\| account\.deletionRequestedAt\) return null/,
   "vehicle GET and POST must reject accounts pending deletion");
@@ -36,14 +36,18 @@ assert.match(accountRoute, /const lifecycleGate = await tx\.account\.updateMany\
   "PATCH must conditionally claim the account lifecycle row before mutating profile data");
 assert.match(accountRoute, /const claim = await tx\.account\.updateMany\([\s\S]*?deletionRequestedAt: null[\s\S]*?data: \{ deletionRequestedAt: stamp \}[\s\S]*?if \(claim\.count !== 1\)[\s\S]*?tx\.user\.findMany/,
   "DELETE must claim the same account row before anonymizing user data");
-assert.match(accountRoute, /userData\.passwordChangedAt = new Date\(\)/,
+assert.match(accountRoute, /passwordChangedAt: new Date\(\)/,
   "password hash and revocation timestamp must be persisted together");
-assert.match(auth, /token\.passwordChangedAt = \(user as any\)\.passwordChangedAt \?\? null/,
+assert.match(auth, /\(token as any\)\.passwordChangedAt = \(user as any\)\.passwordChangedAt \?\? null/,
   "a newly authenticated JWT must snapshot the persisted password-change version");
 assert.match(auth, /tokenPasswordChangedAt !== currentPasswordChangedAt/,
   "a JWT from before the last password change must be rejected");
-assert.match(auth, /if \(token\.accountDeleted \|\| token\.passwordChanged\) return null as any/,
+assert.match(auth, /if \(\(token as any\)\.accountDeleted \|\| \(token as any\)\.passwordChanged\) return null as any/,
   "deleted accounts and password-revoked sessions must not yield a session");
+assert.match(accountRoute, /sessionVersion: \{ increment: 1 \}/,
+  "password changes must increment sessionVersion");
+assert.match(source("app/api/auth/reset-password/route.ts"), /sessionVersion: \{ increment: 1 \}/,
+  "password resets must increment sessionVersion");
 
 assert.match(accountRoute, /const parsed = await req\.json\(\);[\s\S]*?if \(!parsed \|\| typeof parsed !== "object" \|\| Array\.isArray\(parsed\)\)[\s\S]*?body = parsed as \{ currentPassword\?: unknown; confirm\?: unknown \}/,
   "account DELETE must reject null, arrays, and primitive JSON bodies with a controlled 400 response");
