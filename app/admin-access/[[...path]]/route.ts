@@ -33,7 +33,7 @@ function unavailable(request: NextRequest, path: string[]) {
       }
     }
     return new Response(
-      "<!doctype html><html lang=\"en\"><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Admin dashboard unavailable</title><body style=\"font:16px system-ui;background:#0b1220;color:#eaf1fa;padding:32px\"><h1>Admin dashboard unavailable</h1><p>The embedded operations dashboard is disabled or not configured for this deployment. No redirect loop was started.</p></body></html>",
+      "<!doctype html><html lang=\"en\"><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Admin dashboard unavailable</title><body style=\"font:16px system-ui;background:#0b1220;color:#eaf1fa;padding:32px\"><main style=\"max-width:760px;margin:0 auto\"><h1>Admin dashboard unavailable</h1><p>The embedded operations dashboard is disabled or not configured for this deployment. No redirect loop was started.</p></main></body></html>",
       { status: 503, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } },
     );
   }
