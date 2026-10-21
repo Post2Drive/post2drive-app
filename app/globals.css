@@ -2401,3 +2401,34 @@ main .home-step-number { color: #D4E8FA; }
 main .home-steps li strong { color: #FFFFFF; }
 main .home-steps li small { color: #D4E1ED; }
 main .home-route-footer { color: #D4E1ED; }
+
+
+/* Rendered axe regression fix: explicitly scope the dark workflow surface and
+   its light text above the global white-panel and text-normalisation rules. */
+main .home-page .home-route-panel {
+  background-color: #102A43 !important;
+  background-image: none !important;
+  color: #FFFFFF !important;
+}
+main .home-page .home-route-panel .home-route-label {
+  color: #D4E1ED !important;
+}
+main .home-page .home-route-panel .home-route-status {
+  color: #E2EDF7 !important;
+}
+main .home-page .home-route-panel .home-route-status > span {
+  background-color: #63D5B1 !important;
+}
+main .home-page .home-route-panel .home-step-number {
+  color: #D4E8FA !important;
+}
+main .home-page .home-route-panel .home-steps li strong {
+  color: #FFFFFF !important;
+}
+main .home-page .home-route-panel .home-steps li small,
+main .home-page .home-route-panel .home-route-footer {
+  color: #D4E1ED !important;
+}
+main .home-page .home-route-panel .home-route-footer > span {
+  color: #75D8B8 !important;
+}
