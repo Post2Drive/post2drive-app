@@ -20,7 +20,7 @@ Use this skill as the project-wide entry point. Load the narrow specialist skill
    - New behavior or bug fix: `test-driven-development`.
    - Database/API integration: `integration-testing`.
    - Browser flows and responsive UI: `browser-testing`.
-   - Accessibility or UI review: `accessibility-review` plus the Apple Design Skill at `.agents/skills/apple-design/SKILL.md`.
+   - Accessibility or UI review: `accessibility-review` plus Emil Kowalski's design-engineering skill at `.agents/skills/emil-design-eng/SKILL.md`.
 4. **Make the smallest complete change.** Preserve existing architecture and market isolation (UK and India). Do not weaken tests, access controls, type checks, or safety gates just to make a run green.
 5. **Verify, don't infer.** Run the most relevant tests and checks available. Clearly distinguish checks that passed, failed, were skipped, or could not be run. Never call a security scan a substitute for full validation or deployed verification.
 6. **Review your own diff.** Look for unintended changes, error paths, auth and market boundaries, database integrity, migration safety, accessibility, responsive behavior, and missing regression tests.
