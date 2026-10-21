@@ -7,83 +7,29 @@ export default async function HomePage() {
 
   if (session?.user) {
     return (
-      <main
-        style={{
-          maxWidth: 1100,
-          margin: "0 auto",
-          padding: "40px 20px 80px",
-        }}
-      >
-        <section
-          style={{
-            background: "var(--color-surface)",
-            border: "1px solid var(--color-border)",
-            borderRadius: 14,
-            padding: 28,
-            boxShadow: "var(--shadow-card)",
-          }}
-        >
-          <h1 style={{ margin: 0, color: "var(--color-primary)" }}>
-            Hello, {session.user.name?.trim() || "there"}
-          </h1>
-
-          <p style={{ color: "var(--color-muted)", marginTop: 8 }}>
-            Welcome back to Post2Drive.
-          </p>
-
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: 12,
-              marginTop: 24,
-            }}
-          >
-            <Link
-              href="/jobs/new"
-              style={{
-                background: "var(--color-primary-action)",
-                color: "#fff",
-                padding: "12px 18px",
-                borderRadius: 8,
-                textDecoration: "none",
-                fontWeight: 700,
-              }}
-            >
-              Post a Job
+      <main id="main-content" tabIndex={-1} className="home-page home-page-authenticated">
+        <section className="home-welcome">
+          <p className="home-eyebrow">POST2DRIVE · YOUR WORKSPACE</p>
+          <h1>Hello, {session.user.name?.trim() || "there"}.</h1>
+          <p className="home-intro">Pick up where you left off. Post a delivery, find available work, or manage your vehicles and verification.</p>
+          <div className="home-action-grid">
+            <Link className="home-action-card home-action-primary" href="/jobs/new">
+              <span className="home-action-label">FOR CUSTOMERS</span>
+              <strong>Post a delivery job</strong>
+              <span>Share the route and requirements to get started.</span>
+              <span className="home-action-cta">Create a job <span aria-hidden="true">→</span></span>
             </Link>
-
-            <Link
-              href="/jobs"
-              style={{
-                background: "var(--color-surface)",
-                color: "var(--color-primary-action)",
-                border: "1px solid var(--color-border)",
-                padding: "12px 18px",
-                borderRadius: 8,
-                textDecoration: "none",
-                fontWeight: 700,
-              }}
-            >
-              Find Jobs
+            <Link className="home-action-card" href="/jobs">
+              <span className="home-action-label">FOR DRIVERS</span>
+              <strong>Find delivery work</strong>
+              <span>Explore available jobs and review the details.</span>
+              <span className="home-action-cta">Browse jobs <span aria-hidden="true">→</span></span>
             </Link>
-
-            <Link
-              href="/vehicles"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                background: "var(--color-surface)",
-                color: "var(--color-primary-action)",
-                border: "1px solid var(--color-border)",
-                padding: "12px 18px",
-                borderRadius: 8,
-                textDecoration: "none",
-                fontWeight: 700,
-              }}
-            >
-              Vehicles &amp; Verification
+            <Link className="home-action-card" href="/vehicles">
+              <span className="home-action-label">ACCOUNT READINESS</span>
+              <strong>Vehicles &amp; verification</strong>
+              <span>Review your vehicle information and verification status.</span>
+              <span className="home-action-cta">Manage vehicles <span aria-hidden="true">→</span></span>
             </Link>
           </div>
         </section>
@@ -92,100 +38,53 @@ export default async function HomePage() {
   }
 
   return (
-    <main
-      style={{
-        minHeight: "calc(100vh - 64px)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 24,
-      }}
-    >
-      <section
-        style={{
-          width: "100%",
-          maxWidth: 760,
-          textAlign: "center",
-          background: "var(--color-surface)",
-          border: "1px solid var(--color-border)",
-          borderRadius: 16,
-          padding: "48px 28px",
-          boxShadow: "var(--shadow-card)",
-        }}
-      >
-        <div
-          style={{
-            fontSize: 34,
-            fontWeight: 800,
-            color: "var(--color-primary)",
-          }}
-        >
-          Post2Drive
+    <main id="main-content" tabIndex={-1} className="home-page">
+      <section className="home-hero" aria-labelledby="home-title">
+        <div className="home-hero-copy">
+          <p className="home-eyebrow"><span className="home-eyebrow-dot" aria-hidden="true" /> FREIGHT &amp; COURIER EXCHANGE</p>
+          <h1 id="home-title">Delivery work and transport jobs, <span>connected.</span></h1>
+          <p className="home-intro">Post a delivery, discover available work, and manage the job from start to finish — in one place.</p>
+          <div className="home-hero-actions">
+            <Link className="home-button home-button-primary" href="/signup">Create an account <span aria-hidden="true">→</span></Link>
+            <Link className="home-button home-button-secondary" href="/login">Log in</Link>
+          </div>
+          <p className="home-supporting-copy">Already have an account? Log in to continue to your workspace.</p>
         </div>
-
-        <h1
-          style={{
-            fontSize: 32,
-            margin: "18px 0 10px",
-            color: "var(--color-text)",
-          }}
-        >
-          Freight & Courier Exchange
-        </h1>
-
-        <p
-          style={{
-            maxWidth: 580,
-            margin: "0 auto",
-            color: "var(--color-muted)",
-            lineHeight: 1.6,
-            fontSize: 17,
-          }}
-        >
-          Post transport jobs, find available work, bid, accept and manage
-          deliveries from one account.
-        </p>
-
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            flexWrap: "wrap",
-            gap: 12,
-            marginTop: 28,
-          }}
-        >
-          <Link
-            href="/signup"
-            style={{
-              background: "var(--color-primary-action)",
-              color: "#fff",
-              padding: "12px 22px",
-              borderRadius: 8,
-              textDecoration: "none",
-              fontWeight: 700,
-            }}
-          >
-            Create an Account
-          </Link>
-
-          <Link
-            href="/login"
-            style={{
-              background: "var(--color-surface)",
-              color: "var(--color-primary-action)",
-              border: "1px solid var(--color-border)",
-              padding: "12px 22px",
-              borderRadius: 8,
-              textDecoration: "none",
-              fontWeight: 700,
-            }}
-          >
-            Log In
-          </Link>
-          <Link href="/admin-access" style={{ background: "var(--color-surface)", color: "var(--color-text)", border: "1px solid var(--color-border)", padding: "12px 22px", borderRadius: 8, textDecoration: "none", fontWeight: 700 }}>Admin</Link>
+        <div className="home-route-panel" aria-label="How Post2Drive works">
+          <div className="home-route-panel-top">
+            <span className="home-route-label">ONE WORKFLOW</span>
+            <span className="home-route-status"><span aria-hidden="true" /> From post to delivery</span>
+          </div>
+          <ol className="home-steps">
+            <li><span className="home-step-number">01</span><span><strong>Post or discover</strong><small>Start with a delivery job or available work.</small></span></li>
+            <li><span className="home-step-number">02</span><span><strong>Review the details</strong><small>Check route, requirements and job terms.</small></span></li>
+            <li><span className="home-step-number">03</span><span><strong>Manage the delivery</strong><small>Follow the job through its lifecycle.</small></span></li>
+          </ol>
+          <div className="home-route-footer"><span aria-hidden="true">↗</span> Clear steps. One place to manage the work.</div>
         </div>
       </section>
+      <section className="home-audience" aria-labelledby="home-audience-title">
+        <div className="home-section-heading">
+          <p className="home-eyebrow">BUILT FOR BOTH SIDES</p>
+          <h2 id="home-audience-title">What brings you here?</h2>
+          <p>Choose the path that matches what you need today.</p>
+        </div>
+        <div className="home-action-grid home-public-actions">
+          <Link className="home-action-card" href="/signup">
+            <span className="home-action-label">I NEED TRANSPORT</span>
+            <strong>Post a job</strong>
+            <span>Describe the delivery and manage the next steps from your account.</span>
+            <span className="home-action-cta">Get started <span aria-hidden="true">→</span></span>
+          </Link>
+          <Link className="home-action-card" href="/jobs">
+            <span className="home-action-label">I AM A DRIVER</span>
+            <strong>Find work</strong>
+            <span>Browse the job marketplace and review opportunities that fit.</span>
+            <span className="home-action-cta">Explore jobs <span aria-hidden="true">→</span></span>
+          </Link>
+        </div>
+      </section>
+      <footer className="home-utility"><Link href="/pricing">Pricing</Link><span aria-hidden="true">·</span><Link href="/requirements">Requirements</Link><span aria-hidden="true">·</span><Link href="/admin-access">Operations access</Link></footer>
     </main>
   );
 }
