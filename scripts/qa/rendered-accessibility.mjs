@@ -34,7 +34,7 @@ const email = "qa-rendered-browser@post2drive.invalid";
 const password = "QA-test-only-password-42!";
 
 async function scanRoute(page, route, viewport) {
-  const response = await page.goto(new URL(route, baseURL).toString(), { waitUntil: "networkidle" });
+  const response = await page.goto(new URL(route, baseURL).toString(), { waitUntil: "domcontentloaded" });
   assert.ok(response && response.status() < 400, `${route} should load successfully at ${viewport.label}`);
   try {
     await page.locator("main h1").first().waitFor({ state: "visible" });
@@ -123,7 +123,7 @@ try {
     for (const route of publicRoutes) await scanRoute(page, route, viewport);
 
     if (viewport.width === 320) {
-      await page.goto(new URL("/signup", baseURL).toString(), { waitUntil: "networkidle" });
+      await page.goto(new URL("/signup", baseURL).toString(), { waitUntil: "domcontentloaded" });
       await page.getByLabel("Choose your market").selectOption("IN");
       await page.getByLabel("Registered company name").fill("QA accessibility fixture business");
       await page.getByRole("button", { name: "Continue" }).click();
@@ -132,7 +132,7 @@ try {
       await page.waitForFunction(() => document.activeElement?.textContent?.trim() === "Business setup");
     }
 
-    await page.goto(new URL("/login", baseURL).toString(), { waitUntil: "networkidle" });
+    await page.goto(new URL("/login", baseURL).toString(), { waitUntil: "domcontentloaded" });
     await page.getByLabel("Email", { exact: true }).fill(email);
     await page.getByLabel("Password", { exact: true }).fill(password);
     await page.getByRole("button", { name: "Log in" }).click();
@@ -191,7 +191,7 @@ try {
           });
         }
       });
-      await page.goto(new URL("/jobs", baseURL).toString(), { waitUntil: "networkidle" });
+      await page.goto(new URL("/jobs", baseURL).toString(), { waitUntil: "domcontentloaded" });
       await page.getByRole("alert").filter({ hasText: "Synthetic QA outage" }).waitFor({ state: "visible" });
       assert.equal(await page.getByText("No jobs in this category.").count(), 0, "a failed marketplace load must not be shown as an empty list");
       await page.getByRole("button", { name: "Retry loading jobs" }).click();
