@@ -74,8 +74,8 @@ assert.match(payments, /role="alert"/, "Payment errors must be announced");
 assert.match(payments, /Retry loading payments/, "Payment load failures must offer a retry action");
 assert.match(payments, /if \(loading && !data\)/, "Payment refreshes must not discard already loaded context");
 assert.match(payments, /Refreshing payment information…/, "Payment refresh progress must be announced while existing content remains visible");
-assert.match(payments, /aria-label=\{\`Mark payment as paid for \$\{job.pickup\} to \$\{job.dropoff\}\`\}/, "Repeated payment actions must identify their job route");
-assert.match(payments, /aria-label=\{\`Confirm payment receipt for \$\{job.pickup\} to \$\{job.dropoff\}\`\}/, "Repeated receipt actions must identify their job route");
+assert.match(payments, /aria-label=\{\`Mark as paid: \$\{job.pickup\} to \$\{job.dropoff\}\`\}/, "Repeated payment actions must identify their job route");
+assert.match(payments, /aria-label=\{\`Confirm received: \$\{job.pickup\} to \$\{job.dropoff\}\`\}/, "Repeated receipt actions must identify their job route");
 assert.match(payments, /background: "var\(--color-surface\)"/, "Payment cards must use shared surface tokens");
 assert.match(payments, /color: "var\(--color-muted\)"/, "Payment summary text must use the shared readable muted-text token");
 assert.match(payments, /function Empty\(\{ text \}: \{ text: string \}\)[\s\S]*?role="status"[\s\S]*?color: "var\(--color-muted\)"/, "Payment empty states must be announced with readable muted text");
@@ -92,8 +92,8 @@ assert.match(vehicles, /timeZone: "UTC"/, "Date-only vehicle expiry values must 
 const requirements = read("app/requirements/page.tsx");
 assert.match(requirements, /role="region" aria-label="Posted requirements"/, "Posted requirements must have a named region");
 assert.match(requirements, /aria-label=\{\`Edit requirement: \$\{routeLabel\}\`\}/, "Repeated edit links must identify their route");
-assert.match(requirements, /aria-label=\{\`View \$\{routeLabel\} in marketplace\`\}/, "Repeated marketplace links must identify their route");
-assert.match(requirements, /aria-label=\{\`View incident history for \$\{routeLabel\}\`\}/, "Repeated incident links must identify their route");
+assert.match(requirements, /aria-label=\{\`View in marketplace: \$\{routeLabel\}\`\}/, "Repeated marketplace links must identify their route");
+assert.match(requirements, /aria-label=\{\`Incident history: \$\{routeLabel\}\`\}/, "Repeated incident links must identify their route");
 
 const jobCreate = read("app/jobs/new/page.tsx");
 assert.match(jobCreate, /stepHeadingRef\.current\?\.focus\(\)/, "Job wizard must move focus to each new step");
