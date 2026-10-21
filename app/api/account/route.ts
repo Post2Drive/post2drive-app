@@ -13,48 +13,43 @@ import {
 } from "@/lib/uk";
 
 async function GETHandler() {
-  const session =
-    await getServerSession(authOptions);
-
-  if (!session) {
-    return NextResponse.json(
-      { error: "Not logged in." },
-      { status: 401 }
-    );
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "Not logged in." }, { status: 401 });
   }
 
-  const accountId =
-    (session.user as any).accountId;
+  const accountId = (session.user as any).accountId as string | undefined;
+  const userId = (session.user as any).id as string | undefined;
+  if (!accountId || !userId) {
+    return NextResponse.json({ error: "Invalid session." }, { status: 401 });
+  }
 
-  const account =
-    await prisma.account.findUnique({
-      where: {
-        id: accountId,
+  // Explicit allowlist: never serialize internal trial, QA, subscription, or
+  // lifecycle fields. Scope nested PII to the user who owns this session.
+  const account = await prisma.account.findUnique({
+    where: { id: accountId, deletionRequestedAt: null },
+    select: {
+      id: true,
+      companyName: true,
+      country: true,
+      currency: true,
+      displayId: true,
+      marketingConsent: true,
+      users: {
+        where: { id: userId },
+        select: { id: true, name: true, email: true, phone: true },
+        take: 1,
       },
-      include: {
-        users: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            phone: true,
-          },
-          take: 1,
-        },
-      },
-    });
+    },
+  });
 
   if (!account) {
-    return NextResponse.json(
-      { error: "Account not found." },
-      { status: 404 }
-    );
+    return NextResponse.json({ error: "Account not found." }, { status: 404 });
   }
 
   return NextResponse.json({
     account,
-    ukPromotionEligible:
-      isUkAccount(account),
+    ukPromotionEligible: isUkAccount(account),
   });
 }
 
@@ -72,7 +67,11 @@ async function PATCHHandler(req: Request) {
 
   let body: Record<string, unknown>;
   try {
-    body = await req.json();
+    const parsed: unknown = await req.json();
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
+    }
+    body = parsed as Record<string, unknown>;
   } catch {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
   }
@@ -88,11 +87,19 @@ async function PATCHHandler(req: Request) {
     newPassword,
   } = body;
 
-  if (newPassword !== undefined && typeof newPassword !== "string") {
-    return NextResponse.json({ error: "New password must be a string." }, { status: 400 });
-  }
-  if (currentPassword !== undefined && typeof currentPassword !== "string") {
-    return NextResponse.json({ error: "Current password must be a string." }, { status: 400 });
+  const boundedString = (value: unknown, maxLength: number) =>
+    value === undefined || (typeof value === "string" && value.length <= maxLength);
+  if (
+    !boundedString(name, 120) ||
+    !boundedString(phone, 40) ||
+    !boundedString(companyName, 160) ||
+    !boundedString(country, 2) ||
+    !boundedString(currency, 3) ||
+    !boundedString(currentPassword, 1024) ||
+    !boundedString(newPassword, 1024) ||
+    (marketingConsent !== undefined && typeof marketingConsent !== "boolean")
+  ) {
+    return NextResponse.json({ error: "One or more settings fields are invalid." }, { status: 400 });
   }
 
   const result = await prisma.$transaction(async (tx) => {
@@ -145,12 +152,12 @@ async function PATCHHandler(req: Request) {
       await tx.user.update({ where: { id: userId }, data: { passwordHash, sessionVersion: { increment: 1 } } });
     }
 
-    if (name || phone) {
+    if (name !== undefined || phone !== undefined) {
       await tx.user.update({
         where: { id: userId },
         data: {
-          ...(typeof name === "string" && name && { name }),
-          ...(typeof phone === "string" && phone && { phone }),
+          ...(typeof name === "string" && { name }),
+          ...(typeof phone === "string" && { phone }),
         },
       });
     }
