@@ -16,7 +16,7 @@ const accountGet = accountRoute.split("async function PATCHHandler")[0];
 const nextConfig = source("next.config.js");
 
 // These source-level assertions protect the real application paths against regressions.
-assert.match(auth, /token\.accountDeleted = !account \|\| Boolean\(account\.deletionRequestedAt\)/,
+assert.match(auth, /\(token as any\)\.accountDeleted = !account \|\| Boolean\(account\.deletionRequestedAt\)/|\| Boolean\(account\.deletionRequestedAt\)/,
   "JWT refresh must mark deleted or missing accounts as revoked");
 assert.match(auth, /if \(token\.accountDeleted \|\| token\.passwordChanged\) return null as any/,
   "deleted accounts and password-revoked JWTs must not yield a session");
@@ -96,6 +96,7 @@ function loadTypeScriptModule(path, mocks) {
 let accountState = { deletionRequestedAt: new Date("2026-01-01T00:00:00.000Z") };
 const fakePrisma = {
   account: { findUnique: async () => accountState },
+  user: { findUnique: async () => ({ sessionVersion: 0, passwordChangedAt: null, account: accountState }) },
   vehicle: {
     findMany: async ({ where }) => { assert.equal(where.accountId, "acct-active"); return []; },
     create: async () => { throw new Error("Deleted account must never create a vehicle"); },
@@ -139,27 +140,42 @@ for (const malformedBody of ["{", "null", "[]", "42"]) {
 }
 console.log("Isolated account DELETE payload tests passed: malformed, null, array, and primitive bodies return 400.");
 
-const revokedToken = await callbacks.jwt({ token: { accountId: "acct-deleted" } });
+const revokedToken = await callbacks.jwt({ token: { id: "user-1", accountId: "acct-deleted", sessionVersion: 0, passwordChangedAt: null } });
 assert.equal(revokedToken.accountDeleted, true, "existing JWT must be marked revoked after deletion request");
 assert.equal(await callbacks.session({ session: { user: {} }, token: revokedToken }), null,
   "revoked existing JWT must not produce a session");
 accountState = null;
-const missingAccountToken = await callbacks.jwt({ token: { accountId: "acct-missing" } });
+const missingAccountToken = await callbacks.jwt({ token: { id: "user-1", accountId: "acct-missing", sessionVersion: 0, passwordChangedAt: null } });
 assert.equal(missingAccountToken.accountDeleted, true, "missing account must revoke an existing JWT");
 accountState = { deletionRequestedAt: null };
-const activeToken = await callbacks.jwt({ token: { accountId: "acct-active" } });
+const activeToken = await callbacks.jwt({ token: { id: "user-1", accountId: "acct-active", sessionVersion: 0, passwordChangedAt: null } });
 assert.equal(activeToken.accountDeleted, false, "active account must keep a valid session");
 const activeSession = await callbacks.session({ session: { user: {} }, token: activeToken });
 assert.equal(activeSession.user.accountId, "acct-active", "active session must retain its own account identity");
 
 let passwordState = new Date("2026-10-01T12:00:00.000Z");
 fakePrisma.user = {
-  findUnique: async () => ({ passwordChangedAt: passwordState }),
+  findUnique: async () => ({ sessionVersion: 1, passwordChangedAt: passwordState, account: { deletionRequestedAt: null } }),
+};
+const staleVersionSession = await callbacks.jwt({
+  token: {
+    id: "user-1",
+    accountId: "acct-active",
+    sessionVersion: 0,
+    passwordChangedAt: passwordState.getTime(),
+  },
+});
+assert.equal(staleVersionSession.passwordChanged, true, "a JWT with an older sessionVersion must be revoked");
+assert.equal(await callbacks.session({ session: { user: {} }, token: staleVersionSession }), null,
+  "a session-version-revoked JWT must not produce a session");
+fakePrisma.user = {
+  findUnique: async () => ({ sessionVersion: 0, passwordChangedAt: passwordState, account: { deletionRequestedAt: null } }),
 };
 const oldPasswordSession = await callbacks.jwt({
   token: {
     id: "user-1",
     accountId: "acct-active",
+    sessionVersion: 0,
     passwordChangedAt: new Date("2026-09-01T12:00:00.000Z").getTime(),
   },
 });
@@ -172,6 +188,7 @@ const freshLogin = await callbacks.jwt({
   user: {
     id: "user-1",
     accountId: "acct-active",
+    sessionVersion: 0,
     accountType: "both",
     currency: "GBP",
     country: "GB",
