@@ -733,6 +733,7 @@ export default function JobsPage() {
       </div>
 
       <div
+        className="marketplace-job-tabs"
         role="group"
         aria-label="Filter jobs by status"
         style={{
