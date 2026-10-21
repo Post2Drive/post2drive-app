@@ -87,7 +87,9 @@ assert.match(vehicles, /minHeight: 44/, "Vehicle submit button must meet the min
 assert.match(vehicles, /aria-labelledby="vehicle-registration-heading"/, "Vehicle form must have a programmatic name");
 assert.match(vehicles, /id="vehicle-registration-heading"/, "Vehicle registration form must have a visible heading");
 assert.match(vehicles, /role="region" aria-label="Registered vehicles"/, "Registered vehicles must have a named region");
-assert.match(vehicles, /timeZone: "UTC"/, "Date-only vehicle expiry values must not shift across viewer time zones");
+assert.match(vehicles, /formatMarketDate\(vehicle\.motValidUntil, market\)/, "Vehicle inspection expiry must use market-aware date-only formatting");
+assert.match(vehicles, /formatMarketDate\(vehicle\.insuranceValidUntil, market\)/, "Vehicle insurance expiry must use market-aware date-only formatting");
+assert.match(read("lib/localisation.ts"), /timeZone: dateOnly \? "UTC" : profile\.timeZone/, "Date-only values must use UTC while date-times use the market timezone");
 
 const requirements = read("app/requirements/page.tsx");
 assert.match(requirements, /role="region" aria-label="Posted requirements"/, "Posted requirements must have a named region");
