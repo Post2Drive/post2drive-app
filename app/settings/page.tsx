@@ -181,6 +181,7 @@ export default function SettingsPage() {
           Current password
           <input
             type="password"
+            required
             autoComplete="current-password"
             value={pwForm.currentPassword}
             onChange={(e) => setPwForm({ ...pwForm, currentPassword: e.target.value })}
@@ -190,7 +191,7 @@ export default function SettingsPage() {
           New password
           <input
             type="password"
-            autoComplete="new-password"
+            required
             minLength={8}
             autoComplete="new-password"
             value={pwForm.newPassword}
@@ -204,7 +205,7 @@ export default function SettingsPage() {
 
       <h2 style={{ marginTop: 32 }}>Subscription</h2>
       <p style={{ color: "var(--color-muted)" }}>
-        {account.country === "IN" ? "India access and pricing follow the India-market policy. Payment processing is not yet enabled in this rebuild." : `Access for ${marketProfile?.marketplaceLabel ?? "your market"} is currently configured in 7-day periods after any applicable promotional period. Payment processing is not yet enabled in this rebuild.`}
+        {account.country === "IN" ? "Access and pricing follow the policy configured for your market. Payment processing is not yet enabled in this rebuild." : `Access for ${marketProfile?.marketplaceLabel ?? "your market"} is currently configured in 7-day periods after any applicable promotional period. Payment processing is not yet enabled in this rebuild.`}
       </p>
 
       <section style={{ marginTop: 36, padding: 18, border: "1px solid var(--color-danger)", borderRadius: 12, background: "var(--color-danger-soft)" }}>
