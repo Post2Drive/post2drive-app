@@ -32,10 +32,10 @@ assert.doesNotMatch(accountGet, /\b(?:isTester|testerApprovalStatus|promotionPar
   "account settings must not expose internal QA, trial, subscription, or legal-state fields unnecessarily");
 assert.match(source("app/api/account/route.ts"), /Invalid request body\./,
   "malformed account PATCH JSON must return a controlled 400 response");
-assert.match(accountRoute, /const lifecycleGate = await tx\.account\.updateMany\([\s\S]*?deletionRequestedAt: null[\s\S]*?if \(lifecycleGate\.count !== 1\)/,
-  "PATCH must conditionally claim the account lifecycle row before mutating profile data");
-assert.match(accountRoute, /const claim = await tx\.account\.updateMany\([\s\S]*?deletionRequestedAt: null[\s\S]*?data: \{ deletionRequestedAt: stamp \}[\s\S]*?if \(claim\.count !== 1\)[\s\S]*?tx\.user\.findMany/,
-  "DELETE must claim the same account row before anonymizing user data");
+assert.match(accountRoute, /async function PATCHHandler[\s\S]*?SELECT "id" FROM "Account"[\s\S]*?deletionRequestedAt" IS NULL[\s\S]*?FOR UPDATE[\s\S]*?if \(lockedAccounts\.length !== 1\)/,
+  "PATCH must lock the active account row before mutating profile data");
+assert.match(accountRoute, /async function DELETEHandler[\s\S]*?SELECT "id" FROM "Account"[\s\S]*?FOR UPDATE[\s\S]*?if \(lockedAccounts\.length !== 1\)[\s\S]*?tx\.user\.updateMany[\s\S]*?const accountUpdate = await tx\.account\.updateMany[\s\S]*?if \(accountUpdate\.count !== 1\)/,
+  "DELETE must lock the same account row before anonymizing user data and commit only if its conditional claim succeeds");
 assert.match(accountRoute, /passwordChangedAt: new Date\(\)/,
   "password hash and revocation timestamp must be persisted together");
 assert.match(auth, /\(token as any\)\.passwordChangedAt = \(user as any\)\.passwordChangedAt \?\? null/,
