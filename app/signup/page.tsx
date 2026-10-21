@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { COUNTRIES, currencyForCountry } from "@/lib/currency";
 
@@ -10,6 +10,15 @@ type ResearchAnswers = { role: string; currentDiscovery: string; biggestChalleng
 export default function SignupPage() {
   const router = useRouter();
   const [step, setStep] = useState(0);
+  const stepHeadingRef = useRef<HTMLHeadingElement>(null);
+  const previousStepRef = useRef(step);
+
+  useEffect(() => {
+    if (previousStepRef.current !== step) {
+      previousStepRef.current = step;
+      stepHeadingRef.current?.focus();
+    }
+  }, [step]);
   const [form, setForm] = useState({
     name: "", email: "", phone: "", password: "", companyName: "",
     planType: "individual", fleetVehicleCount: "1", isSoleTrader: false,
@@ -120,20 +129,20 @@ export default function SignupPage() {
       <p>One account to post delivery jobs, find opportunities, bid and manage work. Choose your market first; each market stays separate.</p>
     </div>
     {testerApplicationPending || emailVerificationPending ? <div className="signup-alert" role="status">
-      {testerApplicationPending ? <><h2>Tester application submitted</h2><p>Your details are saved for administrator review. Tester access starts only after approval.</p></> : <><h2>Check your email</h2><p>{verificationEmailSent ? `We sent a verification link to ${signupEmail}. The link expires in 24 hours and can only be used once.` : `Your account was created, but delivery to ${signupEmail} could not be confirmed. Request another link below.`}</p><button type="button" onClick={() => void resendVerification()} disabled={resendingVerification}>{resendingVerification ? "Sending…" : "Resend verification email"}</button>{resendMessage && <p>{resendMessage}</p>}</>}
+      {testerApplicationPending ? <><h2>Tester application submitted</h2><p>Your details are saved for administrator review. Tester access starts only after approval.</p></> : <><h2>Check your email</h2><p>{verificationEmailSent ? `We sent a verification link to ${signupEmail}. The link expires in 24 hours and can only be used once.` : `Your account was created, but delivery to ${signupEmail} could not be confirmed. Request another link below.`}</p><button type="button" onClick={() => void resendVerification()} disabled={resendingVerification}>{resendingVerification ? "Sending…" : "Resend verification email"}</button>{resendMessage && <p role="status" aria-live="polite">{resendMessage}</p>}</>}
       <p><a href="/login">Continue to login</a></p>
     </div> : <form className="signup-form" onSubmit={(e) => { e.preventDefault(); if (step < steps.length - 1) next(); else void handleSubmit(); }}>
       <div className="signup-step-header">
-        <div><span>STEP {step + 1} OF {steps.length}</span><h2>{steps[step]}</h2></div>
+        <div><span>STEP {step + 1} OF {steps.length}</span><h2 ref={stepHeadingRef} tabIndex={-1}>{steps[step]}</h2></div>
         <span className="signup-step-market">{marketDisplay}</span>
       </div>
-      <div className="signup-progress" aria-label={`Step ${step + 1} of ${steps.length}`}><span style={{ width: `${((step + 1) / steps.length) * 100}%` }} /></div>
+      <div className="signup-progress" role="progressbar" aria-label="Signup progress" aria-valuemin={1} aria-valuemax={steps.length} aria-valuenow={step + 1} aria-valuetext={`Step ${step + 1} of ${steps.length}: ${steps[step]}`}><span style={{ width: `${((step + 1) / steps.length) * 100}%` }} /></div>
 
       {step === 0 && <div className="signup-fields">
         <label>Choose your market<select required value={form.country} onChange={(e) => changeCountry(e.target.value)}><option value="" disabled>Choose a country</option>{COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}</select><small>This determines your marketplace, currency and local time zone. Cross-market matching is disabled.</small></label>
         <label>Account type<select value={form.isSoleTrader ? "sole" : "company"} onChange={(e) => update("isSoleTrader", e.target.value === "sole")}><option value="company">Registered business</option><option value="sole">Sole trader / individual operator</option></select></label>
         <label>{form.isSoleTrader ? "Trading name (optional)" : "Registered company name"}<input value={form.companyName} onChange={(e) => update("companyName", e.target.value)} required={!form.isSoleTrader} maxLength={120} placeholder={form.isSoleTrader ? "You can use your own name" : "Name registered to your business"} /></label>
-        <div className="signup-note"><strong>{form.country ? `${marketLabel} marketplace` : "Select a market"}</strong><p>{!form.country ? "Choose a country to see the correct marketplace, currency and access options." : isIndia ? "Browse India-only delivery opportunities using INR. A short optional market-research step helps shape the experience." : isUk ? "Use this country's marketplace with GBP pricing. Market-specific access and promotion rules are shown before you commit." : "Use this country's separate marketplace with its local currency and the same 7-day individual and fleet access model as the UK. UK-only promotions do not automatically apply."}</p></div>
+        <div className="signup-note"><strong>{form.country ? `${marketLabel} marketplace` : "Select a market"}</strong><p>{!form.country ? "Choose a country to see the correct marketplace, currency and access options." : isIndia ? "Browse India-only delivery opportunities using INR. A short optional market-research step helps shape the experience." : isUk ? "Use this country's marketplace with GBP pricing. Market-specific access and promotion rules are shown before you commit." : "Use this country's separate marketplace with local-currency pricing. The configured access model and promotions available in your country are shown before you commit."}</p></div>
       </div>}
 
       {step === 1 && <div className="signup-fields">
@@ -168,6 +177,7 @@ export default function SignupPage() {
       {error && <p className="signup-error" role="alert">{error}</p>}
       <div className="signup-actions">{step > 0 && <button className="signup-secondary" type="button" disabled={loading} onClick={() => { setError(""); setStep((current) => current - 1); }}>Back</button>}{step < steps.length - 1 ? <button type="submit">Continue</button> : <button type="submit" disabled={loading}>{loading ? "Creating account…" : "Create account"}</button>}</div>
       <p className="signup-login-link">Already registered? <a href="/login">Log in</a></p>
+      <p className="signup-login-link"><a href="/admin-access">Admin dashboard</a></p>
     </form>}
     <p className="signup-footnote">By continuing, you can review the plan details and terms before creating your account. Account creation itself does not take payment.</p>
   </section></main>;

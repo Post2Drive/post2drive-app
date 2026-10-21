@@ -8,6 +8,8 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { markDriverOpportunityAccepted } from "@/lib/opportunities";
 import { recordAcceptedJobUsage } from "@/lib/usage";
+import { getLocalisationProfile } from "@/lib/localisation";
+import { marketDateKey } from "@/lib/vehicleDates";
 
 async function POSTHandler(
   req: Request,
@@ -64,7 +66,7 @@ async function POSTHandler(
 
   const jobForAcceptance = await prisma.job.findUnique({
     where: { id: id },
-    select: { posterId: true, priceMode: true },
+    select: { posterId: true, priceMode: true, vehicleType: true },
   });
 
   if (!jobForAcceptance) {
@@ -96,6 +98,8 @@ async function POSTHandler(
       select: {
         verificationStatus: true,
         isTester: true,
+        country: true,
+        currency: true,
       },
     });
 
@@ -107,6 +111,28 @@ async function POSTHandler(
       },
       { status: 403 }
     );
+  }
+
+  if (!account?.isTester) {
+    const driverMarket = getLocalisationProfile({ country: account.country, currency: account.currency });
+    const marketToday = marketDateKey(new Date(), driverMarket?.timeZone ?? "UTC");
+    const dateCutoff = new Date(marketToday + "T00:00:00.000Z");
+    const matchingVehicle = await prisma.vehicle.findFirst({
+      where: {
+        accountId,
+        vehicleType: jobForAcceptance.vehicleType,
+        verificationStatus: "verified",
+        insuranceValidUntil: { gte: dateCutoff },
+        ...(driverMarket?.inspectionRequiredAtCountryLevel ? { motValidUntil: { gte: dateCutoff } } : {}),
+      },
+      select: { id: true },
+    });
+    if (!matchingVehicle) {
+      return NextResponse.json(
+        { error: "You need a verified vehicle of the required type with current insurance and any required inspection before accepting it." },
+        { status: 403 }
+      );
+    }
   }
 
   try {
@@ -126,13 +152,38 @@ async function POSTHandler(
             );
           }
 
+          const currentDriver = await tx.account.findUnique({
+            where: { id: accountId },
+            select: { verificationStatus: true, isTester: true, country: true, currency: true },
+          });
+          if (!currentDriver || (currentDriver.verificationStatus !== "verified" && !currentDriver.isTester)) {
+            throw new Error("DRIVER_NOT_VERIFIED");
+          }
+          if (!currentDriver.isTester) {
+            const driverMarket = getLocalisationProfile({ country: currentDriver.country, currency: currentDriver.currency });
+            const marketToday = marketDateKey(new Date(), driverMarket?.timeZone ?? "UTC");
+            const dateCutoff = new Date(marketToday + "T00:00:00.000Z");
+            const matchingVehicle = await tx.vehicle.findFirst({
+              where: {
+                accountId,
+                vehicleType: job.vehicleType,
+                verificationStatus: "verified",
+                insuranceValidUntil: { gte: dateCutoff },
+                ...(driverMarket?.inspectionRequiredAtCountryLevel ? { motValidUntil: { gte: dateCutoff } } : {}),
+              },
+              select: { id: true },
+            });
+            if (!matchingVehicle) throw new Error("DRIVER_VEHICLE_NOT_VERIFIED");
+          }
+
           let pickupAt: Date;
 
           try {
             pickupAt = await getJobPickupAtForAccount(
               accountId,
               job.jobDate,
-              job.pickupTime
+              job.pickupTime,
+              job.pickupTimeZone
             );
           } catch {
             throw new Error(
@@ -280,6 +331,14 @@ async function POSTHandler(
         },
         { status: 402 }
       );
+    }
+
+    if (message === "DRIVER_NOT_VERIFIED") {
+      return NextResponse.json({ error: "Your account must be verified before accepting jobs." }, { status: 403 });
+    }
+
+    if (message === "DRIVER_VEHICLE_NOT_VERIFIED") {
+      return NextResponse.json({ error: "You need a verified vehicle of the required type with current insurance and any required inspection before accepting it." }, { status: 403 });
     }
 
     if (

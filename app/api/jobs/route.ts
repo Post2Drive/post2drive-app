@@ -8,9 +8,21 @@ import { prisma } from "@/lib/prisma";
 import { recordDriverOpportunity } from "@/lib/opportunities";
 import { validateJobInput } from "@/lib/jobValidation";
 import { buildJobFilters } from "@/lib/jobSearch";
-import { getSyntheticAccountIdsForUser } from "@/lib/qaIsolation";
+import { isQaAccount } from "@/lib/qaIsolation";
 import { isSupportedMarket, marketForAccount } from "@/lib/market";
+import { getTimeZoneOptions } from "@/lib/localisation";
 import { enforceRateLimit } from "@/lib/rateLimit";
+
+function hasFuturePickup(
+  job: { jobDate: Date; pickupTime: string | null; pickupTimeZone: string | null },
+  market: { country: string; currency: string },
+): boolean {
+  try {
+    return getJobPickupAt(job.jobDate, job.pickupTime, market, job.pickupTimeZone).getTime() > Date.now();
+  } catch {
+    return false;
+  }
+}
 
 async function GETHandler(req: Request) {
   const session = await getServerSession(authOptions);
@@ -132,15 +144,21 @@ async function GETHandler(req: Request) {
 
   // Keep retained QA fixtures out of the real marketplace. QA accounts can
   // still see fixtures while running the synthetic suite.
-  const syntheticAccountIds = await getSyntheticAccountIdsForUser(accountId);
+  const requesterIsQaAccount = await isQaAccount(accountId);
+  const posterFilter = {
+    country,
+    currency,
+    // Keep the exclusion inside PostgreSQL instead of sending every retained
+    // synthetic account ID as a separate Prisma query parameter.
+    ...(!requesterIsQaAccount ? { qaTestAccounts: { none: {} } } : {}),
+  };
 
   const jobs = await prisma.job.findMany({
     where: {
       currency,
       crossBorder: false,
-      poster: { country, currency },
+      poster: posterFilter,
       AND: [
-        { posterId: { notIn: syntheticAccountIds } },
         {
           OR: [
             ...(canBrowseOpenMarketplace
@@ -221,7 +239,8 @@ async function GETHandler(req: Request) {
     const marketplaceJobs = jobs.filter(
       (job) =>
         job.status === "open" &&
-        job.posterId !== accountId
+        job.posterId !== accountId &&
+        hasFuturePickup(job, actor)
     );
 
     const trackingResults = await Promise.allSettled(
@@ -312,6 +331,13 @@ async function GETHandler(req: Request) {
       dropoffContactName,
       dropoffContactPhone,
     };
+  }).filter((job) => {
+    const previousDriverIds = Array.isArray(job.previousDriverIds) ? job.previousDriverIds : [];
+    const keepForHistory = job.posterId === accountId ||
+      job.acceptedById === accountId ||
+      previousDriverIds.includes(accountId);
+    if (job.status !== "open" || keepForHistory) return true;
+    return hasFuturePickup(job, actor);
   });
 
   return NextResponse.json({
@@ -376,16 +402,17 @@ async function POSTHandler(req: Request) {
   const marketplaceAccessCheck = await getAccountAccess(accountId);
   let pickupAt: Date;
   try {
-    pickupAt = getJobPickupAt(validation.data.jobDate, validation.data.pickupTime, account);
+    pickupAt = getJobPickupAt(validation.data.jobDate, validation.data.pickupTime, account, validation.data.pickupTimeZone);
   } catch (error) {
     const code = error instanceof Error ? error.message : "";
-    const marketName = `${marketForAccount(account)?.label ?? "Selected market"} local time`;
+    const market = marketForAccount(account);
+    const timeZoneName = getTimeZoneOptions(account.country, market?.timeZone).find((zone) => zone.value === validation.data.pickupTimeZone)?.label ?? validation.data.pickupTimeZone;
     return NextResponse.json({
       error: code === "AMBIGUOUS_PICKUP_TIME_DST"
         ? "The selected pickup time is ambiguous because of the daylight-saving clock change. Please choose another time."
         : code === "INVALID_PICKUP_TIME_DST"
           ? "The selected pickup time does not exist because of the daylight-saving clock change. Please choose another time."
-          : `Invalid pickup time for ${marketName}.`,
+          : `Invalid pickup time for ${timeZoneName}.`,
     }, { status: 400 });
   }
 

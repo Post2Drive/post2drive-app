@@ -3,11 +3,14 @@
 
 import ActivityHistory from "./activity-history";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import SignOutButton from "@/app/sign-out-button";
 import { symbolFor, COUNTRIES } from "@/lib/currency";
+import { formatMarketDate, formatMarketCurrency, getLocalisationProfile, getTimeZoneOptions } from "@/lib/localisation";
+import { vehicleTypeLabel } from "@/lib/vehicles";
+import { currencyMinorUnitScale } from "@/lib/currencyMinorUnits";
 
 type Contact = {
   companyName: string;
@@ -31,6 +34,8 @@ type Job = {
   jobDate: string;
   pickupTime: string | null;
   dropoffTime: string | null;
+  pickupTimeZone?: string | null;
+  dropoffTimeZone?: string | null;
   vehicleType: string;
   weightKg: number | null;
   dimensions: string | null;
@@ -210,8 +215,15 @@ export default function JobsPage() {
   const [loading, setLoading] =
     useState(true);
 
+  const [loadError, setLoadError] = useState("");
+
   const [message, setMessage] =
     useState("");
+
+  // Prevent repeated clicks from dispatching duplicate lifecycle mutations.
+  const actionInFlight = useRef(false);
+  const bidInFlight = useRef(false);
+  const ratingInFlight = useRef(false);
 
   const [bidAmounts, setBidAmounts] =
     useState<
@@ -255,6 +267,8 @@ export default function JobsPage() {
     (session?.user as any)
       ?.country;
 
+  const marketProfile = getLocalisationProfile({ country: accountCountry || "GB", currency: (session?.user as any)?.currency || "GBP" });
+
   const countryName =
     COUNTRIES.find(
       (c) =>
@@ -268,9 +282,9 @@ export default function JobsPage() {
   const canPost = true;
 
   async function loadJobs() {
+    setLoading(true);
+    setLoadError("");
     try {
-      setLoading(true);
-
       const res =
         await fetch(
           "/api/jobs"
@@ -280,20 +294,13 @@ export default function JobsPage() {
         await res.json();
 
       if (!res.ok) {
-        setMessage(
-          data.error ||
-            "Could not load jobs."
-        );
+        setLoadError(data.error || "Could not load jobs. Try again.");
         return;
       }
 
-      setJobs(
-        data.jobs || []
-      );
+      setJobs(data.jobs || []);
     } catch {
-      setMessage(
-        "Could not load jobs."
-      );
+      setLoadError("Could not load jobs. Check your connection and try again.");
     } finally {
       setLoading(false);
     }
@@ -307,12 +314,19 @@ export default function JobsPage() {
     path: string,
     confirmMsg?: string
   ) {
+    if (actionInFlight.current) {
+      setMessage("Another job action is still in progress. Please wait.");
+      return false;
+    }
+    actionInFlight.current = true;
+
     if (
       confirmMsg &&
       !window.confirm(
         confirmMsg
       )
     ) {
+      actionInFlight.current = false;
       return false;
     }
 
@@ -343,6 +357,8 @@ export default function JobsPage() {
       );
 
       return false;
+    } finally {
+      actionInFlight.current = false;
     }
   }
 
@@ -488,79 +504,86 @@ export default function JobsPage() {
   async function handleBid(
     jobId: string
   ) {
+    if (bidInFlight.current) {
+      setMessage("A bid submission is already in progress. Please wait.");
+      return;
+    }
+    bidInFlight.current = true;
     setMessage("");
 
-    const amount =
-      bidAmounts[jobId];
+    try {
+      const amount =
+        bidAmounts[jobId];
 
-    if (!amount) {
+      if (!amount) {
+        setMessage(
+          "Enter a bid amount."
+        );
+
+        return;
+      }
+
+      const res =
+        await fetch(
+          `/api/jobs/${jobId}/bid`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body:
+              JSON.stringify({
+                amount,
+              }),
+          }
+        );
+
+      const data =
+        await res.json();
+
+      if (!res.ok) {
+        setMessage(
+          data.error ||
+            "Could not place bid."
+        );
+
+        return;
+      }
+
       setMessage(
-        "Enter a bid amount."
+        "Bid placed."
       );
 
-      return;
+      setBidAmounts({
+        ...bidAmounts,
+        [jobId]: "",
+      });
+    } catch {
+      setMessage("Could not place bid.");
+    } finally {
+      bidInFlight.current = false;
     }
-
-    const res =
-      await fetch(
-        `/api/jobs/${jobId}/bid`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-          body:
-            JSON.stringify({
-              amount,
-            }),
-        }
-      );
-
-    const data =
-      await res.json();
-
-    if (!res.ok) {
-      setMessage(
-        data.error ||
-          "Could not place bid."
-      );
-
-      return;
-    }
-
-    setMessage(
-      "Bid placed."
-    );
-
-    setBidAmounts({
-      ...bidAmounts,
-      [jobId]: "",
-    });
   }
 
   async function loadBids(
     jobId: string
   ) {
-    const res =
-      await fetch(
-        `/api/jobs/${jobId}/bids`
-      );
+    try {
+      const res = await fetch(`/api/jobs/${jobId}/bids`);
+      const data = await res.json().catch(() => ({}));
 
-    const data =
-      await res.json();
+      if (!res.ok) {
+        setMessage(data.error || "Could not load bids.");
+        return;
+      }
 
-    if (res.ok) {
-      setOpenBids({
-        ...openBids,
-        [jobId]:
-          data.bids || [],
-      });
-    } else {
-      setMessage(
-        data.error ||
-          "Could not load bids."
-      );
+      setOpenBids((current) => ({
+        ...current,
+        [jobId]: data.bids || [],
+      }));
+    } catch {
+      setMessage("Network error. Could not load bids.");
     }
   }
 
@@ -584,54 +607,65 @@ export default function JobsPage() {
   async function submitRating(
     jobId: string
   ) {
-    setMessage("");
-
-    const input =
-      ratingInputs[jobId] || {
-        stars: "5",
-        comment: "",
-      };
-
-    const res =
-      await fetch(
-        "/api/ratings",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-          body:
-            JSON.stringify({
-              jobId,
-              stars:
-                input.stars,
-              comment:
-                input.comment,
-            }),
-        }
-      );
-
-    const data =
-      await res.json();
-
-    if (!res.ok) {
-      setMessage(
-        data.error ||
-          "Could not submit rating."
-      );
-
+    if (ratingInFlight.current) {
+      setMessage("A rating submission is already in progress. Please wait.");
       return;
     }
+    ratingInFlight.current = true;
+    setMessage("");
 
-    setMessage(
-      "Rating submitted."
-    );
+    try {
+      const input =
+        ratingInputs[jobId] || {
+          stars: "5",
+          comment: "",
+        };
 
-    setRatedJobs({
-      ...ratedJobs,
-      [jobId]: true,
-    });
+      const res =
+        await fetch(
+          "/api/ratings",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body:
+              JSON.stringify({
+                jobId,
+                stars:
+                  input.stars,
+                comment:
+                  input.comment,
+              }),
+          }
+        );
+
+      const data =
+        await res.json();
+
+      if (!res.ok) {
+        setMessage(
+          data.error ||
+            "Could not submit rating."
+        );
+
+        return;
+      }
+
+      setMessage(
+        "Rating submitted."
+      );
+
+      setRatedJobs({
+        ...ratedJobs,
+        [jobId]: true,
+      });
+    } catch {
+      setMessage("Could not submit rating.");
+    } finally {
+      ratingInFlight.current = false;
+    }
   }
 
   const activeTab =
@@ -650,9 +684,11 @@ export default function JobsPage() {
         );
 
   return (
-    <div
+    <main className="marketplace-page"
       style={{
+        width: "100%",
         maxWidth: 760,
+        minWidth: 0,
       }}
     >
       <div
@@ -662,10 +698,12 @@ export default function JobsPage() {
             "space-between",
           alignItems:
             "center",
+          flexWrap: "wrap",
+          gap: 12,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
-        <h1>{accountCountry === "IN" ? "India delivery marketplace" : "UK delivery marketplace"}</h1>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, minWidth: 0, flex: "1 1 260px" }}>
+        <h1 style={{ margin: 0, minWidth: 0, overflowWrap: "anywhere" }}>{countryName} delivery marketplace</h1>
         {accountCountry === "IN" && <Link className="button-link button-link-secondary" href="/requirements">My Requirements</Link>}
       </div>
 
@@ -675,6 +713,8 @@ export default function JobsPage() {
             gap: 12,
             alignItems:
               "center",
+            flexWrap: "wrap",
+            minWidth: 0,
           }}
         >
           {canPost && (
@@ -693,36 +733,39 @@ export default function JobsPage() {
       </div>
 
       <div
+        className="marketplace-job-tabs"
+        role="group"
+        aria-label="Filter jobs by status"
         style={{
           display: "flex",
+          flexWrap: "wrap",
           gap: 4,
-          borderBottom:
-            "1px solid #ccc",
+          borderBottom: "1px solid var(--color-border)",
           marginBottom: 12,
         }}
       >
         {TABS.map((t) => (
           <button
             key={t.key}
-            onClick={() =>
-              setTab(t.key)
-            }
+            type="button"
+            aria-pressed={tab === t.key}
+            onClick={() => setTab(t.key)}
             style={{
-              padding:
-                "6px 12px",
+              minHeight: 44,
+              padding: "10px 14px",
               border: "none",
-              borderBottom:
-                tab === t.key
-                  ? "2px solid #333"
-                  : "2px solid transparent",
-              background:
-                "none",
-              fontWeight:
-                tab === t.key
-                  ? 700
-                  : 400,
-              cursor:
-                "pointer",
+              borderBottom: tab === t.key
+                ? "2px solid var(--color-primary-action)"
+                : "2px solid transparent",
+              background: tab === t.key
+                ? "var(--color-action-soft)"
+                : "transparent",
+              color: tab === t.key
+                ? "var(--color-primary-action)"
+                : "var(--color-text)",
+              borderRadius: "8px 8px 0 0",
+              fontWeight: tab === t.key ? 700 : 500,
+              cursor: "pointer",
             }}
           >
             {t.label}
@@ -731,7 +774,7 @@ export default function JobsPage() {
       </div>
 
       {message && (
-        <p>{message}</p>
+        <p role="status" aria-live="polite">{message}</p>
       )}
 
       {accountCountry && (
@@ -745,17 +788,23 @@ export default function JobsPage() {
         </p>
       )}
 
-      {loading && (
-        <p>Loading...</p>
+      {loadError && (
+        <div role="alert" aria-live="assertive">
+          <p>{loadError}</p>
+          <button type="button" onClick={() => void loadJobs()} disabled={loading}>
+            {loading ? "Retrying…" : "Retry loading jobs"}
+          </button>
+        </div>
       )}
 
-      {!loading &&
+      {loading && (
+        <p role="status" aria-live="polite">Loading jobs…</p>
+      )}
+
+      {!loading && !loadError &&
         visibleJobs.length ===
           0 && (
-          <p>
-            No jobs in this
-            category.
-          </p>
+          <p role="status">No jobs in this category.</p>
         )}
 
       <ul
@@ -798,6 +847,8 @@ export default function JobsPage() {
             return (
               <li
                 key={job.id}
+                className="marketplace-job-card"
+                data-status={job.status}
                 style={{
                   background: "var(--color-surface)",
                   border: "1px solid var(--color-border)",
@@ -835,7 +886,7 @@ export default function JobsPage() {
                           marginTop: 7,
                           padding: "3px 8px",
                           borderRadius: 999,
-                          background: "#E8F1FB",
+                          background: "var(--color-primary-soft)",
                           color: "var(--color-primary-action)",
                           fontSize: 12,
                           fontWeight: 700,
@@ -852,20 +903,20 @@ export default function JobsPage() {
                       borderRadius: 999,
                       background:
                         job.status === "open"
-                          ? "#E8F5E9"
+                          ? "var(--color-positive-soft)"
                           : job.status === "completed"
-                          ? "#E0F2F1"
+                          ? "var(--color-positive-soft)"
                           : job.status === "cancelled"
-                          ? "#FFEBEE"
-                          : "#FFF8E1",
+                          ? "var(--color-danger-soft)"
+                          : "var(--color-warning-soft)",
                       color:
                         job.status === "open"
-                          ? "#2E7D32"
+                          ? "var(--color-positive)"
                           : job.status === "completed"
-                          ? "#00695C"
+                          ? "var(--color-positive)"
                           : job.status === "cancelled"
-                          ? "#C62828"
-                          : "#8D6E00",
+                          ? "var(--color-danger)"
+                          : "var(--color-warning)",
                       fontSize: 12,
                       fontWeight: 700,
                       textTransform: "capitalize",
@@ -904,19 +955,17 @@ export default function JobsPage() {
                     fontSize: 14,
                   }}
                 >
-                  <span>{job.vehicleType}</span>
+                  <span>{vehicleTypeLabel(job.vehicleType, accountCountry)}</span>
                   <span>·</span>
                   <strong>
-                    {symbolFor(job.currency)}
-                    {job.price}
+                    {formatMarketCurrency(job.price, { country: accountCountry || "GB", currency: job.currency })}
                   </strong>
 
                   {job.pricePerMile && (
                     <>
                       <span>·</span>
                       <span>
-                        {symbolFor(job.currency)}
-                        {job.pricePerMile}/mile
+                        {formatMarketCurrency(marketProfile?.distanceUnit === "km" ? job.pricePerMile * 0.621371 : job.pricePerMile, { country: accountCountry || "GB", currency: job.currency })}/{marketProfile?.distanceUnit ?? "mile"}
                       </span>
                     </>
                   )}
@@ -924,25 +973,25 @@ export default function JobsPage() {
                   <span>·</span>
 
                   <span>
-                    {new Date(job.jobDate).toLocaleDateString("en-GB")}
+                    {formatMarketDate(job.jobDate, { country: accountCountry, currency: job.currency })}
                   </span>
 
                   {job.pickupTime && (
                     <>
                       <span>·</span>
-                      <span>Pickup {job.pickupTime}</span>
+                      <span>Pickup {job.pickupTime} ({getTimeZoneOptions(accountCountry || "GB", marketProfile?.timeZone).find((zone) => zone.value === job.pickupTimeZone)?.label ?? job.pickupTimeZone ?? marketProfile?.timeZone})</span>
                     </>
                   )}
 
                   {job.dropoffTime && (
                     <>
                       <span>·</span>
-                      <span>Drop-off {job.dropoffTime}</span>
+                      <span>Drop-off {job.dropoffTime} ({getTimeZoneOptions(accountCountry || "GB", marketProfile?.timeZone).find((zone) => zone.value === job.dropoffTimeZone)?.label ?? job.dropoffTimeZone ?? job.pickupTimeZone ?? marketProfile?.timeZone})</span>
                     </>
                   )}
                 </div>
 
-                {job.priceMode === "bid" && (
+                {accountCountry !== "IN" && job.priceMode === "bid" && (
                   <p
                     style={{
                       margin: "10px 0 0",
@@ -963,7 +1012,7 @@ export default function JobsPage() {
                       fontSize: 13,
                     }}
                   >
-                    {job.weightKg ? `${job.weightKg} kg` : ""}
+                    {job.weightKg ? `${accountCountry === "US" ? (job.weightKg / 0.45359237).toLocaleString("en-US", { maximumFractionDigits: 1 }) + " lb" : job.weightKg + " kg"}` : ""}
                     {job.weightKg && job.dimensions ? " · " : ""}
                     {job.dimensions || ""}
                   </p>
@@ -1065,6 +1114,7 @@ export default function JobsPage() {
                   !isOwner &&
                   job.status ===
                     "open" &&
+                  accountCountry !== "IN" &&
                   job.priceMode ===
                     "bid" && (
                     <div
@@ -1078,6 +1128,8 @@ export default function JobsPage() {
                     >
                       <input
                         type="number"
+                        min={1 / currencyMinorUnitScale(job.currency)}
+                        step={1 / currencyMinorUnitScale(job.currency)}
                         placeholder={`Your bid (${symbolFor(
                           job.currency
                         ).trim()})`}
@@ -1184,6 +1236,7 @@ export default function JobsPage() {
                   )}
 
                 {isOwner &&
+                  accountCountry !== "IN" &&
                   job.priceMode ===
                     "bid" &&
                   job.status ===
@@ -1238,12 +1291,7 @@ export default function JobsPage() {
                                     .displayId
                                 }
                                 ) —{" "}
-                                {symbolFor(
-                                  job.currency
-                                )}
-                                {
-                                  bid.amount
-                                }
+                                {formatMarketCurrency(bid.amount, { country: accountCountry || "GB", currency: job.currency })}
 
                                 {ageText(
                                   bid
@@ -1280,7 +1328,7 @@ export default function JobsPage() {
                     <div
                       style={{
                         marginTop: 18,
-                        background: "#F4F7FA",
+                        background: "var(--ops-surface-inset)",
                         border: "1px solid var(--color-border)",
                         padding: 16,
                         borderRadius: 12,
@@ -1643,6 +1691,6 @@ export default function JobsPage() {
           }
         )}
       </ul>
-    </div>
+    </main>
   );
 }

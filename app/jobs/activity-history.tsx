@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
+import { formatMarketDateTime } from "@/lib/localisation";
 
 type Activity = {
   id: string;
@@ -36,6 +38,9 @@ export default function ActivityHistory({
 }: {
   jobId: string;
 }) {
+  const { data: session } = useSession();
+  const country = (session?.user as any)?.country ?? "GB";
+  const currency = (session?.user as any)?.currency ?? "GBP";
   const [activities, setActivities] = useState<Activity[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -88,7 +93,7 @@ export default function ActivityHistory({
           style={{
             marginTop: 8,
             padding: 8,
-            background: "#fafafa",
+            background: "var(--ops-surface-inset)",
             borderRadius: 4,
           }}
         >
@@ -129,9 +134,7 @@ export default function ActivityHistory({
                         marginTop: 2,
                       }}
                     >
-                      {new Date(
-                        activity.createdAt
-                      ).toLocaleString()}
+                      {formatMarketDateTime(activity.createdAt, { country, currency })}
                     </div>
 
                     {activity.description && (

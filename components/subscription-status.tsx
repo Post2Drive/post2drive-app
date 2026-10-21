@@ -29,7 +29,7 @@ type AccessData = {
   } | null;
 };
 
-function formatDate(value: string | null, locale = "en-GB", timeZone = "Europe/London") {
+function formatDate(value: string | null, locale = "en", timeZone = "UTC") {
   if (!value) return null;
 
   return new Intl.DateTimeFormat(locale, {
@@ -82,13 +82,18 @@ export default function SubscriptionStatus() {
       : data.reason === "verification_required"
         ? "var(--color-warning)"
         : "var(--color-danger)";
+  const statusTextColor = data.reason === "verification_required"
+    ? "var(--color-text)"
+    : statusColor;
 
   const endsAt = formatDate(
     data.endsAt || data.freeEndsAt || data.subscriptionEndsAt,
     data.locale,
     data.timeZone,
   );
-  const formattedPrice = data.price === null || !data.currency ? null : new Intl.NumberFormat(data.locale || "en-GB", { style: "currency", currency: data.currency }).format(data.price);
+  const formattedPrice = data.price === null || !data.currency ? null : new Intl.NumberFormat(data.locale || "en", { style: "currency", currency: data.currency }).format(data.price);
+  const showPlanPrice = formattedPrice !== null &&
+    (trialActive || (!data.allowed && data.reason === "access_expired"));
 
   const planName =
     data.planType === "fleet"
@@ -99,10 +104,10 @@ export default function SubscriptionStatus() {
     <section
       style={{
         background: "var(--color-surface)",
-        border: "1px solid #D9E2EC",
+        border: "1px solid var(--color-border)",
         borderRadius: 14,
         padding: 20,
-        boxShadow: "0 1px 3px rgba(16,42,67,0.08)",
+        boxShadow: "var(--shadow-card)",
       }}
     >
       <div
@@ -151,9 +156,11 @@ export default function SubscriptionStatus() {
 
         <span
           style={{
-            background: `${statusColor}18`,
-            color: statusColor,
-            borderRadius: 999,
+            background: "var(--color-surface)",
+            color: statusTextColor,
+            border: `1px solid ${statusColor}`,
+            borderLeft: `4px solid ${statusColor}`,
+            borderRadius: 8,
             padding: "7px 11px",
             fontSize: 13,
             fontWeight: 700,
@@ -169,22 +176,22 @@ export default function SubscriptionStatus() {
         </span>
       </div>
 
-      {trialActive && formattedPrice !== null && (
+      {showPlanPrice && (
         <div
           style={{
             marginTop: 17,
-            borderTop: "1px solid #D9E2EC",
+            borderTop: "1px solid var(--color-border)",
             paddingTop: 15,
             display: "flex",
-            alignItems: "center",
+            alignItems: "flex-start",
             justifyContent: "space-between",
             gap: 16,
             flexWrap: "wrap",
           }}
         >
-          <div>
+          <div style={{ maxWidth: 520 }}>
             <div style={{ color: "var(--color-muted)", fontSize: 13 }}>
-              After your free access
+              {trialActive ? "After your free access" : "Configured weekly access price"}
             </div>
 
             <div
@@ -207,6 +214,9 @@ export default function SubscriptionStatus() {
             >
               Unlimited legitimate marketplace activity · No per-job charges
             </div>
+            <p style={{ margin: "8px 0 0", color: "var(--color-muted)", fontSize: 12, lineHeight: 1.5 }}>
+              Planning price only: payment checkout is not connected yet, so you cannot buy or renew access in the app.
+            </p>
           </div>
 
           <Link
@@ -221,7 +231,7 @@ export default function SubscriptionStatus() {
               fontWeight: 700,
               fontSize: 14,
             }}
-           className="button-link button-link-secondary">
+            className="button-link">
             View pricing
           </Link>
         </div>
@@ -231,9 +241,10 @@ export default function SubscriptionStatus() {
         <div
           style={{
             marginTop: 15,
-            background: "#FFF8E1",
-            border: "1px solid #F9A825",
-            color: "#7A5600",
+            background: "#FFFFFF",
+            border: "1px solid var(--color-warning)",
+            borderLeft: "4px solid var(--color-warning)",
+            color: "var(--color-text)",
             borderRadius: 9,
             padding: "11px 13px",
             fontSize: 13,
@@ -249,9 +260,10 @@ export default function SubscriptionStatus() {
         <div
           style={{
             marginTop: 15,
-            background: "#FDECEC",
-            border: "1px solid #D32F2F",
-            color: "#A51E1E",
+            background: "#FFFFFF",
+            border: "1px solid var(--color-danger)",
+            borderLeft: "4px solid var(--color-danger)",
+            color: "var(--color-danger)",
             borderRadius: 9,
             padding: "11px 13px",
             fontSize: 13,

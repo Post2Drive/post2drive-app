@@ -32,7 +32,7 @@ async function GETHandler() {
       vehicles: {
         select: {
           id: true, vehicleType: true, regPlate: true, ownershipType: true,
-          make: true, model: true, mamKg: true, v5cDocumentUrl: true,
+          make: true, model: true, mamKg: true, registrationRegion: true, v5cDocumentUrl: true,
           insuranceDocumentUrl: true, operatorLicenceNo: true,
           motValidUntil: true, insuranceValidUntil: true, verificationStatus: true,
         },

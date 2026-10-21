@@ -3,25 +3,9 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-
-const VEHICLE_TYPES = [
-  "Motorcycle courier",
-  "Car",
-  "Small van (SWB)",
-  "Medium van (MWB)",
-  "Large van (LWB)",
-  "Luton van",
-  "7.5t box truck",
-  "12t rigid",
-  "18t rigid",
-  "26t rigid",
-  "32t HGV artic",
-  "Flatbed",
-  "Tipper",
-  "Refrigerated van/truck",
-  "Pickup truck",
-  "Other (specify in notes)",
-];
+import { useSession } from "next-auth/react";
+import { VEHICLE_TYPES } from "@/lib/vehicles";
+import { getLocalisationProfile, getTimeZoneOptions } from "@/lib/localisation";
 
 type Job = {
   id: string;
@@ -34,6 +18,8 @@ type Job = {
   jobDate: string;
   pickupTime?: string | null;
   dropoffTime?: string | null;
+  pickupTimeZone?: string | null;
+  dropoffTimeZone?: string | null;
   vehicleType: string;
   weightKg?: number | null;
   dimensions?: string | null;
@@ -64,6 +50,9 @@ function inputDate(value?: string | null) {
 
 export default function EditJobPage() {
   const params = useParams();
+  const { data: session } = useSession();
+  const country = (session?.user as any)?.country ?? "GB";
+  const marketProfile = getLocalisationProfile({ country, currency: (session?.user as any)?.currency ?? "GBP" });
   const router = useRouter();
 
   const jobId = useMemo(() => {
@@ -87,6 +76,8 @@ export default function EditJobPage() {
   const [jobDate, setJobDate] = useState("");
   const [pickupTime, setPickupTime] = useState("");
   const [dropoffTime, setDropoffTime] = useState("");
+  const [pickupTimeZone, setPickupTimeZone] = useState(marketProfile?.timeZone ?? "UTC");
+  const [dropoffTimeZone, setDropoffTimeZone] = useState(marketProfile?.timeZone ?? "UTC");
   const [vehicleType, setVehicleType] = useState("");
   const [weightKg, setWeightKg] = useState("");
   const [dimensions, setDimensions] = useState("");
@@ -136,11 +127,13 @@ export default function EditJobPage() {
         setJobDate(inputDate(loadedJob.jobDate));
         setPickupTime(loadedJob.pickupTime || "");
         setDropoffTime(loadedJob.dropoffTime || "");
+        setPickupTimeZone(loadedJob.pickupTimeZone || marketProfile?.timeZone || "UTC");
+        setDropoffTimeZone(loadedJob.dropoffTimeZone || loadedJob.pickupTimeZone || marketProfile?.timeZone || "UTC");
         setVehicleType(loadedJob.vehicleType || "");
         setWeightKg(
           loadedJob.weightKg !== null &&
           loadedJob.weightKg !== undefined
-            ? String(loadedJob.weightKg)
+            ? String(country === "US" ? loadedJob.weightKg / 0.45359237 : loadedJob.weightKg)
             : "",
         );
         setDimensions(loadedJob.dimensions || "");
@@ -153,7 +146,7 @@ export default function EditJobPage() {
         setPricePerMile(
           loadedJob.pricePerMile !== null &&
           loadedJob.pricePerMile !== undefined
-            ? String(loadedJob.pricePerMile)
+            ? String(marketProfile?.distanceUnit === "km" ? loadedJob.pricePerMile * 0.621371 : loadedJob.pricePerMile)
             : "",
         );
         setCurrency(loadedJob.currency || "GBP");
@@ -205,7 +198,7 @@ export default function EditJobPage() {
     }
 
     loadJob();
-  }, [jobId]);
+  }, [jobId, country]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -226,15 +219,17 @@ export default function EditJobPage() {
         jobDate,
         pickupTime: pickupTime.trim() || undefined,
         dropoffTime: dropoffTime.trim() || undefined,
+        pickupTimeZone,
+        dropoffTimeZone,
         vehicleType,
         weightKg: weightKg.trim()
-          ? Number(weightKg)
+          ? Number(weightKg) * (country === "US" ? 0.45359237 : 1)
           : undefined,
         dimensions: dimensions.trim() || undefined,
         crossBorder: false,
         price: Number(price),
         pricePerMile: pricePerMile.trim()
-          ? Number(pricePerMile)
+          ? Number(pricePerMile) * (marketProfile?.distanceUnit === "km" ? 1.609344 : 1)
           : undefined,
         currency: currency.trim().toUpperCase(),
         priceMode,
@@ -323,9 +318,9 @@ export default function EditJobPage() {
           style={{
             padding: 14,
             borderRadius: 8,
-            background: "#fef2f2",
-            border: "1px solid #fecaca",
-            color: "#991b1b",
+            background: "var(--color-danger-soft)",
+            border: "1px solid var(--color-danger)",
+            color: "var(--color-danger)",
             marginBottom: 16,
           }}
         >
@@ -391,8 +386,8 @@ export default function EditJobPage() {
             border: "1px solid var(--color-border)",
             borderRadius: 8,
             textDecoration: "none",
-            color: "#111",
-            background: "#fff",
+            color: "var(--color-text)",
+            background: "var(--ops-surface-raised)",
           }}
          className="button-link button-link-secondary">
           Back to jobs
@@ -405,9 +400,9 @@ export default function EditJobPage() {
             padding: 12,
             marginBottom: 16,
             borderRadius: 8,
-            background: "#fef2f2",
-            border: "1px solid #fecaca",
-            color: "#991b1b",
+            background: "var(--color-danger-soft)",
+            border: "1px solid var(--color-danger)",
+            color: "var(--color-danger)",
           }}
         >
           {error}
@@ -420,9 +415,9 @@ export default function EditJobPage() {
             padding: 12,
             marginBottom: 16,
             borderRadius: 8,
-            background: "#ecfdf5",
-            border: "1px solid #a7f3d0",
-            color: "#047857",
+            background: "var(--color-positive-soft)",
+            border: "1px solid var(--color-positive)",
+            color: "var(--color-positive)",
           }}
         >
           {success}
@@ -438,7 +433,7 @@ export default function EditJobPage() {
       >
         <section
           style={{
-            border: "1px solid #e5e7eb",
+            border: "1px solid var(--color-border)",
             borderRadius: 12,
             padding: 18,
           }}
@@ -514,6 +509,22 @@ export default function EditJobPage() {
               />
             </label>
 
+            {getTimeZoneOptions(country, marketProfile?.timeZone).length > 1 && (
+              <label>
+                <div style={{ fontSize: 13, marginBottom: 6 }}>Pickup time zone</div>
+                <select value={pickupTimeZone} onChange={(event) => setPickupTimeZone(event.target.value)} style={inputStyle} required>
+                  {getTimeZoneOptions(country, marketProfile?.timeZone).map((zone) => <option key={zone.value} value={zone.value}>{zone.label}</option>)}
+                </select>
+              </label>
+            )}
+            {getTimeZoneOptions(country, marketProfile?.timeZone).length > 1 && (
+              <label>
+                <div style={{ fontSize: 13, marginBottom: 6 }}>Drop-off time zone</div>
+                <select value={dropoffTimeZone} onChange={(event) => setDropoffTimeZone(event.target.value)} style={inputStyle} required>
+                  {getTimeZoneOptions(country, marketProfile?.timeZone).map((zone) => <option key={zone.value} value={zone.value}>{zone.label}</option>)}
+                </select>
+              </label>
+            )}
             <label>
               <div style={{ fontSize: 13, marginBottom: 6 }}>
                 Drop-off time
@@ -532,7 +543,7 @@ export default function EditJobPage() {
 
         <section
           style={{
-            border: "1px solid #e5e7eb",
+            border: "1px solid var(--color-border)",
             borderRadius: 12,
             padding: 18,
           }}
@@ -573,7 +584,7 @@ export default function EditJobPage() {
 
             <label>
               <div style={{ fontSize: 13, marginBottom: 6 }}>
-                Weight (kg)
+                Weight ({marketProfile?.weightUnit ?? "kg"})
               </div>
               <input
                 type="number"
@@ -608,7 +619,7 @@ export default function EditJobPage() {
 
         <section
           style={{
-            border: "1px solid #e5e7eb",
+            border: "1px solid var(--color-border)",
             borderRadius: 12,
             padding: 18,
           }}
@@ -677,7 +688,7 @@ export default function EditJobPage() {
 
             <label>
               <div style={{ fontSize: 13, marginBottom: 6 }}>
-                Price per mile
+                Price per {marketProfile?.distanceUnit ?? "mile"}
               </div>
               <input
                 type="number"
@@ -695,7 +706,7 @@ export default function EditJobPage() {
 
         <section
           style={{
-            border: "1px solid #e5e7eb",
+            border: "1px solid var(--color-border)",
             borderRadius: 12,
             padding: 18,
           }}
@@ -782,7 +793,7 @@ export default function EditJobPage() {
 
         <section
           style={{
-            border: "1px solid #e5e7eb",
+            border: "1px solid var(--color-border)",
             borderRadius: 12,
             padding: 18,
           }}
@@ -874,7 +885,7 @@ export default function EditJobPage() {
 
         <section
           style={{
-            border: "1px solid #e5e7eb",
+            border: "1px solid var(--color-border)",
             borderRadius: 12,
             padding: 18,
           }}
@@ -914,8 +925,8 @@ export default function EditJobPage() {
               border: "1px solid var(--color-border)",
               borderRadius: 8,
               textDecoration: "none",
-              color: "#111",
-              background: "#fff",
+              color: "var(--color-text)",
+              background: "var(--ops-surface-raised)",
             }}
           >
             Cancel
@@ -926,10 +937,10 @@ export default function EditJobPage() {
             disabled={saving}
             style={{
               padding: "11px 18px",
-              border: "1px solid #111",
+              border: "1px solid var(--color-primary-action)",
               borderRadius: 8,
-              color: "#fff",
-              background: "#111",
+              color: "#FFFFFF",
+              background: "var(--color-primary-action)",
               cursor: saving ? "not-allowed" : "pointer",
               opacity: saving ? 0.7 : 1,
             }}
@@ -946,8 +957,8 @@ const inputStyle: React.CSSProperties = {
   width: "100%",
   boxSizing: "border-box",
   padding: "10px 11px",
-  border: "1px solid #d1d5db",
+  border: "1px solid var(--ops-border-strong)",
   borderRadius: 8,
-  background: "#fff",
+  background: "var(--ops-surface-inset)",
   fontSize: 14,
 };

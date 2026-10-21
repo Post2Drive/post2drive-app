@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { symbolFor } from "@/lib/currency";
-import { VEHICLE_TYPES } from "@/lib/vehicles";
+import { VEHICLE_TYPES, vehicleTypeLabel } from "@/lib/vehicles";
+import { formatMarketCurrency, getLocalisationProfile, getTimeZoneOptions } from "@/lib/localisation";
+import { currencyMinorUnitScale } from "@/lib/currencyMinorUnits";
 
 function parseCoords(
   input: string
@@ -62,7 +64,8 @@ export default function NewJobPage() {
   const symbol =
     symbolFor(currency);
 
-  const timeZoneLabel = country === "IN" ? "India Standard Time (IST)" : "UK local time (GMT/BST)";
+  const marketProfile = getLocalisationProfile({ country, currency });
+  const timeZoneLabel = marketProfile?.timeZone ?? "your market time zone";
   const steps = country === "IN"
     ? ["Route & schedule", "Vehicle & pricing", "Contacts & review"]
     : ["Route & schedule", "Vehicle & pricing", "Contacts & instructions", "Review & post"];
@@ -76,8 +79,10 @@ export default function NewJobPage() {
       jobDate: "",
       pickupTime: "",
       dropoffTime: "",
+      pickupTimeZone: marketProfile?.timeZone ?? "UTC",
+      dropoffTimeZone: marketProfile?.timeZone ?? "UTC",
       vehicleType:
-        "Luton van",
+        "Car",
       weightKg: "",
       dimensions: "",
       price: "",
@@ -98,12 +103,29 @@ export default function NewJobPage() {
         false,
     });
 
+  const selectedTimeZoneLabel = getTimeZoneOptions(country, marketProfile?.timeZone).find((zone) => zone.value === form.pickupTimeZone)?.label ?? form.pickupTimeZone ?? timeZoneLabel;
+
+  useEffect(() => {
+    if (marketProfile?.timeZone) {
+      setForm((current) => ({ ...current, pickupTimeZone: marketProfile.timeZone, dropoffTimeZone: marketProfile.timeZone }));
+    }
+  }, [country, marketProfile?.timeZone]);
+
   const [error, setError] =
     useState("");
 
   const [loading, setLoading] =
     useState(false);
   const [step, setStep] = useState(0);
+  const stepHeadingRef = useRef<HTMLHeadingElement>(null);
+  const previousStepRef = useRef(step);
+
+  useEffect(() => {
+    if (previousStepRef.current !== step) {
+      previousStepRef.current = step;
+      stepHeadingRef.current?.focus();
+    }
+  }, [step]);
 
   function update(
     field: keyof typeof form,
@@ -122,11 +144,12 @@ export default function NewJobPage() {
       if (form.dropoffPin && !parseCoords(form.dropoffPin)) return 'Drop-off pin was not recognised. Enter latitude,longitude or paste a Google Maps link.';
     }
     if (step === 1) {
-      if (!VEHICLE_TYPES.includes(form.vehicleType)) return "Choose a supported vehicle type.";
+      if (!(VEHICLE_TYPES as readonly string[]).includes(form.vehicleType)) return "Choose a supported vehicle type.";
       const price = Number(form.price);
       if (!form.price.trim() || !Number.isFinite(price) || price <= 0) return "Enter a price greater than zero.";
       if (form.priceMode !== "fixed" && form.priceMode !== "bid") return "Choose fixed pricing or open bidding.";
-      if (form.weightKg.trim() && (!Number.isFinite(Number(form.weightKg)) || Number(form.weightKg) < 0)) return "Enter a valid weight in kilograms.";
+      if (country === "IN" && form.priceMode !== "fixed") return "Open bidding is not available in this market. Use fixed quote pricing.";
+      if (form.weightKg.trim() && (!Number.isFinite(Number(form.weightKg)) || Number(form.weightKg) < 0)) return `Enter a valid weight in ${marketProfile?.weightUnit ?? "kg"}.`;
     }
     if (step === 2) {
       for (const [label, value] of [["Pickup contact name", form.pickupContactName], ["Drop-off contact name", form.dropoffContactName]] as const) {
@@ -251,7 +274,7 @@ export default function NewJobPage() {
     ) {
       setLoading(false);
       setError(
-        'Could not read pickup pin. Use "51.5074,-0.1278" or a Google Maps link.'
+        'Could not read pickup pin. Use latitude,longitude or a Google Maps link.'
       );
       return;
     }
@@ -262,13 +285,14 @@ export default function NewJobPage() {
     ) {
       setLoading(false);
       setError(
-        'Could not read drop-off pin. Use "51.5074,-0.1278" or a Google Maps link.'
+        'Could not read drop-off pin. Use latitude,longitude or a Google Maps link.'
       );
       return;
     }
 
     const payload = {
       ...form,
+      weightKg: form.weightKg ? Number(form.weightKg) * (marketProfile?.weightUnit === "lb" ? 0.45359237 : 1) : "",
       crossBorder: false,
       pickupLat:
         pickupCoords?.lat,
@@ -332,51 +356,67 @@ export default function NewJobPage() {
     <main style={{ maxWidth: 840, margin: "0 auto", padding: "28px 16px 64px" }}>
       <header style={{ marginBottom: 22 }}>
         <p style={{ color: "var(--color-positive)", fontWeight: 800, fontSize: 12, letterSpacing: ".09em", marginBottom: 6 }}>
-          {country === "IN" ? "INDIA MARKETPLACE · INR" : "UK MARKETPLACE · GBP"}
+          {`${marketProfile?.marketplaceLabel ?? "LOCAL"} MARKETPLACE · ${currency}`}
         </p>
         <h1 style={{ margin: "0 0 8px" }}>Post a delivery job</h1>
         <p style={{ margin: 0, color: "var(--color-muted)" }}>
-          Add the essentials, review the details, then publish to the {country === "IN" ? "India" : "UK"} marketplace.
+          Add the essentials, review the details, then publish to the {marketProfile?.marketplaceLabel ?? "selected"} marketplace.
         </p>
       </header>
 
       <nav aria-label="Job posting progress" style={{ display: "grid", gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))`, gap: 8, marginBottom: 22 }}>
         {steps.map((label, index) => (
           <div key={label} aria-current={index === step ? "step" : undefined} style={{ minWidth: 0 }}>
-            <div style={{ height: 5, borderRadius: 999, background: index <= step ? "var(--color-primary)" : "var(--color-border)", marginBottom: 7 }} />
+            <div className={index < step ? "job-step-complete" : index === step ? "job-step-active" : "job-step-upcoming"} style={{ height: 5, borderRadius: 999, background: index < step ? "var(--ops-teal)" : index === step ? "var(--ops-blue)" : "var(--color-border)", marginBottom: 7 }} />
             <p style={{ margin: 0, fontSize: 12, color: index === step ? "var(--color-text)" : "var(--color-muted)", fontWeight: index === step ? 800 : 500 }}>{index + 1}. {label}</p>
           </div>
         ))}
       </nav>
 
-      <form onSubmit={handleSubmit} noValidate style={{ display: "flex", flexDirection: "column", gap: 18, border: "1px solid var(--color-border)", borderRadius: 16, padding: 20, background: "var(--color-surface)" }}>
+      <form className="job-create-form" onSubmit={handleSubmit} noValidate style={{ display: "flex", flexDirection: "column", gap: 18, border: "1px solid var(--color-border)", borderRadius: 16, padding: 20, background: "var(--color-surface)" }}>
         {step === 0 && <section style={{ display: "grid", gap: 16 }}>
-          <div><h2 style={{ margin: "0 0 5px", fontSize: 20 }}>Where and when?</h2><p style={{ margin: 0, color: "var(--color-muted)", fontSize: 14 }}>Use an address or place name. Map pins are optional, but help drivers find the exact entrance.</p></div>
-          <label>Pickup location *<input required maxLength={300} value={form.pickup} onChange={(e) => update("pickup", e.target.value)} placeholder={country === "IN" ? "e.g. Gachibowli, Hyderabad" : "e.g. Coventry Business Park"} /></label>
-          <label>Pickup map pin (optional)<input value={form.pickupPin} onChange={(e) => update("pickupPin", e.target.value)} placeholder="Latitude,longitude or Google Maps link" /><small>Paste a Google Maps URL or coordinates such as 51.5074,-0.1278.</small></label>
-          <label>Drop-off location *<input required maxLength={300} value={form.dropoff} onChange={(e) => update("dropoff", e.target.value)} placeholder={country === "IN" ? "e.g. Hitech City, Hyderabad" : "e.g. Birmingham city centre"} /></label>
+          <div><h2 ref={stepHeadingRef} tabIndex={-1} style={{ margin: "0 0 5px", fontSize: 20 }}>Where and when?</h2><p style={{ margin: 0, color: "var(--color-muted)", fontSize: 14 }}>Use an address or place name. Map pins are optional, but help drivers find the exact entrance.</p></div>
+          <label>Pickup location *<input required maxLength={300} value={form.pickup} onChange={(e) => update("pickup", e.target.value)} placeholder={country === "IN" ? "e.g. Gachibowli, Hyderabad" : "e.g. pickup address or business park"} /></label>
+          <label>Pickup map pin (optional)<input value={form.pickupPin} onChange={(e) => update("pickupPin", e.target.value)} placeholder="Latitude,longitude or Google Maps link" /><small>Paste a Google Maps URL or latitude,longitude coordinates.</small></label>
+          <label>Drop-off location *<input required maxLength={300} value={form.dropoff} onChange={(e) => update("dropoff", e.target.value)} placeholder={country === "IN" ? "e.g. Hitech City, Hyderabad" : "e.g. delivery address or city centre"} /></label>
           <label>Drop-off map pin (optional)<input value={form.dropoffPin} onChange={(e) => update("dropoffPin", e.target.value)} placeholder="Latitude,longitude or Google Maps link" /></label>
           <div className="signup-fields">
             <label>Pickup date *<input required type="date" value={form.jobDate} onChange={(e) => update("jobDate", e.target.value)} /></label>
-            <label>Pickup time *<input required type="time" value={form.pickupTime} onChange={(e) => update("pickupTime", e.target.value)} /><small>Enter the time at the pickup location ({timeZoneLabel}).</small></label>
-            <label>Estimated drop-off time (optional)<input type="time" value={form.dropoffTime} onChange={(e) => update("dropoffTime", e.target.value)} /><small>Use the same local time zone as the pickup location.</small></label>
+            <label>Pickup time *<input required type="time" value={form.pickupTime} onChange={(e) => update("pickupTime", e.target.value)} /><small>Enter the time at the pickup location ({selectedTimeZoneLabel}).</small></label>
+            {getTimeZoneOptions(country, marketProfile?.timeZone).length > 1 && (
+              <label>Pickup time zone
+                <select value={form.pickupTimeZone} onChange={(e) => update("pickupTimeZone", e.target.value)} required>
+                  {getTimeZoneOptions(country, marketProfile?.timeZone).map((zone) => <option key={zone.value} value={zone.value}>{zone.label}</option>)}
+                </select>
+                <small>Choose the time zone where the pickup takes place.</small>
+              </label>
+            )}
+            {getTimeZoneOptions(country, marketProfile?.timeZone).length > 1 && (
+              <label>Drop-off time zone
+                <select value={form.dropoffTimeZone} onChange={(e) => update("dropoffTimeZone", e.target.value)} required>
+                  {getTimeZoneOptions(country, marketProfile?.timeZone).map((zone) => <option key={zone.value} value={zone.value}>{zone.label}</option>)}
+                </select>
+                <small>Choose the time zone where delivery takes place.</small>
+              </label>
+            )}
+            <label>Estimated drop-off time (optional)<input type="time" value={form.dropoffTime} onChange={(e) => update("dropoffTime", e.target.value)} /><small>Time is interpreted in the selected drop-off time zone.</small></label>
           </div>
         </section>}
 
         {step === 1 && <section style={{ display: "grid", gap: 16 }}>
-          <div><h2 style={{ margin: "0 0 5px", fontSize: 20 }}>What needs moving?</h2><p style={{ margin: 0, color: "var(--color-muted)", fontSize: 14 }}>Choose the vehicle capacity and explain the price clearly.</p></div>
-          <label>Required vehicle type *<select value={form.vehicleType} onChange={(e) => update("vehicleType", e.target.value)}>{VEHICLE_TYPES.map((vehicle) => <option key={vehicle} value={vehicle}>{vehicle}</option>)}</select></label>
+          <div><h2 ref={stepHeadingRef} tabIndex={-1} style={{ margin: "0 0 5px", fontSize: 20 }}>What needs moving?</h2><p style={{ margin: 0, color: "var(--color-muted)", fontSize: 14 }}>Choose the vehicle capacity and explain the price clearly.</p></div>
+          <label>Required vehicle type *<select value={form.vehicleType} onChange={(e) => update("vehicleType", e.target.value)}>{VEHICLE_TYPES.map((vehicle) => <option key={vehicle} value={vehicle}>{vehicleTypeLabel(vehicle, country)}</option>)}</select></label>
           <div className="signup-fields">
-            <label>Estimated weight (kg)<input type="number" min="0" max="1000000" step="0.01" value={form.weightKg} onChange={(e) => update("weightKg", e.target.value)} placeholder="Optional" /></label>
-            <label>Dimensions<input maxLength={150} value={form.dimensions} onChange={(e) => update("dimensions", e.target.value)} placeholder="e.g. 4.2m × 2.1m × 2.4m" /></label>
+            <label>Estimated weight ({marketProfile?.weightUnit ?? "kg"})<input type="number" min="0" max="1000000" step="0.01" value={form.weightKg} onChange={(e) => update("weightKg", e.target.value)} placeholder="Optional" /></label>
+            <label>Dimensions<input maxLength={150} value={form.dimensions} onChange={(e) => update("dimensions", e.target.value)} placeholder={country === "US" ? "e.g. 14 ft × 7 ft × 8 ft" : "e.g. 4.2 m × 2.1 m × 2.4 m"} /></label>
           </div>
-          <label>How will you set the price? *<select value={form.priceMode} onChange={(e) => update("priceMode", e.target.value)}><option value="fixed">Fixed price — the amount shown is the offer</option><option value="bid">Open to bids — drivers can submit offers</option></select></label>
-          <label>{form.priceMode === "bid" ? `Guide price (${symbol.trim()}) *` : `Total job price (${symbol.trim()}) *`}<input required inputMode="decimal" type="number" min="0.01" max="100000000" step="0.01" value={form.price} onChange={(e) => update("price", e.target.value)} placeholder={country === "IN" ? "e.g. 2500" : "e.g. 85.00"} /><small>Currency is fixed to {currency}; jobs are not shared between UK and India.</small></label>
+          <label>How will you set the price? *<select value={form.priceMode} onChange={(e) => update("priceMode", e.target.value)}><option value="fixed">{country === "IN" ? "Fixed quote — the amount shown is the offer" : "Fixed price — the amount shown is the offer"}</option>{country !== "IN" && <option value="bid">Open to bids — drivers can submit offers</option>}</select></label>
+          <label>{form.priceMode === "bid" ? `Guide price (${symbol.trim()}) *` : `Total job price (${symbol.trim()}) *`}<input required inputMode="decimal" type="number" min={1 / currencyMinorUnitScale(currency)} max="100000000" step={1 / currencyMinorUnitScale(currency)} value={form.price} onChange={(e) => update("price", e.target.value)} placeholder={country === "IN" ? "e.g. 2500" : "e.g. 85.00"} /><small>Currency is fixed to {currency}; jobs are not shared between markets.</small></label>
           {form.priceMode === "bid" && <p style={{ margin: 0, borderRadius: 10, padding: 12, background: "var(--color-primary-soft)", fontSize: 13 }}>This is a guide price, not a guaranteed final payment. You'll review driver bids before accepting one.</p>}
         </section>}
 
         {step === 2 && <section style={{ display: "grid", gap: 16 }}>
-          <div><h2 style={{ margin: "0 0 5px", fontSize: 20 }}>{country === "IN" ? "Contacts, notes & review" : "Site contacts & instructions"}</h2><p style={{ margin: 0, color: "var(--color-muted)", fontSize: 14 }}>Add only the contact details needed to coordinate this delivery. These are separate from your account contact.</p></div>
+          <div><h2 ref={stepHeadingRef} tabIndex={-1} style={{ margin: "0 0 5px", fontSize: 20 }}>{country === "IN" ? "Contacts, notes & review" : "Site contacts & instructions"}</h2><p style={{ margin: 0, color: "var(--color-muted)", fontSize: 14 }}>Add only the contact details needed to coordinate this delivery. These are separate from your account contact.</p></div>
           <fieldset style={{ border: "1px solid var(--color-border)", borderRadius: 12, padding: 14, display: "grid", gap: 12 }}>
             <legend style={{ padding: "0 6px", fontWeight: 750 }}>Pickup contact (optional)</legend>
             <label style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 10 }}><input type="checkbox" checked={form.pickupSameAsAccount} onChange={(e) => useAccountForPickup(e.target.checked)} /> Use my account contact</label>
@@ -391,13 +431,13 @@ export default function NewJobPage() {
             <label>Phone<input maxLength={50} value={form.dropoffContactPhone} disabled={form.dropoffSameAsAccount || form.dropoffSameAsPickup} onChange={(e) => update("dropoffContactPhone", e.target.value)} placeholder="Site contact phone" /></label>
           </fieldset>
           <label>Delivery instructions (optional)<textarea maxLength={5000} rows={4} value={form.notes} onChange={(e) => update("notes", e.target.value)} placeholder="Access information, loading details, timing constraints…" /><small>{form.notes.length}/5,000 characters</small></label>
-          {country === "IN" && <div style={{ borderTop: "1px solid var(--color-border)", paddingTop: 14 }}><h3 style={{ margin: "0 0 10px" }}>Review your requirement</h3><ReviewSummary form={form} currency={currency} symbol={symbol} date={form.jobDate} timeZoneLabel={timeZoneLabel} /></div>}
+          {country === "IN" && <div style={{ borderTop: "1px solid var(--color-border)", paddingTop: 14 }}><h3 style={{ margin: "0 0 10px" }}>Review your requirement</h3><ReviewSummary form={form} currency={currency} date={form.jobDate} timeZoneLabel={selectedTimeZoneLabel} country={country} /></div>}
         </section>}
 
         {step === 3 && country !== "IN" && <section style={{ display: "grid", gap: 16 }}>
-          <div><h2 style={{ margin: "0 0 5px", fontSize: 20 }}>Review before publishing</h2><p style={{ margin: 0, color: "var(--color-muted)", fontSize: 14 }}>Confirm the details before this job becomes visible to eligible UK users.</p></div>
-          <ReviewSummary form={form} currency={currency} symbol={symbol} date={form.jobDate} timeZoneLabel={timeZoneLabel} />
-          <div style={{ borderRadius: 10, padding: 12, background: "var(--color-primary-soft)", fontSize: 13 }}>Your listing is confined to {country === "IN" ? "India (INR)" : "the United Kingdom (GBP)"}. Cross-border matching is disabled.</div>
+          <div><h2 ref={stepHeadingRef} tabIndex={-1} style={{ margin: "0 0 5px", fontSize: 20 }}>Review before publishing</h2><p style={{ margin: 0, color: "var(--color-muted)", fontSize: 14 }}>Confirm the details before this job becomes visible to eligible users in {marketProfile?.marketplaceLabel ?? "your market"}.</p></div>
+          <ReviewSummary form={form} currency={currency} date={form.jobDate} timeZoneLabel={selectedTimeZoneLabel} country={country} />
+          <div style={{ borderRadius: 10, padding: 12, background: "var(--color-primary-soft)", fontSize: 13 }}>Your listing is confined to {marketProfile?.marketplaceLabel ?? "your market"} ({currency}). Cross-border matching is disabled.</div>
         </section>}
 
         {error && <p role="alert" style={{ margin: 0, color: "var(--color-danger, #b42318)", fontWeight: 650 }}>{error}</p>}
@@ -410,16 +450,17 @@ export default function NewJobPage() {
   );
 }
 
-function ReviewSummary({ form, currency, symbol, date, timeZoneLabel }: { form: { pickup: string; pickupPin: string; dropoff: string; dropoffPin: string; pickupTime: string; dropoffTime: string; vehicleType: string; weightKg: string; dimensions: string; price: string; priceMode: string; pickupContactName: string; pickupContactPhone: string; dropoffContactName: string; dropoffContactPhone: string; notes: string }; currency: string; symbol: string; date: string; timeZoneLabel: string }) {
+function ReviewSummary({ form, currency, date, timeZoneLabel, country }: { country: string; form: { pickup: string; pickupPin: string; dropoff: string; dropoffPin: string; pickupTime: string; dropoffTime: string; vehicleType: string; weightKg: string; dimensions: string; price: string; priceMode: string; pickupContactName: string; pickupContactPhone: string; dropoffContactName: string; dropoffContactPhone: string; notes: string }; currency: string; date: string; timeZoneLabel: string }) {
+  const profile = getLocalisationProfile({ country, currency });
   const entries: [string, string][] = [
     ["Route", `${form.pickup} → ${form.dropoff}`],
     ["Date", date || "Not selected"],
     ["Pickup", `${form.pickupTime || "Not selected"} (${timeZoneLabel})`],
     ["Drop-off", form.dropoffTime ? `${form.dropoffTime} (${timeZoneLabel})` : "Not specified"],
-    ["Vehicle", form.vehicleType],
-    ["Weight", form.weightKg ? `${form.weightKg} kg` : "Not specified"],
+    ["Vehicle", vehicleTypeLabel(form.vehicleType, country)],
+    ["Weight", form.weightKg ? `${form.weightKg} ${profile?.weightUnit ?? "kg"}` : "Not specified"],
     ["Dimensions", form.dimensions || "Not specified"],
-    ["Pricing", `${symbol}${Number(form.price || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency} · ${form.priceMode === "bid" ? "Guide price / open to bids" : "Fixed price"}`],
+    ["Pricing", `${formatMarketCurrency(Number(form.price || 0), { country, currency })} · ${form.priceMode === "bid" ? "Guide price / open to bids" : country === "IN" ? "Fixed quote" : "Fixed price"}`],
     ["Pickup contact", form.pickupContactName || "Not specified"],
     ["Drop-off contact", form.dropoffContactName || "Not specified"],
     ["Instructions", form.notes || "None"],

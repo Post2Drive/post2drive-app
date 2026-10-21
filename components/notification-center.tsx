@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
+import { formatMarketDateTime } from "@/lib/localisation";
 
 type Notice = {
   id: string;
@@ -14,6 +16,9 @@ type Notice = {
 };
 
 export default function NotificationCenter() {
+  const { data: session } = useSession();
+  const country = (session?.user as any)?.country ?? "GB";
+  const currency = (session?.user as any)?.currency ?? "GBP";
   const [items, setItems] = useState<Notice[]>([]);
   const [unread, setUnread] = useState(0);
   const [error, setError] = useState("");
@@ -56,10 +61,10 @@ export default function NotificationCenter() {
       {items.length === 0 ? <p>No notifications yet.</p> : (
         <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
           {items.map((item) => (
-            <article key={item.id} style={{ border: "1px solid var(--color-border)", borderRadius: 8, padding: 12, opacity: item.readAt ? 0.75 : 1 }}>
+            <article key={item.id} className="notification-card" data-notice-type={item.type.toLowerCase()} data-read={item.readAt ? "true" : "false"} style={{ border: "1px solid var(--color-border)", borderRadius: 8, padding: 12, opacity: item.readAt ? 0.75 : 1 }}>
               <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
                 <strong>{item.title}</strong>
-                <span style={{ fontSize: 12, color: "var(--color-muted)" }}>{new Date(item.createdAt).toLocaleString()}</span>
+                <span style={{ fontSize: 12, color: "var(--color-muted)" }}>{formatMarketDateTime(item.createdAt, { country, currency })}</span>
               </div>
               <p>{item.body}</p>
               <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>

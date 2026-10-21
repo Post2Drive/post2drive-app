@@ -47,11 +47,18 @@ async function POSTHandler(
     );
   }
 
+  if (!job.acceptedById) {
+    return NextResponse.json(
+      { error: "This accepted job has no assigned driver. Refresh or contact support." },
+      { status: 409 }
+    );
+  }
+
   // Commit the state transition and its audit event together. If activity
   // history cannot be written, the status change must roll back as well.
   const updated = await prisma.$transaction(async (tx) => {
     const transition = await tx.job.updateMany({
-      where: { id: routeParams.id, status: "accepted" },
+      where: { id: routeParams.id, status: "accepted", acceptedById: job.acceptedById },
       data: {
         status: "in_transit",
         pickupConfirmedById: accountId,

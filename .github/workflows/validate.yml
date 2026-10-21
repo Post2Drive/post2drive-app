@@ -3,9 +3,14 @@ name: Validate
 on:
   workflow_dispatch:
   pull_request:
-    branches: [main]
+    branches: [main, "feature/**"]
   push:
-    branches: [main, "feat/**", "feature/**", "qa/**", "security/**"]
+    branches: [main, "feat/**", "feature/**", "qa/**", "security/**", "design/**"]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  # Keep the newest revision moving; older runs are superseded, not test categories removed.
+  cancel-in-progress: true
 
 jobs:
   typecheck:
@@ -29,6 +34,7 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/post2drive?schema=public
       NEXTAUTH_SECRET: ci-only-secret
       NEXTAUTH_URL: http://localhost:3000
+      POST2DRIVE_ADMIN_EMAILS: qa-rendered-browser@post2drive.invalid
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -43,24 +49,54 @@ jobs:
         run: node scripts/qa/reliability-budget.mjs
       - name: Validate Railway health endpoint contract
         run: npm run qa:health-contract
+      - name: Validate QA campaign builder safety contract
+        run: npm run qa:campaign-builder-contract
       - name: Validate lifecycle, incident, and market-guard contracts
         run: npm run qa:lifecycle-contract
+      - name: Validate signup display ID collision retries
+        run: npm run qa:signup-display-id-retry
+      - name: Validate signup, jobs, bidding, status, payments and vehicle workflows
+        run: node --experimental-strip-types scripts/qa/functional-workflows-contract.mjs
       - name: Validate supported-market isolation
         run: npm run qa:market-isolation
+      - name: Validate QA isolation with large retained account pools
+        run: npm run qa:qa-isolation-contract
+      - name: Validate all-market feature parity
+        run: npm run qa:market-parity
       - name: Validate country matrix across all supported markets
         run: npm run qa:country-matrix
+      - name: Validate country-aware UI localisation contracts
+        run: npm run qa:localisation
+      - name: Validate internal country-aware ops dashboard
+        run: |
+          node --check ops-dashboard/server.mjs
+          npm run qa:ops-dashboard
+      - name: Audit user-facing app copy for market assumptions
+        run: npm run qa:localisation-copy
+      - name: Validate mobile responsiveness contract
+        run: node scripts/qa/mobile-responsiveness-contract.mjs
+      - name: Validate UI text and background contrast
+        run: node scripts/qa/ui-contrast-contract.mjs
       - name: Validate QA runner staging-only guard
         run: npm run qa:qa-runner-guard
       - name: Validate durable QA queue and worker lifecycle
         run: npm run qa:worker-contract
-      - name: Validate UK/India/euro-market pickup-time conversion and DST edges
+      - name: Validate all-market time zones, overseas destinations and DST edges
         run: npm run qa:market-timezone
+      - name: Validate independent drop-off time-zone wiring and legacy fallback
+        run: npm run qa:dropoff-timezone
       - name: Validate Prisma schema
         run: npx prisma validate --schema=prisma/schema.prisma
       - name: Generate Prisma client
         run: npx prisma generate --schema=prisma/schema.prisma
       - name: Apply all migrations to a clean PostgreSQL database
         run: npx prisma migrate deploy --schema=prisma/schema.prisma
+      - name: Validate account lifecycle concurrency and session revocation
+        run: npm run qa:security-isolation-contract
+      - name: Validate authenticated lifecycle authorization matrix
+        run: node scripts/qa/lifecycle-auth-matrix.mjs
+      - name: Validate account deletion and PATCH concurrency against local PostgreSQL
+        run: npm run qa:account-mutation-concurrency
       - name: Validate worker boot and atomic claim against local PostgreSQL
         run: npm run qa:worker-boot-contract
       - name: Validate competing worker claims against local PostgreSQL
@@ -77,7 +113,34 @@ jobs:
         run: |
           psql "postgresql://postgres:postgres@localhost:5432/post2drive" -v run_id=ci-no-such-run -f scripts/qa/cleanup-inventory.sql > /tmp/qa-inventory.txt
           grep -q "(0 rows)" /tmp/qa-inventory.txt
+      - name: Validate account API privacy and request validation
+        run: npm run qa:account-api-security
+      - name: Validate accessible design contracts
+        run: npm run qa:design-accessibility
       - name: Type-check TypeScript
         run: npx tsc --noEmit
       - name: Build Next.js production bundle
         run: npm run build
+      - name: Validate lifecycle APIs over authenticated HTTP against isolated CI database
+        run: node scripts/qa/lifecycle-api-e2e.mjs
+
+      - name: Install browser-only accessibility test tools
+        run: npm install --no-save --package-lock=false --prefer-offline --fetch-retries=3 --fetch-retry-mintimeout=1000 --fetch-retry-maxtimeout=10000 tsx playwright @axe-core/playwright
+      - name: Install Chromium for rendered accessibility tests
+        run: npx playwright install --with-deps chromium
+      - name: Verify runtime JWT session revocation against CI PostgreSQL
+        run: npx tsx scripts/qa/auth-session-revocation.ts
+      - name: Start production build for rendered accessibility tests
+        run: |
+          npm run start > /tmp/post2drive-next.log 2>&1 &
+          echo $! > /tmp/post2drive-next.pid
+          for attempt in $(seq 1 60); do
+            if curl --silent --fail http://127.0.0.1:3000/login > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat /tmp/post2drive-next.log
+          exit 1
+      - name: Scan rendered public routes for accessibility and responsive regressions
+        run: node scripts/qa/rendered-accessibility.mjs

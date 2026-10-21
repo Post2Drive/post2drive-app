@@ -1,13 +1,10 @@
 // Durable staging QA runner library. This module is shared by the web queue and the
 // separate Railway worker; it never creates or claims a run itself.
-// @ts-expect-error Node's native type-strip runtime needs explicit TypeScript extensions.
 import { isQaRunnerEnabled } from "./qaRunnerGuard.ts";
-// @ts-expect-error Node's native type-strip runtime needs explicit TypeScript extensions.
 import { prisma } from "./prisma.ts";
-// @ts-expect-error Node's native type-strip runtime needs explicit TypeScript extensions.
 import { VEHICLE_TYPES } from "./vehicles.ts";
-// @ts-expect-error Node's native type-strip runtime needs explicit TypeScript extensions.
 import { getMarket } from "./market.ts";
+import { getJurisdictionOptions } from "./localisation.ts";
 
 type AccountFixture = {
   index: number;
@@ -18,6 +15,7 @@ type AccountFixture = {
   client?: ApiClient;
 };
 type EventResult = { path: string; duration: number; passed: boolean };
+type QaTestType = "api-load" | "synthetic-accounts" | "workflow-e2e";
 
 let active = false;
 
@@ -87,7 +85,9 @@ class ApiClient {
   }
 }
 
-async function runQA(countryOverride: string, runId: string, workerId: string) {
+type QaRunConfig = { accountCount: number; testIterations: number; concurrency: number; campaignId?: string; variationId?: string; variationName?: string; suite?: string };
+
+async function runQA(countryOverride: string, runId: string, workerId: string, testType: QaTestType, config: QaRunConfig) {
   const base = (process.env.QA_BASE_URL || "").replace(/\/+$/, "");
   const db = process.env.DATABASE_URL || "";
   const countryCode = (countryOverride || process.env.QA_MARKET_COUNTRY || "GB").trim().toUpperCase();
@@ -98,13 +98,20 @@ async function runQA(countryOverride: string, runId: string, workerId: string) {
     throw new Error("QA runner is disabled unless an explicitly allow-listed staging deployment and isolated QA database are configured.");
   }
   if (!base.startsWith("https://") || !db || process.env.QA_ACCOUNT_COUNT !== "10000" || process.env.POST2DRIVE_QA_DATABASE_ISOLATED !== "true") throw new Error("QA preflight requires an HTTPS staging target, an explicitly isolated DATABASE_URL and QA_ACCOUNT_COUNT=10000.");
+  const accountTarget = Number.isInteger(config.accountCount) && config.accountCount >= 500 && config.accountCount <= 10_000 ? config.accountCount : 10_000;
+  const testIterations = Number.isInteger(config.testIterations) && config.testIterations >= 1 && config.testIterations <= 25_000 ? config.testIterations : 10_000;
+  const executionConcurrency = Number.isInteger(config.concurrency) && config.concurrency >= 1 && config.concurrency <= 100 ? config.concurrency : 12;
+  if (testType === "workflow-e2e" && accountTarget !== 10_000) throw new Error("The current workflow suite requires the complete 10,000-account fixture pool.");
+  if (testType !== "synthetic-accounts" && accountTarget < 500) throw new Error("API and workflow suites require at least 500 synthetic accounts.");
+  if (testType === "synthetic-accounts" && testIterations !== accountTarget) throw new Error("Synthetic account provisioning iterations must match the account target.");
   const marker = "QA-" + runId;
   const started = Date.now();
   const events: EventResult[] = [];
   let createdAccounts = 0;
   let routeMatrixExecuted = 0;
-  const routeMatrixTarget = 10_000;
+  const routeMatrixTarget = testType === "synthetic-accounts" ? 0 : testIterations;
   const fixtures: AccountFixture[] = [];
+  let accountPoolRunId: string | null = null;
 
   async function record(e: { index?: number; accountId?: string; cohort?: string; scenario: string; action: string; method: string; path: string; expected: number[]; actual: number | null; duration: number; details?: Record<string, unknown> }) {
     const passed = e.actual !== null && e.expected.includes(e.actual);
@@ -180,9 +187,9 @@ async function runQA(countryOverride: string, runId: string, workerId: string) {
       endpoints[path] = { count: row.count, failures: row.failures, p50Ms: row.durations[Math.floor((row.durations.length - 1) * 0.5)], p95Ms: row.durations[Math.floor((row.durations.length - 1) * 0.95)], maxMs: row.durations[row.durations.length - 1] };
     }
     const summary = {
-      runId, marker, status: finalStatus, target: base, targetAccounts: 10_000, country: selectedMarket.country, currency: selectedMarket.currency, marketLabel: selectedMarket.label, createdAccounts, eventCount: events.length, routeMatrixTarget, routeMatrixExecuted,
+      runId, marker, status: finalStatus, testType, target: base, targetAccounts: accountTarget, testIterations, concurrencyTarget: executionConcurrency, campaignId: config.campaignId ?? null, variationId: config.variationId ?? null, variationName: config.variationName ?? null, suite: config.suite ?? null, country: selectedMarket.country, currency: selectedMarket.currency, marketLabel: selectedMarket.label, createdAccounts, eventCount: events.length, routeMatrixTarget, routeMatrixExecuted, accountPoolSize: fixtures.length, accountPoolRunId,
       passed, failed, durationMs: Date.now() - started, p50Ms: percentile(0.5), p95Ms: percentile(0.95),
-      cohorts: { posterFocused: 100, driverFocused: 150, both: 9_749, restricted: 1 },
+      cohorts: accountTarget === 10_000 ? { posterFocused: 100, driverFocused: 150, both: 9_749, restricted: 1 } : { posterFocused: Math.floor((accountTarget - 1) * 0.2), driverFocused: Math.floor((accountTarget - 1) * 0.3), both: accountTarget - 1 - Math.floor((accountTarget - 1) * 0.2) - Math.floor((accountTarget - 1) * 0.3), restricted: 1 },
       endpoints, syntheticDataRetained: true, realMoneyPaymentsAttempted: false, emailDeliveryTested: false, ...extra,
     };
     const finalized = await prisma.$executeRawUnsafe(
@@ -197,8 +204,8 @@ async function runQA(countryOverride: string, runId: string, workerId: string) {
   }
 
   const claimed = await prisma.$queryRawUnsafe<Array<{ id: string }>>(
-    "SELECT id FROM qa_test_runs WHERE id=$1 AND status='running' AND target_url=$2 AND target_accounts=10000 AND summary->>'workerId'=$3",
-    runId, base, workerId,
+    "SELECT id FROM qa_test_runs WHERE id=$1 AND status='running' AND target_url=$2 AND target_accounts=$4 AND summary->>'workerId'=$3",
+    runId, base, workerId, accountTarget,
   );
   if (claimed.length !== 1) {
     throw new Error("QA worker must claim an existing queued run for this exact staging target before execution.");
@@ -206,16 +213,18 @@ async function runQA(countryOverride: string, runId: string, workerId: string) {
 
 
   try {
-    console.log("Starting staging QA run " + runId + " for " + market.country + "/" + market.currency + " with 10,000 synthetic accounts at " + base);
-    await parallel(Array.from({ length: 10_000 }, (_, i) => i), 12, async i => {
-      const cohort: AccountFixture["cohort"] = i < 100 ? "poster-focused" : i < 250 ? "driver-focused" : i < 9_999 ? "both" : "restricted";
+    console.log("Starting staging QA run " + runId + " type=" + testType + " for " + selectedMarket.country + "/" + selectedMarket.currency + " at " + base);
+    await parallel(Array.from({ length: testType === "synthetic-accounts" ? accountTarget : 0 }, (_, i) => i), executionConcurrency, async i => {
+      const posterBoundary = accountTarget === 10_000 ? 100 : Math.floor((accountTarget - 1) * 0.2);
+      const driverBoundary = accountTarget === 10_000 ? 250 : posterBoundary + Math.floor((accountTarget - 1) * 0.3);
+      const cohort: AccountFixture["cohort"] = i < posterBoundary ? "poster-focused" : i < driverBoundary ? "driver-focused" : i < accountTarget - 1 ? "both" : "restricted";
       const email = "qa-" + runId + "-" + String(i + 1).padStart(3, "0") + "@post2drive.invalid";
-      const password = "QA-" + crypto.randomUUID() + "-p2d";
+      const password = "QA-" + runId + "-" + String(i + 1).padStart(5, "0") + "-p2d";
       const payload = {
         name: "QA User " + (i + 1), email, phone: selectedMarket.dialingCode + "770090" + String(i).padStart(4, "0"),
         password, companyName: "[QA-" + runId + "] " + cohort + " " + String(i + 1).padStart(3, "0"),
         planType: "individual", fleetVehicleCount: 1, isSoleTrader: true,
-        country: market.country, currency: market.currency,
+        country: selectedMarket.country, currency: selectedMarket.currency,
         termsAccepted: true, termsVersion: "2026-10-16",
       };
       const t = Date.now();
@@ -232,15 +241,15 @@ async function runQA(countryOverride: string, runId: string, workerId: string) {
       const persistStarted = Date.now();
       try {
         await prisma.$transaction(async tx => {
-          const ukPromotion = market.country === "GB" && i !== 9_999;
-          const paidWeeklyMarket = market.country !== "GB" && market.country !== "IN" && i !== 9_999;
+          const ukPromotion = selectedMarket.country === "GB" && i !== accountTarget - 1;
+          const paidWeeklyMarket = selectedMarket.country !== "GB" && selectedMarket.country !== "IN" && i !== accountTarget - 1;
           const accessEndsAt = new Date(Date.now() + 60 * 86400000);
           await tx.account.update({
             where: { id: accountId },
             data: {
-              isTester: i !== 9_999,
-              verificationStatus: i === 9_999 ? "not_started" : "verified",
-              verifiedAt: i === 9_999 ? null : new Date(),
+              isTester: i !== accountTarget - 1,
+              verificationStatus: i === accountTarget - 1 ? "not_started" : "verified",
+              verifiedAt: i === accountTarget - 1 ? null : new Date(),
               promotionParticipant: ukPromotion,
               trialStartedAt: ukPromotion ? new Date() : null,
               trialEndsAt: ukPromotion ? accessEndsAt : null,
@@ -261,9 +270,34 @@ async function runQA(countryOverride: string, runId: string, workerId: string) {
     });
 
     await prisma.$executeRawUnsafe("UPDATE qa_test_runs SET created_accounts=$2 WHERE id=$1", runId, createdAccounts);
-    if (createdAccounts !== 10_000) return await finish("aborted", { reason: "Stopped before workflows because signup did not create exactly 10,000 accounts.", createdAccounts });
+    if (testType === "synthetic-accounts") {
+      if (createdAccounts !== accountTarget) return await finish("aborted", { testType, reason: "Account provisioning did not create the configured account target.", expectedAccounts: accountTarget, createdAccounts });
+      accountPoolRunId = runId;
+      return await finish("completed", { testType, accountProvisioningOnly: true, syntheticDataRetained: true, limitations: ["Only synthetic-account creation and fixture persistence were tested; no cleanup was performed."] });
+    }
 
-    await parallel(fixtures.filter(account => account.index < 499 || account.index === 9_999), 16, async account => {
+    const pools = await prisma.$queryRawUnsafe<Array<{ id: string }>>(
+      "SELECT id FROM qa_test_runs WHERE status='completed' AND summary->>'testType'='synthetic-accounts' AND summary->>'country'=$1 AND target_accounts >= $2 ORDER BY finished_at DESC LIMIT 1",
+      selectedMarket.country, accountTarget,
+    );
+    const sourceRunId = pools[0]?.id ?? null;
+    if (!sourceRunId) throw new Error("A completed synthetic-account pool with at least the configured account count is required for this market.");
+    accountPoolRunId = sourceRunId;
+    const poolRows = await prisma.$queryRawUnsafe<Array<{ account_id: string; email: string; cohort: string; account_index: number }>>(
+      "SELECT account_id,email,cohort,account_index FROM qa_test_accounts WHERE run_id=$1 ORDER BY account_index",
+      sourceRunId,
+    );
+    if (poolRows.length < accountTarget) throw new Error("The preserved synthetic-account pool is smaller than the configured account target.");
+    const selectedPoolRows = poolRows.slice(0, accountTarget);
+    fixtures.push(...selectedPoolRows.map((row) => ({
+      index: Number(row.account_index) - 1,
+      email: row.email,
+      password: "QA-" + sourceRunId + "-" + String(row.account_index).padStart(5, "0") + "-p2d",
+      accountId: row.account_id,
+      cohort: row.cohort as AccountFixture["cohort"],
+    })));
+
+    await parallel(fixtures.filter(account => account.index < Math.min(499, accountTarget - 1) || account.index === accountTarget - 1), executionConcurrency, async account => {
       const client = new ApiClient(account, base, runId);
       const t = Date.now();
       let status = 401;
@@ -278,7 +312,7 @@ async function runQA(countryOverride: string, runId: string, workerId: string) {
     });
 
     const signed = fixtures.filter(a => a.client);
-    await parallel(signed, 4, async a => {
+    await parallel(signed, Math.min(executionConcurrency, 4), async a => {
       for (const [path, action] of [
         ["/api/account", "account-self-read"], ["/api/account/access", "marketplace-access"],
         ["/api/jobs", "job-list-search"], ["/api/vehicles", "vehicle-list"],
@@ -287,6 +321,18 @@ async function runQA(countryOverride: string, runId: string, workerId: string) {
       ] as const) await check(a.client!, a, "authenticated-baseline", action, "GET", path, undefined, [200]);
     });
 
+    if (testType === "api-load") {
+      const loadPaths = ["/api/account", "/api/account/access", "/api/jobs", "/api/vehicles", "/api/payments", "/api/promotion/status", "/api/promotion/referrals/progress"];
+      const loadAccounts = signed.filter((account) => account.index < Math.min(499, accountTarget - 1));
+      await parallel(Array.from({ length: testIterations }, (_, i) => i), executionConcurrency, async i => {
+        const account = loadAccounts.length ? loadAccounts[i % loadAccounts.length] : null;
+        const path = loadPaths[i % loadPaths.length];
+        await check(account?.client ?? null, account, "api-load", "authenticated-read-" + i, "GET", path, undefined, [200]);
+        routeMatrixExecuted++;
+      });
+      return await finish("completed", { testType, loadRequestCount: routeMatrixExecuted, authenticatedAccountsUsed: loadAccounts.length, accountPoolRunId, syntheticDataRetained: true, limitations: ["This is a 10,000-request authenticated API load test, not a browser performance test; no cleanup was performed."] });
+    }
+
     const posters = signed.filter(a => a.index < 100);
     const drivers = signed.filter(a => a.index >= 100 && a.index < 250);
     const both = signed.filter(a => a.index >= 250 && a.index < 499);
@@ -294,8 +340,8 @@ async function runQA(countryOverride: string, runId: string, workerId: string) {
     // seeds UK city names into another country's fixtures.
     const laneMiles = [118, 86, 120, 95, 47, 35, 28, 44, 80, 35, 65, 58, 82, 80, 35];
     const lanes = laneMiles.map((miles, index) => ({
-      pickup: "QA Origin " + market.country + " " + (index + 1),
-      dropoff: "QA Destination " + market.country + " " + (index + 1),
+      pickup: "QA Origin " + selectedMarket.country + " " + (index + 1),
+      dropoff: "QA Destination " + selectedMarket.country + " " + (index + 1),
       miles,
     }));
     const freightProfiles = [
@@ -330,15 +376,16 @@ async function runQA(countryOverride: string, runId: string, workerId: string) {
       return {
         pickup: lane.pickup, dropoff: lane.dropoff, jobDate, pickupTime,
         dropoffTime: pad(dropoffHour) + ":00", vehicleType: profile.vehicleType,
-        weightKg: profile.weightKg, dimensions: profile.dimensions, price, priceMode: mode, currency: market.currency,
+        weightKg: profile.weightKg, dimensions: profile.dimensions, price, priceMode: selectedMarket.country === "IN" ? "fixed" : mode, currency: selectedMarket.currency,
         crossBorder: false,
         notes: "Synthetic QA only " + marker + "; lane=" + lane.pickup + " to " + lane.dropoff +
           "; estimatedMiles=" + lane.miles + "; cargo=" + profile.cargo + "; scenario=" + n,
-        pickupContactName: "QA Contact", pickupContactPhone: market.dialingCode + "7700900111",
-        dropoffContactName: "QA Receiver", dropoffContactPhone: market.dialingCode + "7700900112",
+        pickupContactName: "QA Contact", pickupContactPhone: selectedMarket.dialingCode + "7700900111",
+        dropoffContactName: "QA Receiver", dropoffContactPhone: selectedMarket.dialingCode + "7700900112",
       };
     };
     async function createJob(p: AccountFixture, n: number, mode: "fixed" | "bid") {
+      if (selectedMarket.country === "IN" && mode === "bid") return null;
       const r = await check(p.client!, p, "job-posting", "create-" + mode + "-job", "POST", "/api/jobs", jobPayload(n, mode), [201]);
       return r.status === 201 && r.data?.job?.id ? String(r.data.job.id) : null;
     }
@@ -372,6 +419,12 @@ async function runQA(countryOverride: string, runId: string, workerId: string) {
     for (let i = 0; i < 20 && i < posters.length && i < drivers.length; i++) {
       const p = posters[i], d = drivers[i], id = await createJob(p, i, "fixed");
       if (!id) continue;
+      if (selectedMarket.country === "IN") {
+        await check(d.client!, d, "bidding", "india-bidding-disabled", "POST", "/api/jobs/" + id + "/bid", { amount: 120 }, [403]);
+        await check(p.client!, p, "bidding", "india-bid-list-disabled", "GET", "/api/jobs/" + id + "/bids", undefined, [400]);
+        await check(p.client!, p, "bidding", "india-bid-accept-disabled", "POST", "/api/jobs/" + id + "/bids/qa-nonexistent-bid/accept", {}, [400]);
+        await check(p.client!, p, "job-posting", "india-bid-mode-job-rejected", "POST", "/api/jobs", jobPayload(9000 + i, "bid"), [400]);
+      }
       await check(d.client!, d, "job-search", "search-synthetic-marker", "GET", "/api/jobs?search=" + encodeURIComponent(marker), undefined, [200]);
       await check(d.client!, d, "job-search", "filter-by-price-and-vehicle", "GET", "/api/jobs?minPrice=35&maxPrice=700&vehicleType=Small%20van%20(SWB)", undefined, [200]);
       const editPayload = jobPayload(i + 2500, "fixed");
@@ -380,7 +433,7 @@ async function runQA(countryOverride: string, runId: string, workerId: string) {
       if (accepted.status === 200) await completeJob(id, p, d, i);
     }
 
-    for (let i = 0; i < 10 && i + 20 < posters.length && i + 20 < drivers.length; i++) {
+    if (selectedMarket.country !== "IN") for (let i = 0; i < 10 && i + 20 < posters.length && i + 20 < drivers.length; i++) {
       const p = posters[i + 20], d = drivers[i + 20], id = await createJob(p, 100 + i, "bid");
       if (!id) continue;
       await check(p.client!, p, "authorization", "poster-cannot-bid-own-job", "POST", "/api/jobs/" + id + "/bid", { amount: 100 }, [403]);
@@ -474,7 +527,7 @@ async function runQA(countryOverride: string, runId: string, workerId: string) {
     }
 
     // Race two active bids for one job. Exactly one bid may claim the job.
-    if (posters.length >= 38 && drivers.length >= 46) {
+    if (selectedMarket.country !== "IN" && posters.length >= 38 && drivers.length >= 46) {
       const poster = posters[37], bidderA = drivers[44], bidderB = drivers[45];
       const raceJob = await createJob(poster, 1520, "bid");
       if (raceJob) {
@@ -586,10 +639,11 @@ async function runQA(countryOverride: string, runId: string, workerId: string) {
     await parallel(drivers.slice(0, 20), 2, async (a, i) => {
       const payload = {
         vehicleType: VEHICLE_TYPES[i % VEHICLE_TYPES.length], regPlate: "QA" + runId.replace(/\D/g, "").slice(-5) + String(i).padStart(3, "0"),
+        registrationRegion: getJurisdictionOptions(selectedMarket.country)[0]?.code,
         ownershipType: ["owned", "leased", "rented", "other"][i % 4], make: "QA Make", model: "QA Model", mamKg: [350, 1800, 3500, 3500, 3500, 3500, 7500, 12000, 18000, 32000, 7500, 18000, 18000, 3500, 3500, 3500][i % VEHICLE_TYPES.length],
         v5cDocumentUrl: "https://example.invalid/qa-v5c.pdf", insuranceDocumentUrl: "https://example.invalid/qa-insurance.pdf",
-        operatorLicenceNo: "QA-" + runId, motValidUntil: new Date(Date.now() + 180 * 86400000).toISOString(),
-        insuranceValidUntil: new Date(Date.now() + 180 * 86400000).toISOString(),
+        operatorLicenceNo: "QA-" + runId, motValidUntil: new Date(Date.now() + 180 * 86400000).toISOString().slice(0, 10),
+        insuranceValidUntil: new Date(Date.now() + 180 * 86400000).toISOString().slice(0, 10),
       };
       await check(a.client!, a, "vehicles", "create-synthetic-vehicle", "POST", "/api/vehicles", payload, [201]);
       await check(a.client!, a, "vehicles", "duplicate-registration-rejected", "POST", "/api/vehicles", payload, [409]);
@@ -597,12 +651,12 @@ async function runQA(countryOverride: string, runId: string, workerId: string) {
 
     if (signed[0]) {
       await check(signed[0].client!, signed[0], "admin-access", "ordinary-user-cannot-read-admin", "GET", "/api/admin/testers", undefined, [403]);
-      await check(signed[0].client!, signed[0], "payments", "pending-payment-record-without-real-charge", "POST", "/api/subscription/create-payment", {}, [200]);
+      await check(signed[0].client!, signed[0], "payments", selectedMarket.country === "IN" ? "india-weekly-subscription-blocked" : "pending-payment-record-without-real-charge", "POST", "/api/subscription/create-payment", {}, selectedMarket.country === "IN" ? [400] : [200]);
     }
-    const restricted = fixtures.find(a => a.index === 9_999);
+    const restricted = fixtures.find(a => a.index === accountTarget - 1);
     if (restricted?.client && posters[0]) {
       const sample = await createJob(posters[0], 1800, "bid");
-      if (sample) await check(restricted.client, restricted, "access-control", market.country === "IN" ? "india-non-weekly-market-access-policy" : "restricted-account-cannot-bid", "POST", "/api/jobs/" + sample + "/bid", { amount: 100 }, market.country === "IN" ? [200] : [403, 402]);
+      if (sample) await check(restricted.client, restricted, "access-control", selectedMarket.country === "IN" ? "india-non-weekly-market-access-policy" : "restricted-account-cannot-bid", "POST", "/api/jobs/" + sample + "/bid", { amount: 100 }, selectedMarket.country === "IN" ? [200] : [403, 402]);
     }
 
     // Exercise the API surface with 10,000 real requests per selected country.
@@ -641,7 +695,7 @@ async function runQA(countryOverride: string, runId: string, workerId: string) {
       { name: "nonnumeric-max-price", auth: true, method: "GET", path: () => "/api/jobs?maxPrice=not-a-number", expected: [400] },
       { name: "authenticated-account-read", auth: true, method: "GET", path: () => "/api/account", expected: [200] },
       { name: "authenticated-access-read", auth: true, method: "GET", path: () => "/api/account/access", expected: [200] },
-      { name: "country-change-rejected", auth: true, method: "PATCH", path: () => "/api/account", body: () => ({ country: market.country === "IN" ? "GB" : "IN", currency: market.country === "IN" ? "GBP" : "INR" }), expected: [409] },
+      { name: "country-change-rejected", auth: true, method: "PATCH", path: () => "/api/account", body: () => ({ country: selectedMarket.country === "IN" ? "GB" : "IN", currency: selectedMarket.country === "IN" ? "GBP" : "INR" }), expected: [409] },
       { name: "authenticated-vehicle-list", auth: true, method: "GET", path: () => "/api/vehicles", expected: [200] },
       { name: "invalid-vehicle-type", auth: true, method: "POST", path: () => "/api/vehicles", body: () => ({ vehicleType: "not-a-vehicle" }), expected: [400] },
       { name: "authenticated-payment-summary", auth: true, method: "GET", path: () => "/api/payments", expected: [200] },
@@ -700,29 +754,25 @@ async function runQA(countryOverride: string, runId: string, workerId: string) {
       routeMatrixExecuted++;
     });
 
-    // Delete one synthetic account through the real account-deletion flow only after
-    // its route-matrix checks; the QA cleanup can still recover it by run mapping.
-    const deleteFixture = fixtures.find(account => account.index === 498 && account.client);
-    if (deleteFixture?.client) {
-      await check(deleteFixture.client, deleteFixture, "account-lifecycle", "synthetic-account-delete-confirmation", "DELETE", "/api/account", { confirm: "DELETE", currentPassword: deleteFixture.password }, [200, 202]);
-    }
+    // Account deletion is intentionally not exercised so all synthetic records remain available for review.
 
     const count = async (query: string, ...params: unknown[]) => {
       const rows = await prisma.$queryRawUnsafe<Array<{ count: bigint | number }>>(query, ...params);
       return Number(rows[0]?.count ?? 0);
     };
+    const poolRunId = sourceRunId;
     const persistedDataSummary = {
-      qaMappedAccounts: await count("SELECT count(*)::int AS count FROM qa_test_accounts WHERE run_id=$1", runId),
-      matchingAccounts: await count('SELECT count(*)::int AS count FROM "Account" a JOIN qa_test_accounts q ON q.account_id=a.id WHERE q.run_id=$1', runId),
-      matchingUsers: await count('SELECT count(*)::int AS count FROM "User" u JOIN qa_test_accounts q ON q.account_id=u."accountId" WHERE q.run_id=$1', runId),
+      qaMappedAccounts: await count("SELECT count(*)::int AS count FROM qa_test_accounts WHERE run_id=$1", poolRunId),
+      matchingAccounts: await count('SELECT count(*)::int AS count FROM "Account" a JOIN qa_test_accounts q ON q.account_id=a.id WHERE q.run_id=$1', poolRunId),
+      matchingUsers: await count('SELECT count(*)::int AS count FROM "User" u JOIN qa_test_accounts q ON q.account_id=u."accountId" WHERE q.run_id=$1', poolRunId),
       syntheticJobs: await count('SELECT count(*)::int AS count FROM "Job" WHERE notes LIKE $1', "%" + marker + "%"),
       syntheticBids: await count('SELECT count(*)::int AS count FROM "Bid" b JOIN "Job" j ON j.id=b."jobId" WHERE j.notes LIKE $1', "%" + marker + "%"),
       syntheticRatings: await count('SELECT count(*)::int AS count FROM "Rating" r JOIN "Job" j ON j.id=r."jobId" WHERE j.notes LIKE $1', "%" + marker + "%"),
-      syntheticVehicles: await count('SELECT count(*)::int AS count FROM "Vehicle" v JOIN qa_test_accounts q ON q.account_id=v."accountId" WHERE q.run_id=$1', runId),
+      syntheticVehicles: await count('SELECT count(*)::int AS count FROM "Vehicle" v JOIN qa_test_accounts q ON q.account_id=v."accountId" WHERE q.run_id=$1', poolRunId),
       syntheticJobActivities: await count('SELECT count(*)::int AS count FROM "JobActivity" a JOIN "Job" j ON j.id=a."jobId" WHERE j.notes LIKE $1', "%" + marker + "%"),
       loggedInteractions: await count("SELECT count(*)::int AS count FROM qa_test_events WHERE run_id=$1", runId),
     };
-    return await finish("completed", { successfulLogins: signed.length, persistedDataSummary, limitations: ["Email delivery and real provider settlements were not attempted.", "This is API-driven lifecycle simulation, not browser-based usability testing.", "Route distances and prices are deterministic synthetic estimates, not live routing results or market quotes."] });
+    return await finish("completed", { testType, successfulLogins: signed.length, accountPoolRunId, persistedDataSummary, limitations: ["Email delivery and real provider settlements were not attempted.", "This is API-driven lifecycle simulation, not browser-based usability testing.", "Route distances and prices are deterministic synthetic estimates, not live routing results or market quotes.", "Account deletion and cleanup were intentionally not run; synthetic data is retained."] });
   } catch (error) {
     const failureMessage = error instanceof Error ? error.message : String(error);
     console.error("Staging QA runner exception", error);
@@ -732,12 +782,13 @@ async function runQA(countryOverride: string, runId: string, workerId: string) {
 
 
 
-export async function runQaWorker(runId: string, countryOverride: string, workerId: string) {
+export async function runQaWorker(runId: string, countryOverride: string, workerId: string, testType: QaTestType = "workflow-e2e", config: QaRunConfig = { accountCount: 10_000, testIterations: 10_000, concurrency: 12 }) {
   if (!/^[A-Za-z0-9._:-]{1,80}$/.test(runId)) {
     throw new Error("Invalid QA run identifier.");
   }
   if (!workerId || workerId.length > 160) {
     throw new Error("Invalid QA worker identifier.");
   }
-  return runQA(countryOverride, runId, workerId);
+  if (!["api-load", "synthetic-accounts", "workflow-e2e"].includes(testType)) throw new Error("Invalid QA test type.");
+  return runQA(countryOverride, runId, workerId, testType, config);
 }

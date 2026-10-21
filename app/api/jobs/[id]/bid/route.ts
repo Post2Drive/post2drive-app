@@ -8,6 +8,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { markDriverOpportunityBid } from "@/lib/opportunities";
+import { getLocalisationProfile } from "@/lib/localisation";
+import { marketDateKey } from "@/lib/vehicleDates";
 
 async function POSTHandler(
   req: Request,
@@ -36,6 +38,20 @@ async function POSTHandler(
   if (marketAccessError) return marketAccessError;
   const writeLimit = await enforceRateLimit(req, { scope: "job-bid-create", identity: accountId, limit: 30, windowMs: 60 * 60 * 1000 });
   if (writeLimit) return writeLimit;
+
+  const bidderAccount = await prisma.account.findUnique({
+    where: { id: accountId },
+    select: { verificationStatus: true, isTester: true, country: true, currency: true },
+  });
+  if (bidderAccount?.country === "IN" && bidderAccount?.currency === "INR") {
+    return NextResponse.json({ error: "Bidding is not available in India. Contact the poster about the fixed quote." }, { status: 403 });
+  }
+  if (bidderAccount?.verificationStatus !== "verified" && !bidderAccount?.isTester) {
+    return NextResponse.json(
+      { error: "Your account must be verified before placing bids." },
+      { status: 403 }
+    );
+  }
 
   const marketplaceAccessCheck = await getAccountAccess(accountId);
 
@@ -83,7 +99,8 @@ async function POSTHandler(
     pickupAt = await getJobPickupAtForAccount(
       accountId,
       job.jobDate,
-      job.pickupTime
+      job.pickupTime,
+      job.pickupTimeZone
     );
   } catch {
     return NextResponse.json(
@@ -117,6 +134,28 @@ async function POSTHandler(
     );
   }
 
+  if (!bidderAccount?.isTester) {
+    const bidderMarket = getLocalisationProfile({ country: bidderAccount.country, currency: bidderAccount.currency });
+    const marketToday = marketDateKey(new Date(), bidderMarket?.timeZone ?? "UTC");
+    const dateCutoff = new Date(marketToday + "T00:00:00.000Z");
+    const matchingVehicle = await prisma.vehicle.findFirst({
+      where: {
+        accountId,
+        vehicleType: job.vehicleType,
+        verificationStatus: "verified",
+        insuranceValidUntil: { gte: dateCutoff },
+        ...(bidderMarket?.inspectionRequiredAtCountryLevel ? { motValidUntil: { gte: dateCutoff } } : {}),
+      },
+      select: { id: true },
+    });
+    if (!matchingVehicle) {
+      return NextResponse.json(
+        { error: "You need a verified vehicle of the required type with current insurance and any required inspection before placing a bid." },
+        { status: 403 }
+      );
+    }
+  }
+
   if (job.status !== "open") {
     return NextResponse.json(
       {
@@ -148,9 +187,9 @@ async function POSTHandler(
         ? Number(rawAmount)
         : Number.NaN;
 
-  if (!Number.isFinite(amount) || amount <= 0) {
+  if (!Number.isFinite(amount) || amount <= 0 || amount > 100000000) {
     return NextResponse.json(
-      { error: "Enter a valid bid amount." },
+      { error: "Enter a bid amount greater than zero and no more than 100,000,000." },
       { status: 400 }
     );
   }

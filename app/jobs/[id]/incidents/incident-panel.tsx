@@ -2,6 +2,8 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { formatMarketDateTime } from "@/lib/localisation";
 
 type IncidentEvent = {
   id: string;
@@ -36,6 +38,9 @@ export default function IncidentPanel({ jobId, jobStatus }: { jobId: string; job
   const [updateText, setUpdateText] = useState<Record<string, string>>({});
   const [terminationNotes, setTerminationNotes] = useState<Record<string, string>>({});
   const router = useRouter();
+  const { data: session } = useSession();
+  const country = (session?.user as any)?.country ?? "GB";
+  const currency = (session?.user as any)?.currency ?? "GBP";
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -194,7 +199,7 @@ export default function IncidentPanel({ jobId, jobStatus }: { jobId: string; job
         {events.length === 0 ? <p>No incident reports yet.</p> : <div style={{ display: "grid", gap: 12 }}>
           {events.map((event) => (
             <article key={event.id} style={{ border: "1px solid var(--color-border)", borderRadius: 12, padding: 16 }}>
-              <p style={{ marginTop: 0, fontSize: 12, color: "var(--color-muted)" }}>{new Date(event.createdAt).toLocaleString()} · {event.action.replaceAll("_", " ").toLowerCase()}</p>
+              <p style={{ marginTop: 0, fontSize: 12, color: "var(--color-muted)" }}>{formatMarketDateTime(event.createdAt, { country, currency })} · {event.action.replaceAll("_", " ").toLowerCase()}</p>
               <p>{event.description}</p>
               <details>
                 <summary>Incident details and recorded metadata</summary>
