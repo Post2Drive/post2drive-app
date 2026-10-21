@@ -79,13 +79,28 @@ async function scanRoute(page, route, viewport) {
         visibility: style.visibility,
         opacity: style.opacity,
       } : null,
+      matchesFocus: active instanceof HTMLElement ? active.matches(":focus") : false,
+      matchesFocusVisible: active instanceof HTMLElement ? active.matches(":focus-visible") : false,
+      focusRules: (() => {
+        const found = [];
+        const visit = (rules) => {
+          for (const rule of Array.from(rules)) {
+            if (rule.selectorText?.includes(".skip-link:focus")) found.push(rule.cssText);
+            if (rule.cssRules) visit(rule.cssRules);
+          }
+        };
+        for (const sheet of Array.from(document.styleSheets)) {
+          try { visit(sheet.cssRules); } catch { /* Cross-origin sheets are not inspectable. */ }
+        }
+        return found;
+      })(),
       scrollY: window.scrollY,
     };
   });
   if (!String(skipLink.className).includes("skip-link") || !/skip to main content/i.test(skipLink.text)) {
     failures.push(`${route} does not focus the skip link first at ${viewport.label}`);
   } else if (!skipLink.rect || skipLink.rect.width <= 0 || skipLink.rect.height <= 0 || skipLink.rect.top < 0) {
-    failures.push(`${route} skip link is not visible when focused at ${viewport.label}: ${JSON.stringify({ rect: skipLink.rect, style: skipLink.style, scrollY: skipLink.scrollY })}`);
+    failures.push(`${route} skip link is not visible when focused at ${viewport.label}: ${JSON.stringify({ rect: skipLink.rect, style: skipLink.style, matchesFocus: skipLink.matchesFocus, matchesFocusVisible: skipLink.matchesFocusVisible, focusRules: skipLink.focusRules, scrollY: skipLink.scrollY })}`);
   }
 }
 
