@@ -680,7 +680,7 @@ async function metricsUncached(url) {
     try { return await prisma.$queryRawUnsafe(sql, ...args); }
     catch (e) { warnings.push(label + " data unavailable: check migration/table permissions."); console.error("Ops metrics query failed:",label,e?.message); return []; }
   };
-  const [overviewRows, accountTypes, verificationStatuses, jobStatuses, growth, apiHourly, routes, recentErrors, qaRuns, qaFailures, paymentStatuses, vehicleRows, activityRows, bidRows] = await Promise.all([
+  const [overviewRows, accountTypes, verificationStatuses, jobStatuses, growth, apiHourly, routes, recentErrors, qaRuns, qaFailures, paymentStatuses, activityRows, bidRows] = await Promise.all([
     safeQuery("Overview",`SELECT
       count(*) FILTER (WHERE ${businessFilter})::int AS "totalAccounts",
       count(*) FILTER (WHERE ${businessFilter} AND a."createdAt" >= now()-($2::int*interval '1 day'))::int AS "newAccounts",
@@ -748,7 +748,6 @@ async function metricsUncached(url) {
        LIMIT 100
      `),
     safeQuery("Subscription payments",`SELECT sp.status AS label,count(*)::int AS count FROM "SubscriptionPayment" sp JOIN "Account" a ON a.id=sp."accountId" LEFT JOIN qa_test_accounts qa ON qa.account_id=a.id WHERE qa.account_id IS NULL AND ($1::text IS NULL OR a.country=$1) AND sp."createdAt">=now()-($2::int*interval '1 day') GROUP BY sp.status ORDER BY count DESC`,country,days),
-    safeQuery("Vehicle summary",`SELECT count(*)::int AS total FROM "Vehicle" v JOIN "Account" a ON a.id=v."accountId" LEFT JOIN qa_test_accounts qa ON qa.account_id=a.id WHERE qa.account_id IS NULL AND ($1::text IS NULL OR a.country=$1)`,country),
     safeQuery("Activity summary",`SELECT action AS label,count(*)::int AS count FROM "JobActivity" ja JOIN "Job" j ON j.id=ja."jobId" JOIN "Account" a ON a.id=j."posterId" LEFT JOIN qa_test_accounts qa ON qa.account_id=a.id WHERE qa.account_id IS NULL AND ($1::text IS NULL OR a.country=$1) AND ja."createdAt">=now()-($2::int*interval '1 day') GROUP BY action ORDER BY count DESC LIMIT 15`,country,days),
     safeQuery("Bid summary",`SELECT count(*)::int AS total FROM "Bid" b JOIN "Job" j ON j.id=b."jobId" JOIN "Account" a ON a.id=j."posterId" LEFT JOIN qa_test_accounts qa ON qa.account_id=a.id WHERE qa.account_id IS NULL AND ($1::text IS NULL OR a.country=$1) AND b."createdAt">=now()-($2::int*interval '1 day')`,country,days)
   ]);
