@@ -12,6 +12,12 @@ permissions:
   security-events: write
   actions: read
 
+# A newer commit supersedes CodeQL analysis of an older revision in the same PR.
+# Keep the full scan, but avoid queueing stale analyses behind the current head.
+concurrency:
+  group: codeql-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   analyze:
     name: Analyze TypeScript
