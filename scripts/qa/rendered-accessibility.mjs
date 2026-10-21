@@ -11,7 +11,8 @@ const databaseUrl = new URL(process.env.DATABASE_URL || "");
 assert.ok(["localhost", "127.0.0.1"].includes(databaseUrl.hostname), "E2E fixture must use local CI PostgreSQL");
 const baseURL = process.env.POST2DRIVE_BASE_URL || "http://localhost:3000";
 const publicRoutes = ["/", "/login", "/signup", "/pricing", "/privacy", "/terms", "/verify-email"];
-const authenticatedRoutes = ["/", "/dashboard", "/jobs", "/jobs/new", "/vehicles", "/payments", "/settings", "/requirements", "/admin", "/admin/performance", "/admin/testers", "/admin/research", "/admin/incidents"];
+const authenticatedRoutes = ["/", "/dashboard", "/jobs", "/jobs/new", "/vehicles", "/payments", "/settings", "/requirements", "/admin/research"];
+const retiredAdminRoutes = ["/admin", "/admin/performance", "/admin/testers", "/admin/incidents"];
 const viewports = [
   { width: 320, height: 800, label: "small mobile" },
   { width: 390, height: 844, label: "mobile" },
@@ -197,6 +198,30 @@ try {
         assert.equal(await page.locator("#mobile-more-menu").isVisible(), false, "Escape must hide mobile More menu");
         assert.equal(await more.evaluate(element => element === document.activeElement), true, "Escape must return focus to More trigger");
       }
+    }
+
+    // The embedded operations dashboard is deliberately disabled in CI. Retired
+    // internal admin routes must return the controlled 503 fallback, not be
+    // mistaken for successful authenticated app pages.
+    for (const route of retiredAdminRoutes) {
+      const response = await page.goto(new URL(route, baseURL).toString(), { waitUntil: "domcontentloaded" });
+      assert.equal(response?.status(), 503, `${route} should return the controlled disabled-dashboard response in CI`);
+    }
+    const adminFallbackResponse = await page.goto(new URL("/admin-access", baseURL).toString(), { waitUntil: "domcontentloaded" });
+    assert.equal(adminFallbackResponse?.status(), 503, "The disabled admin dashboard must return its documented fallback status");
+    await page.getByRole("heading", { name: "Admin dashboard unavailable" }).waitFor({ state: "visible" });
+    const adminFallbackAxe = await new AxeBuilder({ page })
+      .withTags(["wcag2a", "wcag2aa", "wcag21aa", "best-practice"])
+      .analyze();
+    for (const violation of adminFallbackAxe.violations) {
+      failures.push(`admin dashboard unavailable fallback (${viewport.label}) ${violation.impact || "unknown"}: ${violation.id} — ${violation.help}`);
+    }
+    const adminFallbackOverflow = await page.evaluate(() => ({
+      documentWidth: document.documentElement.scrollWidth,
+      viewportWidth: document.documentElement.clientWidth,
+    }));
+    if (adminFallbackOverflow.documentWidth > adminFallbackOverflow.viewportWidth) {
+      failures.push(`admin dashboard unavailable fallback overflows horizontally at ${viewport.label}`);
     }
 
     if (viewport.width === 320) {
