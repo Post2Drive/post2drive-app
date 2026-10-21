@@ -107,7 +107,7 @@ export default function MainNav({ showQaCampaigns = false }: { showQaCampaigns?:
           <span aria-hidden="true">•••</span>
           <span>More</span>
         </button>
-        <div id="mobile-more-menu" className="mobile-more-menu" hidden={!moreOpen} role="group" aria-label="More navigation links">
+        <div id="mobile-more-menu" className="mobile-more-menu" hidden={!moreOpen} role="region" aria-label="More navigation links">
           {mobileMore.map((link) => {
             const active = isActive(pathname, link.href);
             return (
