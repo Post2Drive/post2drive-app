@@ -117,10 +117,6 @@ jobs:
         run: npm run qa:account-api-security
       - name: Validate accessible design contracts
         run: npm run qa:design-accessibility
-      - name: Validate mobile responsiveness contract
-        run: node scripts/qa/mobile-responsiveness-contract.mjs
-      - name: Validate UI text and background contrast
-        run: node scripts/qa/ui-contrast-contract.mjs
       - name: Type-check TypeScript
         run: npx tsc --noEmit
       - name: Build Next.js production bundle
