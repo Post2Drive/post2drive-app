@@ -47,7 +47,16 @@ export async function createPasswordResetToken(userId: string, accountId: string
     if (gate.count !== 1) return null;
 
     const recentlySent = await tx.passwordResetToken.findFirst({
-      where: { userId, lastSentAt: { gt: cooldownSince } },
+      // Include newly created tokens whose email delivery is still in flight.
+      // Otherwise concurrent requests can replace each other's tokens before
+      // lastSentAt is recorded, causing the first delivered link to be invalid.
+      where: {
+        userId,
+        OR: [
+          { lastSentAt: { gt: cooldownSince } },
+          { createdAt: { gt: cooldownSince } },
+        ],
+      },
       select: { id: true },
     });
     if (recentlySent) return null;
