@@ -23,9 +23,6 @@ async function GETHandler() {
   if (!accountId || !userId) {
     return NextResponse.json({ error: "Invalid session." }, { status: 401 });
   }
-  const userId =
-    (session.user as any).id;
-
   // Return only fields the settings/account UI needs. Do not serialize the
   // complete Account model: internal trial counters, QA state, lifecycle flags,
   // and future schema additions should not become public API fields by default.
