@@ -85,7 +85,16 @@ async function PATCHHandler(req: Request) {
     marketingConsent,
     currentPassword,
     newPassword,
-  } = body;
+  } = body as {
+    name?: string;
+    phone?: string;
+    companyName?: string;
+    country?: string;
+    currency?: string;
+    marketingConsent?: boolean;
+    currentPassword?: string;
+    newPassword?: string;
+  };
 
   const boundedString = (value: unknown, maxLength: number) =>
     value === undefined || (typeof value === "string" && value.length <= maxLength);
