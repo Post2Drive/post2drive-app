@@ -2387,3 +2387,17 @@ main table tr:hover td {
 @media (prefers-reduced-motion: reduce) {
   .home-action-card, .home-button { transition: none !important; transform: none !important; }
 }
+
+
+/* The global contrast audit intentionally whitens generic panels. Keep the
+   homepage workflow panel dark and its light labels paired with that surface. */
+main .home-route-panel {
+  background: #102A43 !important;
+  color: #FFFFFF !important;
+}
+main .home-route-label { color: #D4E1ED; }
+main .home-route-status { color: #E2EDF7; }
+main .home-step-number { color: #D4E8FA; }
+main .home-steps li strong { color: #FFFFFF; }
+main .home-steps li small { color: #D4E1ED; }
+main .home-route-footer { color: #D4E1ED; }
