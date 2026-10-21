@@ -195,8 +195,8 @@ export default function SettingsPage() {
         {account.country === "IN" ? "Access and pricing follow the policy configured for your market. Payment processing is not yet enabled in this rebuild." : `Access for ${marketProfile?.marketplaceLabel ?? "your market"} is currently configured in 7-day periods after any applicable promotional period. Payment processing is not yet enabled in this rebuild.`}
       </p>
 
-      <section style={{ marginTop: 36, padding: 18, border: "1px solid var(--color-danger)", borderRadius: 12, background: "var(--color-danger-soft)" }}>
-        <h3 style={{ marginTop: 0, color: "var(--color-danger)" }}>Delete account</h3>
+      <section aria-labelledby="delete-account-heading" style={{ marginTop: 36, padding: 18, border: "1px solid var(--color-danger)", borderRadius: 12, background: "var(--color-danger-soft)" }}>
+        <h3 id="delete-account-heading" style={{ marginTop: 0, color: "var(--color-danger)" }}>Delete account</h3>
         <p>You'll be signed out and your personal account details will be anonymised. Limited job, incident, payment and audit records may remain to protect other users and meet legal obligations. This cannot be undone through the app.</p>
         <form onSubmit={async (event) => {
           event.preventDefault(); setDeleteMessage(""); setDeleteBusy(true);
