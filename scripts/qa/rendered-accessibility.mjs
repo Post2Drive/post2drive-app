@@ -67,16 +67,25 @@ async function scanRoute(page, route, viewport) {
   await page.keyboard.press("Tab");
   const skipLink = await page.evaluate(() => {
     const active = document.activeElement;
+    const style = active instanceof HTMLElement ? getComputedStyle(active) : null;
     return {
       className: active instanceof HTMLElement ? active.className : "",
       text: active?.textContent?.trim() || "",
       rect: active instanceof HTMLElement ? active.getBoundingClientRect().toJSON() : null,
+      style: style ? {
+        position: style.position,
+        transform: style.transform,
+        display: style.display,
+        visibility: style.visibility,
+        opacity: style.opacity,
+      } : null,
+      scrollY: window.scrollY,
     };
   });
   if (!String(skipLink.className).includes("skip-link") || !/skip to main content/i.test(skipLink.text)) {
     failures.push(`${route} does not focus the skip link first at ${viewport.label}`);
   } else if (!skipLink.rect || skipLink.rect.width <= 0 || skipLink.rect.height <= 0 || skipLink.rect.top < 0) {
-    failures.push(`${route} skip link is not visible when focused at ${viewport.label}`);
+    failures.push(`${route} skip link is not visible when focused at ${viewport.label}: ${JSON.stringify({ rect: skipLink.rect, style: skipLink.style, scrollY: skipLink.scrollY })}`);
   }
 }
 
