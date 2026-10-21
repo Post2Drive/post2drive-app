@@ -672,3 +672,7 @@ When reviewing UI code, check for:
 | Framer Motion `x`/`y` props under load     | Use `transform: "translateX()"` for hardware acceleration        |
 | Same enter/exit transition speed           | Make exit faster than enter (e.g., enter 2s, exit 200ms)         |
 | Elements all appear at once                | Add stagger delay (30-80ms between items)                        |
+
+## Source
+
+Reviewed snapshot of Emil Kowalski's official design-engineering skill: https://github.com/emilkowalski/skills
