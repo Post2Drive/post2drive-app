@@ -34,7 +34,7 @@ function Section({ title, subtitle, children, collapsible=false, defaultOpen=tru
 }
 function Table({ rows, columns, empty="No data collected yet." }: { rows:Row[]; columns:{key:string;label:string;render?:(v:any,row:Row)=>React.ReactNode}[]; empty?:string }) {
   if (!rows?.length) return <p style={{ color:palette.muted, fontSize:13 }}>{empty}</p>;
-  return <div style={{ overflowX:"auto", width:"100%" }}><table style={{ width:"100%", borderCollapse:"collapse", fontSize:13, textAlign:"left" }}><thead><tr>{columns.map(c=><th key={c.key} style={{ padding:"9px 10px", borderBottom:"1px solid "+palette.border, whiteSpace:"nowrap" }}>{c.label}</th>)}</tr></thead><tbody>{rows.map((row,i)=><tr key={String(row.id ?? row.route ?? row.label ?? row.hour ?? row.day ?? row.action ?? i)}>{columns.map(c=><td key={c.key} style={{ padding:"9px 10px", borderBottom:"1px solid "+palette.border, verticalAlign:"top" }}>{c.render?c.render(row[c.key],row):String(row[c.key] ?? "—")}</td>)}</tr>)}</tbody></table></div>;
+  return <div role="region" aria-label="Scrollable data table" tabIndex={0} style={{ overflowX:"auto", width:"100%" }}><table style={{ width:"100%", borderCollapse:"collapse", fontSize:13, textAlign:"left" }}><thead><tr>{columns.map(c=><th key={c.key} style={{ padding:"9px 10px", borderBottom:"1px solid "+palette.border, whiteSpace:"nowrap" }}>{c.label}</th>)}</tr></thead><tbody>{rows.map((row,i)=><tr key={String(row.id ?? row.route ?? row.label ?? row.hour ?? row.day ?? row.action ?? i)}>{columns.map(c=><td key={c.key} style={{ padding:"9px 10px", borderBottom:"1px solid "+palette.border, verticalAlign:"top" }}>{c.render?c.render(row[c.key],row):String(row[c.key] ?? "—")}</td>)}</tr>)}</tbody></table></div>;
 }
 function Distribution({ rows }: { rows:Row[] }) {
   const total=rows.reduce((n,r)=>n+Number(r.count||0),0);
@@ -124,8 +124,8 @@ export default function PerformanceDashboard() {
     <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,flexWrap:"wrap",margin:"16px 0" }}>
       <div style={{ color:palette.muted,fontSize:12 }}>Last updated {date(data.generatedAt)} · {loading?"Refreshing…":"Live database snapshot"}</div>
       <div style={{ display:"flex",gap:6,flexWrap:"wrap" }}>
-        {[1,7,30].map(d=><button key={d} onClick={()=>setDays(d)} aria-pressed={days===d} style={{ border:"1px solid "+palette.border,borderRadius:8,padding:"8px 12px",background:days===d?"#e8f1ff":"white",fontWeight:days===d?700:500,cursor:"pointer" }}>{d===1?"24 hours":d+" days"}</button>)}
-        <button onClick={()=>void load()} style={{ border:"1px solid "+palette.border,borderRadius:8,padding:"8px 12px",background:"white",cursor:"pointer" }}>Refresh</button>
+        {[1,7,30].map(d=><button key={d} onClick={()=>setDays(d)} aria-pressed={days===d} style={{ border:"1px solid "+palette.border,borderRadius:8,padding:"8px 12px",background:days===d?"#e8f1ff":"white",color:"#172B4D",fontWeight:days===d?700:500,cursor:"pointer" }}>{d===1?"24 hours":d+" days"}</button>)}
+        <button onClick={()=>void load()} style={{ border:"1px solid "+palette.border,borderRadius:8,padding:"8px 12px",background:"white",color:"#172B4D",cursor:"pointer" }}>Refresh</button>
       </div>
     </div>
     {error?<p role="alert" style={{ color:"#b42318" }}>{error} — showing the last successfully loaded data.</p>:null}
