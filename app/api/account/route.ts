@@ -23,7 +23,12 @@ async function GETHandler() {
   if (!accountId || !userId) {
     return NextResponse.json({ error: "Invalid session." }, { status: 401 });
   }
+  const userId =
+    (session.user as any).id;
 
+  // Return only fields the settings/account UI needs. Do not serialize the
+  // complete Account model: internal trial counters, QA state, lifecycle flags,
+  // and future schema additions should not become public API fields by default.
   // Explicit allowlist: never serialize internal trial, QA, subscription, or
   // lifecycle fields. Scope nested PII to the user who owns this session.
   const account = await prisma.account.findUnique({
@@ -111,6 +116,9 @@ async function PATCHHandler(req: Request) {
     return NextResponse.json({ error: "One or more settings fields are invalid." }, { status: 400 });
   }
 
+  // Stage all mutations in memory first. The transaction below acquires the
+  // account row as the lifecycle gate before changing either account or user data.
+  const userData: { name?: string; phone?: string; passwordHash?: string; passwordChangedAt?: Date } = {};
   const result = await prisma.$transaction(async (tx) => {
     // Serialize account mutations with deletion. The lock is held through every
     // write below, so DELETE cannot anonymize the account between this check
@@ -193,6 +201,23 @@ async function PATCHHandler(req: Request) {
 
   if (result.status !== 200) {
     return NextResponse.json({ error: result.error, ...("code" in result ? { code: result.code } : {}) }, { status: result.status });
+    if (lifecycleGate.count !== 1) return false;
+
+    if (Object.keys(userData).length > 0) {
+      await tx.user.update({ where: { id: userId }, data: userData });
+      if (userData.passwordHash) {
+        // A direct password change invalidates every outstanding email reset link.
+        await tx.passwordResetToken.deleteMany({ where: { userId } });
+      }
+    }
+    if (Object.keys(accountData).length > 0) {
+      await tx.account.update({ where: { id: accountId }, data: accountData });
+    }
+    return true;
+  });
+
+  if (!updated) {
+    return NextResponse.json({ error: "Account not found." }, { status: 404 });
   }
   return NextResponse.json({ success: result.success, ukPromotionEligible: result.ukPromotionEligible });
 }
@@ -286,10 +311,15 @@ async function DELETEHandler(req: Request) {
         trialEndsAt: null,
       },
     });
+    return true;
     if (accountUpdate.count !== 1) {
       // Throw to roll back the user/token anonymization if the guard ever fails.
       throw new Error("Account deletion lost its locked account row.");
     }
+
+  if (!deleted) {
+    return NextResponse.json({ error: "Account not found or already pending deletion." }, { status: 404 });
+  }
 
     return {
       status: 200,

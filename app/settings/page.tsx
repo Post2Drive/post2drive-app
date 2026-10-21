@@ -49,6 +49,19 @@ export default function SettingsPage() {
         country: data.account.country,
         currency: data.account.currency,
         marketingConsent: data.account.marketingConsent,
+        setAccount(data.account);
+        const user = data.account.users?.[0];
+        setForm({
+          name: user?.name || "",
+          phone: user?.phone || "",
+          companyName: data.account.companyName || "",
+          country: data.account.country,
+          currency: data.account.currency,
+          marketingConsent: data.account.marketingConsent,
+        });
+      })
+      .catch((error) => {
+        if (active) setLoadError(error instanceof Error ? error.message : "Could not load account settings.");
       });
     } catch (error) {
       setLoadError(error instanceof Error ? error.message : "Could not load account settings. Try again.");
@@ -63,6 +76,7 @@ export default function SettingsPage() {
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
+    if (saveBusy) return;
     setMessage("");
     setSaveError("");
     setSaving(true);
@@ -87,6 +101,7 @@ export default function SettingsPage() {
 
   async function handlePasswordChange(e: React.FormEvent) {
     e.preventDefault();
+    if (passwordBusy) return;
     setPwMessage("");
     setPwError("");
     setPasswordBusy(true);
@@ -177,6 +192,7 @@ export default function SettingsPage() {
             type="password"
             autoComplete="new-password"
             minLength={8}
+            autoComplete="new-password"
             value={pwForm.newPassword}
             onChange={(e) => setPwForm({ ...pwForm, newPassword: e.target.value })}
           />

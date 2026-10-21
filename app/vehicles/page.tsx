@@ -145,6 +145,7 @@ export default function VehiclesPage() {
 
       {loadError && <div role="alert" style={{ color: "var(--color-danger, #b91c1c)" }}><p>{loadError}</p><button type="button" onClick={() => void loadVehicles()} disabled={loading}>{loading ? "Retrying…" : "Retry loading vehicles"}</button></div>}
       {error && <p role="alert" style={{ color: "var(--color-danger, #b91c1c)" }}>{error}</p>}
+      {loadError && <p role="alert" style={{ color: "var(--color-danger, #b91c1c)" }}>Could not refresh your vehicles: {loadError} <button type="button" onClick={() => void loadVehicles()} disabled={loading}>{loading ? "Retrying…" : "Retry"}</button></p>}
       {message && <p role="status">{message}</p>}
 
       <form aria-labelledby="vehicle-registration-heading" onSubmit={submit} style={{ border: "1px solid var(--color-border)", borderRadius: 12, padding: 20 }}>

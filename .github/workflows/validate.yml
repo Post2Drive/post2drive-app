@@ -91,6 +91,10 @@ jobs:
         run: npx prisma generate --schema=prisma/schema.prisma
       - name: Apply all migrations to a clean PostgreSQL database
         run: npx prisma migrate deploy --schema=prisma/schema.prisma
+      - name: Validate account lifecycle concurrency and session revocation
+        run: npm run qa:security-isolation-contract
+      - name: Validate authenticated lifecycle authorization matrix
+        run: node scripts/qa/lifecycle-auth-matrix.mjs
       - name: Validate account deletion and PATCH concurrency against local PostgreSQL
         run: npm run qa:account-mutation-concurrency
       - name: Validate worker boot and atomic claim against local PostgreSQL
@@ -113,10 +117,16 @@ jobs:
         run: npm run qa:account-api-security
       - name: Validate accessible design contracts
         run: npm run qa:design-accessibility
+      - name: Validate mobile responsiveness contract
+        run: node scripts/qa/mobile-responsiveness-contract.mjs
+      - name: Validate UI text and background contrast
+        run: node scripts/qa/ui-contrast-contract.mjs
       - name: Type-check TypeScript
         run: npx tsc --noEmit
       - name: Build Next.js production bundle
         run: npm run build
+      - name: Validate lifecycle APIs over authenticated HTTP against isolated CI database
+        run: node scripts/qa/lifecycle-api-e2e.mjs
 
       - name: Install browser-only accessibility test tools
         run: npm install --no-save --package-lock=false tsx playwright @axe-core/playwright

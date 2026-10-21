@@ -78,6 +78,10 @@ contains("app/api/signup/route.ts", "marketForAccount({ country, currency })", "
 contains("app/api/jobs/route.ts", "isSupportedMarket(account)", "job posting must validate the stored account market");
 contains("app/api/jobs/route.ts", "validateJobInput(body, account)", "job posting must use market-aware validation");
 contains("app/api/vehicles/route.ts", "getLocalisationProfile({ country: account.country, currency: account.currency })", "vehicle registration must use market-specific terminology/rules");
+contains("lib/auth.ts", "select: { deletionRequestedAt: true }", "JWT refresh must re-check persisted account deletion state");
+contains("lib/auth.ts", "token.accountDeleted = !account || Boolean(account.deletionRequestedAt);", "JWT refresh must mark missing or deletion-requested accounts as revoked");
+contains("lib/auth.ts", "if (token.accountDeleted || token.passwordChanged) return null as any;", "deleted-account and password-revoked JWTs must not produce an authenticated session");
+contains("app/api/vehicles/route.ts", "if (!account || account.deletionRequestedAt) return null;", "vehicle reads and writes must reject accounts pending deletion");
 contains("app/api/jobs/[id]/bid/route.ts", "requireJobMarketAccess", "bidding must enforce same-market boundaries");
 contains("app/api/jobs/[id]/accept/route.ts", "requireJobMarketAccess", "job acceptance must enforce same-market boundaries");
 contains("app/api/subscription/create-payment/route.ts", "createPendingSubscriptionPayment", "all eligible markets need the shared subscription request path");
@@ -90,7 +94,52 @@ contains("components/subscription-pricing.tsx", "checkout is not connected", "pr
 contains("components/subscription-status.tsx", "No payment provider is connected yet", "pending payment must not imply a real charge was taken");
 contains("components/subscription-status.tsx", "const showPlanPrice = formattedPrice !== null", "expired paid markets must see their configured plan price");
 contains("components/subscription-status.tsx", "{showPlanPrice && (", "pricing visibility must not be limited to the UK trial");
+
+// User-facing job form must not offer an India workflow that server validation rejects.
+contains("app/jobs/new/page.tsx", 'country !== "IN" && <option value="bid">', "India job creation must hide open bidding");
+contains("app/jobs/new/page.tsx", 'country === "IN" && form.priceMode !== "fixed"', "India job creation must guard against bid mode");
+contains("app/jobs/new/page.tsx", 'country === "IN" ? "Fixed quote" : "Fixed price"', "India review summary must describe fixed-quote pricing accurately");
+contains("app/jobs/new/page.tsx", "currencyMinorUnitScale(currency)", "job price input must use the selected currency precision");
+contains("app/jobs/page.tsx", 'accountCountry !== "IN" &&', "India marketplace must not expose bid actions");
+contains("app/jobs/page.tsx", "currencyMinorUnitScale(job.currency)", "bid input must respect the job currency precision");
+contains("app/vehicles/page.tsx", "required={Boolean(marketProfile?.jurisdictionSelectionRequired)}", "required vehicle jurisdictions must be enforced in the user-facing form");
+contains("app/vehicles/page.tsx", "getJurisdictionOptions(market.country)", "vehicle onboarding must use market-specific jurisdiction choices");
+contains("app/vehicles/page.tsx", "marketProfile?.inspectionHelp", "inspection expiry fields must explain market-specific requirements");
+contains("app/vehicles/page.tsx", "!expiryDatesOptional && Boolean(marketProfile?.inspectionRequiredAtCountryLevel)", "inspection expiry requirements must respect market rules and tester exceptions");
+contains("app/vehicles/page.tsx", 'field("Insurance valid until", "insuranceValidUntil", "date", !expiryDatesOptional)', "insurance expiry must be required for non-test accounts");
+contains("app/vehicles/page.tsx", "getJurisdictionAuthority(market.country, form.registrationRegion, market.currency)", "vehicle onboarding must show the applicable jurisdiction authority");
+contains("app/vehicles/page.tsx", "const [loadError, setLoadError] = useState(\"\")", "vehicle list loading failures must be isolated from submission errors");
+contains("app/vehicles/page.tsx", "setLoadError(\"\")", "vehicle list retry must clear a previous load error");
+contains("app/vehicles/page.tsx", "onClick={() => void loadVehicles()}", "vehicle list loading failures must offer an explicit retry");
+
+contains("app/jobs/page.tsx", "const actionInFlight = useRef(false)", "lifecycle UI must guard against duplicate in-flight actions");
+contains("app/jobs/page.tsx", "if (actionInFlight.current) {", "repeated lifecycle clicks must not dispatch a second mutation");
+contains("app/jobs/page.tsx", "finally {\n      actionInFlight.current = false;", "lifecycle action lock must be released after success or failure");
+contains("app/jobs/page.tsx", "const bidInFlight = useRef(false)", "bid submission must guard against duplicate in-flight requests");
+contains("app/jobs/page.tsx", "if (bidInFlight.current) {", "repeated bid clicks must not submit a second bid");
+contains("app/jobs/page.tsx", "finally {\n      bidInFlight.current = false;", "bid submission lock must be released after success or failure");
+contains("app/jobs/page.tsx", "const ratingInFlight = useRef(false)", "rating submission must guard against duplicate in-flight requests");
+contains("app/jobs/page.tsx", "if (ratingInFlight.current) {", "repeated rating clicks must not submit a second rating");
+contains("app/jobs/page.tsx", "finally {\n      ratingInFlight.current = false;", "rating submission lock must be released after success or failure");
 contains("app/dashboard/page.tsx", "This is a planning price only. Payment checkout is not connected yet", "dashboard must not imply an operational renewal checkout");
+
+
+// Account settings should give recoverable feedback and prevent repeated submissions.
+contains("app/settings/page.tsx", "const [saveBusy, setSaveBusy] = useState(false)", "profile save must expose an in-flight state");
+contains("app/settings/page.tsx", "disabled={saveBusy}", "profile save must be disabled while saving");
+contains("app/settings/page.tsx", "Network error. Your settings could not be saved.", "profile save must report network failures");
+contains("app/settings/page.tsx", "const [passwordBusy, setPasswordBusy] = useState(false)", "password update must expose an in-flight state");
+contains("app/settings/page.tsx", "disabled={passwordBusy}", "password update must be disabled while submitting");
+contains("app/settings/page.tsx", "required\n            autoComplete=\"current-password\"", "password change must require the current password");
+contains("app/settings/page.tsx", "required\n            minLength={8}\n            autoComplete=\"new-password\"", "password change must require a minimum-length new password");
+contains("app/settings/page.tsx", "Could not load account settings.", "account settings load failure must be visible and recoverable");
+
+
+contains("app/jobs/page.tsx", "Another job action is still in progress. Please wait.", "duplicate lifecycle clicks must explain why another action was ignored");
+contains("app/jobs/page.tsx", "A bid submission is already in progress. Please wait.", "duplicate bid submissions must provide visible feedback");
+contains("app/jobs/page.tsx", "A rating submission is already in progress. Please wait.", "duplicate rating submissions must provide visible feedback");
+contains("app/jobs/page.tsx", "Network error. Could not load bids.", "bid loading must handle network failures without an unhandled rejection");
+contains("app/jobs/page.tsx", "setOpenBids((current) => ({", "bid loading must merge results without overwriting another job's bid state");
 
 // These are explicit cross-market exceptions, not feature parity gaps: India
 // pricing is separate, the UK trial is UK-only, and compliance can vary locally.

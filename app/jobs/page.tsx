@@ -3,13 +3,14 @@
 
 import ActivityHistory from "./activity-history";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import SignOutButton from "@/app/sign-out-button";
 import { symbolFor, COUNTRIES } from "@/lib/currency";
 import { formatMarketDate, formatMarketCurrency, getLocalisationProfile, getTimeZoneOptions } from "@/lib/localisation";
 import { vehicleTypeLabel } from "@/lib/vehicles";
+import { currencyMinorUnitScale } from "@/lib/currencyMinorUnits";
 
 type Contact = {
   companyName: string;
@@ -219,6 +220,11 @@ export default function JobsPage() {
   const [message, setMessage] =
     useState("");
 
+  // Prevent repeated clicks from dispatching duplicate lifecycle mutations.
+  const actionInFlight = useRef(false);
+  const bidInFlight = useRef(false);
+  const ratingInFlight = useRef(false);
+
   const [bidAmounts, setBidAmounts] =
     useState<
       Record<string, string>
@@ -308,12 +314,19 @@ export default function JobsPage() {
     path: string,
     confirmMsg?: string
   ) {
+    if (actionInFlight.current) {
+      setMessage("Another job action is still in progress. Please wait.");
+      return false;
+    }
+    actionInFlight.current = true;
+
     if (
       confirmMsg &&
       !window.confirm(
         confirmMsg
       )
     ) {
+      actionInFlight.current = false;
       return false;
     }
 
@@ -344,6 +357,8 @@ export default function JobsPage() {
       );
 
       return false;
+    } finally {
+      actionInFlight.current = false;
     }
   }
 
@@ -489,79 +504,86 @@ export default function JobsPage() {
   async function handleBid(
     jobId: string
   ) {
+    if (bidInFlight.current) {
+      setMessage("A bid submission is already in progress. Please wait.");
+      return;
+    }
+    bidInFlight.current = true;
     setMessage("");
 
-    const amount =
-      bidAmounts[jobId];
+    try {
+      const amount =
+        bidAmounts[jobId];
 
-    if (!amount) {
+      if (!amount) {
+        setMessage(
+          "Enter a bid amount."
+        );
+
+        return;
+      }
+
+      const res =
+        await fetch(
+          `/api/jobs/${jobId}/bid`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body:
+              JSON.stringify({
+                amount,
+              }),
+          }
+        );
+
+      const data =
+        await res.json();
+
+      if (!res.ok) {
+        setMessage(
+          data.error ||
+            "Could not place bid."
+        );
+
+        return;
+      }
+
       setMessage(
-        "Enter a bid amount."
+        "Bid placed."
       );
 
-      return;
+      setBidAmounts({
+        ...bidAmounts,
+        [jobId]: "",
+      });
+    } catch {
+      setMessage("Could not place bid.");
+    } finally {
+      bidInFlight.current = false;
     }
-
-    const res =
-      await fetch(
-        `/api/jobs/${jobId}/bid`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-          body:
-            JSON.stringify({
-              amount,
-            }),
-        }
-      );
-
-    const data =
-      await res.json();
-
-    if (!res.ok) {
-      setMessage(
-        data.error ||
-          "Could not place bid."
-      );
-
-      return;
-    }
-
-    setMessage(
-      "Bid placed."
-    );
-
-    setBidAmounts({
-      ...bidAmounts,
-      [jobId]: "",
-    });
   }
 
   async function loadBids(
     jobId: string
   ) {
-    const res =
-      await fetch(
-        `/api/jobs/${jobId}/bids`
-      );
+    try {
+      const res = await fetch(`/api/jobs/${jobId}/bids`);
+      const data = await res.json().catch(() => ({}));
 
-    const data =
-      await res.json();
+      if (!res.ok) {
+        setMessage(data.error || "Could not load bids.");
+        return;
+      }
 
-    if (res.ok) {
-      setOpenBids({
-        ...openBids,
-        [jobId]:
-          data.bids || [],
-      });
-    } else {
-      setMessage(
-        data.error ||
-          "Could not load bids."
-      );
+      setOpenBids((current) => ({
+        ...current,
+        [jobId]: data.bids || [],
+      }));
+    } catch {
+      setMessage("Network error. Could not load bids.");
     }
   }
 
@@ -585,54 +607,65 @@ export default function JobsPage() {
   async function submitRating(
     jobId: string
   ) {
-    setMessage("");
-
-    const input =
-      ratingInputs[jobId] || {
-        stars: "5",
-        comment: "",
-      };
-
-    const res =
-      await fetch(
-        "/api/ratings",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-          body:
-            JSON.stringify({
-              jobId,
-              stars:
-                input.stars,
-              comment:
-                input.comment,
-            }),
-        }
-      );
-
-    const data =
-      await res.json();
-
-    if (!res.ok) {
-      setMessage(
-        data.error ||
-          "Could not submit rating."
-      );
-
+    if (ratingInFlight.current) {
+      setMessage("A rating submission is already in progress. Please wait.");
       return;
     }
+    ratingInFlight.current = true;
+    setMessage("");
 
-    setMessage(
-      "Rating submitted."
-    );
+    try {
+      const input =
+        ratingInputs[jobId] || {
+          stars: "5",
+          comment: "",
+        };
 
-    setRatedJobs({
-      ...ratedJobs,
-      [jobId]: true,
-    });
+      const res =
+        await fetch(
+          "/api/ratings",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body:
+              JSON.stringify({
+                jobId,
+                stars:
+                  input.stars,
+                comment:
+                  input.comment,
+              }),
+          }
+        );
+
+      const data =
+        await res.json();
+
+      if (!res.ok) {
+        setMessage(
+          data.error ||
+            "Could not submit rating."
+        );
+
+        return;
+      }
+
+      setMessage(
+        "Rating submitted."
+      );
+
+      setRatedJobs({
+        ...ratedJobs,
+        [jobId]: true,
+      });
+    } catch {
+      setMessage("Could not submit rating.");
+    } finally {
+      ratingInFlight.current = false;
+    }
   }
 
   const activeTab =
@@ -957,7 +990,7 @@ export default function JobsPage() {
                   )}
                 </div>
 
-                {job.priceMode === "bid" && (
+                {accountCountry !== "IN" && job.priceMode === "bid" && (
                   <p
                     style={{
                       margin: "10px 0 0",
@@ -1080,6 +1113,7 @@ export default function JobsPage() {
                   !isOwner &&
                   job.status ===
                     "open" &&
+                  accountCountry !== "IN" &&
                   job.priceMode ===
                     "bid" && (
                     <div
@@ -1093,6 +1127,8 @@ export default function JobsPage() {
                     >
                       <input
                         type="number"
+                        min={1 / currencyMinorUnitScale(job.currency)}
+                        step={1 / currencyMinorUnitScale(job.currency)}
                         placeholder={`Your bid (${symbolFor(
                           job.currency
                         ).trim()})`}
@@ -1199,6 +1235,7 @@ export default function JobsPage() {
                   )}
 
                 {isOwner &&
+                  accountCountry !== "IN" &&
                   job.priceMode ===
                     "bid" &&
                   job.status ===

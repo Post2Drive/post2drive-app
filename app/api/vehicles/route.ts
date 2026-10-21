@@ -11,7 +11,9 @@ async function currentAccount() {
   const session = await getServerSession(authOptions);
   const accountId = (session?.user as any)?.accountId;
   if (!accountId) return null;
-  return prisma.account.findUnique({ where: { id: accountId } });
+  const account = await prisma.account.findUnique({ where: { id: accountId } });
+  if (!account || account.deletionRequestedAt) return null;
+  return account;
 }
 
 async function GETHandler() {

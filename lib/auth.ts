@@ -121,6 +121,33 @@ export const authOptions: NextAuthOptions = {
           }
         }
       }
+
+      // Compare the timestamp snapshot embedded at sign-in with the persisted
+      // value on every JWT refresh. This revokes legacy and active sessions on
+      // all devices without relying on second-resolution JWT iat timestamps.
+      if (token.id) {
+        const authUser = await prisma.user.findUnique({
+          where: { id: String(token.id) },
+          select: { passwordChangedAt: true },
+        });
+        const currentPasswordChangedAt = authUser?.passwordChangedAt?.getTime() ?? null;
+        const tokenPasswordChangedAt =
+          typeof token.passwordChangedAt === "number" ? token.passwordChangedAt : null;
+        token.passwordChanged = !authUser ||
+          tokenPasswordChangedAt !== currentPasswordChangedAt;
+      }
+
+      // Re-check persisted account state on every session refresh. NextAuth's
+      // JWT callback must return a JWT, so mark revoked tokens and reject them
+      // in the session callback instead of returning null from this callback.
+      if (token.accountId) {
+        const account = await prisma.account.findUnique({
+          where: { id: String(token.accountId) },
+          select: { deletionRequestedAt: true },
+        });
+        token.accountDeleted = !account || Boolean(account.deletionRequestedAt);
+      }
+
       return token;
     },
     async session({ session, token }) {
