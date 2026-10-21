@@ -79,8 +79,9 @@ contains("app/api/jobs/route.ts", "isSupportedMarket(account)", "job posting mus
 contains("app/api/jobs/route.ts", "validateJobInput(body, account)", "job posting must use market-aware validation");
 contains("app/api/vehicles/route.ts", "getLocalisationProfile({ country: account.country, currency: account.currency })", "vehicle registration must use market-specific terminology/rules");
 contains("lib/auth.ts", "select: { deletionRequestedAt: true }", "JWT refresh must re-check persisted account deletion state");
-contains("lib/auth.ts", "token.accountDeleted = !account || Boolean(account.deletionRequestedAt);", "JWT refresh must mark missing or deletion-requested accounts as revoked");
-contains("lib/auth.ts", "if (token.accountDeleted || token.passwordChanged) return null as any;", "deleted-account and password-revoked JWTs must not produce an authenticated session");
+contains("lib/auth.ts", "currentUser.account.deletionRequestedAt", "JWT refresh must mark missing or deletion-requested accounts as revoked");
+contains("lib/auth.ts", "currentUser.sessionVersion !== (token as any).sessionVersion", "JWT refresh must revoke sessions after password changes");
+contains("lib/auth.ts", "if ((token as any).sessionRevoked) return null as any;", "revoked JWTs must not produce an authenticated session");
 contains("app/api/vehicles/route.ts", "if (!account || account.deletionRequestedAt) return null;", "vehicle reads and writes must reject accounts pending deletion");
 contains("app/api/jobs/[id]/bid/route.ts", "requireJobMarketAccess", "bidding must enforce same-market boundaries");
 contains("app/api/jobs/[id]/accept/route.ts", "requireJobMarketAccess", "job acceptance must enforce same-market boundaries");
