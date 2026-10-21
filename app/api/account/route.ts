@@ -216,16 +216,20 @@ async function DELETEHandler(req: Request) {
     return NextResponse.json({ error: "Invalid session." }, { status: 401 });
   }
 
-  let body: { currentPassword?: unknown; confirm?: unknown };
+  let body: unknown;
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
   }
-  if (body.confirm !== "DELETE") {
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
+  }
+  const parsed = body as { currentPassword?: unknown; confirm?: unknown };
+  if (parsed.confirm !== "DELETE") {
     return NextResponse.json({ error: "Type DELETE to confirm account deletion." }, { status: 400 });
   }
-  if (typeof body.currentPassword !== "string" || !body.currentPassword) {
+  if (typeof parsed.currentPassword !== "string" || !parsed.currentPassword) {
     return NextResponse.json({ error: "Your current password is required." }, { status: 400 });
   }
 
@@ -252,7 +256,7 @@ async function DELETEHandler(req: Request) {
     if (!user || user.account.deletionRequestedAt) {
       return { status: 404, error: "Account not found or already pending deletion." } as const;
     }
-    const valid = await bcrypt.compare(body.currentPassword as string, user.passwordHash);
+    const valid = await bcrypt.compare(parsed.currentPassword as string, user.passwordHash);
     if (!valid) {
       return { status: 403, error: "Current password is incorrect." } as const;
     }
