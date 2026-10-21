@@ -447,7 +447,7 @@ export default async function DashboardPage() {
         ) : (
           <div className="job-analytics-empty"><strong>No job data to chart yet.</strong><span>Your charts will populate automatically when you post jobs.</span></div>
         )}
-        <div className="job-pipeline-visual" aria-label="Job status distribution chart">
+        <div className="job-pipeline-visual" role="group" aria-label="Job status distribution chart">
           <h3>Job status distribution</h3>
           <div className="pipeline-chart-rows">
             {[
@@ -460,7 +460,7 @@ export default async function DashboardPage() {
             ].map((item) => (
               <div className="pipeline-chart-row" key={item.label}>
                 <span>{item.label}</span>
-                <div className="pipeline-chart-track" aria-label={`${item.label}: ${item.value}`}>
+                <div className="pipeline-chart-track" role="img" aria-label={`${item.label}: ${item.value}`}>
                   <div className="pipeline-chart-bar" style={{ width: `${totalPosted > 0 ? (item.value / totalPosted) * 100 : 0}%`, backgroundColor: item.color }} />
                 </div>
                 <strong>{item.value}</strong>
