@@ -22,6 +22,17 @@ allprojects {
         google()
         mavenCentral()
     }
+
+    // Capacitor/Cordova transitive dependencies can pin Kotlin's split JDK
+    // stdlib artifacts to 1.6.21 while the graph also contains stdlib 1.8.22.
+    // Align the legacy bridge artifacts to the resolved Kotlin stdlib version.
+    configurations.configureEach {
+        resolutionStrategy.force(
+            'org.jetbrains.kotlin:kotlin-stdlib:1.8.22',
+            'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.22',
+            'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22'
+        )
+    }
 }
 
 task clean(type: Delete) {
