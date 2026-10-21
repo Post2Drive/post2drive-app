@@ -334,8 +334,9 @@ main table tr:hover td {
   text-decoration: none;
 }
 
-.skip-link:focus {
-  transform: translateY(0);
+.skip-link:focus,
+.skip-link:focus-visible {
+  transform: translateY(0) !important;
   outline: 3px solid var(--color-primary-action);
   outline-offset: 3px;
 }
