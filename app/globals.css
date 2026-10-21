@@ -498,11 +498,11 @@ main table tr:hover td {
   color-scheme: light;
   --ops-bg:#FFFFFF; --ops-surface:#FFFFFF; --ops-surface-raised:#FFFFFF; --ops-surface-inset:#FFFFFF;
   --ops-border:#D7DCE4; --ops-border-strong:#AEB6C2; --ops-text:#171717; --ops-text-secondary:#30343B; --ops-muted:#454B55;
-  --ops-blue:#2457D6; --ops-blue-hover:#173FA8; --ops-blue-soft:#FFFFFF;
-  --ops-teal:#18864B; --ops-teal-soft:#FFFFFF; --ops-green:#18864B; --ops-green-soft:#FFFFFF;
+  --ops-blue:#2457D6; --ops-blue-hover:#173FA8; --ops-blue-soft:#EEF3FF;
+  --ops-teal:#18864B; --ops-teal-soft:#E8F5F2; --ops-green:#18864B; --ops-green-soft:#E8F5EC;
   --ops-amber:#F2C300; --ops-amber-soft:#FFF6CC; --ops-red:#D62828; --ops-red-soft:#FCE8E8;
-  --ops-violet:#6D28D9; --ops-violet-soft:#FFFFFF; --ops-cyan:#0096C7; --ops-cyan-soft:#FFFFFF;
-  --ops-orange:#E87500; --ops-orange-soft:#FFFFFF; --ops-pink:#C0268D; --ops-pink-soft:#FFFFFF;
+  --ops-violet:#6D28D9; --ops-violet-soft:#F2ECFF; --ops-cyan:#0096C7; --ops-cyan-soft:#E8F7FC;
+  --ops-orange:#E87500; --ops-orange-soft:#FFF1E5; --ops-pink:#C0268D; --ops-pink-soft:#FCECF5;
   --color-primary:var(--ops-text); --color-primary-action:var(--ops-blue); --color-primary-action-hover:var(--ops-blue-hover);
   --color-positive:var(--ops-teal); --color-warning:var(--ops-amber); --color-danger:var(--ops-red);
   --color-background:var(--ops-bg); --color-surface:var(--ops-surface); --color-text:var(--ops-text); --color-muted:var(--ops-muted);
