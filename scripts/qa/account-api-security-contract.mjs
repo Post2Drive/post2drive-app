@@ -40,12 +40,12 @@ assert.match(nextConfig, /Content-Security-Policy-Report-Only/,
 assert.doesNotMatch(nextConfig, /key:\s*"Content-Security-Policy"/,
   "CSP must not be enforced before compatibility evidence is reviewed");
 
-assert.match(passwordResetSource, /createHmac\("sha256",\s*secret\)/,
-  "password-reset tokens must use a keyed digest rather than a fast unkeyed password hash");
+assert.match(passwordResetSource, /scryptSync\(token,\s*secret,\s*32/,
+  "password-reset tokens must use a keyed memory-hard digest rather than a fast unkeyed hash");
 assert.match(passwordResetSource, /if \(!secret\) throw new Error\("Password reset token hashing is not configured\."\)/,
   "password-reset token hashing must fail closed when the application secret is absent");
-assert.doesNotMatch(passwordResetSource, /createHash\("sha256"\)/,
-  "password-reset token digests must not revert to an unkeyed hash");
+assert.doesNotMatch(passwordResetSource, /createHash\("sha256"\)|createHmac\("sha256"/,
+  "password-reset token digests must not revert to a fast unkeyed or keyed SHA-256 digest");
 
 
 console.log("Account API security contracts passed: minimized GET response, current-user scoping, deletion guard, bounded PATCH input, lifecycle lock, blank-field clearing and report-only CSP.");
