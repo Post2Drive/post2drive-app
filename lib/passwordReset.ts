@@ -53,6 +53,7 @@ export async function createPasswordResetToken(userId: string, accountId: string
 }
 
 export async function sendPasswordResetEmail(email: string, name: string, token: string) {
+  const tokenHash = passwordResetTokenHash(token);
   const apiKey = process.env.RESEND_API_KEY?.trim();
   const from = process.env.EMAIL_FROM?.trim();
   let baseUrl = process.env.NEXTAUTH_URL?.trim() || "";
