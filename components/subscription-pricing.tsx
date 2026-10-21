@@ -29,18 +29,23 @@ export default function SubscriptionPricing() {
         </p>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 12 }}>
-        {plans.map((plan) => (
-          <div key={plan.name} style={{ border: "1px solid var(--color-border)", borderRadius: 10, padding: 16, background: "var(--color-background)" }}>
-            <h3 style={{ margin: "0 0 4px", fontSize: 14, color: "var(--color-muted)" }}>{plan.name}</h3>
-            <div style={{ fontSize: 12, color: "var(--color-muted)", marginBottom: 12 }}>{plan.detail}</div>
-            <div style={{ fontSize: 22, fontWeight: 700, color: "var(--color-primary)" }}>{plan.gbp}<span style={{ fontSize: 12, fontWeight: 500 }}> GBP</span></div>
-            <div style={{ fontSize: 22, fontWeight: 700, color: "var(--color-primary)", marginTop: 4 }}>{plan.eur}<span style={{ fontSize: 12, fontWeight: 500 }}> EUR</span></div>
-            <div style={{ fontSize: 13, color: "var(--color-muted)", marginTop: 8 }}>{plan.local}</div>
-            <div style={{ fontSize: 13, color: "var(--color-muted)", marginTop: 4 }}>per 7 days</div>
-          </div>
-        ))}
-      </div>
+      {isIndia ? (
+        <div role="status" className="pricing-market-note" style={{ padding: 18, border: "1px solid var(--color-border)", borderRadius: 10, background: "var(--color-background)" }}>
+          <strong>India pricing is configured separately.</strong>
+          <p style={{ marginBottom: 0 }}>Prices for India will be confirmed before any paid plan becomes available. Creating an account does not charge you.</p>
+        </div>
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 12 }}>
+          {plans.map((plan) => (
+            <div key={plan.name} className="pricing-tier-card" style={{ border: "1px solid var(--color-border)", borderRadius: 10, padding: 16, background: "var(--color-background)" }}>
+              <h3 className="pricing-tier-name" style={{ margin: "0 0 4px", fontSize: 14, color: "var(--color-muted)" }}>{plan.name}</h3>
+              <div style={{ fontSize: 12, color: "var(--color-muted)", marginBottom: 12 }}>{plan.detail}</div>
+              <div className="pricing-tier-price" style={{ fontSize: 22, fontWeight: 700, color: "var(--color-primary)" }}>{formatter.format(plan.amount)}</div>
+              <div style={{ fontSize: 13, color: "var(--color-muted)", marginTop: 4 }}>per 7 days</div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div style={{ marginTop: 16, padding: "12px 14px", borderRadius: 8, background: "var(--color-background)", color: "var(--color-positive)", fontSize: 14 }}>
         Unlimited legitimate marketplace activity · No per-job charges
