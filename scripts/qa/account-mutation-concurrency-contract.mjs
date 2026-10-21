@@ -28,7 +28,7 @@ assert.ok(deleteSource.indexOf("FOR UPDATE") < deleteSource.indexOf("bcrypt.comp
 assert.ok(patchSource.indexOf("FOR UPDATE") < patchSource.indexOf("tx.user.update"), "PATCH must lock the account before changing user data");
 assert.match(schemaSource, /sessionVersion\s+Int\s+@default\(0\)/, "users must have a session version");
 assert.match(authSource, /currentUser\.sessionVersion !== \(token as any\)\.sessionVersion/, "JWT validation must revoke mismatched session versions");
-assert.match(authSource, /currentUser\.account\.deletionRequestedAt/, "JWT validation must revoke deleted accounts");
+assert.match(authSource, /\(token as any\)\.accountDeleted = !account \|\| Boolean\(account\.deletionRequestedAt\)/, "JWT validation must revoke deleted accounts");
 assert.match(authSource, /if \(\(token as any\)\.sessionRevoked\) return null as any/, "revoked JWTs must produce no server session");
 assert.match(patchSource, /sessionVersion: \{ increment: 1 \}/, "password changes must increment the session version");
 assert.match(deleteSource, /sessionVersion: \{ increment: 1 \}/, "account deletion must increment the session version");
