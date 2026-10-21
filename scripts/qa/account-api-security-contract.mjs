@@ -8,6 +8,10 @@ const getHandler = accountRoute.split("async function PATCHHandler")[0];
 const patchHandler = accountRoute.split("async function PATCHHandler")[1]?.split("async function DELETEHandler")[0] || "";
 const nextConfig = read("next.config.js");
 const passwordResetSource = read("lib/passwordReset.ts");
+assert.match(passwordResetSource, /using this link:\\n\\$\\{resetUrl\\}\\n\\nThis link expires in one hour/,
+  "password-reset plain-text email must contain real line breaks around the reset URL");
+assert.doesNotMatch(passwordResetSource, /using this link:\\\\n\\$\\{resetUrl\\}/,
+  "password-reset plain-text email must not emit literal escaped backslash-n sequences");
 
 
 assert.ok(patchHandler, "Account PATCH handler must exist");
