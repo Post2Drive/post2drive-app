@@ -2432,3 +2432,37 @@ main .home-page .home-route-panel .home-route-footer {
 main .home-page .home-route-panel .home-route-footer > span {
   color: #75D8B8 !important;
 }
+
+
+/* Final rendered-contrast fix: the app-wide contrast guard normalises panel
+   surfaces to white, so keep this workflow panel white and use ink text. */
+main .home-page .home-route-panel {
+  background: #FFFFFF !important;
+  background-image: none !important;
+  color: #171717 !important;
+  border: 1px solid #D7DCE4 !important;
+  box-shadow: 0 8px 22px rgba(23, 23, 23, .07);
+}
+main .home-page .home-route-panel .home-route-label,
+main .home-page .home-route-panel .home-route-status,
+main .home-page .home-route-panel .home-route-footer,
+main .home-page .home-route-panel .home-steps li small {
+  color: #30343B !important;
+}
+main .home-page .home-route-panel .home-step-number {
+  color: #2457D6 !important;
+  border-color: #AEB6C2 !important;
+}
+main .home-page .home-route-panel .home-steps li strong {
+  color: #171717 !important;
+}
+main .home-page .home-route-panel .home-route-status > span {
+  background-color: #18864B !important;
+}
+main .home-page .home-route-panel .home-route-footer > span {
+  color: #18864B !important;
+}
+main .home-page .home-route-panel .home-steps li,
+main .home-page .home-route-panel .home-route-footer {
+  border-color: #D7DCE4 !important;
+}
