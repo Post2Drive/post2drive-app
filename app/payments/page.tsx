@@ -355,7 +355,7 @@ export default function PaymentsPage() {
                   ) : (
                     <button
                       type="button"
-                      aria-label={`Mark payment as paid for ${job.pickup} to ${job.dropoff}`}
+                      aria-label={`Mark as paid: ${job.pickup} to ${job.dropoff}`}
                       onClick={() => markPaid(job.id)}
                       disabled={busy === job.id}
                       style={primaryButton}
@@ -461,7 +461,7 @@ export default function PaymentsPage() {
                   ) : (
                     <button
                       type="button"
-                      aria-label={`Confirm payment receipt for ${job.pickup} to ${job.dropoff}`}
+                      aria-label={`Confirm received: ${job.pickup} to ${job.dropoff}`}
                       onClick={() => confirmReceived(job.id)}
                       disabled={
                         busy === job.id ||
