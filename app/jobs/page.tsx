@@ -647,7 +647,9 @@ export default function JobsPage() {
   return (
     <main
       style={{
+        width: "100%",
         maxWidth: 760,
+        minWidth: 0,
       }}
     >
       <div
@@ -657,9 +659,11 @@ export default function JobsPage() {
             "space-between",
           alignItems:
             "center",
+          flexWrap: "wrap",
+          gap: 12,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, minWidth: 0, flex: "1 1 260px" }}>
         <h1>{accountCountry === "IN" ? "India delivery marketplace" : "UK delivery marketplace"}</h1>
         {accountCountry === "IN" && <Link className="button-link button-link-secondary" href="/requirements">My Requirements</Link>}
       </div>
@@ -670,6 +674,8 @@ export default function JobsPage() {
             gap: 12,
             alignItems:
               "center",
+            flexWrap: "wrap",
+            minWidth: 0,
           }}
         >
           {canPost && (
