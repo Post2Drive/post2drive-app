@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { COUNTRIES } from "@/lib/currency";
 
 const plans = [
@@ -11,9 +10,8 @@ const plans = [
   { name: "Fleet 31–55", detail: "31–55 vehicles", amount: 49.99 },
 ];
 
-export default function SubscriptionPricing() {
-  const [country, setCountry] = useState("GB");
-  const selectedMarket = COUNTRIES.find((market) => market.code === country) ?? COUNTRIES[0];
+export default function SubscriptionPricing({ country = "GB" }: { country?: string }) {
+  const selectedMarket = COUNTRIES.find((market) => market.code === country.trim().toUpperCase()) ?? COUNTRIES[0];
   const isIndia = selectedMarket.code === "IN";
   const formatter = new Intl.NumberFormat(selectedMarket.locale, {
     style: "currency",
