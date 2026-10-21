@@ -25,7 +25,7 @@ export default function SettingsPage() {
   const [pwError, setPwError] = useState("");
   const [loadingAccount, setLoadingAccount] = useState(true);
   const [loadError, setLoadError] = useState("");
-  const [saving, setSaving] = useState(false);
+  const [saveBusy, setSaveBusy] = useState(false);
   const [passwordBusy, setPasswordBusy] = useState(false);
   const [deleteForm, setDeleteForm] = useState({ currentPassword: "", confirm: "" });
   const [deleteMessage, setDeleteMessage] = useState("");
@@ -79,7 +79,7 @@ export default function SettingsPage() {
     if (saveBusy) return;
     setMessage("");
     setSaveError("");
-    setSaving(true);
+    setSaveBusy(true);
     try {
       const response = await fetch("/api/account", {
         method: "PATCH",
@@ -93,9 +93,9 @@ export default function SettingsPage() {
       }
       setMessage("Saved.");
     } catch {
-      setSaveError("Network error. Check your connection and try again.");
+      setSaveError("Network error. Your settings could not be saved.");
     } finally {
-      setSaving(false);
+      setSaveBusy(false);
     }
   }
 
@@ -172,7 +172,7 @@ export default function SettingsPage() {
         </label>
         {saveError && <p role="alert">{saveError}</p>}
         {message && <p role="status" aria-live="polite">{message}</p>}
-        <button type="submit" disabled={saving}>{saving ? "Saving…" : "Save"}</button>
+        <button type="submit" disabled={saveBusy}>{saveBusy ? "Saving…" : "Save"}</button>
       </form>
 
       <h2 style={{ marginTop: 32 }}>Change password</h2>
