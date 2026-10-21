@@ -13,7 +13,7 @@ const jobIds = [];
 let server;
 let serverOutput = "";
 let base = "";
-let poster, driver, outsider, lifecycleJob, bidJob, bid, incident, evidence, posterVehicle, driverVehicle, incidentJob, cancelJob, acceptJob, unassignJob, rejectJob;
+let poster, driver, outsider, lifecycleJob, bidJob, bid, incident, evidence, posterVehicle, incidentJob, cancelJob, acceptJob, unassignJob, rejectJob;
 
 async function snapshot() {
   const [jobRows, jobCount, bidCount, activityCount, evidenceCount, vehicleCount, notificationCount] = await Promise.all([
@@ -189,7 +189,7 @@ try {
     accountId: poster.id, vehicleType: "Small van (SWB)", regPlate: "CI-" + suffix,
     verificationStatus: "verified",
   }});
-  driverVehicle = await prisma.vehicle.create({ data: {
+  await prisma.vehicle.create({ data: {
     accountId: driver.id, vehicleType: "Small van (SWB)", regPlate: "CID-" + suffix,
     verificationStatus: "verified", verifiedAt: new Date(),
     motValidUntil: new Date("2035-12-31T00:00:00.000Z"),
