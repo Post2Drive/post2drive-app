@@ -1,16 +1,16 @@
-import { createHmac, randomBytes } from "crypto";
+import { randomBytes, scryptSync } from "crypto";
 import { prisma } from "@/lib/prisma";
 
 const TOKEN_LIFETIME_MS = 60 * 60 * 1000;
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
 export function passwordResetTokenHash(token: string) {
-  // Reset tokens are high-entropy random secrets, not user-chosen passwords.
-  // A keyed digest also prevents offline token verification from a database-only
-  // leak; do not fall back to an unkeyed hash if the application secret is absent.
+  // Use a memory-hard digest and the application secret. Reset tokens are random
+  // high-entropy values, but the keyed KDF also limits offline verification after
+  // a database-only leak. Fail closed rather than using an unkeyed fallback.
   const secret = process.env.NEXTAUTH_SECRET;
   if (!secret) throw new Error("Password reset token hashing is not configured.");
-  return createHmac("sha256", secret).update(token).digest("hex");
+  return scryptSync(token, secret, 32, { N: 1 << 14, r: 8, p: 1 }).toString("hex");
 }
 
 function escapeHtml(value: string) {
