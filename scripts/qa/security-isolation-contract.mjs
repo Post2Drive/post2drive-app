@@ -53,7 +53,7 @@ assert.match(accountRoute, /let body: unknown;[\s\S]*?body = await req\.json\(\)
   "account DELETE must reject null, arrays, and primitive JSON bodies with a controlled 400 response");
 assert.match(source("app/api/account/route.ts"), /boundedString\(name, 120\)[\s\S]*?marketingConsent !== undefined && typeof marketingConsent !== "boolean"/,
   "account PATCH must validate field types and bounds before persistence");
-assert.match(source("app/api/account/route.ts"), /if \(name !== undefined\)[\s\S]*?name: name\.trim\(\)/,
+assert.match(source("app/api/account/route.ts"), /if \(name !== undefined \|\| phone !== undefined\)[\s\S]*?name: name\.trim\(\)/,
   "account PATCH must support intentionally clearing profile names");
 assert.doesNotMatch(accountGet, /include: \{/,
   "account details API must not return the full Account model by default");
