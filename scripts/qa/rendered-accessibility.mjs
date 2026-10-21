@@ -66,6 +66,14 @@ async function scanRoute(page, route, viewport) {
 
   // The skip link must be the first keyboard stop and become visible on focus.
   await page.keyboard.press("Tab");
+  // Let its short transform transition finish before measuring visibility; an
+  // immediate computed-style snapshot can capture the off-screen animation frame.
+  await page.waitForFunction(() => {
+    const active = document.activeElement;
+    if (!(active instanceof HTMLElement) || !active.matches(".skip-link")) return false;
+    const rect = active.getBoundingClientRect();
+    return rect.top >= 0 && rect.bottom <= window.innerHeight;
+  }, null, { timeout: 1500 });
   const skipLink = await page.evaluate(() => {
     const active = document.activeElement;
     const style = active instanceof HTMLElement ? getComputedStyle(active) : null;
