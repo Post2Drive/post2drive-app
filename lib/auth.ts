@@ -84,6 +84,7 @@ export const authOptions: NextAuthOptions = {
           currency: user.account.currency,
           country: user.account.country,
           sessionVersion: user.sessionVersion,
+          passwordChangedAt: user.passwordChangedAt?.getTime() ?? null,
         } as any;
       },
     }),
@@ -96,35 +97,49 @@ export const authOptions: NextAuthOptions = {
         token.accountType = (user as any).accountType;
         token.currency = (user as any).currency;
         token.country = (user as any).country;
-        (token as any).sessionVersion = (user as any).sessionVersion;
+        (token as any).sessionVersion =
+          typeof (user as any).sessionVersion === "number" ? (user as any).sessionVersion : 0;
+        (token as any).passwordChangedAt = (user as any).passwordChangedAt ?? null;
+        (token as any).accountDeleted = false;
+        (token as any).passwordChanged = false;
         (token as any).sessionRevoked = false;
       } else if (token.id && !(token as any).sessionRevoked) {
-        // Stateless JWTs need a database-backed version check for immediate
-        // credential revocation. Tokens issued before this field existed fail
-        // closed and require a fresh sign-in.
+        // One database read checks account deletion, session-version revocation
+        // and the password-change timestamp. Legacy tokens without a version
+        // fail closed and must sign in again.
         if (typeof (token as any).sessionVersion !== "number") {
+          (token as any).accountDeleted = true;
+          (token as any).passwordChanged = true;
           (token as any).sessionRevoked = true;
         } else {
           const currentUser = await prisma.user.findUnique({
             where: { id: String(token.id) },
             select: {
               sessionVersion: true,
+              passwordChangedAt: true,
               account: { select: { deletionRequestedAt: true } },
             },
           });
-          if (
+          const account = currentUser?.account;
+          (token as any).accountDeleted = !account || Boolean(account.deletionRequestedAt);
+          const currentPasswordChangedAt = currentUser?.passwordChangedAt?.getTime() ?? null;
+          const tokenPasswordChangedAt =
+            typeof (token as any).passwordChangedAt === "number"
+              ? (token as any).passwordChangedAt
+              : null;
+          (token as any).passwordChanged =
             !currentUser ||
-            currentUser.account.deletionRequestedAt ||
-            currentUser.sessionVersion !== (token as any).sessionVersion
-          ) {
-            (token as any).sessionRevoked = true;
-          }
+            tokenPasswordChangedAt !== currentPasswordChangedAt ||
+            currentUser.sessionVersion !== (token as any).sessionVersion;
+          (token as any).sessionRevoked =
+            (token as any).accountDeleted || (token as any).passwordChanged;
         }
       }
 
       return token;
     },
     async session({ session, token }) {
+      if ((token as any).accountDeleted || (token as any).passwordChanged) return null as any;
       if ((token as any).sessionRevoked) return null as any;
       if (session.user) {
         (session.user as any).id = token.id;
