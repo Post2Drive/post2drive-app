@@ -129,7 +129,7 @@ jobs:
         run: node scripts/qa/lifecycle-api-e2e.mjs
 
       - name: Install browser-only accessibility test tools
-        run: npm install --no-save --package-lock=false tsx playwright @axe-core/playwright
+        run: npm install --no-save --package-lock=false --prefer-offline --fetch-retries=3 --fetch-retry-mintimeout=1000 --fetch-retry-maxtimeout=10000 tsx playwright @axe-core/playwright
       - name: Install Chromium for rendered accessibility tests
         run: npx playwright install --with-deps chromium
       - name: Verify runtime JWT session revocation against CI PostgreSQL
