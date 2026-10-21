@@ -295,15 +295,10 @@ async function DELETEHandler(req: Request) {
         trialEndsAt: null,
       },
     });
-    return true;
     if (accountUpdate.count !== 1) {
-      // Throw to roll back the user/token anonymization if the guard ever fails.
+      // Throw to roll back user/token anonymization if the conditional claim loses a race.
       throw new Error("Account deletion lost its locked account row.");
     }
-
-  if (!deleted) {
-    return NextResponse.json({ error: "Account not found or already pending deletion." }, { status: 404 });
-  }
 
     return {
       status: 200,
