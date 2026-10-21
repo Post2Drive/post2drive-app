@@ -7,7 +7,7 @@ export default async function HomePage() {
 
   if (session?.user) {
     return (
-      <main id="main-content" tabIndex={-1} className="home-page home-page-authenticated">
+      <main className="home-page home-page-authenticated">
         <section className="home-welcome">
           <p className="home-eyebrow">POST2DRIVE · YOUR WORKSPACE</p>
           <h1>Hello, {session.user.name?.trim() || "there"}.</h1>
@@ -38,7 +38,7 @@ export default async function HomePage() {
   }
 
   return (
-    <main id="main-content" tabIndex={-1} className="home-page">
+    <main className="home-page">
       <section className="home-hero" aria-labelledby="home-title">
         <div className="home-hero-copy">
           <p className="home-eyebrow"><span className="home-eyebrow-dot" aria-hidden="true" /> FREIGHT &amp; COURIER EXCHANGE</p>
