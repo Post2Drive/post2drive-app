@@ -214,6 +214,8 @@ export default function JobsPage() {
   const [loading, setLoading] =
     useState(true);
 
+  const [loadError, setLoadError] = useState("");
+
   const [message, setMessage] =
     useState("");
 
@@ -274,9 +276,9 @@ export default function JobsPage() {
   const canPost = true;
 
   async function loadJobs() {
+    setLoading(true);
+    setLoadError("");
     try {
-      setLoading(true);
-
       const res =
         await fetch(
           "/api/jobs"
@@ -286,20 +288,13 @@ export default function JobsPage() {
         await res.json();
 
       if (!res.ok) {
-        setMessage(
-          data.error ||
-            "Could not load jobs."
-        );
+        setLoadError(data.error || "Could not load jobs. Try again.");
         return;
       }
 
-      setJobs(
-        data.jobs || []
-      );
+      setJobs(data.jobs || []);
     } catch {
-      setMessage(
-        "Could not load jobs."
-      );
+      setLoadError("Could not load jobs. Check your connection and try again.");
     } finally {
       setLoading(false);
     }
@@ -656,14 +651,39 @@ export default function JobsPage() {
         );
 
   return (
-    <div className="marketplace-page" style={{ width: "100%", maxWidth: 1200, margin: "0 auto", padding: 24, boxSizing: "border-box" }}>
-      <div className="marketplace-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 16 }}>
-        <div className="marketplace-heading" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, flex: "1 1 320px", minWidth: 0 }}>
-        <h1 style={{ margin: 0, minWidth: 0, overflowWrap: "anywhere" }}>{countryName} delivery marketplace</h1>
+    <main className="marketplace-page"
+      style={{
+        width: "100%",
+        maxWidth: 760,
+        minWidth: 0,
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          justifyContent:
+            "space-between",
+          alignItems:
+            "center",
+          flexWrap: "wrap",
+          gap: 12,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, minWidth: 0, flex: "1 1 260px" }}>
+        <h1>{accountCountry === "IN" ? "India delivery marketplace" : "UK delivery marketplace"}</h1>
         {accountCountry === "IN" && <Link className="button-link button-link-secondary" href="/requirements">My Requirements</Link>}
       </div>
 
-        <div className="marketplace-header-actions" style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", minWidth: 0 }}>
+        <div
+          style={{
+            display: "flex",
+            gap: 12,
+            alignItems:
+              "center",
+            flexWrap: "wrap",
+            minWidth: 0,
+          }}
+        >
           {canPost && (
             <Link href="/jobs/new" className="button-link button-link-secondary">
               + Post a job
@@ -680,9 +700,11 @@ export default function JobsPage() {
       </div>
 
       <div
-        className="marketplace-job-tabs"
+        role="group"
+        aria-label="Filter jobs by status"
         style={{
           display: "flex",
+          flexWrap: "wrap",
           gap: 4,
           borderBottom: "1px solid var(--color-border)",
           marginBottom: 12,
@@ -691,26 +713,25 @@ export default function JobsPage() {
         {TABS.map((t) => (
           <button
             key={t.key}
-            onClick={() =>
-              setTab(t.key)
-            }
+            type="button"
+            aria-pressed={tab === t.key}
+            onClick={() => setTab(t.key)}
             style={{
-              padding:
-                "6px 12px",
+              minHeight: 44,
+              padding: "10px 14px",
               border: "none",
-              borderBottom:
-                tab === t.key
-                  ? "2px solid var(--color-primary-action)"
-                  : "2px solid transparent",
-              background:
-                "transparent",
-              color: "var(--color-text)",
-              fontWeight:
-                tab === t.key
-                  ? 700
-                  : 400,
-              cursor:
-                "pointer",
+              borderBottom: tab === t.key
+                ? "2px solid var(--color-primary-action)"
+                : "2px solid transparent",
+              background: tab === t.key
+                ? "var(--color-action-soft)"
+                : "transparent",
+              color: tab === t.key
+                ? "var(--color-primary-action)"
+                : "var(--color-text)",
+              borderRadius: "8px 8px 0 0",
+              fontWeight: tab === t.key ? 700 : 500,
+              cursor: "pointer",
             }}
           >
             {t.label}
@@ -719,7 +740,7 @@ export default function JobsPage() {
       </div>
 
       {message && (
-        <p>{message}</p>
+        <p role="status" aria-live="polite">{message}</p>
       )}
 
       {accountCountry && (
@@ -733,17 +754,23 @@ export default function JobsPage() {
         </p>
       )}
 
-      {loading && (
-        <p>Loading...</p>
+      {loadError && (
+        <div role="alert" aria-live="assertive">
+          <p>{loadError}</p>
+          <button type="button" onClick={() => void loadJobs()} disabled={loading}>
+            {loading ? "Retrying…" : "Retry loading jobs"}
+          </button>
+        </div>
       )}
 
-      {!loading &&
+      {loading && (
+        <p role="status" aria-live="polite">Loading jobs…</p>
+      )}
+
+      {!loading && !loadError &&
         visibleJobs.length ===
           0 && (
-          <p>
-            No jobs in this
-            category.
-          </p>
+          <p role="status">No jobs in this category.</p>
         )}
 
       <ul
@@ -1626,6 +1653,6 @@ export default function JobsPage() {
           }
         )}
       </ul>
-    </div>
+    </main>
   );
 }

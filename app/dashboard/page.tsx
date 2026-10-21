@@ -27,15 +27,7 @@ function StatCard({
   href?: string;
 }) {
   const content = (
-    <div
-      className="ops-theme-card"
-      style={{
-        border: "1px solid var(--color-border)",
-        borderRadius: 12,
-        padding: 18,
-        minWidth: 150,
-      }}
-    >
+    <div className="dashboard-stat-card ops-theme-card">
       <div
         style={{
           fontSize: 13,
@@ -62,12 +54,6 @@ function StatCard({
       <Link
         href={href}
         className="dashboard-stat-link"
-        style={{
-          display: "block",
-          textDecoration: "none",
-          color: "inherit",
-          borderRadius: 12,
-        }}
       >
         {content}
       </Link>
@@ -223,7 +209,7 @@ export default async function DashboardPage() {
     acceptedDelivered;
 
   return (
-    <div
+    <main
       className="ops-theme-dashboard" data-market={account.country} data-currency={account.currency}
       style={{
         maxWidth: 1200,
@@ -248,7 +234,7 @@ export default async function DashboardPage() {
             }}
           >
             Welcome,{" "}
-            {session.user?.name}
+            {session.user?.name?.trim() || "there"}
           </h1>
 
           <p
@@ -280,14 +266,7 @@ export default async function DashboardPage() {
           Operations overview
         </h2>
 
-        <div
-          style={{
-            display: "flex",
-            gap: 14,
-            flexWrap: "wrap",
-            marginTop: 14,
-          }}
-        >
+        <div className="dashboard-stat-grid">
           <StatCard
             title="Jobs posted"
             value={totalPosted}
@@ -694,6 +673,6 @@ export default async function DashboardPage() {
         </Link>
         <Link href="/vehicles" className="button-link button-link-secondary">Vehicles &amp; Verification</Link>
       </div>
-    </div>
+    </main>
   );
 }

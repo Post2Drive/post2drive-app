@@ -261,4 +261,28 @@ for (const path of [
   contains(path, ["getJobPickupAtForAccount"]);
 }
 
+
+contains("app/api/account/route.ts", [
+  'SELECT "id" FROM "Account"',
+  'WHERE "id" = ${accountId} AND "deletionRequestedAt" IS NULL',
+  "FOR UPDATE",
+  "isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted",
+  "sessionVersion: { increment: 1 }",
+]);
+const accountRoute = read("app/api/account/route.ts");
+const patchHandler = accountRoute.slice(accountRoute.indexOf("async function PATCHHandler"), accountRoute.indexOf("async function DELETEHandler"));
+const deleteHandler = accountRoute.slice(accountRoute.indexOf("async function DELETEHandler"), accountRoute.indexOf("export const GET ="));
+assert.ok(patchHandler.indexOf("FOR UPDATE") < patchHandler.indexOf("tx.user.update"), "account PATCH must lock the account row before user mutation");
+assert.ok(deleteHandler.indexOf("FOR UPDATE") < deleteHandler.indexOf("bcrypt.compare"), "account deletion must validate the password after acquiring the account lock");
+assert.ok(deleteHandler.includes("tx.account.updateMany") && deleteHandler.includes('deletionRequestedAt: null'), "account deletion must retain an active-account guard inside the transaction");
+contains("prisma/migrations/20261021120000_add_user_session_version/migration.sql", [
+  'ALTER TABLE "User"',
+  'ADD COLUMN "sessionVersion" INTEGER NOT NULL DEFAULT 0',
+]);
+contains("scripts/qa/account-mutation-concurrency-contract.mjs", [
+  "must run only in CI",
+  "PATCH must be rejected when it waits behind a committed deletion",
+  "deletion must anonymize the last committed profile state",
+]);
+
 console.log("Lifecycle contract checks passed. These are static regression guards, not substitutes for API integration, browser, concurrency, or staging live tests.");

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { COUNTRIES, currencyForCountry } from "@/lib/currency";
 
@@ -10,6 +10,15 @@ type ResearchAnswers = { role: string; currentDiscovery: string; biggestChalleng
 export default function SignupPage() {
   const router = useRouter();
   const [step, setStep] = useState(0);
+  const stepHeadingRef = useRef<HTMLHeadingElement>(null);
+  const previousStepRef = useRef(step);
+
+  useEffect(() => {
+    if (previousStepRef.current !== step) {
+      previousStepRef.current = step;
+      stepHeadingRef.current?.focus();
+    }
+  }, [step]);
   const [form, setForm] = useState({
     name: "", email: "", phone: "", password: "", companyName: "",
     planType: "individual", fleetVehicleCount: "1", isSoleTrader: false,
@@ -120,14 +129,14 @@ export default function SignupPage() {
       <p>One account to post delivery jobs, find opportunities, bid and manage work. Choose your market first; each market stays separate.</p>
     </div>
     {testerApplicationPending || emailVerificationPending ? <div className="signup-alert" role="status">
-      {testerApplicationPending ? <><h2>Tester application submitted</h2><p>Your details are saved for administrator review. Tester access starts only after approval.</p></> : <><h2>Check your email</h2><p>{verificationEmailSent ? `We sent a verification link to ${signupEmail}. The link expires in 24 hours and can only be used once.` : `Your account was created, but delivery to ${signupEmail} could not be confirmed. Request another link below.`}</p><button type="button" onClick={() => void resendVerification()} disabled={resendingVerification}>{resendingVerification ? "Sending…" : "Resend verification email"}</button>{resendMessage && <p>{resendMessage}</p>}</>}
+      {testerApplicationPending ? <><h2>Tester application submitted</h2><p>Your details are saved for administrator review. Tester access starts only after approval.</p></> : <><h2>Check your email</h2><p>{verificationEmailSent ? `We sent a verification link to ${signupEmail}. The link expires in 24 hours and can only be used once.` : `Your account was created, but delivery to ${signupEmail} could not be confirmed. Request another link below.`}</p><button type="button" onClick={() => void resendVerification()} disabled={resendingVerification}>{resendingVerification ? "Sending…" : "Resend verification email"}</button>{resendMessage && <p role="status" aria-live="polite">{resendMessage}</p>}</>}
       <p><a href="/login">Continue to login</a></p>
     </div> : <form className="signup-form" onSubmit={(e) => { e.preventDefault(); if (step < steps.length - 1) next(); else void handleSubmit(); }}>
       <div className="signup-step-header">
-        <div><span>STEP {step + 1} OF {steps.length}</span><h2>{steps[step]}</h2></div>
+        <div><span>STEP {step + 1} OF {steps.length}</span><h2 ref={stepHeadingRef} tabIndex={-1}>{steps[step]}</h2></div>
         <span className="signup-step-market">{marketDisplay}</span>
       </div>
-      <div className="signup-progress" aria-label={`Step ${step + 1} of ${steps.length}`}><span style={{ width: `${((step + 1) / steps.length) * 100}%` }} /></div>
+      <div className="signup-progress" role="progressbar" aria-label="Signup progress" aria-valuemin={1} aria-valuemax={steps.length} aria-valuenow={step + 1} aria-valuetext={`Step ${step + 1} of ${steps.length}: ${steps[step]}`}><span style={{ width: `${((step + 1) / steps.length) * 100}%` }} /></div>
 
       {step === 0 && <div className="signup-fields">
         <label>Choose your market<select required value={form.country} onChange={(e) => changeCountry(e.target.value)}><option value="" disabled>Choose a country</option>{COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}</select><small>This determines your marketplace, currency and local time zone. Cross-market matching is disabled.</small></label>

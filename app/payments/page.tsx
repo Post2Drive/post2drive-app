@@ -68,6 +68,7 @@ export default function PaymentsPage() {
   const [busy, setBusy] = useState<string | null>(null);
 
   async function load() {
+    setLoading(true);
     try {
       setError("");
 
@@ -175,10 +176,10 @@ export default function PaymentsPage() {
     );
   }, [data]);
 
-  if (loading) {
+  if (loading && !data) {
     return (
       <main style={pageStyle}>
-        <p>Loading payments...</p>
+        <p role="status" aria-live="polite">Loading payments...</p>
       </main>
     );
   }
@@ -190,9 +191,12 @@ export default function PaymentsPage() {
 
         <h1>Payments</h1>
 
-        <div style={errorStyle}>
+        <div role="alert" style={errorStyle}>
           {error || "Payment information is unavailable."}
         </div>
+        <button type="button" onClick={() => void load()} disabled={loading} style={secondaryButton}>
+          {loading ? "Retrying…" : "Retry loading payments"}
+        </button>
       </main>
     );
   }
@@ -220,21 +224,25 @@ export default function PaymentsPage() {
         </div>
 
         <button
-          onClick={load}
+          type="button"
+          onClick={() => void load()}
+          disabled={loading}
           style={secondaryButton}
         >
-          Refresh
+          {loading ? "Refreshing…" : "Refresh"}
         </button>
       </div>
 
+      {loading && <p role="status" aria-live="polite">Refreshing payment information…</p>}
+
       {message && (
-        <div style={successStyle}>
+        <div role="status" aria-live="polite" style={successStyle}>
           {message}
         </div>
       )}
 
       {error && (
-        <div style={errorStyle}>
+        <div role="alert" style={errorStyle}>
           {error}
         </div>
       )}
@@ -335,6 +343,8 @@ export default function PaymentsPage() {
                     </span>
                   ) : (
                     <button
+                      type="button"
+                      aria-label={`Mark as paid: ${job.pickup} to ${job.dropoff}`}
                       onClick={() => markPaid(job.id)}
                       disabled={busy === job.id}
                       style={primaryButton}
@@ -439,6 +449,8 @@ export default function PaymentsPage() {
                     </span>
                   ) : (
                     <button
+                      type="button"
+                      aria-label={`Confirm received: ${job.pickup} to ${job.dropoff}`}
                       onClick={() => confirmReceived(job.id)}
                       disabled={
                         busy === job.id ||
@@ -509,6 +521,7 @@ function SummaryCard({
 function Empty({ text }: { text: string }) {
   return (
     <div
+      role="status"
       style={{
         padding: 20,
         color: "var(--color-muted)",
@@ -526,7 +539,6 @@ const pageStyle: React.CSSProperties = {
   maxWidth: 1000,
   margin: "0 auto",
   padding: "24px 16px 60px",
-  fontFamily: "Arial, sans-serif",
 };
 
 const summaryGrid: React.CSSProperties = {
@@ -561,7 +573,7 @@ const summaryLine: React.CSSProperties = {
   display: "flex",
   gap: 14,
   flexWrap: "wrap",
-  color: "var(--color-text)",
+  color: "var(--color-muted)",
   fontSize: 14,
   paddingBottom: 14,
   borderBottom: "1px solid var(--color-border)",

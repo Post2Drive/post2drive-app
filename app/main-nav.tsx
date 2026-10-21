@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -11,11 +12,19 @@ const baseLinks = [
   { href: "/vehicles", label: "Vehicles" },
   { href: "/payments", label: "Payments" },
   { href: "/settings", label: "Account" },
+  { href: "/admin", label: "Admin" },
 ];
+
+function isActive(pathname: string, href: string) {
+  return pathname === href ||
+    (href === "/jobs" && pathname.startsWith("/jobs/") && pathname !== "/jobs/new");
+}
 
 export default function MainNav({ showQaCampaigns = false }: { showQaCampaigns?: boolean }) {
   const pathname = usePathname();
   const { data: session, status } = useSession();
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreButtonRef = useRef<HTMLButtonElement>(null);
   const country = (session?.user as any)?.country;
   const marketLinks = country === "IN"
     ? [...baseLinks.slice(0, 2), { href: "/requirements", label: "My Requirements" }, ...baseLinks.slice(2)]
@@ -23,79 +32,32 @@ export default function MainNav({ showQaCampaigns = false }: { showQaCampaigns?:
   const links = showQaCampaigns
     ? [...marketLinks, { href: "/admin/qa-campaigns", label: "QA Campaigns" }]
     : marketLinks;
+  const mobilePrimary = links.filter((link) =>
+    ["/dashboard", "/jobs", "/jobs/new", "/vehicles"].includes(link.href)
+  );
+  const mobileMore = links.filter((link) => !mobilePrimary.some((item) => item.href === link.href));
+  const moreActive = mobileMore.some((link) => isActive(pathname, link.href));
 
   if (status !== "authenticated") return null;
 
   return (
     <>
-      <header
-        style={{
-          position: "sticky",
-          top: 0,
-          zIndex: 50,
-          background: "var(--color-surface)",
-          borderBottom: "1px solid var(--color-border)",
-        }}
-      >
-        <nav
-          aria-label="Main navigation"
-          style={{
-            maxWidth: 1100,
-            margin: "0 auto",
-            minHeight: 64,
-            padding: "0 20px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 20,
-          }}
-        >
-          <Link
-            href="/dashboard"
-            style={{
-              color: "var(--color-primary)",
-              textDecoration: "none",
-              fontSize: 21,
-              fontWeight: 800,
-              whiteSpace: "nowrap",
-            }}
-          >
-            Post2Drive
-          </Link>
-
-          <div
-            className="desktop-nav"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-            }}
-          >
+      <header className="main-nav-header">
+        <nav className="main-nav-inner" aria-label="Main navigation">
+          <Link href="/dashboard" className="main-nav-brand">Post2Drive</Link>
+          <div className="desktop-nav">
             {links.map((link) => {
-              const active =
-                pathname === link.href ||
-                (link.href === "/jobs" &&
-                  pathname.startsWith("/jobs/") &&
-                  pathname !== "/jobs/new");
-
+              const active = isActive(pathname, link.href);
               return (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="main-nav-link"
+                  className={`main-nav-link${active ? " is-active" : ""}`}
                   aria-current={active ? "page" : undefined}
                   style={{
-                    padding: "9px 12px",
-                    borderRadius: 8,
-                    textDecoration: "none",
-                    fontSize: 14,
                     fontWeight: active ? 700 : 600,
-                    color: active
-                      ? "var(--color-primary-action)"
-                      : "var(--color-text)",
-                    background: active
-                      ? "var(--color-primary-soft)"
-                      : "transparent",
+                    color: active ? "var(--color-primary-action)" : "var(--color-text)",
+                    background: active ? "var(--color-action-soft)" : "transparent",
                   }}
                 >
                   {link.label}
@@ -106,36 +68,61 @@ export default function MainNav({ showQaCampaigns = false }: { showQaCampaigns?:
         </nav>
       </header>
 
-      <nav className="mobile-bottom-nav" aria-label="Mobile navigation">
-        {links.map((link) => {
-          const active =
-            pathname === link.href ||
-            (link.href === "/jobs" &&
-              pathname.startsWith("/jobs/") &&
-              pathname !== "/jobs/new");
-
+      <nav
+        className="mobile-bottom-nav"
+        aria-label="Mobile navigation"
+        onKeyDown={(event) => {
+          if (event.key === "Escape" && moreOpen) {
+            setMoreOpen(false);
+            moreButtonRef.current?.focus();
+          }
+        }}
+      >
+        {mobilePrimary.map((link) => {
+          const active = isActive(pathname, link.href);
           return (
             <Link
               key={link.href}
               href={link.href}
               className="mobile-nav-link"
               aria-current={active ? "page" : undefined}
+              onClick={() => setMoreOpen(false)}
               style={{
-                flex: 1,
-                textAlign: "center",
-                padding: "9px 3px 8px",
-                textDecoration: "none",
-                fontSize: 11,
                 fontWeight: active ? 800 : 600,
-                color: active
-                  ? "var(--color-primary-action)"
-                  : "var(--color-muted)",
+                color: active ? "var(--color-primary-action)" : "var(--color-muted)",
               }}
             >
               {link.label}
             </Link>
           );
         })}
+        <button
+          ref={moreButtonRef}
+          type="button"
+          className={`mobile-nav-more${moreActive ? " is-active" : ""}`}
+          aria-expanded={moreOpen}
+          aria-controls="mobile-more-menu"
+          onClick={() => setMoreOpen((open) => !open)}
+        >
+          <span aria-hidden="true">•••</span>
+          <span>More</span>
+        </button>
+        <div id="mobile-more-menu" className="mobile-more-menu" hidden={!moreOpen} role="group" aria-label="More navigation links">
+          {mobileMore.map((link) => {
+            const active = isActive(pathname, link.href);
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="mobile-more-link"
+                aria-current={active ? "page" : undefined}
+                onClick={() => setMoreOpen(false)}
+              >
+                {link.label}
+              </Link>
+            );
+          })}
+        </div>
       </nav>
     </>
   );

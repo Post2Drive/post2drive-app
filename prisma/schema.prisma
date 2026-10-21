@@ -323,6 +323,8 @@ model User {
   emailVerifiedAt DateTime?
   phone          String
   passwordHash   String
+  // Incremented after credential changes to revoke every previously issued JWT session.
+  sessionVersion Int @default(0)
 
   role UserRole @default(owner)
 

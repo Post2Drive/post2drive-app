@@ -1,17 +1,17 @@
 :root {
   /* Solid, high-energy corporate palette. White is the default surface. */
-  --color-primary: #171717;
-  --color-primary-action: #2457D6;
-  --color-primary-action-hover: #173FA8;
-  --color-positive: #18864B;
-  --color-warning: #F2C300;
-  --color-danger: #D62828;
+  --color-primary: #102A43;
+  --color-primary-action: #1769AA;
+  --color-primary-action-hover: #1565C0;
+  --color-positive: #00796B;
+  --color-warning: #8A5A00;
+  --color-danger: #D32F2F;
 
-  --color-background: #FFFFFF;
+  --color-background: #F4F7FA;
   --color-surface: #FFFFFF;
-  --color-text: #171717;
-  --color-muted: #454B55;
-  --color-border: #D7DCE4;
+  --color-text: #172B4D;
+  --color-muted: #4D6074;
+  --color-border: #D9E2EC;
 
   --brand-red: #D62828;
   --brand-blue: #2457D6;
@@ -28,7 +28,7 @@
   --radius-md: 10px;
   --radius-lg: 14px;
 
-  --shadow-card: 0 2px 8px rgba(23, 23, 23, 0.07);
+  --shadow-card: 0 1px 3px rgba(16, 42, 67, 0.08);
 }
 
 * {
@@ -1618,5 +1618,564 @@ textarea {
   select,
   textarea {
     min-height: 44px;
+  }
+}
+
+
+/* Integrated Apple HIG additions; keep market-specific styles above. */
+/* Post2Drive UI baseline: keep every new/unstyled section inside the app palette. */
+main {
+  color: var(--color-text);
+}
+
+main h1,
+main h2,
+main h3,
+main h4 {
+  color: var(--color-primary);
+}
+
+main label {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+main input,
+main select,
+main textarea {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+main input::placeholder,
+main textarea::placeholder {
+  color: var(--color-muted);
+}
+
+main input:focus,
+main select:focus,
+main textarea:focus {
+  outline: 2px solid var(--color-primary-action);
+  border-color: var(--color-primary-action);
+}
+
+main table {
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+main table th {
+  background: #EAF0F6;
+  color: var(--color-primary);
+}
+
+main table td,
+main table th {
+  border-color: var(--color-border);
+}
+
+main button {
+  color: #FFFFFF;
+  background: var(--color-primary-action);
+  border: 1px solid var(--color-primary-action);
+  border-radius: var(--radius-sm);
+}
+
+main button:disabled {
+  color: var(--color-muted);
+  background: var(--color-border);
+  border-color: var(--color-border);
+  cursor: not-allowed;
+}
+
+main a {
+  color: var(--color-primary-action);
+}
+
+@media (max-width: 700px) {
+  main {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
+
+/* ---------------------------------------------------------
+   Unified Post2Drive application controls
+   --------------------------------------------------------- */
+
+:root {
+  --color-primary-soft: #EAF0F6;
+  --color-action-soft: #E8F1FB;
+  --color-positive-soft: #E8F5F2;
+  --color-warning-soft: #FFF8E1;
+  --color-danger-soft: #FDECEC;
+}
+
+main section {
+  color: var(--color-text);
+}
+
+main hr {
+  border: 0;
+  border-top: 1px solid var(--color-border);
+}
+
+main small {
+  color: var(--color-muted);
+}
+
+main strong {
+  color: var(--color-primary);
+}
+
+main input,
+main select,
+main textarea {
+  min-height: 44px;
+  padding: 9px 11px;
+}
+
+main button {
+  min-height: 44px;
+}
+
+main button:not(:disabled):hover {
+  filter: brightness(0.96);
+}
+
+main button:focus-visible,
+main a:focus-visible,
+main input:focus-visible,
+main select:focus-visible,
+main textarea:focus-visible {
+  outline: 3px solid var(--color-primary-action);
+  outline-offset: 2px;
+}
+
+main table tr:hover td {
+  background: var(--color-primary-soft);
+}
+
+@media (max-width: 700px) {
+  main section {
+    max-width: 100%;
+  }
+}
+
+/* Keyboard users can bypass repeated navigation and move directly to page content. */
+.skip-link {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 1000;
+  transform: translateY(-200%);
+  padding: 12px 16px;
+  border: 2px solid var(--color-surface);
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: var(--color-surface);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.skip-link:focus,
+.skip-link:focus-visible {
+  transform: translateY(0) !important;
+  outline: 3px solid var(--color-primary-action);
+  outline-offset: 3px;
+}
+
+/* Global keyboard focus: use a solid, high-contrast indicator rather than a faint translucent ring. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 3px solid var(--color-primary-action);
+  outline-offset: 3px;
+}
+
+/* Honor the user's motion preference across the application, not only selected cards. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Post2Drive navigation: style navigation explicitly, not every content link. */
+.main-nav-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: 40px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  text-decoration: none !important;
+  transition: background-color .15s ease, border-color .15s ease;
+}
+
+.main-nav-link:hover {
+  background: var(--color-primary-soft) !important;
+  border-color: var(--color-border);
+  text-decoration: none !important;
+}
+
+.main-nav-link:focus-visible,
+.mobile-nav-link:focus-visible {
+  outline: 3px solid var(--color-primary-action);
+  outline-offset: 2px;
+}
+
+.mobile-bottom-nav {
+  display: none;
+}
+
+@media (max-width: 700px) {
+  .mobile-bottom-nav {
+    position: fixed;
+    z-index: 60;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: flex;
+    align-items: stretch;
+    gap: 2px;
+    padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--color-border);
+    background: var(--color-surface);
+  }
+
+  .mobile-nav-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    min-height: 48px;
+    border-radius: 7px;
+    text-decoration: none !important;
+  }
+
+  body {
+    padding-bottom: 68px;
+  }
+}
+/* Consistent action links; ordinary inline/content links remain unchanged. */
+.button-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: 42px;
+  padding: 10px 16px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font: inherit;
+  font-weight: 650;
+  line-height: 1.25;
+  text-align: center;
+  text-decoration: none !important;
+  cursor: pointer;
+  transition: background-color .15s ease, border-color .15s ease;
+}
+
+.button-link-secondary {
+  color: var(--color-primary-action) !important;
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.button-link-secondary:hover {
+  background: var(--color-primary-soft);
+  border-color: var(--color-primary-action);
+}
+
+.button-link:focus-visible,
+.dashboard-stat-link:focus-visible {
+  outline: 3px solid var(--color-primary-action);
+  outline-offset: 2px;
+}
+
+.dashboard-stat-link:hover > div {
+  border-color: var(--color-primary-action) !important;
+  background: var(--color-primary-soft);
+}
+
+@media (max-width: 700px) {
+  .button-link {
+    min-height: 42px;
+    padding: 10px 13px;
+  }
+}
+
+
+.auth-submit-button {
+  min-height: 44px;
+  padding: 11px 18px;
+  border-radius: 8px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.auth-submit-button:focus-visible {
+  outline: 3px solid var(--color-primary-action);
+  outline-offset: 2px;
+}
+
+/* Country-first signup: one clear decision per step, responsive on mobile. */
+.signup-shell { width: 100%; max-width: 760px; margin: 0 auto; }
+.signup-heading { margin-bottom: 18px; }
+.signup-heading h1 { margin: 5px 0 10px; }
+.signup-heading > p:last-child { margin: 0; max-width: 680px; }
+.signup-eyebrow { color: var(--color-positive) !important; font-size: 12px; font-weight: 800; letter-spacing: .12em; }
+.auth-page .signup-form { padding: clamp(18px, 3vw, 30px); }
+.signup-step-header { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+.signup-step-header span { color: var(--color-muted); font-size: 11px; font-weight: 800; letter-spacing: .09em; }
+.signup-step-header h2 { margin: 5px 0 0; font-size: 23px; }
+.signup-step-market { color: var(--color-primary); background: #E7F0F8; border-radius: 999px; padding: 8px 10px; white-space: nowrap; }
+.signup-progress { height: 5px; overflow: hidden; background: var(--color-border); border-radius: 999px; margin-bottom: 23px; }
+.signup-progress > span { display: block; height: 100%; background: var(--color-positive); transition: width .2s ease; }
+.signup-fields { display: grid; gap: 17px; }
+.auth-page .signup-fields label { margin: 0; }
+.signup-fields small, .signup-muted { display: block; margin-top: 7px; color: var(--color-muted); font-size: 13px; font-weight: 400; line-height: 1.5; }
+.signup-note, .signup-plan-card { padding: 15px; border: 1px solid var(--color-border); border-radius: 10px; background: #F8FAFC; }
+.signup-note p { margin: 7px 0 0; }
+.signup-plan-card { border-color: #B9D7EE; background: #F1F7FC; }
+.signup-plan-label { font-size: 11px; color: var(--color-muted); font-weight: 800; letter-spacing: .08em; }
+.signup-plan-card h3 { margin: 6px 0; font-size: 20px; }
+.signup-plan-card p { margin: 0 0 6px; }
+.signup-plan-price { color: var(--color-primary) !important; font-size: 23px; font-weight: 800; }
+.signup-review-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.signup-review-grid > div { display: grid; gap: 6px; min-width: 0; padding: 12px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface); }
+.signup-review-grid span { color: var(--color-muted); font-size: 10px; letter-spacing: .08em; font-weight: 800; }
+.signup-review-grid strong { overflow-wrap: anywhere; }
+.auth-page .signup-fields .signup-checkbox { display: flex; align-items: flex-start; gap: 10px; font-weight: 500; }
+.auth-page .signup-checkbox input { flex: 0 0 18px; width: 18px; min-height: 18px; height: 18px; margin: 2px 0 0; }
+.signup-actions { display: flex; gap: 10px; margin-top: 24px; }
+.auth-page .signup-actions button { flex: 1; min-height: 46px; border-radius: 8px; padding: 10px 15px; font-weight: 750; }
+.auth-page .signup-actions .signup-secondary { background: var(--color-surface); color: var(--color-primary-action); border: 1px solid var(--color-border); }
+.auth-page .signup-actions .signup-secondary:hover { background: var(--color-primary-soft); }
+.signup-login-link { margin: 17px 0 0 !important; text-align: center; }
+.signup-footnote { margin: 14px 4px 0; font-size: 12px; }
+.signup-error { padding: 11px 12px; border-radius: 8px; background: var(--color-danger-soft); color: var(--color-danger) !important; }
+.signup-alert { padding: 18px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 12px; }
+@media (max-width: 560px) { .signup-review-grid { grid-template-columns: 1fr; } .signup-step-header h2 { font-size: 21px; } }
+
+
+/* Apple Design Skill: compact, accessible navigation across mobile and desktop. */
+.main-nav-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.main-nav-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  max-width: 1100px;
+  min-height: 64px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.main-nav-brand {
+  color: var(--color-primary);
+  font-size: 21px;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.mobile-nav-more,
+.mobile-more-menu {
+  display: none;
+}
+
+@media (max-width: 700px) {
+  .main-nav-inner {
+    min-height: 56px;
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .main-nav-brand {
+    font-size: 20px;
+  }
+
+  .mobile-bottom-nav {
+    display: flex;
+    position: fixed;
+    inset: auto 0 0;
+    z-index: 100;
+    align-items: stretch;
+    justify-content: space-around;
+    gap: 2px;
+    padding: 5px 6px calc(5px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--color-border);
+    background: var(--color-surface);
+    box-shadow: 0 -4px 16px rgba(16, 42, 67, 0.06);
+  }
+
+  .mobile-nav-link,
+  .mobile-nav-more {
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    min-width: 0;
+    min-height: 48px;
+    padding: 5px 3px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: #53677f;
+    font: inherit;
+    font-size: 12px !important;
+    font-weight: 600;
+    line-height: 1.2;
+    text-align: center;
+    text-decoration: none !important;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  .mobile-nav-more span:first-child {
+    font-size: 17px;
+    line-height: 1;
+    letter-spacing: 1px;
+  }
+
+  .mobile-nav-link[aria-current="page"] {
+    background: var(--color-action-soft);
+  }
+
+  .mobile-nav-link:focus-visible,
+  .mobile-nav-more:focus-visible,
+  .mobile-more-link:focus-visible {
+    outline: 3px solid var(--color-primary-action);
+    outline-offset: 1px;
+  }
+
+  .mobile-more-menu[hidden] {
+    display: none;
+  }
+
+  .mobile-more-menu {
+    position: absolute;
+    right: 8px;
+    bottom: calc(100% + 8px);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: min(240px, calc(100vw - 16px));
+    max-height: min(60vh, 420px);
+    overflow-y: auto;
+    padding: 8px;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    background: var(--color-surface);
+    box-shadow: 0 8px 28px rgba(16, 42, 67, 0.18);
+  }
+
+  .mobile-more-link {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    color: var(--color-text);
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .mobile-more-link[aria-current="page"],
+  .mobile-more-link:hover {
+    background: var(--color-action-soft);
+    color: var(--color-primary-action);
+  }
+
+  body {
+    padding-bottom: calc(64px + env(safe-area-inset-bottom));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .main-nav-link,
+  .mobile-nav-link,
+  .mobile-nav-more {
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media (max-width: 700px) {
+  .mobile-nav-more.is-active {
+    background: var(--color-action-soft);
+    color: var(--color-primary-action);
+  }
+}
+
+/* Preserve horizontal desktop navigation after moving layout out of inline styles. */
+@media (min-width: 701px) {
+  .desktop-nav {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+}
+
+
+/* Dashboard overview: predictable responsive card rhythm and visible focus. */
+.dashboard-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.dashboard-stat-card {
+  height: 100%;
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+  color: var(--color-text);
+  transition: border-color .15s ease, background-color .15s ease;
+}
+
+.dashboard-stat-link {
+  display: block;
+  min-width: 0;
+  border-radius: var(--radius-md);
+  color: inherit;
+  text-decoration: none;
+}
+
+.dashboard-stat-link:focus-visible {
+  outline: 3px solid var(--color-primary-action);
+  outline-offset: 3px;
+}
+
+.dashboard-stat-link:hover .dashboard-stat-card {
+  border-color: var(--color-primary-action);
+  background: var(--color-action-soft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-stat-card {
+    transition: none;
   }
 }

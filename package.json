@@ -17,7 +17,7 @@
     "qa:signup-display-id-retry": "node scripts/qa/signup-display-id-retry-contract.mjs",
     "qa:country-matrix": "node --experimental-strip-types scripts/qa/country-matrix-contract.mjs",
     "qa:qa-runner-guard": "node --experimental-strip-types scripts/qa/qa-runner-guard-contract.mjs",
-    "qa:all": "npm run qa:health-contract && npm run qa:campaign-builder-contract && npm run qa:signup-display-id-retry && npm run qa:market-timezone && npm run qa:dropoff-timezone && npm run qa:dashboard-localisation && npm run qa:ops-dashboard && npm run qa:market-isolation && npm run qa:qa-isolation-contract && npm run qa:market-parity && npm run qa:country-matrix && npm run qa:localisation && npm run qa:localisation-copy && npm run qa:qa-runner-guard && npm run qa:lifecycle-contract && npm run qa:worker-contract",
+    "qa:all": "npm run qa:account-api-security && npm run qa:design-accessibility && npm run qa:health-contract && npm run qa:campaign-builder-contract && npm run qa:signup-display-id-retry && npm run qa:market-timezone && npm run qa:dropoff-timezone && npm run qa:dashboard-localisation && npm run qa:ops-dashboard && npm run qa:market-isolation && npm run qa:qa-isolation-contract && npm run qa:market-parity && npm run qa:country-matrix && npm run qa:localisation && npm run qa:localisation-copy && npm run qa:qa-runner-guard && npm run qa:lifecycle-contract && npm run qa:worker-contract",
     "qa:worker": "node --experimental-default-type=module --experimental-strip-types scripts/qa/worker.ts",
     "qa:worker-contract": "node scripts/qa/worker-contract.mjs",
     "qa:worker-boot-contract": "node scripts/qa/worker-boot-contract.mjs",
@@ -29,7 +29,10 @@
     "predeploy:staging": "node ops-dashboard/provision-readonly-role.mjs",
     "qa:market-parity": "node --experimental-strip-types scripts/qa/market-feature-parity-contract.mjs",
     "qa:qa-isolation-contract": "node scripts/qa/qa-isolation-contract.mjs",
-    "qa:campaign-builder-contract": "node scripts/qa/qa-campaign-builder-contract.mjs"
+    "qa:campaign-builder-contract": "node scripts/qa/qa-campaign-builder-contract.mjs",
+    "qa:design-accessibility": "node scripts/qa/design-accessibility-contract.mjs",
+    "qa:account-api-security": "node scripts/qa/account-api-security-contract.mjs",
+    "qa:account-mutation-concurrency": "node scripts/qa/account-mutation-concurrency-contract.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.2",

@@ -18,8 +18,11 @@ export default async function RootLayout({
     <html lang="en">
       <body>
         <Providers>
+          <a className="skip-link" href="#main-content">Skip to main content</a>
           <MainNav showQaCampaigns={showQaCampaigns} />
-          {children}
+          <div id="main-content" tabIndex={-1}>
+            {children}
+          </div>
         </Providers>
       </body>
     </html>

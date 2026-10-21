@@ -83,6 +83,7 @@ export const authOptions: NextAuthOptions = {
           accountType: "both",
           currency: user.account.currency,
           country: user.account.country,
+          sessionVersion: user.sessionVersion,
         } as any;
       },
     }),
@@ -95,10 +96,35 @@ export const authOptions: NextAuthOptions = {
         token.accountType = (user as any).accountType;
         token.currency = (user as any).currency;
         token.country = (user as any).country;
+        (token as any).sessionVersion = (user as any).sessionVersion;
+        (token as any).sessionRevoked = false;
+      } else if (token.id && !(token as any).sessionRevoked) {
+        // Stateless JWTs need a database-backed version check for immediate
+        // credential revocation. Tokens issued before this field existed fail
+        // closed and require a fresh sign-in.
+        if (typeof (token as any).sessionVersion !== "number") {
+          (token as any).sessionRevoked = true;
+        } else {
+          const currentUser = await prisma.user.findUnique({
+            where: { id: String(token.id) },
+            select: {
+              sessionVersion: true,
+              account: { select: { deletionRequestedAt: true } },
+            },
+          });
+          if (
+            !currentUser ||
+            currentUser.account.deletionRequestedAt ||
+            currentUser.sessionVersion !== (token as any).sessionVersion
+          ) {
+            (token as any).sessionRevoked = true;
+          }
+        }
       }
       return token;
     },
     async session({ session, token }) {
+      if ((token as any).sessionRevoked) return null as any;
       if (session.user) {
         (session.user as any).id = token.id;
         (session.user as any).accountId = token.accountId;

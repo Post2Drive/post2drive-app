@@ -34,7 +34,7 @@ function Section({ title, subtitle, children, collapsible=false, defaultOpen=tru
 }
 function Table({ rows, columns, empty="No data collected yet." }: { rows:Row[]; columns:{key:string;label:string;render?:(v:any,row:Row)=>React.ReactNode}[]; empty?:string }) {
   if (!rows?.length) return <p style={{ color:palette.muted, fontSize:13 }}>{empty}</p>;
-  return <div style={{ overflowX:"auto", width:"100%" }}><table style={{ width:"100%", borderCollapse:"collapse", fontSize:13, textAlign:"left" }}><thead><tr>{columns.map(c=><th key={c.key} style={{ padding:"9px 10px", borderBottom:"1px solid "+palette.border, whiteSpace:"nowrap" }}>{c.label}</th>)}</tr></thead><tbody>{rows.map((row,i)=><tr key={String(row.id ?? row.route ?? row.label ?? row.hour ?? row.day ?? row.action ?? i)}>{columns.map(c=><td key={c.key} style={{ padding:"9px 10px", borderBottom:"1px solid "+palette.border, verticalAlign:"top" }}>{c.render?c.render(row[c.key],row):String(row[c.key] ?? "—")}</td>)}</tr>)}</tbody></table></div>;
+  return <div role="region" aria-label={`Scrollable table: ${columns.map((column) => column.label).join(", ")}`} tabIndex={0} style={{ overflowX:"auto", width:"100%" }}><table style={{ width:"100%", borderCollapse:"collapse", fontSize:13, textAlign:"left" }}><thead><tr>{columns.map(c=><th key={c.key} style={{ padding:"9px 10px", borderBottom:"1px solid "+palette.border, whiteSpace:"nowrap" }}>{c.label}</th>)}</tr></thead><tbody>{rows.map((row,i)=><tr key={String(row.id ?? row.route ?? row.label ?? row.hour ?? row.day ?? row.action ?? i)}>{columns.map(c=><td key={c.key} style={{ padding:"9px 10px", borderBottom:"1px solid "+palette.border, verticalAlign:"top" }}>{c.render?c.render(row[c.key],row):String(row[c.key] ?? "—")}</td>)}</tr>)}</tbody></table></div>;
 }
 function Distribution({ rows }: { rows:Row[] }) {
   const total=rows.reduce((n,r)=>n+Number(r.count||0),0);
@@ -158,11 +158,11 @@ export default function PerformanceDashboard() {
       <Table rows={data.endpointPerformance} columns={endpointColumns} empty="No API timings yet. Deploy the telemetry release and exercise the app."/>
     </Section>
     <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,380px),1fr))",gap:14 }}>
-      <Section title="Account types"><Distribution rows={data.accountTypes}/></Section>
-      <Section title="Verification status"><Distribution rows={data.verificationStatuses}/></Section>
-      <Section title="Subscription status"><Distribution rows={data.subscriptionStatuses}/></Section>
-      <Section title="Job status"><Distribution rows={data.jobStatuses}/></Section>
-      <Section title="Fixed-price vs bidding jobs"><Distribution rows={data.jobPriceModes}/></Section>
+      <Section title="Account types"><PieChart rows={data.accountTypes} title="Account types"/></Section>
+      <Section title="Verification status"><PieChart rows={data.verificationStatuses} title="Verification status"/></Section>
+      <Section title="Subscription status"><PieChart rows={data.subscriptionStatuses} title="Subscription status"/></Section>
+      <Section title="Job status"><PieChart rows={data.jobStatuses} title="Job status"/></Section>
+      <Section title="Fixed-price vs bidding jobs"><PieChart rows={data.jobPriceModes} title="Fixed-price vs bidding jobs"/></Section>
       <Section title="Product activity events" subtitle={"Application-level usage events over the last " + days + " day(s)."}><Distribution rows={data.usageEvents}/></Section>
     </div>
     <Section title="Job activity and lifecycle" subtitle={"Action counts from the past "+days+" day(s). This helps show where loads are moving, cancelled or getting stuck."}>
@@ -208,7 +208,7 @@ export default function PerformanceDashboard() {
           {key:"label",label:"Status"},
           {key:"currency",label:"Currency"},
           {key:"count",label:"Records",render:(v:any)=>num(v)},
-          {key:"amountPence",label:"Record total",render:(v:any,row:Row)=>String(row.currency||"")+" "+(Number(v||0)/100).toFixed(2)}
+          {key:"amountMinorUnits",label:"Record total",render:(v:any,row:Row)=>String(row.currency||"")+" "+(Number(v||0)/100).toFixed(2)}
         ]}/>
       </Section>
     </div>

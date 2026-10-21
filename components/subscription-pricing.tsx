@@ -21,46 +21,33 @@ export default function SubscriptionPricing() {
   });
 
   return (
-    <section className="pricing-panel" style={{ borderRadius: 18, padding: 24 }}>
+    <section className="pricing-panel" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: 14, padding: 24, boxShadow: "0 1px 3px rgba(16, 42, 67, 0.08)" }}>
       <div style={{ marginBottom: 18 }}>
-        <h2 style={{ margin: 0, fontSize: 20 }}>Pricing for your market</h2>
+        <h2 style={{ margin: 0, fontSize: 20, color: "var(--color-primary)" }}>Simple 7-day access</h2>
         <p style={{ margin: "8px 0 0", color: "var(--color-muted)", lineHeight: 1.5 }}>
-          Select your country to see the configured access tiers in its currency. Prices are planning prices only; payment checkout is not connected.
+          Choose an individual account or a fleet tier. Each access period lasts 7 × 24 hours from activation or renewal.
         </p>
       </div>
 
-      <label style={{ display: "block", maxWidth: 420, marginBottom: 20, color: "var(--color-text)", fontSize: 14, fontWeight: 700 }}>
-        Country / market
-        <select value={country} onChange={(event) => setCountry(event.target.value)} style={{ display: "block", width: "100%", marginTop: 6, padding: 10 }}>
-          {COUNTRIES.map((market) => <option key={market.code} value={market.code}>{market.name} · {market.currency}</option>)}
-        </select>
-      </label>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 12 }}>
+        {plans.map((plan) => (
+          <div key={plan.name} style={{ border: "1px solid var(--color-border)", borderRadius: 10, padding: 16, background: "var(--color-background)" }}>
+            <h3 style={{ margin: "0 0 4px", fontSize: 14, color: "var(--color-muted)" }}>{plan.name}</h3>
+            <div style={{ fontSize: 12, color: "var(--color-muted)", marginBottom: 12 }}>{plan.detail}</div>
+            <div style={{ fontSize: 22, fontWeight: 700, color: "var(--color-primary)" }}>{plan.gbp}<span style={{ fontSize: 12, fontWeight: 500 }}> GBP</span></div>
+            <div style={{ fontSize: 22, fontWeight: 700, color: "var(--color-primary)", marginTop: 4 }}>{plan.eur}<span style={{ fontSize: 12, fontWeight: 500 }}> EUR</span></div>
+            <div style={{ fontSize: 13, color: "var(--color-muted)", marginTop: 8 }}>{plan.local}</div>
+            <div style={{ fontSize: 13, color: "var(--color-muted)", marginTop: 4 }}>per 7 days</div>
+          </div>
+        ))}
+      </div>
 
-      {isIndia ? (
-        <div role="status" className="pricing-market-note" style={{ padding: 18 }}>
-          <strong>India pricing is configured separately.</strong>
-          <p style={{ marginBottom: 0 }}>Prices for India will be confirmed before any paid plan becomes available. Creating an account does not charge you.</p>
-        </div>
-      ) : (
-        <>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 12 }}>
-            {plans.map((plan) => (
-              <div key={plan.name} className="pricing-tier-card" style={{ padding: 16 }}>
-                <div className="pricing-tier-name" style={{ fontSize: 14, marginBottom: 4 }}>{plan.name}</div>
-                <div style={{ fontSize: 12, color: "var(--color-muted)", marginBottom: 12 }}>{plan.detail}</div>
-                <div className="pricing-tier-price">{formatter.format(plan.amount)}</div>
-                <div style={{ fontSize: 13, color: "var(--color-muted)", marginTop: 8 }}>per 7 days</div>
-              </div>
-            ))}
-          </div>
-          <div className="pricing-benefit-strip" style={{ marginTop: 16, padding: "12px 14px", fontSize: 14 }}>
-            Unlimited legitimate marketplace activity · No per-job charges
-          </div>
-          <p style={{ margin: "14px 0 0", fontSize: 13, color: "var(--color-muted)" }}>
-            Fleets with 56+ vehicles need a custom plan. The same numeric tiers are displayed in {selectedMarket.name} using {selectedMarket.currency}. No payment is taken at signup and checkout is not connected.
-          </p>
-        </>
-      )}
+      <div style={{ marginTop: 16, padding: "12px 14px", borderRadius: 8, background: "var(--color-background)", color: "var(--color-positive)", fontSize: 14 }}>
+        Unlimited legitimate marketplace activity · No per-job charges
+      </div>
+      <p style={{ margin: "14px 0 0", fontSize: 13, color: "var(--color-muted)" }}>
+        Fleets with 56+ vehicles need a custom plan. The same numeric tiers apply in each supported non-India market using that market’s local currency. India pricing remains separate. Prices are published for product planning; payment checkout is not connected yet.
+      </p>
     </section>
   );
 }

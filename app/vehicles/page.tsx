@@ -48,10 +48,12 @@ export default function VehiclesPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [loadError, setLoadError] = useState("");
   const [message, setMessage] = useState("");
 
   const loadVehicles = useCallback(async () => {
     setLoading(true);
+    setLoadError("");
     try {
       const response = await fetch("/api/vehicles");
       const data = await response.json();
@@ -61,7 +63,7 @@ export default function VehiclesPage() {
       setIsTester(Boolean(data.isTester));
       setTesterApprovalStatus(data.testerApprovalStatus || null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load vehicles.");
+      setLoadError(err instanceof Error ? err.message : "Could not load vehicles.");
     } finally {
       setLoading(false);
     }
@@ -120,6 +122,7 @@ export default function VehiclesPage() {
           style={fieldStyle}
           type={type}
           name={name}
+          autoComplete={name === "regPlate" ? "off" : undefined}
           value={form[name]}
           required={required}
           min={type === "number" ? 1 : undefined}
@@ -140,10 +143,12 @@ export default function VehiclesPage() {
       {testerApprovalStatus === "rejected" && <p><strong>Tester application rejected.</strong> Tester access has not been enabled. Contact the Post2Drive administrator if you believe this is an error.</p>}
       <p>Add your vehicle and supporting details. Registration does not mean the vehicle is verified or eligible for jobs.</p>
 
+      {loadError && <div role="alert" style={{ color: "var(--color-danger, #b91c1c)" }}><p>{loadError}</p><button type="button" onClick={() => void loadVehicles()} disabled={loading}>{loading ? "Retrying…" : "Retry loading vehicles"}</button></div>}
       {error && <p role="alert" style={{ color: "var(--color-danger, #b91c1c)" }}>{error}</p>}
       {message && <p role="status">{message}</p>}
 
-      <form onSubmit={submit} style={{ border: "1px solid var(--color-border)", borderRadius: 12, padding: 20 }}>
+      <form aria-labelledby="vehicle-registration-heading" onSubmit={submit} style={{ border: "1px solid var(--color-border)", borderRadius: 12, padding: 20 }}>
+        <h2 id="vehicle-registration-heading" style={{ marginTop: 0 }}>Register a vehicle</h2>
         <label style={{ display: "block", fontSize: 14 }}>
           Vehicle type
           <select
@@ -193,15 +198,15 @@ export default function VehiclesPage() {
         <small>Relevant authority: {getJurisdictionAuthority(market.country, form.registrationRegion, market.currency)}.</small>
         {field("Insurance valid until", "insuranceValidUntil", "date", !expiryDatesOptional)}
 
-        <button type="submit" disabled={saving} style={{ padding: "11px 18px", minHeight: 42, borderRadius: 8, fontWeight: 650, cursor: saving ? "wait" : "pointer" }}>
+        <button type="submit" disabled={saving} style={{ padding: "11px 18px", minHeight: 44, borderRadius: 8, fontWeight: 650, cursor: saving ? "wait" : "pointer" }}>
           {saving ? "Submitting…" : "Register vehicle"}
         </button>
       </form>
 
       <h2 style={{ marginTop: 32 }}>Your vehicles</h2>
-      {loading && <p>Loading vehicles…</p>}
-      {!loading && vehicles.length === 0 && <p>No vehicles registered yet.</p>}
-      <div style={{ display: "grid", gap: 12 }}>
+      {loading && <p role="status" aria-live="polite">Loading vehicles…</p>}
+      {!loading && !loadError && vehicles.length === 0 && <p role="status">No vehicles registered yet.</p>}
+      <div role="region" aria-label="Registered vehicles" style={{ display: "grid", gap: 12 }}>
         {vehicles.map((vehicle) => (
           <section key={vehicle.id} style={{ border: "1px solid var(--color-border)", borderRadius: 10, padding: 16 }}>
             <strong>{vehicleTypeLabel(vehicle.vehicleType, market.country)} — {vehicle.regPlate}</strong>{vehicle.registrationRegion ? <span> · {getJurisdictionOptions(market.country).find((region) => region.code === vehicle.registrationRegion)?.label ?? vehicle.registrationRegion}</span> : null}

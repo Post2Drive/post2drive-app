@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { symbolFor } from "@/lib/currency";
@@ -116,6 +116,15 @@ export default function NewJobPage() {
   const [loading, setLoading] =
     useState(false);
   const [step, setStep] = useState(0);
+  const stepHeadingRef = useRef<HTMLHeadingElement>(null);
+  const previousStepRef = useRef(step);
+
+  useEffect(() => {
+    if (previousStepRef.current !== step) {
+      previousStepRef.current = step;
+      stepHeadingRef.current?.focus();
+    }
+  }, [step]);
 
   function update(
     field: keyof typeof form,
@@ -364,7 +373,7 @@ export default function NewJobPage() {
 
       <form className="job-create-form" onSubmit={handleSubmit} noValidate style={{ display: "flex", flexDirection: "column", gap: 18, border: "1px solid var(--color-border)", borderRadius: 16, padding: 20, background: "var(--color-surface)" }}>
         {step === 0 && <section style={{ display: "grid", gap: 16 }}>
-          <div><h2 style={{ margin: "0 0 5px", fontSize: 20 }}>Where and when?</h2><p style={{ margin: 0, color: "var(--color-muted)", fontSize: 14 }}>Use an address or place name. Map pins are optional, but help drivers find the exact entrance.</p></div>
+          <div><h2 ref={stepHeadingRef} tabIndex={-1} style={{ margin: "0 0 5px", fontSize: 20 }}>Where and when?</h2><p style={{ margin: 0, color: "var(--color-muted)", fontSize: 14 }}>Use an address or place name. Map pins are optional, but help drivers find the exact entrance.</p></div>
           <label>Pickup location *<input required maxLength={300} value={form.pickup} onChange={(e) => update("pickup", e.target.value)} placeholder={country === "IN" ? "e.g. Gachibowli, Hyderabad" : "e.g. pickup address or business park"} /></label>
           <label>Pickup map pin (optional)<input value={form.pickupPin} onChange={(e) => update("pickupPin", e.target.value)} placeholder="Latitude,longitude or Google Maps link" /><small>Paste a Google Maps URL or latitude,longitude coordinates.</small></label>
           <label>Drop-off location *<input required maxLength={300} value={form.dropoff} onChange={(e) => update("dropoff", e.target.value)} placeholder={country === "IN" ? "e.g. Hitech City, Hyderabad" : "e.g. delivery address or city centre"} /></label>
@@ -393,7 +402,7 @@ export default function NewJobPage() {
         </section>}
 
         {step === 1 && <section style={{ display: "grid", gap: 16 }}>
-          <div><h2 style={{ margin: "0 0 5px", fontSize: 20 }}>What needs moving?</h2><p style={{ margin: 0, color: "var(--color-muted)", fontSize: 14 }}>Choose the vehicle capacity and explain the price clearly.</p></div>
+          <div><h2 ref={stepHeadingRef} tabIndex={-1} style={{ margin: "0 0 5px", fontSize: 20 }}>What needs moving?</h2><p style={{ margin: 0, color: "var(--color-muted)", fontSize: 14 }}>Choose the vehicle capacity and explain the price clearly.</p></div>
           <label>Required vehicle type *<select value={form.vehicleType} onChange={(e) => update("vehicleType", e.target.value)}>{VEHICLE_TYPES.map((vehicle) => <option key={vehicle} value={vehicle}>{vehicleTypeLabel(vehicle, country)}</option>)}</select></label>
           <div className="signup-fields">
             <label>Estimated weight ({marketProfile?.weightUnit ?? "kg"})<input type="number" min="0" max="1000000" step="0.01" value={form.weightKg} onChange={(e) => update("weightKg", e.target.value)} placeholder="Optional" /></label>
@@ -405,7 +414,7 @@ export default function NewJobPage() {
         </section>}
 
         {step === 2 && <section style={{ display: "grid", gap: 16 }}>
-          <div><h2 style={{ margin: "0 0 5px", fontSize: 20 }}>{country === "IN" ? "Contacts, notes & review" : "Site contacts & instructions"}</h2><p style={{ margin: 0, color: "var(--color-muted)", fontSize: 14 }}>Add only the contact details needed to coordinate this delivery. These are separate from your account contact.</p></div>
+          <div><h2 ref={stepHeadingRef} tabIndex={-1} style={{ margin: "0 0 5px", fontSize: 20 }}>{country === "IN" ? "Contacts, notes & review" : "Site contacts & instructions"}</h2><p style={{ margin: 0, color: "var(--color-muted)", fontSize: 14 }}>Add only the contact details needed to coordinate this delivery. These are separate from your account contact.</p></div>
           <fieldset style={{ border: "1px solid var(--color-border)", borderRadius: 12, padding: 14, display: "grid", gap: 12 }}>
             <legend style={{ padding: "0 6px", fontWeight: 750 }}>Pickup contact (optional)</legend>
             <label style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 10 }}><input type="checkbox" checked={form.pickupSameAsAccount} onChange={(e) => useAccountForPickup(e.target.checked)} /> Use my account contact</label>
@@ -424,9 +433,9 @@ export default function NewJobPage() {
         </section>}
 
         {step === 3 && country !== "IN" && <section style={{ display: "grid", gap: 16 }}>
-          <div><h2 style={{ margin: "0 0 5px", fontSize: 20 }}>Review before publishing</h2><p style={{ margin: 0, color: "var(--color-muted)", fontSize: 14 }}>Confirm the details before this job becomes visible to eligible users in your market.</p></div>
-          <ReviewSummary form={form} currency={currency} date={form.jobDate} timeZoneLabel={selectedTimeZoneLabel} country={country} />
-          <div style={{ borderRadius: 10, padding: 12, background: "var(--color-primary-soft)", fontSize: 13 }}>Your listing is confined to {marketProfile?.marketplaceLabel ?? "your selected market"} ({currency}). Cross-market matching is disabled.</div>
+          <div><h2 ref={stepHeadingRef} tabIndex={-1} style={{ margin: "0 0 5px", fontSize: 20 }}>Review before publishing</h2><p style={{ margin: 0, color: "var(--color-muted)", fontSize: 14 }}>Confirm the details before this job becomes visible to eligible UK users.</p></div>
+          <ReviewSummary form={form} currency={currency} symbol={symbol} date={form.jobDate} timeZoneLabel={timeZoneLabel} />
+          <div style={{ borderRadius: 10, padding: 12, background: "var(--color-primary-soft)", fontSize: 13 }}>Your listing is confined to {country === "IN" ? "India (INR)" : "the United Kingdom (GBP)"}. Cross-border matching is disabled.</div>
         </section>}
 
         {error && <p role="alert" style={{ margin: 0, color: "var(--color-danger, #b42318)", fontWeight: 650 }}>{error}</p>}
