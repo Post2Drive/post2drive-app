@@ -36,15 +36,15 @@ assert.match(css, /main input,\s*main select,\s*main textarea\s*\{\s*min-height:
 assert.match(css, /main button \{\s*min-height: 44px;/, "Buttons must meet the 44px minimum target height");
 
 
-assert.match(css, /--ease-out:\\s*cubic-bezier\\(0\\.23, 1, 0\\.32, 1\\)/,
+assert.match(css, /--ease-out:\s*cubic-bezier\(0\.23, 1, 0\.32, 1\)/,
   "UI polish must use the reviewed Emil-style responsive ease-out curve");
-assert.match(css, /@media \\(hover: hover\\) and \\(pointer: fine\\)[\\s\\S]*?transform: scale\\(0\\.97\\)/,
+assert.match(css, /@media \(hover: hover\) and \(pointer: fine\)[\s\S]*?transform: scale\(0\.97\)/,
   "pointer press feedback must be subtle and gated to fine-pointer devices");
-assert.match(css, /:not\\(:focus-visible\\):active/,
+assert.match(css, /:not\(:focus-visible\):active/,
   "press motion must not interfere with keyboard-visible focus");
-assert.match(css, /@media \\(prefers-reduced-motion: reduce\\)[\\s\\S]*?transform: none !important/,
+assert.match(css, /@media \(prefers-reduced-motion: reduce\)[\s\S]*?transform: none !important/,
   "reduced-motion preferences must suppress transform feedback");
-assert.doesNotMatch(css, /transition\\s*:\\s*all\\b/i,
+assert.doesNotMatch(css, /transition\s*:\s*all\b/i,
   "UI transitions must name the properties they animate rather than using transition: all");
 
 const layout = read("app/layout.tsx");
