@@ -9,7 +9,8 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: false
+  # Keep the newest revision moving; older runs are superseded, not test categories removed.
+  cancel-in-progress: true
 
 jobs:
   typecheck:
