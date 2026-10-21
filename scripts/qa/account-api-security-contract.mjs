@@ -8,9 +8,9 @@ const getHandler = accountRoute.split("async function PATCHHandler")[0];
 const patchHandler = accountRoute.split("async function PATCHHandler")[1]?.split("async function DELETEHandler")[0] || "";
 const nextConfig = read("next.config.js");
 const passwordResetSource = read("lib/passwordReset.ts");
-assert.ok(passwordResetSource.includes(String.raw`using this link:\\n${resetUrl}\\n\\nThis link expires in one hour`),
+assert.ok(passwordResetSource.includes(String.raw`using this link:\\n\${resetUrl}\\n\\nThis link expires in one hour`),
   "password-reset plain-text email must contain newline escape sequences around the reset URL");
-assert.ok(!passwordResetSource.includes(String.raw`using this link:\\\\n${resetUrl}`),
+assert.ok(!passwordResetSource.includes(String.raw`using this link:\\\\n\${resetUrl}`),
   "password-reset plain-text email must not emit double-escaped literal backslash-n sequences");
 
 
