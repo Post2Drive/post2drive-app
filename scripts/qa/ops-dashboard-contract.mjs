@@ -78,8 +78,12 @@ for (const [name, pattern] of [
   ["active QA issues show latest recorded outcome", /row_number\(\) OVER/],
   ["a check clears only when all events in its latest run pass", /bool_and\(e\.passed\) AS passed/],
   ["active QA identity includes market and route expectation", /e\.scenario, e\.action, e\.method, e\.path, e\.expected_statuses/],
+  ["changed expectations do not fork active issue identity", /PARTITION BY country, scenario, action, method, path\s+ORDER BY/],
   ["only latest failing outcome remains active", /WHERE issue_rank=1 AND passed=false/],
+  ["attention queue labels active QA issues without a fabricated zero count", /active QA issue/],
   ["passing checks clear active issues without deleting history", /A later pass clears the active issue; skipped or absent checks do not/],
+  ["failed QA issue query is not rendered as zero active issues", /qaFailuresAvailable===false\?'<div class="notice">Active QA issue status unavailable/],
+  ["read-only boundary logs effective privilege evidence", /sequence privileges=\$\{identity\.sequence_privileges\}; role memberships=\$\{identity\.role_memberships\}/],
   ["active QA issue table is rendered", /table\(d\.qaFailures/],
   ["vehicle compliance metrics", /"motExpired"/],
   ["source provenance and limitations", /External logistics industry trends/],
@@ -128,4 +132,6 @@ assert.match(bridge, /campaign\.status !== "draft"/);
 assert.match(bridge, /WITH queue_lock AS MATERIALIZED/);
 assert.match(migration, /CREATE TABLE "AdminAuditEvent"/);
 assert.match(migration, /AdminAuditEvent_createdAt_idx/);
+assert.ok(server.includes('String(x.action||"check")+" · active QA issue"'), "attention queue uses an actual QA issue label");
+assert.ok(!server.includes('String(x.count||0)+" failed check(s)"'), "attention queue must not display a fabricated zero failed-check count");
 console.log("Ops dashboard contract checks passed.");
