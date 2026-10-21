@@ -118,7 +118,6 @@ async function PATCHHandler(req: Request) {
 
   // Stage all mutations in memory first. The transaction below acquires the
   // account row as the lifecycle gate before changing either account or user data.
-  const userData: { name?: string; phone?: string; passwordHash?: string; passwordChangedAt?: Date } = {};
   const result = await prisma.$transaction(async (tx) => {
     // Serialize account mutations with deletion. The lock is held through every
     // write below, so DELETE cannot anonymize the account between this check
@@ -166,7 +165,9 @@ async function PATCHHandler(req: Request) {
         return { status: 400, error: "New password must be at least 8 characters." } as const;
       }
       const passwordHash = await bcrypt.hash(newPassword, 10);
-      await tx.user.update({ where: { id: userId }, data: { passwordHash, sessionVersion: { increment: 1 } } });
+      await tx.user.update({ where: { id: userId }, data: { passwordHash, passwordChangedAt: new Date(), sessionVersion: { increment: 1 } } });
+      // A direct password change invalidates every outstanding email reset link.
+      await tx.passwordResetToken.deleteMany({ where: { userId } });
     }
 
     if (name !== undefined || phone !== undefined) {
@@ -201,23 +202,6 @@ async function PATCHHandler(req: Request) {
 
   if (result.status !== 200) {
     return NextResponse.json({ error: result.error, ...("code" in result ? { code: result.code } : {}) }, { status: result.status });
-    if (lifecycleGate.count !== 1) return false;
-
-    if (Object.keys(userData).length > 0) {
-      await tx.user.update({ where: { id: userId }, data: userData });
-      if (userData.passwordHash) {
-        // A direct password change invalidates every outstanding email reset link.
-        await tx.passwordResetToken.deleteMany({ where: { userId } });
-      }
-    }
-    if (Object.keys(accountData).length > 0) {
-      await tx.account.update({ where: { id: accountId }, data: accountData });
-    }
-    return true;
-  });
-
-  if (!updated) {
-    return NextResponse.json({ error: "Account not found." }, { status: 404 });
   }
   return NextResponse.json({ success: result.success, ukPromotionEligible: result.ukPromotionEligible });
 }
