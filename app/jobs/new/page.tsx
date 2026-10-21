@@ -148,7 +148,7 @@ export default function NewJobPage() {
       const price = Number(form.price);
       if (!form.price.trim() || !Number.isFinite(price) || price <= 0) return "Enter a price greater than zero.";
       if (form.priceMode !== "fixed" && form.priceMode !== "bid") return "Choose fixed pricing or open bidding.";
-      if (country === "IN" && form.priceMode !== "fixed") return "Bidding is not available in India. Use fixed quote pricing.";
+      if (country === "IN" && form.priceMode !== "fixed") return "Open bidding is not available in this market. Use fixed quote pricing.";
       if (form.weightKg.trim() && (!Number.isFinite(Number(form.weightKg)) || Number(form.weightKg) < 0)) return `Enter a valid weight in ${marketProfile?.weightUnit ?? "kg"}.`;
     }
     if (step === 2) {
@@ -435,9 +435,9 @@ export default function NewJobPage() {
         </section>}
 
         {step === 3 && country !== "IN" && <section style={{ display: "grid", gap: 16 }}>
-          <div><h2 ref={stepHeadingRef} tabIndex={-1} style={{ margin: "0 0 5px", fontSize: 20 }}>Review before publishing</h2><p style={{ margin: 0, color: "var(--color-muted)", fontSize: 14 }}>Confirm the details before this job becomes visible to eligible UK users.</p></div>
+          <div><h2 ref={stepHeadingRef} tabIndex={-1} style={{ margin: "0 0 5px", fontSize: 20 }}>Review before publishing</h2><p style={{ margin: 0, color: "var(--color-muted)", fontSize: 14 }}>Confirm the details before this job becomes visible to eligible users in {marketProfile?.marketplaceLabel ?? "your market"}.</p></div>
           <ReviewSummary form={form} currency={currency} symbol={symbol} date={form.jobDate} timeZoneLabel={timeZoneLabel} />
-          <div style={{ borderRadius: 10, padding: 12, background: "var(--color-primary-soft)", fontSize: 13 }}>Your listing is confined to {country === "IN" ? "India (INR)" : "the United Kingdom (GBP)"}. Cross-border matching is disabled.</div>
+          <div style={{ borderRadius: 10, padding: 12, background: "var(--color-primary-soft)", fontSize: 13 }}>Your listing is confined to {marketProfile?.marketplaceLabel ?? "your market"} ({currency}). Cross-border matching is disabled.</div>
         </section>}
 
         {error && <p role="alert" style={{ margin: 0, color: "var(--color-danger, #b42318)", fontWeight: 650 }}>{error}</p>}
