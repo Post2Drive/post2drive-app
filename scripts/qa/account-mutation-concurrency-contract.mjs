@@ -26,7 +26,7 @@ assert.match(patchSource, lockPattern, "PATCH must lock only a non-deleted accou
 assert.match(deleteSource, lockPattern, "DELETE must take the same non-deleted account row lock");
 assert.ok(deleteSource.indexOf("FOR UPDATE") < deleteSource.indexOf("bcrypt.compare"), "DELETE must verify the password after acquiring the account lock");
 assert.ok(patchSource.indexOf("FOR UPDATE") < patchSource.indexOf("tx.user.update"), "PATCH must lock the account before changing user data");
-assert.match(schemaSource, /sessionVersion Int @default\(0\)/, "users must have a session version");
+assert.match(schemaSource, /sessionVersion\s+Int\s+@default\(0\)/, "users must have a session version");
 assert.match(authSource, /currentUser\.sessionVersion !== \(token as any\)\.sessionVersion/, "JWT validation must revoke mismatched session versions");
 assert.match(authSource, /currentUser\.account\.deletionRequestedAt/, "JWT validation must revoke deleted accounts");
 assert.match(authSource, /if \(\(token as any\)\.sessionRevoked\) return null as any/, "revoked JWTs must produce no server session");
