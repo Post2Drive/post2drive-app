@@ -174,15 +174,15 @@ async function PATCHHandler(req: Request) {
       await tx.user.update({
         where: { id: userId },
         data: {
-          ...(typeof name === "string" && { name }),
-          ...(typeof phone === "string" && { phone }),
+          ...(typeof name === "string" && { name: name.trim() }),
+          ...(typeof phone === "string" && { phone: phone.trim() }),
         },
       });
     }
 
     const accountData: Record<string, unknown> = {};
-    if (typeof companyName === "string" && companyName) {
-      accountData.companyName = companyName;
+    if (typeof companyName === "string") {
+      accountData.companyName = companyName.trim();
     }
     if (typeof marketingConsent === "boolean") {
       accountData.marketingConsent = marketingConsent;
