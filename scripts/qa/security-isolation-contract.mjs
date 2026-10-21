@@ -49,7 +49,7 @@ assert.match(accountRoute, /sessionVersion: \{ increment: 1 \}/,
 assert.match(source("app/api/auth/reset-password/route.ts"), /sessionVersion: \{ increment: 1 \}/,
   "password resets must increment sessionVersion");
 
-assert.match(accountRoute, /let body: unknown;[\s\S]*?body = await req\.json\(\);[\s\S]*?if \(!body \|\| typeof body !== "object" \|\| Array\.isArray\(body\)\)[\s\S]*?const parsed = body as \{ confirm\?: unknown; currentPassword\?: unknown \}/,
+assert.match(accountRoute, /let body: unknown;[\s\S]*?body = await req\.json\(\);[\s\S]*?if \(!body \|\| typeof body !== "object" \|\| Array\.isArray\(body\)\)[\s\S]*?const parsed = body as \{ currentPassword\?: unknown; confirm\?: unknown \}/,
   "account DELETE must reject null, arrays, and primitive JSON bodies with a controlled 400 response");
 assert.match(source("app/api/account/route.ts"), /boundedString\(name, 120\)[\s\S]*?marketingConsent !== undefined && typeof marketingConsent !== "boolean"/,
   "account PATCH must validate field types and bounds before persistence");
