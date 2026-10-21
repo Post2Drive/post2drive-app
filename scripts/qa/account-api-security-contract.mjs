@@ -7,6 +7,8 @@ const accountRoute = read("app/api/account/route.ts");
 const getHandler = accountRoute.split("async function PATCHHandler")[0];
 const patchHandler = accountRoute.split("async function PATCHHandler")[1]?.split("async function DELETEHandler")[0] || "";
 const nextConfig = read("next.config.js");
+const passwordResetSource = read("lib/passwordReset.ts");
+
 
 assert.ok(patchHandler, "Account PATCH handler must exist");
 assert.match(getHandler, /where:\s*\{\s*id:\s*accountId,\s*deletionRequestedAt:\s*null\s*\}/,
@@ -37,5 +39,13 @@ assert.match(nextConfig, /Content-Security-Policy-Report-Only/,
   "CSP must be observable in report-only mode before enforcement");
 assert.doesNotMatch(nextConfig, /key:\s*"Content-Security-Policy"/,
   "CSP must not be enforced before compatibility evidence is reviewed");
+
+assert.match(passwordResetSource, /createHmac\("sha256",\s*secret\)/,
+  "password-reset tokens must use a keyed digest rather than a fast unkeyed password hash");
+assert.match(passwordResetSource, /if \(!secret\) throw new Error\("Password reset token hashing is not configured\."\)/,
+  "password-reset token hashing must fail closed when the application secret is absent");
+assert.doesNotMatch(passwordResetSource, /createHash\("sha256"\)/,
+  "password-reset token digests must not revert to an unkeyed hash");
+
 
 console.log("Account API security contracts passed: minimized GET response, current-user scoping, deletion guard, bounded PATCH input, lifecycle lock, blank-field clearing and report-only CSP.");
