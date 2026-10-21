@@ -320,7 +320,7 @@ main table tr:hover td {
 
 /* Keyboard users can bypass repeated navigation and move directly to page content. */
 .skip-link {
-  position: absolute;
+  position: fixed;
   top: 8px;
   left: 8px;
   z-index: 1000;
