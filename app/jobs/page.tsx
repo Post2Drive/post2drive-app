@@ -670,7 +670,7 @@ export default function JobsPage() {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, minWidth: 0, flex: "1 1 260px" }}>
-        <h1>{accountCountry === "IN" ? "India delivery marketplace" : "UK delivery marketplace"}</h1>
+        <h1 style={{ margin: 0, minWidth: 0, overflowWrap: "anywhere" }}>{countryName} delivery marketplace</h1>
         {accountCountry === "IN" && <Link className="button-link button-link-secondary" href="/requirements">My Requirements</Link>}
       </div>
 
