@@ -9,7 +9,7 @@
   --color-background: #F4F7FA;
   --color-surface: #FFFFFF;
   --color-text: #172B4D;
-  --color-muted: #5E7187;
+  --color-muted: #4D6074;
   --color-border: #D9E2EC;
 
   --radius-sm: 6px;
@@ -334,7 +334,7 @@ main table tr:hover td {
   text-decoration: none;
 }
 
-.skip-link:focus-visible {
+.skip-link:focus {
   transform: translateY(0);
   outline: 3px solid var(--color-primary-action);
   outline-offset: 3px;
@@ -489,7 +489,7 @@ main table tr:hover td {
 .signup-step-header { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
 .signup-step-header span { color: var(--color-muted); font-size: 11px; font-weight: 800; letter-spacing: .09em; }
 .signup-step-header h2 { margin: 5px 0 0; font-size: 23px; }
-.signup-step-market { background: var(--color-primary-soft); border-radius: 999px; padding: 8px 10px; white-space: nowrap; }
+.signup-step-market { color: var(--color-primary); background: #E7F0F8; border-radius: 999px; padding: 8px 10px; white-space: nowrap; }
 .signup-progress { height: 5px; overflow: hidden; background: var(--color-border); border-radius: 999px; margin-bottom: 23px; }
 .signup-progress > span { display: block; height: 100%; background: var(--color-positive); transition: width .2s ease; }
 .signup-fields { display: grid; gap: 17px; }
