@@ -46,6 +46,8 @@ assert.doesNotMatch(nextConfig, /key:\s*"Content-Security-Policy"/,
 
 assert.match(passwordResetSource, /createHmac\("sha256",\s*secret\)\.update\(token\)\.digest\("hex"\)/,
   "high-entropy password-reset tokens must use a keyed HMAC digest");
+assert.match(passwordResetSource, /createdAt:\s*\{\s*gt:\s*cooldownSince\s*\}/,
+  "password-reset cooldown must cover newly created tokens while delivery is in flight");
 assert.match(passwordResetSource, /randomBytes\(32\)/,
   "password-reset tokens must retain at least 256 bits of cryptographic randomness");
 assert.match(passwordResetSource, /if \(!secret\) throw new Error\("Password reset token hashing is not configured\."\)/,
