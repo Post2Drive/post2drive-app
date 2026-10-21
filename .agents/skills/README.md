@@ -10,6 +10,7 @@ These skills live under `.agents/skills/` so they stay out of normal product UI 
 
 - `nextjs-review`, `react-review` — [yldgio/codereview-skills](https://github.com/yldgio/codereview-skills)
 - `debugging`, `code-review`, `security-analysis`, `test-driven-development`, `integration-testing`, `browser-testing`, `root-cause-analysis`, `accessibility-review` — [arjunprabhulal/agent-skills](https://github.com/arjunprabhulal/agent-skills)
+- `emil-design-eng` — [emilkowalski/skills](https://github.com/emilkowalski/skills), pinned in this repository as a reviewed skill snapshot
 
 Each imported upstream skill includes its source URL at the bottom. These are snapshots, not auto-updating vendor dependencies; review upstream changes and security before refreshing them.
 
@@ -19,4 +20,4 @@ This project uses the standard `AGENTS.md` plus `.agents/skills/<skill-name>/SKI
 
 ## Operating principle
 
-Skills are automatically selected by task relevance, not blindly run all at once. The workflow entry point is always applicable to substantive coding work; specialist skills are loaded for matching tasks. The Apple Design Skill remains mandatory for UI/UX work.
+Skills are automatically selected by task relevance, not blindly run all at once. The workflow entry point is always applicable to substantive coding work; specialist skills are loaded for matching tasks. The Emil Design Engineering skill is mandatory for UI/UX work; the accessibility-review skill remains a separate required baseline.

@@ -2,18 +2,11 @@
 
 ## Product-wide design standard
 
-For every UI/UX task, design review, visual change, or front-end refactor in Post2Drive, read and apply the Apple Design Skill at `.agents/skills/apple-design/SKILL.md`. After checkout, initialize submodules with `git submodule update --init --recursive` if the skill directory is absent. The skill is a design standard for transferable principles; Post2Drive is a Next.js web application with an Android/Capacitor target, so do not impose native-iOS-only conventions where they do not fit the platform.
+For every UI/UX task, design review, visual change, or front-end refactor in Post2Drive, read and apply `.agents/skills/emil-design-eng/SKILL.md`. Use Emil Kowalski's design-engineering approach: deliberate restraint, frequency-based animation decisions, explicit timing/easing, interruptible transitions, origin-aware anchored surfaces, responsive pointer behavior, and careful interaction details. Do not add motion just for decoration or copy a platform's visual identity as a substitute for product-specific design.
 
-Before a review or substantial UI change, read the skill's required references:
-- `references/hig/accessibility.md`
-- `references/hig/layout.md`
-- `references/hig/typography.md`
-- `references/hig/color.md`
-- `references/cross-platform.md`
+Keep the shared accessibility and platform baseline: semantic landmarks, keyboard access, visible focus, contrast, target sizing, text scaling, useful loading/empty/error states, and reduced-motion support. These remain mandatory regardless of visual direction. Preserve Post2Drive's established colour semantics and product identity unless a separate approved design change explicitly changes them.
 
-Then load 3–6 additional references relevant to the screens and controls being changed. Cite the reference file and heading for guideline-based recommendations.
-
-Use the principles Purpose, Agency, Responsibility, Familiarity, Flexibility, Simplicity, Craft, and Delight. Prioritize accessibility failures as Critical; evaluate hierarchy, responsive behavior, touch targets, keyboard access, focus visibility, contrast, text scaling, empty/loading/error states, and reduced-motion behavior.
+Before a substantial UI change, read the relevant sections of the Emil skill, then load `.agents/skills/accessibility-review/SKILL.md` and the applicable component/browser-testing skill. Cite the specific skill section when explaining design decisions. Review the rendered result at mobile and desktop sizes; source-only review is not proof of conformance.
 
 ## Engineering and release safety
 
@@ -36,7 +29,7 @@ Routing:
 - New behavior/bug fixes: `.agents/skills/test-driven-development/SKILL.md`
 - DB/API integration: `.agents/skills/integration-testing/SKILL.md`
 - Browser E2E/responsive UI: `.agents/skills/browser-testing/SKILL.md`
-- Accessibility: `.agents/skills/accessibility-review/SKILL.md` plus the Apple Design Skill.
+- Accessibility: `.agents/skills/accessibility-review/SKILL.md` plus `.agents/skills/emil-design-eng/SKILL.md`.
 - Incident postmortems: `.agents/skills/root-cause-analysis/SKILL.md`
 
 Do not claim tests passed without evidence. Never merge, deploy, change the default branch, or delete/force-update branches without explicit user approval.

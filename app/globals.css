@@ -29,6 +29,11 @@
   --radius-lg: 14px;
 
   --shadow-card: 0 1px 3px rgba(16, 42, 67, 0.08);
+
+  /* Emil Kowalski design-engineering motion tokens: purposeful, fast, interruptible. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 * {
@@ -1966,7 +1971,7 @@ main table tr:hover td {
 @media (max-width: 560px) { .signup-review-grid { grid-template-columns: 1fr; } .signup-step-header h2 { font-size: 21px; } }
 
 
-/* Apple Design Skill: compact, accessible navigation across mobile and desktop. */
+/* Compact navigation: retain accessible structure; keep frequent interactions crisp. */
 .main-nav-header {
   position: sticky;
   top: 0;
@@ -2153,7 +2158,7 @@ main table tr:hover td {
   background: var(--color-surface);
   box-shadow: var(--shadow-card);
   color: var(--color-text);
-  transition: border-color .15s ease, background-color .15s ease;
+  transition: border-color 160ms var(--ease-out), background-color 160ms var(--ease-out);
 }
 
 .dashboard-stat-link {
@@ -2177,5 +2182,42 @@ main table tr:hover td {
 @media (prefers-reduced-motion: reduce) {
   .dashboard-stat-card {
     transition: none;
+  }
+}
+
+
+/* Emil design-engineering interaction polish.
+   Press feedback is limited to fine pointers and excluded from keyboard-visible focus,
+   so frequent keyboard actions stay immediate and focus remains visually stable. */
+@media (hover: hover) and (pointer: fine) {
+  main button:not(:disabled):not(:focus-visible),
+  .auth-page button[type="submit"]:not(:focus-visible),
+  .button-link:not(:focus-visible),
+  .main-nav-link:not(:focus-visible),
+  .mobile-nav-link:not(:focus-visible),
+  .mobile-nav-more:not(:focus-visible) {
+    transition-property: transform, background-color, border-color, color, box-shadow;
+    transition-duration: 160ms;
+    transition-timing-function: var(--ease-out);
+  }
+
+  main button:not(:disabled):not(:focus-visible):active,
+  .auth-page button[type="submit"]:not(:focus-visible):active,
+  .button-link:not(:focus-visible):active,
+  .main-nav-link:not(:focus-visible):active,
+  .mobile-nav-link:not(:focus-visible):active,
+  .mobile-nav-more:not(:focus-visible):active {
+    transform: scale(0.97);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  main button,
+  .auth-page button[type="submit"],
+  .button-link,
+  .main-nav-link,
+  .mobile-nav-link,
+  .mobile-nav-more {
+    transform: none !important;
   }
 }

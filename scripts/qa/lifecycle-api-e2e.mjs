@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { setTimeout as delay } from "node:timers/promises";
-import { createHash } from "node:crypto";
+import { scryptSync } from "node:crypto";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
@@ -257,7 +257,7 @@ try {
   // Seed a one-hour reset token in the isolated database to exercise the real
   // reset HTTP handler without depending on a live email provider.
   const resetToken = "ci-reset-token-" + suffix;
-  const resetTokenHash = createHash("sha256").update(resetToken).digest("hex");
+  const resetTokenHash = scryptSync(resetToken, process.env.NEXTAUTH_SECRET || "ci-only-secret", 32, { N: 1 << 14, r: 8, p: 1 }).toString("hex");
   await prisma.passwordResetToken.create({ data: {
     userId: outsiderUser.id,
     tokenHash: resetTokenHash,
