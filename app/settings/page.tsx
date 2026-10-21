@@ -45,23 +45,10 @@ export default function SettingsPage() {
       setForm({
         name: user?.name || "",
         phone: user?.phone || "",
-        companyName: data.account.companyName,
+        companyName: data.account.companyName || "",
         country: data.account.country,
         currency: data.account.currency,
         marketingConsent: data.account.marketingConsent,
-        setAccount(data.account);
-        const user = data.account.users?.[0];
-        setForm({
-          name: user?.name || "",
-          phone: user?.phone || "",
-          companyName: data.account.companyName || "",
-          country: data.account.country,
-          currency: data.account.currency,
-          marketingConsent: data.account.marketingConsent,
-        });
-      })
-      .catch((error) => {
-        if (active) setLoadError(error instanceof Error ? error.message : "Could not load account settings.");
       });
     } catch (error) {
       setLoadError(error instanceof Error ? error.message : "Could not load account settings. Try again.");
