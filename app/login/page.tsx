@@ -93,7 +93,6 @@ export default function LoginPage() {
         </button>
       </form>
       <p style={{ marginTop: 18 }}><a href="/forgot-password">Forgot password?</a> · <a href="/signup">Create an account</a> · <a href="/admin-access">Admin dashboard</a></p>
-      </div>
       </section>
     </main>
   );
