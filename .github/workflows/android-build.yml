@@ -68,8 +68,28 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot -camera-back none -camera-front none
           disable-animations: true
           script: |
+            set -euo pipefail
             adb wait-for-device
             adb shell settings put global window_animation_scale 0
             adb shell settings put global transition_animation_scale 0
             adb shell settings put global animator_duration_scale 0
-            cd android && ./gradlew --no-daemon connectedDebugAndroidTest
+
+            # Install the assembled debug APK directly. connectedDebugAndroidTest
+            # was failing before any tests ran because the emulator/Gradle device
+            # provider tried to install the APK as a split package.
+            APK="android/app/build/outputs/apk/debug/app-debug.apk"
+            test -s "$APK"
+            adb install -r "$APK"
+            adb logcat -c
+            adb shell am force-stop com.post2drive.app
+            adb shell monkey -p com.post2drive.app 1
+            sleep 20
+
+            # Verify the native Capacitor activity stays present after launch.
+            adb shell dumpsys activity activities | grep -F "com.post2drive.app/.MainActivity"
+            # Fail on explicit WebView network/load errors if Android logged them.
+            if adb logcat -d | grep -E "chromium.*(net::ERR_|Failed to load resource)|Capacitor.*(WebView.*error|Failed to load)" ; then
+              echo "Detected a WebView loading error in the Android emulator."
+              exit 1
+            fi
+            echo "Android APK installed and MainActivity launched on emulator."
