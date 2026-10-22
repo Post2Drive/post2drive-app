@@ -3,7 +3,7 @@ name: Android Capacitor build
 on:
   workflow_dispatch:
   pull_request:
-    branches: [main]
+    branches: [main, "integration/**"]
 
 permissions:
   contents: read
