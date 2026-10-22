@@ -78,7 +78,16 @@ jobs:
             # was failing before any tests ran because the emulator/Gradle device
             # provider tried to install the APK as a split package.
             APK="${GITHUB_WORKSPACE}/android/app/build/outputs/apk/debug/app-debug.apk"
-            test -s "$APK"
+            if [ ! -s "$APK" ]; then
+              echo "Expected APK not found at $APK; searching Gradle outputs."
+              find "${GITHUB_WORKSPACE}/android" -type f -name "*.apk" -print
+              APK="$(find "${GITHUB_WORKSPACE}/android" -type f -path "*/outputs/apk/debug/*.apk" -size +0c -print -quit)"
+            fi
+            if [ -z "${APK:-}" ] || [ ! -s "$APK" ]; then
+              echo "No non-empty debug APK found under android/**/outputs/apk/debug/."
+              exit 1
+            fi
+            echo "Installing APK: $APK"
             adb install -r "$APK"
             adb logcat -c
             adb shell am force-stop com.post2drive.app
