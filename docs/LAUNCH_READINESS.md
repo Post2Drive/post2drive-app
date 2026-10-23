@@ -1,3 +1,5 @@
+> **Audit update — 23 October 2026.** GitHub confirms PR #43 (integration → main) and PR #44 (audit follow-up → integration) are open drafts; PR #12 is closed unmerged. Validate, Security Scan, CodeQL and Android Capacitor build passed for PR #44 head `21a41b45a1b04d0091c7486c680c39ca70fca08b`. These are CI results for that branch only and do not establish deployed staging E2E or launch approval. Railway environment inspection was denied by the connected account, so the 18 October service/deployment/database details below are historical until freshly checked in the dashboard. Preserve all unresolved launch gates; no production change or deployment was made.
+
 # Post2Drive Launch Readiness — Staging Verification
 
 **Review date:** 18 October 2026  

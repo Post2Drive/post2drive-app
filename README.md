@@ -1,3 +1,7 @@
+> **Status audit — 23 October 2026 (GitHub verified; Railway dashboard recheck blocked).** This note supersedes older date-stamped status snapshots below where they conflict. PR #43 (`integration/pr12-pr41-resolved` → `main`) is open as a draft; PR #44 (`audit/follow-up-hardening-2026-10-22` → `integration/pr12-pr41-resolved`) is open as a draft; PR #12 is closed and unmerged. On PR #44 head `21a41b45a1b04d0091c7486c680c39ca70fca08b`, Validate, Security Scan, CodeQL and Android Capacitor build completed successfully on 23 Oct. This is branch CI evidence only—not proof that integration is merged, staging runs this commit, deployed E2E passed, or the app is launch-ready.
+>
+> **Railway limitation:** connected Railway tools returned a permissions error when reading the staging environment. Source branch, deployed commit, current health, pending changes and dashboard database target could not be re-verified. Railway facts below remain the last recorded 18 Oct snapshot unless explicitly labelled otherwise. Do not promote or change production based on this note.
+
 # Post2Drive — UK, India & European Freight and Courier Marketplace
 
 Post2Drive is a two-sided freight and courier marketplace in active development. It is designed for people and businesses that post freight jobs and drivers or transport operators who discover, bid on, and fulfil those jobs.

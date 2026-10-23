@@ -1,3 +1,5 @@
+> **Audit update — 23 October 2026: not freshly verified.** The last recorded Railway inventory below was checked on 18 October. During the current audit, connected Railway tools returned a permissions error when reading this environment, so the actual source branch, latest deployed commit/status, service health, pending changes and effective database variables could not be confirmed. GitHub has newer draft integration PR #43 and draft audit PR #44; neither is merged to `main`. Do not infer that Railway runs either branch. Before relying on this runbook for an operational change, re-check each service, deployment and database target in Railway and record the new timestamp and commit. Do not alter production or delete/repoint databases as part of this documentation update.
+
 # Railway staging runbook
 
 **Last checked:** 18 October 2026  
