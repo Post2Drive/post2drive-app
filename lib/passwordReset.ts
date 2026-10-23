@@ -47,7 +47,16 @@ export async function createPasswordResetToken(userId: string, accountId: string
     if (gate.count !== 1) return null;
 
     const recentlySent = await tx.passwordResetToken.findFirst({
-      where: { userId, lastSentAt: { gt: cooldownSince } },
+      // Include newly created tokens whose email delivery is still in flight.
+      // Otherwise concurrent requests can replace each other's tokens before
+      // lastSentAt is recorded, causing the first delivered link to be invalid.
+      where: {
+        userId,
+        OR: [
+          { lastSentAt: { gt: cooldownSince } },
+          { createdAt: { gt: cooldownSince } },
+        ],
+      },
       select: { id: true },
     });
     if (recentlySent) return null;
@@ -84,7 +93,7 @@ export async function sendPasswordResetEmail(email: string, name: string, token:
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       from, to: [email], subject: "Reset your Post2Drive password", html,
-      text: `Hello ${name || "there"},\\n\\nReset your Post2Drive password using this link:\\n${resetUrl}\\n\\nThis link expires in one hour and can only be used once. If you did not request a reset, ignore this email.`,
+      text: `Hello ${name || "there"},\n\nReset your Post2Drive password using this link:\n${resetUrl}\n\nThis link expires in one hour and can only be used once. If you did not request a reset, ignore this email.`,
     }),
   });
   if (!response.ok) {
