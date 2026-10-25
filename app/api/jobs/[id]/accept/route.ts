@@ -98,13 +98,12 @@ async function POSTHandler(
       select: {
         verificationStatus: true,
         companyVerificationStatus: true,
-        isTester: true,
         country: true,
         currency: true,
       },
     });
 
-  if (account?.verificationStatus !== "verified" && !account?.isTester) {
+  if (account?.verificationStatus !== "verified") {
     return NextResponse.json(
       {
         error:
@@ -114,11 +113,11 @@ async function POSTHandler(
     );
   }
 
-  if (account?.companyVerificationStatus !== "verified" && !account?.isTester) {
+  if (account?.companyVerificationStatus !== "verified") {
     return NextResponse.json({ error: "Company verification is required before accepting jobs." }, { status: 403 });
   }
 
-  if (!account?.isTester) {
+  if (account) {
     const driverMarket = getLocalisationProfile({ country: account.country, currency: account.currency });
     const marketToday = marketDateKey(new Date(), driverMarket?.timeZone ?? "UTC");
     const dateCutoff = new Date(marketToday + "T00:00:00.000Z");
@@ -159,12 +158,12 @@ async function POSTHandler(
 
           const currentDriver = await tx.account.findUnique({
             where: { id: accountId },
-            select: { verificationStatus: true, companyVerificationStatus: true, isTester: true, country: true, currency: true },
+            select: { verificationStatus: true, companyVerificationStatus: true, country: true, currency: true },
           });
-          if (!currentDriver || ((currentDriver.verificationStatus !== "verified" || currentDriver.companyVerificationStatus !== "verified") && !currentDriver.isTester)) {
+          if (!currentDriver || currentDriver.verificationStatus !== "verified" || currentDriver.companyVerificationStatus !== "verified") {
             throw new Error("DRIVER_NOT_VERIFIED");
           }
-          if (!currentDriver.isTester) {
+          if (currentDriver) {
             const driverMarket = getLocalisationProfile({ country: currentDriver.country, currency: currentDriver.currency });
             const marketToday = marketDateKey(new Date(), driverMarket?.timeZone ?? "UTC");
             const dateCutoff = new Date(marketToday + "T00:00:00.000Z");
