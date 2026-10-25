@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { formatMarketCurrency, formatMarketDate, getLocalisationProfile } from "@/lib/localisation";
 import { getTrialCycleStatus } from "@/lib/trialCycles";
 import {
   getPlanDisplay,
@@ -12,7 +13,7 @@ import {
   isUkAccount,
 } from "@/lib/uk";
 import { isWeeklyPricingEligible } from "@/lib/pricing";
-import { symbolFor } from "@/lib/currency";
+
 import SignOutButton from "@/app/sign-out-button";
 import NotificationCenter from "@/components/notification-center";
 
@@ -26,14 +27,7 @@ function StatCard({
   href?: string;
 }) {
   const content = (
-    <div
-      style={{
-        border: "1px solid var(--color-border)",
-        borderRadius: 12,
-        padding: 18,
-        minWidth: 150,
-      }}
-    >
+    <div className="dashboard-stat-card ops-theme-card">
       <div
         style={{
           fontSize: 13,
@@ -60,12 +54,6 @@ function StatCard({
       <Link
         href={href}
         className="dashboard-stat-link"
-        style={{
-          display: "block",
-          textDecoration: "none",
-          color: "inherit",
-          borderRadius: 12,
-        }}
       >
         {content}
       </Link>
@@ -99,6 +87,7 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
+  const marketProfile = getLocalisationProfile({ country: account.country, currency: account.currency });
   const ukEligible =
     isUkAccount(account);
   const weeklyPricingEligible = isWeeklyPricingEligible(account);
@@ -220,7 +209,8 @@ export default async function DashboardPage() {
     acceptedDelivered;
 
   return (
-    <div
+    <main
+      className="ops-theme-dashboard" data-market={account.country} data-currency={account.currency}
       style={{
         maxWidth: 1200,
         margin: "0 auto",
@@ -244,7 +234,7 @@ export default async function DashboardPage() {
             }}
           >
             Welcome,{" "}
-            {session.user?.name}
+            {session.user?.name?.trim() || "there"}
           </h1>
 
           <p
@@ -256,7 +246,7 @@ export default async function DashboardPage() {
             {account.planType === "fleet"
               ? "Fleet plan"
               : "Individual plan"}{" "}
-            · {account.country} ·{" "}
+            · {marketProfile?.marketplaceLabel ?? account.country} ·{" "}
             {account.currency}
           </p>
         </div>
@@ -267,6 +257,7 @@ export default async function DashboardPage() {
       <NotificationCenter />
 
       <section
+        className="ops-section ops-section-overview"
         style={{
           marginTop: 28,
         }}
@@ -275,14 +266,7 @@ export default async function DashboardPage() {
           Operations overview
         </h2>
 
-        <div
-          style={{
-            display: "flex",
-            gap: 14,
-            flexWrap: "wrap",
-            marginTop: 14,
-          }}
-        >
+        <div className="dashboard-stat-grid">
           <StatCard
             title="Jobs posted"
             value={totalPosted}
@@ -334,6 +318,7 @@ export default async function DashboardPage() {
       </section>
 
       <section
+        className="ops-section ops-section-pipeline"
         style={{
           marginTop: 28,
           border: "1px solid var(--color-border)",
@@ -410,7 +395,89 @@ export default async function DashboardPage() {
         </div>
       </section>
 
+      <section className="ops-section ops-section-visual-analytics" aria-labelledby="job-analytics-heading" style={{ marginTop: 28, border: "1px solid #D5D9E0", borderRadius: 14, padding: 20, background: "#FFFFFF" }}>
+        <h2 id="job-analytics-heading">Job analytics</h2>
+        <p style={{ color: "#30343B", marginTop: 0 }}>Live breakdown of jobs you have posted. Counts reflect your current account and market.</p>
+        {totalPosted > 0 ? (
+          <div className="job-analytics-layout">
+            <div className="job-analytics-chart-panel">
+              <h3>Status distribution</h3>
+              <div className="job-donut-row">
+                <div role="img" aria-label={`Donut chart: ${postedOpen} open, ${postedAccepted} accepted, ${postedInTransit} in transit, ${postedDelivered} delivered, ${postedCompleted} completed, ${postedCancelled} cancelled jobs`} className="job-status-donut" style={{ background: `conic-gradient(#0057D9 0% ${postedOpen / totalPosted * 100}%, #6F2DBD ${postedOpen / totalPosted * 100}% ${(postedOpen + postedAccepted) / totalPosted * 100}%, #F06A00 ${(postedOpen + postedAccepted) / totalPosted * 100}% ${(postedOpen + postedAccepted + postedInTransit) / totalPosted * 100}%, #008A45 ${(postedOpen + postedAccepted + postedInTransit) / totalPosted * 100}% ${(postedOpen + postedAccepted + postedInTransit + postedDelivered) / totalPosted * 100}%, #178A45 ${(postedOpen + postedAccepted + postedInTransit + postedDelivered) / totalPosted * 100}% ${(postedOpen + postedAccepted + postedInTransit + postedDelivered + postedCompleted) / totalPosted * 100}%, #D71920 ${(postedOpen + postedAccepted + postedInTransit + postedDelivered + postedCompleted) / totalPosted * 100}% 100%)` }}>
+                  <div className="job-status-donut-hole"><strong>{totalPosted}</strong><span>Total jobs</span></div>
+                </div>
+                <div className="job-chart-legend">
+                  {[
+                    { label: "Open", value: postedOpen, color: "#0057D9" },
+                    { label: "Accepted", value: postedAccepted, color: "#6F2DBD" },
+                    { label: "In transit", value: postedInTransit, color: "#F06A00" },
+                    { label: "Delivered", value: postedDelivered, color: "#008A45" },
+                    { label: "Completed", value: postedCompleted, color: "#178A45" },
+                    { label: "Cancelled", value: postedCancelled, color: "#D71920" },
+                  ].map((item) => (
+                    <div key={item.label} className="job-chart-legend-item">
+                      <span aria-hidden="true" className="job-chart-legend-dot" style={{ background: item.color }} />
+                      <span>{item.label}</span><strong>{item.value}</strong>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="job-analytics-chart-panel">
+              <h3>Jobs by status</h3>
+              <div className="job-horizontal-bars">
+                {[
+                  { label: "Open", value: postedOpen, color: "#0057D9" },
+                  { label: "Accepted", value: postedAccepted, color: "#6F2DBD" },
+                  { label: "In transit", value: postedInTransit, color: "#F06A00" },
+                  { label: "Delivered", value: postedDelivered, color: "#008A45" },
+                  { label: "Completed", value: postedCompleted, color: "#178A45" },
+                  { label: "Cancelled", value: postedCancelled, color: "#D71920" },
+                ].map((item) => (
+                  <div className="job-bar-row" key={item.label}>
+                    <div className="job-bar-label"><span>{item.label}</span><strong>{item.value}</strong></div>
+                    <div className="job-bar-track" role="img" aria-label={`${item.label}: ${item.value} jobs`}>
+                      <span style={{ width: `${item.value / totalPosted * 100}%`, background: item.color }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="job-analytics-empty"><strong>No job data to chart yet.</strong><span>Your charts will populate automatically when you post jobs.</span></div>
+        )}
+        <div className="job-pipeline-visual" role="group" aria-label="Job status distribution chart">
+          <h3>Job status distribution</h3>
+          <div className="pipeline-chart-rows">
+            {[
+              { label: "Open", value: postedOpen, color: "#2457D6" },
+              { label: "Accepted", value: postedAccepted, color: "#6D28D9" },
+              { label: "In transit", value: postedInTransit, color: "#E87500" },
+              { label: "Delivered", value: postedDelivered, color: "#18864B" },
+              { label: "Completed", value: postedCompleted, color: "#18864B" },
+              { label: "Cancelled", value: postedCancelled, color: "#D62828" },
+            ].map((item) => (
+              <div className="pipeline-chart-row" key={item.label}>
+                <span>{item.label}</span>
+                <div className="pipeline-chart-track" role="img" aria-label={`${item.label}: ${item.value}`}>
+                  <div className="pipeline-chart-bar" style={{ width: `${totalPosted > 0 ? (item.value / totalPosted) * 100 : 0}%`, backgroundColor: item.color }} />
+                </div>
+                <strong>{item.value}</strong>
+              </div>
+            ))}
+          </div>
+          <div className="pipeline-donut-row">
+            <div className="pipeline-donut" role="img" aria-label={`Job status distribution: ${totalPosted} total jobs`} style={{ background: `conic-gradient(#2457D6 0% ${totalPosted ? (postedOpen / totalPosted) * 100 : 0}%, #6D28D9 ${totalPosted ? (postedOpen / totalPosted) * 100 : 0}% ${totalPosted ? ((postedOpen + postedAccepted) / totalPosted) * 100 : 0}%, #E87500 ${totalPosted ? ((postedOpen + postedAccepted) / totalPosted) * 100 : 0}% ${totalPosted ? ((postedOpen + postedAccepted + postedInTransit) / totalPosted) * 100 : 0}%, #18864B ${totalPosted ? ((postedOpen + postedAccepted + postedInTransit) / totalPosted) * 100 : 0}% ${totalPosted ? ((postedOpen + postedAccepted + postedInTransit + postedDelivered + postedCompleted) / totalPosted) * 100 : 0}%, #D62828 ${totalPosted ? ((postedOpen + postedAccepted + postedInTransit + postedDelivered + postedCompleted) / totalPosted) * 100 : 0}% 100%, #D7DCE4 100% 100%)` }}>
+              <div><strong>{totalPosted}</strong><span>Total jobs</span></div>
+            </div>
+            <p>Live counts from your account. Chart segments and bars are based on actual job statuses; colours always retain the same meaning in every market.</p>
+          </div>
+        </div>
+      </section>
+
       <section
+        className="ops-section ops-section-fulfilment"
         style={{
           marginTop: 28,
           border: "1px solid var(--color-border)",
@@ -471,6 +538,7 @@ export default async function DashboardPage() {
 
       {ukEligible && (
         <section
+          className="ops-section ops-section-promotion"
           style={{
             marginTop: 28,
             padding: 20,
@@ -493,9 +561,7 @@ export default async function DashboardPage() {
               <p>
                 Free access until:{" "}
                 {account.freeEndsAt
-                  ? account.freeEndsAt.toLocaleDateString(
-                      "en-GB"
-                    )
+                  ? formatMarketDate(account.freeEndsAt, { country: account.country, currency: account.currency })
                   : "Not started"}
               </p>
 
@@ -529,7 +595,7 @@ export default async function DashboardPage() {
               <p>Verified referrals: <strong>{trialCycleStatus.actual.verifiedReferrals} / {trialCycleStatus.targets.verifiedReferrals}</strong></p>
               <p>Referred accounts completing a genuine job: <strong>{trialCycleStatus.actual.completedReferrals} / {trialCycleStatus.targets.completedReferrals}</strong></p>
               {trialCycleStatus.status === "grace" && trialCycleStatus.graceEndsAt && (
-                <p role="status"><strong>30-day grace period:</strong> finish the remaining targets by {new Date(trialCycleStatus.graceEndsAt).toLocaleDateString("en-GB")}.</p>
+                <p role="status"><strong>30-day grace period:</strong> finish the remaining targets by {formatMarketDate(trialCycleStatus.graceEndsAt, { country: account.country, currency: account.currency })}.</p>
               )}
               {trialCycleStatus.status === "failed" && (
                 <p role="alert">The targets were not completed within this cycle and its grace period. Free access has ended; choose the paid plan below to continue.</p>
@@ -552,6 +618,7 @@ export default async function DashboardPage() {
       )}
 
       <section
+        className="ops-section ops-section-access"
         style={{
           marginTop: 28,
           border: "1px solid var(--color-border)",
@@ -573,11 +640,14 @@ export default async function DashboardPage() {
               <p>
                 Paid plan:{" "}
                 <strong>
-                  {symbolFor(plan.currency ?? account.currency)}{plan.price.toFixed(2)}
+                  {formatMarketCurrency(plan.price, { country: account.country, currency: account.currency })}
                   /7 days
                 </strong>
               </p>
             )}
+            <p role="note" style={{ color: "var(--color-muted)", fontSize: 13 }}>
+              This is a planning price only. Payment checkout is not connected yet, so paid access cannot currently be purchased or renewed in the app.
+            </p>
           </>
         ) : (
           <p>
@@ -603,6 +673,6 @@ export default async function DashboardPage() {
         </Link>
         <Link href="/vehicles" className="button-link button-link-secondary">Vehicles &amp; Verification</Link>
       </div>
-    </div>
+    </main>
   );
 }

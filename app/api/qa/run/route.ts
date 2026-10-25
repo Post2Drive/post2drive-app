@@ -89,7 +89,9 @@ async function cleanupSyntheticRuns(runIds: string[], base: string) {
 }
 
 
-async function enqueueQaRun(country: string) {
+type QaTestType = "api-load" | "synthetic-accounts" | "workflow-e2e";
+
+async function enqueueQaRun(country: string, testType: QaTestType) {
   const base = (process.env.QA_BASE_URL || "").replace(/\/+$/, "");
   const db = process.env.DATABASE_URL || "";
   if (!isQaRunnerEnabled() || !base.startsWith("https://") || !db ||
@@ -111,7 +113,7 @@ async function enqueueQaRun(country: string) {
 
     await tx.$executeRawUnsafe(
       "INSERT INTO qa_test_runs(id,target_url,target_accounts,status,summary) VALUES($1,$2,10000,'queued',$3::jsonb)",
-      runId, base, JSON.stringify({ status: "queued", country, phase: "queued", queuedAt: new Date().toISOString() }),
+      runId, base, JSON.stringify({ status: "queued", country, testType, phase: "queued", queuedAt: new Date().toISOString() }),
     );
     return { accepted: true, alreadyActive: false, runId, status: "queued" };
   }, { maxWait: 10000, timeout: 15000 });
@@ -119,8 +121,10 @@ async function enqueueQaRun(country: string) {
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
-  const token = url.searchParams.get("token") || "";
+  const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
   const confirm = url.searchParams.get("confirm") || "";
+  const requestedType = url.searchParams.get("type") || "workflow-e2e";
+  const validType = ["api-load", "synthetic-accounts", "workflow-e2e"].includes(requestedType);
   const accounts = url.searchParams.get("accounts") || "";
   const target = url.searchParams.get("target") || "";
   const report = url.searchParams.get("report") || "";
@@ -204,17 +208,17 @@ export async function GET(req: Request) {
     }
   }
   if (!token) return NextResponse.json({ ok: true, stagingOnly: true });
-  if (!expectedToken || token !== expectedToken || accounts !== "10000" || target !== "staging" || confirm !== "RUN_10000_SYNTHETIC_ACCOUNTS_ON_STAGING") {
+  if (!expectedToken || token !== expectedToken || accounts !== "10000" || target !== "staging" || !validType || confirm !== "RUN_10000_QA_ON_STAGING") {
     return NextResponse.json({ error: "Unauthorized or invalid staging confirmation." }, { status: 401 });
   }
   const requestedCountry = (url.searchParams.get("country") || process.env.QA_MARKET_COUNTRY || "GB").trim().toUpperCase();
   if (!getMarket(requestedCountry)) return NextResponse.json({ error: "Unsupported country code." }, { status: 400 });
   try {
-    const queued = await enqueueQaRun(requestedCountry);
+    const queued = await enqueueQaRun(requestedCountry, requestedType as QaTestType);
     if (queued.alreadyActive) {
       return NextResponse.json({ error: "A QA run is already queued or running.", activeRunId: queued.runId, status: queued.status }, { status: 409 });
     }
-    return NextResponse.json({ accepted: true, runId: queued.runId, status: "queued", target: "staging", accounts: 10_000 }, { status: 202 });
+    return NextResponse.json({ accepted: true, runId: queued.runId, status: "queued", target: "staging", testType: requestedType, accounts: 10_000 }, { status: 202 });
   } catch {
     return NextResponse.json({ error: "Unable to enqueue the QA run; verify the isolated staging worker configuration." }, { status: 503 });
   }
@@ -250,15 +254,16 @@ export async function POST(req: Request) {
   }
   const requestedCountry = String(body?.country || process.env.QA_MARKET_COUNTRY || "GB").trim().toUpperCase();
   if (!getMarket(requestedCountry)) return NextResponse.json({ error: "Unsupported country code." }, { status: 400 });
-  if (body?.target !== "staging" || body?.accounts !== 10_000 || body?.confirm !== "RUN_10000_SYNTHETIC_ACCOUNTS_ON_STAGING") {
-    return NextResponse.json({ error: "Explicit staging target, accounts=10000 and confirmation token required." }, { status: 400 });
+  const testType = body?.testType;
+  if (body?.target !== "staging" || body?.accounts !== 10_000 || body?.confirm !== "RUN_10000_QA_ON_STAGING" || !["api-load", "synthetic-accounts", "workflow-e2e"].includes(testType)) {
+    return NextResponse.json({ error: "Explicit staging target, supported testType, accounts=10000 and confirmation token required." }, { status: 400 });
   }
   try {
-    const queued = await enqueueQaRun(requestedCountry);
+    const queued = await enqueueQaRun(requestedCountry, testType as QaTestType);
     if (queued.alreadyActive) {
       return NextResponse.json({ error: "A QA run is already queued or running.", activeRunId: queued.runId, status: queued.status }, { status: 409 });
     }
-    return NextResponse.json({ accepted: true, runId: queued.runId, status: "queued", target: "staging", accounts: 10_000 }, { status: 202 });
+    return NextResponse.json({ accepted: true, runId: queued.runId, status: "queued", target: "staging", testType, accounts: 10_000 }, { status: 202 });
   } catch {
     return NextResponse.json({ error: "Unable to enqueue the QA run; verify the isolated staging worker configuration." }, { status: 503 });
   }

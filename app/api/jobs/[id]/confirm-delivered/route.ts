@@ -101,11 +101,18 @@ async function POSTHandler(
     );
   }
 
+  if (!job.deliveryMarkedById) {
+    return NextResponse.json(
+      { error: "This delivery has no recorded confirming party. Contact support." },
+      { status: 409 }
+    );
+  }
+
   // Complete the job and persist its audit event atomically. Concurrent
   // confirmations can only let one request win the delivered -> completed CAS.
   const completedJob = await prisma.$transaction(async (tx) => {
     const transition = await tx.job.updateMany({
-      where: { id: routeParams.id, status: "delivered" },
+      where: { id: routeParams.id, status: "delivered", deliveryMarkedById: job.deliveryMarkedById },
       data: { status: "completed" },
     });
 

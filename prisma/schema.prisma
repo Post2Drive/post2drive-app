@@ -158,6 +158,7 @@ model Account {
   createdAt DateTime @default(now())
 
   users        User[]
+  qaTestAccounts QaTestAccount[]
   postedJobs   Job[]  @relation("PostedJobs")
   acceptedJobs Job[]  @relation("AcceptedJobs")
   bids         Bid[]
@@ -288,6 +289,7 @@ model Vehicle {
 
   vehicleType String
   regPlate    String
+  registrationRegion String?
 
   ownershipType String?
   make          String?
@@ -321,6 +323,9 @@ model User {
   emailVerifiedAt DateTime?
   phone          String
   passwordHash   String
+  // Incremented after credential changes to revoke every previously issued JWT session.
+  sessionVersion    Int       @default(0)
+  passwordChangedAt DateTime?
 
   role UserRole @default(owner)
 
@@ -351,8 +356,9 @@ model PasswordResetToken {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId String
 
-  token     String   @unique
-  expiresAt DateTime
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  lastSentAt DateTime?
 
   createdAt DateTime @default(now())
 }
@@ -371,9 +377,11 @@ model Job {
   dropoffLat Float?
   dropoffLng Float?
 
-  jobDate     DateTime
-  pickupTime  String?
-  dropoffTime String?
+  jobDate       DateTime
+  pickupTime    String?
+  dropoffTime   String?
+  pickupTimeZone String?
+  dropoffTimeZone String?
 
   vehicleType String
 
@@ -768,4 +776,30 @@ model ModerationReport {
   @@index([reporterId, createdAt])
   @@index([reportedAccountId, createdAt])
   @@index([jobId, createdAt])
+}
+
+model AdminAuditEvent {
+  id         String   @id @default(cuid())
+  actor      String
+  action     String
+  entityType String
+  entityId   String?
+  market     String?
+  details    Json?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([entityType, entityId])
+  @@index([market, createdAt])
+}
+
+/// Existing staging QA mapping table; mapped here for SQL-side marketplace exclusion.
+/// This is a Prisma client mapping only and does not require a database migration.
+model QaTestAccount {
+  runId     String  @map("run_id")
+  accountId String  @map("account_id")
+  account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@id([runId, accountId])
+  @@map("qa_test_accounts")
 }

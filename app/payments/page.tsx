@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { symbolFor } from "@/lib/currency";
+import { formatMarketDate, formatMarketCurrency } from "@/lib/localisation";
 
 type PaymentJob = {
   id: string;
@@ -51,24 +51,13 @@ type PaymentData = {
   };
 };
 
-function money(value: number, currency: string) {
-  return `${symbolFor(currency)}${Number(value || 0).toFixed(2)}`;
+function money(value: number, currency: string, country: string) {
+  return formatMarketCurrency(Number(value || 0), { country, currency });
 }
 
-function date(value?: string | null) {
+function date(value: string | null | undefined, country: string, currency: string) {
   if (!value) return "";
-
-  const d = new Date(value);
-
-  if (Number.isNaN(d.getTime())) {
-    return "";
-  }
-
-  return d.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
+  return formatMarketDate(value, { country, currency });
 }
 
 export default function PaymentsPage() {
@@ -79,6 +68,7 @@ export default function PaymentsPage() {
   const [busy, setBusy] = useState<string | null>(null);
 
   async function load() {
+    setLoading(true);
     try {
       setError("");
 
@@ -186,10 +176,10 @@ export default function PaymentsPage() {
     );
   }, [data]);
 
-  if (loading) {
+  if (loading && !data) {
     return (
       <main style={pageStyle}>
-        <p>Loading payments...</p>
+        <p role="status" aria-live="polite">Loading payments...</p>
       </main>
     );
   }
@@ -201,9 +191,12 @@ export default function PaymentsPage() {
 
         <h1>Payments</h1>
 
-        <div style={errorStyle}>
+        <div role="alert" style={errorStyle}>
           {error || "Payment information is unavailable."}
         </div>
+        <button type="button" onClick={() => void load()} disabled={loading} style={secondaryButton}>
+          {loading ? "Retrying…" : "Retry loading payments"}
+        </button>
       </main>
     );
   }
@@ -231,21 +224,25 @@ export default function PaymentsPage() {
         </div>
 
         <button
-          onClick={load}
+          type="button"
+          onClick={() => void load()}
+          disabled={loading}
           style={secondaryButton}
         >
-          Refresh
+          {loading ? "Refreshing…" : "Refresh"}
         </button>
       </div>
 
+      {loading && <p role="status" aria-live="polite">Refreshing payment information…</p>}
+
       {message && (
-        <div style={successStyle}>
+        <div role="status" aria-live="polite" style={successStyle}>
           {message}
         </div>
       )}
 
       {error && (
-        <div style={errorStyle}>
+        <div role="alert" style={errorStyle}>
           {error}
         </div>
       )}
@@ -261,13 +258,13 @@ export default function PaymentsPage() {
           value={String(
             data.posterSummary.jobsPaymentPending,
           )}
-          subtext={money(data.posterSummary.awaitingPayment, data.currency)}
+          subtext={money(data.posterSummary.awaitingPayment, data.currency, data.country)}
         />
 
         <SummaryCard
           label="Driver payments received"
           value={String(data.driverSummary.jobsReceived)}
-          subtext={money(data.driverSummary.confirmedReceived, data.currency)}
+          subtext={money(data.driverSummary.confirmedReceived, data.currency, data.country)}
         />
 
         <SummaryCard
@@ -275,7 +272,7 @@ export default function PaymentsPage() {
           value={String(
             data.driverSummary.jobsAwaitingReceipt,
           )}
-          subtext={money(data.driverSummary.awaitingReceiptConfirmation, data.currency)}
+          subtext={money(data.driverSummary.awaitingReceiptConfirmation, data.currency, data.country)}
         />
       </section>
 
@@ -290,21 +287,21 @@ export default function PaymentsPage() {
           <span>
             Total value:{" "}
             <strong>
-              {money(data.posterSummary.totalValue, data.currency)}
+              {money(data.posterSummary.totalValue, data.currency, data.country)}
             </strong>
           </span>
 
           <span>
             Marked paid:{" "}
             <strong>
-              {money(data.posterSummary.markedPaid, data.currency)}
+              {money(data.posterSummary.markedPaid, data.currency, data.country)}
             </strong>
           </span>
 
           <span>
             Payment pending:{" "}
             <strong>
-              {money(data.posterSummary.awaitingPayment, data.currency)}
+              {money(data.posterSummary.awaitingPayment, data.currency, data.country)}
             </strong>
           </span>
         </div>
@@ -322,12 +319,12 @@ export default function PaymentsPage() {
                     </strong>
 
                     <div style={muted}>
-                      Completed job · {date(job.createdAt)}
+                      Completed job · {date(job.createdAt, data.country, data.currency)}
                     </div>
                   </div>
 
                   <strong>
-                    {money(job.price, job.currency)}
+                    {money(job.price, job.currency, data.country)}
                   </strong>
                 </div>
 
@@ -342,10 +339,12 @@ export default function PaymentsPage() {
                   {job.paidMarkedAt ? (
                     <span style={paidBadge}>
                       ✓ Marked paid ·{" "}
-                      {date(job.paidMarkedAt)}
+                      {date(job.paidMarkedAt, data.country, data.currency)}
                     </span>
                   ) : (
                     <button
+                      type="button"
+                      aria-label={`Mark as paid: ${job.pickup} to ${job.dropoff}`}
                       onClick={() => markPaid(job.id)}
                       disabled={busy === job.id}
                       style={primaryButton}
@@ -383,21 +382,21 @@ export default function PaymentsPage() {
           <span>
             Total receivable:{" "}
             <strong>
-              {money(data.driverSummary.totalReceivable, data.currency)}
+              {money(data.driverSummary.totalReceivable, data.currency, data.country)}
             </strong>
           </span>
 
           <span>
             Received confirmed:{" "}
             <strong>
-              {money(data.driverSummary.confirmedReceived, data.currency)}
+              {money(data.driverSummary.confirmedReceived, data.currency, data.country)}
             </strong>
           </span>
 
           <span>
             Awaiting poster payment:{" "}
             <strong>
-              {money(data.driverSummary.awaitingPaymentFromPoster, data.currency)}
+              {money(data.driverSummary.awaitingPaymentFromPoster, data.currency, data.country)}
             </strong>
           </span>
         </div>
@@ -415,12 +414,12 @@ export default function PaymentsPage() {
                     </strong>
 
                     <div style={muted}>
-                      Completed job · {date(job.createdAt)}
+                      Completed job · {date(job.createdAt, data.country, data.currency)}
                     </div>
                   </div>
 
                   <strong>
-                    {money(job.price, job.currency)}
+                    {money(job.price, job.currency, data.country)}
                   </strong>
                 </div>
 
@@ -435,7 +434,7 @@ export default function PaymentsPage() {
                   {job.paidMarkedAt ? (
                     <span style={paidBadge}>
                       ✓ Poster marked paid ·{" "}
-                      {date(job.paidMarkedAt)}
+                      {date(job.paidMarkedAt, data.country, data.currency)}
                     </span>
                   ) : (
                     <span style={pendingBadge}>
@@ -446,10 +445,12 @@ export default function PaymentsPage() {
                   {job.receivedConfirmedAt ? (
                     <span style={receivedBadge}>
                       ✓ You confirmed receipt ·{" "}
-                      {date(job.receivedConfirmedAt)}
+                      {date(job.receivedConfirmedAt, data.country, data.currency)}
                     </span>
                   ) : (
                     <button
+                      type="button"
+                      aria-label={`Confirm received: ${job.pickup} to ${job.dropoff}`}
                       onClick={() => confirmReceived(job.id)}
                       disabled={
                         busy === job.id ||
@@ -520,9 +521,10 @@ function SummaryCard({
 function Empty({ text }: { text: string }) {
   return (
     <div
+      role="status"
       style={{
         padding: 20,
-        color: "#777",
+        color: "var(--color-muted)",
         border: "1px dashed var(--color-border)",
         borderRadius: 8,
         marginTop: 12,
@@ -537,7 +539,6 @@ const pageStyle: React.CSSProperties = {
   maxWidth: 1000,
   margin: "0 auto",
   padding: "24px 16px 60px",
-  fontFamily: "Arial, sans-serif",
 };
 
 const summaryGrid: React.CSSProperties = {
@@ -549,18 +550,18 @@ const summaryGrid: React.CSSProperties = {
 };
 
 const summaryCard: React.CSSProperties = {
-  border: "1px solid #e5e7eb",
+  border: "1px solid var(--color-border)",
   borderRadius: 10,
   padding: 16,
-  background: "#fff",
+  background: "var(--color-surface)",
 };
 
 const sectionStyle: React.CSSProperties = {
   marginTop: 22,
-  border: "1px solid #e5e7eb",
+  border: "1px solid var(--color-border)",
   borderRadius: 12,
   padding: 18,
-  background: "#fff",
+  background: "var(--color-surface)",
 };
 
 const sectionHeading: React.CSSProperties = {
@@ -572,7 +573,7 @@ const summaryLine: React.CSSProperties = {
   display: "flex",
   gap: 14,
   flexWrap: "wrap",
-  color: "#555",
+  color: "var(--color-muted)",
   fontSize: 14,
   paddingBottom: 14,
   borderBottom: "1px solid var(--color-border)",
@@ -585,7 +586,7 @@ const listStyle: React.CSSProperties = {
 };
 
 const jobCard: React.CSSProperties = {
-  border: "1px solid #e5e7eb",
+  border: "1px solid var(--color-border)",
   borderRadius: 9,
   padding: 14,
 };
@@ -614,10 +615,10 @@ const statusRow: React.CSSProperties = {
 
 const primaryButton: React.CSSProperties = {
   padding: "8px 12px",
-  border: "1px solid #111",
+  border: "1px solid var(--color-primary-action)",
   borderRadius: 7,
-  background: "#111",
-  color: "#fff",
+  background: "var(--color-primary-action)",
+  color: "#FFFFFF",
   cursor: "pointer",
 };
 
@@ -625,32 +626,34 @@ const secondaryButton: React.CSSProperties = {
   padding: "8px 12px",
   border: "1px solid var(--color-border)",
   borderRadius: 7,
-  background: "#fff",
-  color: "#111",
+  background: "var(--color-surface)",
+  color: "var(--color-text)",
   cursor: "pointer",
 };
 
 const paidBadge: React.CSSProperties = {
   padding: "6px 9px",
   borderRadius: 12,
-  background: "#ecfdf5",
-  color: "#047857",
+  background: "var(--color-positive-soft)",
+  color: "var(--color-positive)",
   fontSize: 13,
 };
 
 const receivedBadge: React.CSSProperties = {
   padding: "6px 9px",
   borderRadius: 12,
-  background: "#ecfdf5",
-  color: "#047857",
+  background: "var(--color-positive-soft)",
+  color: "var(--color-positive)",
   fontSize: 13,
 };
 
 const pendingBadge: React.CSSProperties = {
   padding: "6px 9px",
-  borderRadius: 12,
-  background: "#fff7ed",
-  color: "#c2410c",
+  borderRadius: 8,
+  background: "#FFFFFF",
+  border: "1px solid var(--color-warning)",
+  borderLeft: "4px solid var(--color-warning)",
+  color: "var(--color-text)",
   fontSize: 13,
 };
 
@@ -658,16 +661,16 @@ const successStyle: React.CSSProperties = {
   padding: 11,
   marginTop: 14,
   borderRadius: 8,
-  background: "#ecfdf5",
-  border: "1px solid #a7f3d0",
-  color: "#047857",
+  background: "var(--color-positive-soft)",
+  border: "1px solid var(--color-positive)",
+  color: "var(--color-positive)",
 };
 
 const errorStyle: React.CSSProperties = {
   padding: 11,
   marginTop: 14,
   borderRadius: 8,
-  background: "#fef2f2",
-  border: "1px solid #fecaca",
-  color: "#991b1b",
+  background: "var(--color-danger-soft)",
+  border: "1px solid var(--color-danger)",
+  color: "var(--color-danger)",
 };

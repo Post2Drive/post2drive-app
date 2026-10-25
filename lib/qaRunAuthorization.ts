@@ -26,7 +26,7 @@ export async function isAuthorizedQaRunId(runId: unknown, requestOrigin?: string
       FROM qa_test_runs
       WHERE id = ${runId}
         AND target_url = ${base}
-        AND target_accounts = 10000
+        AND target_accounts BETWEEN 500 AND 10000
         AND status = 'running'
       LIMIT 1
     `;

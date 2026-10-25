@@ -1,0 +1,37 @@
+name: CodeQL
+
+on:
+  pull_request:
+    branches: [main, "audit/**", "integration/**"]
+  push:
+    branches: [main, "feature/**", "security/**", "audit/**", "integration/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+# A newer commit supersedes CodeQL analysis of an older revision in the same PR.
+# Keep the full scan, but avoid queueing stale analyses behind the current head.
+concurrency:
+  group: codeql-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze TypeScript
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          queries: security-extended,security-and-quality
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@v3

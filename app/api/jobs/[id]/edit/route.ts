@@ -109,13 +109,14 @@ async function PATCHHandler(
     pickupAt = await getJobPickupAtForAccount(
       accountId,
       data.jobDate,
-      data.pickupTime
+      data.pickupTime,
+      data.pickupTimeZone
     );
   } catch {
     return NextResponse.json(
       {
         error:
-          "The selected pickup time is invalid for your market local time.",
+          "The selected pickup time is invalid for the chosen pickup time zone.",
       },
       { status: 400 }
     );
@@ -194,8 +195,12 @@ async function PATCHHandler(
       data.jobDate.getTime() ||
     job.pickupTime !==
       data.pickupTime ||
+    job.pickupTimeZone !==
+      data.pickupTimeZone ||
     job.dropoffTime !==
       data.dropoffTime ||
+    job.dropoffTimeZone !==
+      data.dropoffTimeZone ||
     job.vehicleType !==
       data.vehicleType ||
     job.weightKg !==
@@ -232,6 +237,8 @@ async function PATCHHandler(
         jobDate: data.jobDate,
         pickupTime: data.pickupTime,
         dropoffTime: data.dropoffTime,
+        pickupTimeZone: data.pickupTimeZone,
+        dropoffTimeZone: data.dropoffTimeZone,
         vehicleType: data.vehicleType,
         weightKg: data.weightKg,
         dimensions: data.dimensions,

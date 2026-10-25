@@ -244,41 +244,20 @@ async function POSTHandler(
         10
       );
 
-    let displayId =
-      generateDisplayId(
-        normalizedCompanyName
-      );
+    let displayId = "";
+    let account: { id: string } | undefined;
+    let displayIdCollisionCount = 0;
+    let displayIdAttempts = 0;
+    const maxDisplayIdAttempts = 5;
 
-    for (
-      let attempt = 0;
-      attempt < 5;
-      attempt++
-    ) {
-      const clash =
-        await prisma.account.findUnique({
-          where: {
-            displayId,
-          },
-        });
-
-      if (!clash) {
-        break;
-      }
-
-      displayId =
-        generateDisplayId(
-          normalizedCompanyName
-        );
-    }
-
-    const finalDisplayIdClash = await prisma.account.findUnique({ where: { displayId } });
-    if (finalDisplayIdClash) {
-      return NextResponse.json({ error: "Could not reserve a unique business ID. Please retry signup." }, { status: 409 });
-    }
-
-    const account =
-      await prisma.$transaction(
-        async (tx) => {
+    // The unique database constraint is the reservation authority. A preflight
+    // SELECT cannot reserve an ID and races under concurrent signup load.
+    for (let attempt = 1; attempt <= maxDisplayIdAttempts; attempt++) {
+      displayId = generateDisplayId(normalizedCompanyName);
+      displayIdAttempts = attempt;
+      try {
+        account = await prisma.$transaction(
+          async (tx) => {
           const createdAccount =
             await tx.account.create({
               data: {
@@ -366,7 +345,53 @@ async function POSTHandler(
 
           return createdAccount;
         }
-      );
+        );
+        break;
+      } catch (error) {
+        const databaseError = error as { code?: unknown; meta?: { target?: unknown } };
+        const target = Array.isArray(databaseError.meta?.target)
+          ? databaseError.meta.target.join(",").toLowerCase()
+          : String(databaseError.meta?.target ?? "").toLowerCase();
+        const isDisplayIdCollision =
+          databaseError.code === "P2002" &&
+          (target.includes("displayid") || target.includes("display_id"));
+
+        if (!isDisplayIdCollision) throw error;
+
+        displayIdCollisionCount++;
+        console.warn("Signup displayId collision", {
+          attempt,
+          collisionCount: displayIdCollisionCount,
+          maxAttempts: maxDisplayIdAttempts,
+        });
+
+        if (attempt === maxDisplayIdAttempts) {
+          console.warn("Signup displayId reservation exhausted", {
+            attempts: attempt,
+            collisionCount: displayIdCollisionCount,
+          });
+          return NextResponse.json(
+            { error: "Could not reserve a unique business ID. Please retry signup." },
+            { status: 409 }
+          );
+        }
+        // The failed transaction has rolled back, so retry with a new candidate.
+      }
+    }
+
+    console.info("Signup displayId reservation outcome", {
+      outcome: account ? "created" : "missing_account",
+      attempts: displayIdAttempts,
+      collisionCount: displayIdCollisionCount,
+    });
+
+    if (!account) {
+      console.error("Signup account creation ended without an account", {
+        attempts: displayIdAttempts,
+        collisionCount: displayIdCollisionCount,
+      });
+      return NextResponse.json({ error: "Unable to create account. Please try again." }, { status: 500 });
+    }
 
 let verificationEmailSent = false;
 if (verificationRequired) {
@@ -395,10 +420,33 @@ return NextResponse.json({
   verificationEmailSent,
 }, { status: 201 });
   } catch (error) {
-    console.error("Signup error:", error);
+    const signupError = error as { code?: unknown };
+    // Do not log raw Prisma exceptions: their invocation metadata can contain
+    // account fields. Collision diagnostics above intentionally contain no PII.
+    console.error("Signup failed", {
+      errorName: error instanceof Error ? error.name : "UnknownError",
+      prismaCode: typeof signupError?.code === "string" ? signupError.code : undefined,
+    });
     if (error instanceof Error && error.message === "TESTER_CODE_INVALID_OR_USED") {
       return NextResponse.json({ error: "This tester code is invalid or has already been used." }, { status: 409 });
     }
+
+    // The preflight lookup improves the normal duplicate-email response, but
+    // concurrent signups can still race the database unique constraint.
+    const databaseError = error as { code?: unknown; meta?: { target?: unknown } };
+    if (databaseError?.code === "P2002") {
+      const target = Array.isArray(databaseError.meta?.target)
+        ? databaseError.meta.target.join(",").toLowerCase()
+        : String(databaseError.meta?.target ?? "").toLowerCase();
+      if (target.includes("email")) {
+        return NextResponse.json({ error: "An account with this email already exists." }, { status: 409 });
+      }
+      if (target.includes("displayid") || target.includes("display_id")) {
+        return NextResponse.json({ error: "Could not reserve a unique business ID. Please retry signup." }, { status: 409 });
+      }
+      return NextResponse.json({ error: "A conflicting account record was created. Please retry signup." }, { status: 409 });
+    }
+
     return NextResponse.json({ error: "Unable to create account. Please try again." }, { status: 500 });
   }
 }

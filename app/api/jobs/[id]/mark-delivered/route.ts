@@ -49,11 +49,18 @@ async function POSTHandler(
     );
   }
 
+  if (!job.acceptedById) {
+    return NextResponse.json(
+      { error: "This in-transit job has no assigned driver. Contact support before changing its status." },
+      { status: 409 }
+    );
+  }
+
   // Commit the state transition and its audit event together so they cannot
   // diverge if the activity insert fails.
   const updated = await prisma.$transaction(async (tx) => {
     const transition = await tx.job.updateMany({
-      where: { id: routeParams.id, status: "in_transit" },
+      where: { id: routeParams.id, status: "in_transit", acceptedById: job.acceptedById },
       data: {
         status: "delivered",
         deliveryMarkedById: accountId,

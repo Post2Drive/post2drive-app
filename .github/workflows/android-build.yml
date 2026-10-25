@@ -1,0 +1,79 @@
+name: Android Capacitor build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["integration/**"]
+  pull_request:
+    branches: [main, "integration/**"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  # Keep the newest revision moving; stale emulator runs are superseded, not test categories removed.
+  cancel-in-progress: true
+
+jobs:
+  android-debug-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+      - name: Install dependencies
+        run: npm ci
+      - name: Install Android SDK platform and build tools
+        run: |
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          SDKMANAGER="$(find "$SDK_ROOT" -path '*/bin/sdkmanager' -type f -print -quit)"
+          if [ -z "$SDKMANAGER" ]; then
+            echo "Android SDK command-line tools were not found under $SDK_ROOT"
+            exit 1
+          fi
+          yes | "$SDKMANAGER" --licenses >/dev/null
+          "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+      - name: Sync Capacitor with explicit staging URL
+        env:
+          CAPACITOR_SERVER_URL: https://post2drive-web-staging.up.railway.app
+        run: npx cap sync android
+      - name: Verify generated mobile config targets HTTPS staging only
+        run: |
+          node -e 'const c = require("./android/app/src/main/assets/capacitor.config.json"); if (c.server?.url !== "https://post2drive-web-staging.up.railway.app") throw new Error("Unexpected Capacitor server URL"); if (c.server?.cleartext) throw new Error("Cleartext traffic must remain disabled for staging"); console.log("Capacitor config is pinned to HTTPS staging; no deployment performed.");'
+      - name: Compile Android debug APK
+        run: cd android && ./gradlew --no-daemon assembleDebug
+      - name: Upload installable debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: post2drive-android-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+      - name: Confirm the existing staging homepage is reachable
+        run: curl --fail --silent --show-error --location --retry 3 --retry-delay 5 --max-time 30 https://post2drive-web-staging.up.railway.app | grep -qi "Post2Drive"
+      - name: Run Capacitor WebView smoke test on Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: default
+          arch: x86_64
+          profile: pixel_2
+          cores: 4
+          ram-size: 3072M
+          heap-size: 768M
+          emulator-boot-timeout: 900
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot -camera-back none -camera-front none
+          disable-animations: true
+          script: bash scripts/qa/android-emulator-smoke.sh
