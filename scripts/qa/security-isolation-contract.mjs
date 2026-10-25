@@ -324,6 +324,11 @@ const cancelRoute = loadTypeScriptModule("app/api/jobs/[id]/cancel/route.ts", {
     },
   },
   "@/lib/opportunities": { expireJobOpportunities: async () => {} },
+  "@/lib/eligibility": {
+    canPostJobs: async () => false,
+    isVehicleCurrentlyEligible: async () => false,
+    hasEligibleVehicleForJob: async () => false,
+  },
   "@/lib/cancellationLimits": { isCancellationRestricted: async () => false },
 });
 const cancelRequest = () => cancelRoute.POST(new Request("https://fixture.invalid/api/jobs/job-race/cancel", { method: "POST" }), { params: Promise.resolve({ id: "job-race" }) });
