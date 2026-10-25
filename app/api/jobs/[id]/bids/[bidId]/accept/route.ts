@@ -79,6 +79,14 @@ async function POSTHandler(
     );
   }
 
+  const posterVerification = await prisma.account.findUnique({
+    where: { id: accountId },
+    select: { verificationStatus: true, companyVerificationStatus: true, isTester: true },
+  });
+  if (!posterVerification || (!posterVerification.isTester && (posterVerification.verificationStatus !== "verified" || posterVerification.companyVerificationStatus !== "verified"))) {
+    return NextResponse.json({ error: "Verified account and company status are required to award a job." }, { status: 403 });
+  }
+
   if (job.status !== "open") {
     return NextResponse.json(
       { error: "This job is no longer open." },
@@ -134,6 +142,7 @@ async function POSTHandler(
             { isTester: true },
             {
               verificationStatus: "verified",
+              companyVerificationStatus: "verified",
               vehicles: {
                 some: {
                   vehicleType: currentJob.vehicleType,
@@ -155,9 +164,9 @@ async function POSTHandler(
     // immediately before awarding the bid.
     const currentBidder = await tx.account.findUnique({
       where: { id: currentBid.bidderId },
-      select: { country: true, currency: true, verificationStatus: true, isTester: true },
+      select: { country: true, currency: true, verificationStatus: true, companyVerificationStatus: true, isTester: true },
     });
-    if (!currentBidder || (currentBidder.verificationStatus !== "verified" && !currentBidder.isTester)) {
+    if (!currentBidder || ((currentBidder.verificationStatus !== "verified" || currentBidder.companyVerificationStatus !== "verified") && !currentBidder.isTester)) {
       throw new Error("BID_NO_LONGER_ELIGIBLE");
     }
     if (!currentBidder.isTester) {
