@@ -5,7 +5,7 @@ on:
   pull_request:
     branches: [main, "feature/**", "integration/**"]
   push:
-    branches: [main, "feat/**", "feature/**", "qa/**", "security/**", "design/**", "audit/**"]
+    branches: [main, "feat/**", "feature/**", "qa/**", "security/**", "design/**", "integration/**"]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
