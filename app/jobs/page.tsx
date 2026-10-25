@@ -216,6 +216,7 @@ export default function JobsPage() {
     useState(true);
 
   const [loadError, setLoadError] = useState("");
+  const [sessionRequired, setSessionRequired] = useState(false);
 
   const [message, setMessage] =
     useState("");
@@ -284,6 +285,7 @@ export default function JobsPage() {
   async function loadJobs() {
     setLoading(true);
     setLoadError("");
+    setSessionRequired(false);
     try {
       const res =
         await fetch(
@@ -294,6 +296,11 @@ export default function JobsPage() {
         await res.json();
 
       if (!res.ok) {
+        if (res.status === 401) {
+          setSessionRequired(true);
+          setLoadError("Please sign in to view the job marketplace. If you were already signed in, your session may have expired.");
+          return;
+        }
         setLoadError(data.error || "Could not load jobs. Try again.");
         return;
       }
@@ -791,6 +798,7 @@ export default function JobsPage() {
       {loadError && (
         <div role="alert" aria-live="assertive">
           <p>{loadError}</p>
+          {sessionRequired && <p><Link className="button-link button-link-secondary" href="/login?callbackUrl=%2Fjobs">Sign in to continue</Link></p>}
           <button type="button" onClick={() => void loadJobs()} disabled={loading}>
             {loading ? "Retrying…" : "Retry loading jobs"}
           </button>
