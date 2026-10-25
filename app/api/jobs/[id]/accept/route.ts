@@ -8,8 +8,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { markDriverOpportunityAccepted } from "@/lib/opportunities";
 import { recordAcceptedJobUsage } from "@/lib/usage";
-import { getLocalisationProfile } from "@/lib/localisation";
-import { marketDateKey } from "@/lib/vehicleDates";
+import { hasEligibleVehicleForJob } from "@/lib/eligibility";
 
 async function POSTHandler(
   req: Request,
@@ -113,30 +112,11 @@ async function POSTHandler(
     );
   }
 
-  if (account?.companyVerificationStatus !== "verified") {
-    return NextResponse.json({ error: "Company verification is required before accepting jobs." }, { status: 403 });
-  }
-
-  if (account) {
-    const driverMarket = getLocalisationProfile({ country: account.country, currency: account.currency });
-    const marketToday = marketDateKey(new Date(), driverMarket?.timeZone ?? "UTC");
-    const dateCutoff = new Date(marketToday + "T00:00:00.000Z");
-    const matchingVehicle = await prisma.vehicle.findFirst({
-      where: {
-        accountId,
-        vehicleType: jobForAcceptance.vehicleType,
-        verificationStatus: "verified",
-        insuranceValidUntil: { gte: dateCutoff },
-        ...(driverMarket?.inspectionRequiredAtCountryLevel ? { motValidUntil: { gte: dateCutoff } } : {}),
-      },
-      select: { id: true },
-    });
-    if (!matchingVehicle) {
-      return NextResponse.json(
-        { error: "You need a verified vehicle of the required type with current insurance and any required inspection before accepting it." },
-        { status: 403 }
-      );
-    }
+  if (!account || !(await hasEligibleVehicleForJob(accountId, account, jobForAcceptance.vehicleType))) {
+    return NextResponse.json(
+      { error: "You need a verified vehicle of the required type with current insurance and any required inspection before accepting it." },
+      { status: 403 }
+    );
   }
 
   try {
@@ -156,28 +136,10 @@ async function POSTHandler(
             );
           }
 
-          const currentDriver = await tx.account.findUnique({
-            where: { id: accountId },
-            select: { verificationStatus: true, companyVerificationStatus: true, country: true, currency: true },
-          });
-          if (!currentDriver || currentDriver.verificationStatus !== "verified" || currentDriver.companyVerificationStatus !== "verified") {
-            throw new Error("DRIVER_NOT_VERIFIED");
-          }
-          if (currentDriver) {
-            const driverMarket = getLocalisationProfile({ country: currentDriver.country, currency: currentDriver.currency });
-            const marketToday = marketDateKey(new Date(), driverMarket?.timeZone ?? "UTC");
-            const dateCutoff = new Date(marketToday + "T00:00:00.000Z");
-            const matchingVehicle = await tx.vehicle.findFirst({
-              where: {
-                accountId,
-                vehicleType: job.vehicleType,
-                verificationStatus: "verified",
-                insuranceValidUntil: { gte: dateCutoff },
-                ...(driverMarket?.inspectionRequiredAtCountryLevel ? { motValidUntil: { gte: dateCutoff } } : {}),
-              },
-              select: { id: true },
-            });
-            if (!matchingVehicle) throw new Error("DRIVER_VEHICLE_NOT_VERIFIED");
+          if (job.posterId === accountId) {
+            throw new Error(
+              "OWN_JOB"
+            );
           }
 
           let pickupAt: Date;
@@ -278,139 +240,18 @@ async function POSTHandler(
       accountId,
       id
     );
-
-    await prisma.driverOpportunity.updateMany({
-      where: {
-        jobId: id,
-
-        driverId: {
-          not: accountId,
-        },
-
-        status: {
-          in: [
-            "exposed",
-            "viewed",
-            "bid",
-          ],
-        },
-      },
-
-      data: {
-        status:
-          "unavailable",
-
-        expiredAt:
-          new Date(),
-
-        reason:
-          "Job was accepted by another driver.",
-      },
-    });
-
-    await recordAcceptedJobUsage(
-      accountId,
-      id
-    );
-
-    return NextResponse.json({
-      success: true,
-      job: result,
-    });
+    await recordAcceptedJobUsage(accountId, id);
+    return NextResponse.json({ success: true, job: result });
   } catch (error) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : "";
-
-    if (
-      message ===
-      "PICKUP_AFTER_ACCESS"
-    ) {
-      return NextResponse.json(
-        {
-          error:
-            "This job cannot be accepted because its pickup is after your current marketplace access ends.",
-          reason: "pickup_after_access",
-        },
-        { status: 402 }
-      );
-    }
-
-    if (message === "DRIVER_NOT_VERIFIED") {
-      return NextResponse.json({ error: "Your account must be verified before accepting jobs." }, { status: 403 });
-    }
-
-    if (message === "DRIVER_VEHICLE_NOT_VERIFIED") {
-      return NextResponse.json({ error: "You need a verified vehicle of the required type with current insurance and any required inspection before accepting it." }, { status: 403 });
-    }
-
-    if (
-      message ===
-      "INVALID_PICKUP_TIME"
-    ) {
-      return NextResponse.json(
-        {
-          error:
-            "This job has an invalid pickup time.",
-        },
-        { status: 409 }
-      );
-    }
-
-    if (
-      message ===
-      "MARKETPLACE_ACCESS_UNAVAILABLE"
-    ) {
-      return NextResponse.json(
-        {
-          error:
-            "Marketplace access is unavailable.",
-        },
-        { status: 402 }
-      );
-    }
-
-    if (
-      message ===
-      "JOB_NOT_FOUND"
-    ) {
-      return NextResponse.json(
-        {
-          error:
-            "Job not found.",
-        },
-        { status: 404 }
-      );
-    }
-
-    if (
-      message ===
-        "JOB_NOT_OPEN" ||
-      message ===
-        "JOB_ALREADY_TAKEN"
-    ) {
-      return NextResponse.json(
-        {
-          error:
-            "This job is no longer available.",
-        },
-        { status: 409 }
-      );
-    }
-
-    console.error(
-      "Accept job error:",
-      error
-    );
-
-    return NextResponse.json(
-      {
-        error:
-          "Unable to accept job.",
-      },
-      { status: 500 }
-    );
+    const message = error instanceof Error ? error.message : "";
+    if (message === "JOB_NOT_FOUND") return NextResponse.json({ error: "Job not found." }, { status: 404 });
+    if (message === "OWN_JOB") return NextResponse.json({ error: "You cannot accept your own job." }, { status: 403 });
+    if (message === "INVALID_PICKUP_TIME") return NextResponse.json({ error: "This job has an invalid pickup time." }, { status: 409 });
+    if (message === "PICKUP_AFTER_ACCESS") return NextResponse.json({ error: "The pickup is after your current marketplace access ends." }, { status: 403 });
+    if (message === "MARKETPLACE_ACCESS_UNAVAILABLE") return NextResponse.json({ error: "Marketplace access is unavailable." }, { status: 402 });
+    if (message === "JOB_NOT_OPEN" || message === "JOB_ALREADY_TAKEN") return NextResponse.json({ error: "This job is no longer open." }, { status: 409 });
+    console.error("Accept job error:", error);
+    return NextResponse.json({ error: "Unable to accept this job right now." }, { status: 500 });
   }
 }
 export const POST = withApiMetrics("/api/jobs/[id]/accept", POSTHandler);

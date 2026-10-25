@@ -7,8 +7,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { expireJobOpportunities } from "@/lib/opportunities";
-import { getLocalisationProfile } from "@/lib/localisation";
-import { marketDateKey } from "@/lib/vehicleDates";
+import { canPostJobs, vehicleEligibilityWhere } from "@/lib/eligibility";
 
 // POST /api/jobs/[id]/bids/[bidId]/accept
 // Poster accepts one bid and assigns the job to that driver.
@@ -83,8 +82,8 @@ async function POSTHandler(
     where: { id: accountId },
     select: { verificationStatus: true, companyVerificationStatus: true },
   });
-  if (!posterVerification || posterVerification.verificationStatus !== "verified" || posterVerification.companyVerificationStatus !== "verified") {
-    return NextResponse.json({ error: "Verified account and company status are required to award a job." }, { status: 403 });
+  if (!posterVerification || !canPostJobs(posterVerification)) {
+    return NextResponse.json({ error: "Complete account verification and obtain business approval before awarding a job." }, { status: 403 });
   }
 
   if (job.status !== "open") {
@@ -139,7 +138,6 @@ async function POSTHandler(
         status: "active",
         bidder: {
           verificationStatus: "verified",
-          companyVerificationStatus: "verified",
           vehicles: {
             some: {
               vehicleType: currentJob.vehicleType,
@@ -154,32 +152,22 @@ async function POSTHandler(
       throw new Error("BID_NO_LONGER_ELIGIBLE");
     }
 
-    // An otherwise verified vehicle can become ineligible when insurance or
-    // a required inspection expires. Recheck the market-local calendar date
-    // immediately before awarding the bid.
+    // Recheck the current vehicle's insurance and market-specific inspection immediately before award.
     const currentBidder = await tx.account.findUnique({
       where: { id: currentBid.bidderId },
       select: { country: true, currency: true, verificationStatus: true, companyVerificationStatus: true },
     });
-    if (!currentBidder || currentBidder.verificationStatus !== "verified" || currentBidder.companyVerificationStatus !== "verified") {
+    if (!currentBidder || currentBidder.verificationStatus !== "verified") {
       throw new Error("BID_NO_LONGER_ELIGIBLE");
     }
-    if (currentBidder) {
-      const bidderMarket = getLocalisationProfile({ country: currentBidder.country, currency: currentBidder.currency });
-      const marketToday = marketDateKey(new Date(), bidderMarket?.timeZone ?? "UTC");
-      const dateCutoff = new Date(marketToday + "T00:00:00.000Z");
-      const matchingVehicle = await tx.vehicle.findFirst({
-        where: {
-          accountId: currentBid.bidderId,
-          vehicleType: currentJob.vehicleType,
-          verificationStatus: "verified",
-          insuranceValidUntil: { gte: dateCutoff },
-          ...(bidderMarket?.inspectionRequiredAtCountryLevel ? { motValidUntil: { gte: dateCutoff } } : {}),
-        },
-        select: { id: true },
-      });
-      if (!matchingVehicle) throw new Error("BID_NO_LONGER_ELIGIBLE");
-    }
+    const matchingVehicle = await tx.vehicle.findFirst({
+      where: {
+        accountId: currentBid.bidderId,
+        ...vehicleEligibilityWhere(currentBidder, currentJob.vehicleType),
+      },
+      select: { id: true },
+    });
+    if (!matchingVehicle) throw new Error("BID_NO_LONGER_ELIGIBLE");
 
     // Atomically claim the job only if it is still open.
     const claimed = await tx.job.updateMany({
@@ -297,9 +285,6 @@ async function POSTHandler(
 
   await expireJobOpportunities(routeParams.id, updated.acceptedById);
 
-  return NextResponse.json({
-    success: true,
-    job: updated,
-  });
+  return NextResponse.json({ success: true, job: updated });
 }
 export const POST = withApiMetrics("/api/jobs/[id]/bids/[bidId]/accept", POSTHandler);

@@ -10,6 +10,7 @@ const baseLinks = [
   { href: "/jobs", label: "Marketplace" },
   { href: "/jobs/new", label: "Post a Job" },
   { href: "/vehicles", label: "Vehicles" },
+  { href: "/verification", label: "Verification" },
   { href: "/payments", label: "Payments" },
   { href: "/settings", label: "Account" },
   { href: "/admin", label: "Admin" },

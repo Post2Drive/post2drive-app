@@ -12,6 +12,7 @@ import { isQaAccount } from "@/lib/qaIsolation";
 import { isSupportedMarket, marketForAccount } from "@/lib/market";
 import { getTimeZoneOptions } from "@/lib/localisation";
 import { enforceRateLimit } from "@/lib/rateLimit";
+import { canPostJobs, getEligibleVehicleTypes } from "@/lib/eligibility";
 
 function hasFuturePickup(
   job: { jobDate: Date; pickupTime: string | null; pickupTimeZone: string | null },
@@ -59,19 +60,11 @@ async function GETHandler(req: Request) {
   const country = actor.country;
   const currency = actor.currency;
   // Unified accounts can post and carry work; open marketplace discovery is
-  // available only after business and vehicle compliance checks. Existing job
-  // parties can still see their own job history when these checks lapse.
-  const hasMarketplaceVehicle = (await prisma.vehicle.findFirst({
-    where: {
-      accountId,
-      verificationStatus: "verified",
-      insuranceValidUntil: { gte: new Date(new Date().toISOString().slice(0, 10) + "T00:00:00.000Z") },
-    },
-    select: { id: true },
-  })) !== null;
+  // limited to accounts with an eligible, currently insured vehicle.
+  const eligibleVehicleTypes = await getEligibleVehicleTypes(accountId, actor);
   const canBrowseOpenMarketplace = marketplaceAccessCheck.allowed &&
-    (actor.verificationStatus === "verified" &&
-      actor.companyVerificationStatus === "verified" && hasMarketplaceVehicle);
+    actor.verificationStatus === "verified" &&
+    eligibleVehicleTypes.length > 0;
 
   const url = new URL(req.url);
 
@@ -133,7 +126,12 @@ async function GETHandler(req: Request) {
     );
   }
 
-  const vehicleTypeFilter: Record<string, never> = {};
+  // Intersect user-selected filters with the account's currently eligible fleet.
+  // An empty intersection intentionally yields no open marketplace results.
+  const eligibleFeedVehicleTypes = vehicleType
+    ? (eligibleVehicleTypes.includes(vehicleType) ? [vehicleType] : [])
+    : eligibleVehicleTypes;
+  const vehicleTypeFilter = { vehicleType: { in: eligibleFeedVehicleTypes } };
 
   const searchFilter = buildJobFilters({
     search,
@@ -404,11 +402,8 @@ async function POSTHandler(req: Request) {
   if (!account || !isSupportedMarket(account)) {
     return NextResponse.json({ error: "Your account market is not supported." }, { status: 403 });
   }
-  if (account.verificationStatus !== "verified") {
-    return NextResponse.json({ error: "Verify your account before posting jobs." }, { status: 403 });
-  }
-  if (account.companyVerificationStatus !== "verified") {
-    return NextResponse.json({ error: "Company verification is required before posting jobs. Submit your business details for review." }, { status: 403 });
+  if (!canPostJobs(account)) {
+    return NextResponse.json({ error: "Complete account verification and obtain business approval before posting jobs. Submit your business details for review." }, { status: 403 });
   }
 
   const validation = validateJobInput(body, account);

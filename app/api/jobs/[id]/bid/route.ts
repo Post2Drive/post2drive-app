@@ -8,8 +8,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { markDriverOpportunityBid } from "@/lib/opportunities";
-import { getLocalisationProfile } from "@/lib/localisation";
-import { marketDateKey } from "@/lib/vehicleDates";
+import { hasEligibleVehicleForJob } from "@/lib/eligibility";
 
 async function POSTHandler(
   req: Request,
@@ -51,10 +50,6 @@ async function POSTHandler(
       { error: "Your account must be verified before placing bids." },
       { status: 403 }
     );
-  }
-
-  if (bidderAccount?.companyVerificationStatus !== "verified") {
-    return NextResponse.json({ error: "Company verification is required before bidding." }, { status: 403 });
   }
 
   const marketplaceAccessCheck = await getAccountAccess(accountId);
@@ -138,26 +133,11 @@ async function POSTHandler(
     );
   }
 
-  {
-    const bidderMarket = getLocalisationProfile({ country: bidderAccount.country, currency: bidderAccount.currency });
-    const marketToday = marketDateKey(new Date(), bidderMarket?.timeZone ?? "UTC");
-    const dateCutoff = new Date(marketToday + "T00:00:00.000Z");
-    const matchingVehicle = await prisma.vehicle.findFirst({
-      where: {
-        accountId,
-        vehicleType: job.vehicleType,
-        verificationStatus: "verified",
-        insuranceValidUntil: { gte: dateCutoff },
-        ...(bidderMarket?.inspectionRequiredAtCountryLevel ? { motValidUntil: { gte: dateCutoff } } : {}),
-      },
-      select: { id: true },
-    });
-    if (!matchingVehicle) {
-      return NextResponse.json(
-        { error: "You need a verified vehicle of the required type with current insurance and any required inspection before placing a bid." },
-        { status: 403 }
-      );
-    }
+  if (!(await hasEligibleVehicleForJob(accountId, bidderAccount, job.vehicleType))) {
+    return NextResponse.json(
+      { error: "You need a verified vehicle of the required type with current insurance and any required inspection before placing a bid." },
+      { status: 403 }
+    );
   }
 
   if (job.status !== "open") {
@@ -257,10 +237,6 @@ async function POSTHandler(
   }
 
   await markDriverOpportunityBid(accountId, routeParams.id);
-
-  return NextResponse.json({
-    success: true,
-    bid,
-  });
+  return NextResponse.json({ success: true, bid }, { status: 201 });
 }
 export const POST = withApiMetrics("/api/jobs/[id]/bid", POSTHandler);
