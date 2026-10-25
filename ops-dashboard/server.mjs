@@ -499,7 +499,13 @@ if(Number(o.motExpiring30d||0)>0||Number(o.insuranceExpiring30d||0)>0)queue.push
 if(d.warnings?.length)queue.push({priority:"High",category:"Data coverage",market:m.code,issue:d.warnings.length+" reporting source(s) unavailable",next:"Check read-only DB grants, schema presence and query warning details.",when:"Current refresh"});
 if(!(d.recentErrors||[]).length&&!(d.incidentQueue||[]).some(x=>!x.hasResolution)&&!(d.qaFailures||[]).length&&!(d.testerApplications||[]).length&&!(d.warnings||[]).length)queue.push({priority:"Info",category:"No detected exceptions",market:m.code,issue:"No queue items detected in the returned sample",next:"This is not an uptime or compliance guarantee; verify data coverage and freshness.",when:"Current refresh"});
 const rank={Critical:0,High:1,Normal:2,Info:3};
-queue.sort((a,b)=>(rank[a.priority]??4)-(rank[b.priority]??4));
+const categoryRank={"Security":0,"QA regression":1,"Availability":2,"Payments":3,"Data quality":4,"Configuration":5};
+queue.sort((a,b)=>
+  (rank[a.priority]??4)-(rank[b.priority]??4) ||
+  (categoryRank[a.category]??10)-(categoryRank[b.category]??10) ||
+  String(a.market||"").localeCompare(String(b.market||"")) ||
+  String(a.issue||"").localeCompare(String(b.issue||""))
+);
 $("attentionCount").textContent=queue.length+" item(s) · advisory queue";
 $("attentionQueue").innerHTML=table(queue.slice(0,100),[["priority","Priority",v=>v==="Critical"||v==="High"],["category","Category"],["market","Market"],["issue","Issue"],["next","Recommended next step"],["when","Detected"]]);
 const readiness=d.countryReadiness||[];
