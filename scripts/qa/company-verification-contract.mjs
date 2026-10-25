@@ -19,6 +19,7 @@ assert.ok(migration.includes('ADD COLUMN "companyVerificationStatus"'));
 assert.ok(migration.includes("DEFAULT 'not_started'"));
 assert.ok(submit.includes('companyVerificationStatus: "pending"'));
 assert.ok(!submit.includes('companyVerificationStatus: "verified"'));
+assert.ok(!submit.includes("isTester"), "test access must not bypass identity verification for company submission");
 assert.ok(settings.includes("Company verification"));
 assert.ok(settings.includes("/api/company-verification"));
 assert.ok(jobs.includes('companyVerificationStatus !== "verified"'));
