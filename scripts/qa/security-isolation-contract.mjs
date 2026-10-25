@@ -579,9 +579,9 @@ assert.equal(bidAcceptJob.status, "open", "unauthorized bid acceptance must leav
 console.log("Isolated bid acceptance authorization test passed: unrelated poster denied before bid lookup or mutation.");
 
 
-// Exercise the actual fixed-price acceptance route under contention. A verified
-// tester driver may race another acceptance, but the open -> accepted CAS must
-// assign the job once and emit only one lifecycle event.
+// Exercise the actual fixed-price acceptance route under contention. An explicitly
+// verified synthetic driver may race another acceptance; test-account status alone
+// is not a verification grant. The open -> accepted CAS must assign the job once.
 let acceptSessionAccountId = "driver-a";
 let acceptJob = {
   id: "job-accept-race", posterId: "poster-a", acceptedById: null, status: "open",
@@ -599,7 +599,7 @@ const acceptTx = {
       return { count: 1 };
     },
   },
-  account: { findUnique: async () => ({ verificationStatus: "verified", isTester: true, country: "GB", currency: "GBP" }) },
+  account: { findUnique: async () => ({ verificationStatus: "verified", companyVerificationStatus: "verified", country: "GB", currency: "GBP" }) },
   vehicle: { findFirst: async () => ({ id: "vehicle-fixture" }) },
   jobActivity: { create: async () => { acceptAuditEvents++; return {}; } },
   notification: { create: async () => ({}) },
@@ -618,7 +618,7 @@ const acceptRoute = loadTypeScriptModule("app/api/jobs/[id]/accept/route.ts", {
   "@/lib/prisma": {
     prisma: {
       job: { findUnique: async ({ where }) => where.id === acceptJob.id ? { ...acceptJob } : null },
-      account: { findUnique: async () => ({ verificationStatus: "verified", isTester: true, country: "GB", currency: "GBP" }) },
+      account: { findUnique: async () => ({ verificationStatus: "verified", companyVerificationStatus: "verified", country: "GB", currency: "GBP" }) },
       vehicle: { findFirst: async () => ({ id: "vehicle-fixture" }) },
       $transaction: async (callback) => callback(acceptTx),
       driverOpportunity: { updateMany: async () => ({ count: 0 }) },
