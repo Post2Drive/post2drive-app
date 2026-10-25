@@ -1,8 +1,9 @@
 name: CodeQL
 
 on:
+  # Run analysis for every PR target, including integration branches. The
+  # previous base-branch filter skipped PRs targeting integration/*.
   pull_request:
-    branches: [main, "audit/**"]
   push:
     branches: [main, "feature/**", "security/**", "audit/**"]
   workflow_dispatch:
