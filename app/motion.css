@@ -12,7 +12,6 @@
    * timer-driven while keeping durations short and interactions responsive.
    */
   --motion-spring: linear(0, 0.18, 0.48, 0.78, 1.04, 1.07, 1.02, 1);
-  --motion-spring-duration: 240ms;
 }
 
 /* Apply spring-like timing only to existing, explicitly animated controls. */
