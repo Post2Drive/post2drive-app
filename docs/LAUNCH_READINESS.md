@@ -1,3 +1,9 @@
+> **Status audit — 25 October 2026 (latest check).** PR #48 and PR #49 are merged; documentation PR #47 has also been merged to `main`. Current integration head: `2a77b02380f5e298c41801ba81d2920ba751b625`. The preceding candidate `aef8873` passed Validate, CodeQL and Security Scan, but Android emulator smoke failed on redundant animation-setting writes. The redundant writes have been removed, and the Android workflow now runs on integration pushes so the fixed current head gets its own smoke-test result. Validate and Android workflows are pending on `2a77b02`; only results for the exact current head count.
+>
+> **Railway staging:** Post2Drive Web is connected to `integration/pr12-pr41-resolved`, but its latest successful deployment observed is still `4e58a373cf408fb232db994fda8b217977767928` (21 October). No new Web deployment has been triggered. Wait for current-head required checks to pass before deploying to staging and then verify health.
+>
+> **Outstanding release evidence:** issues #45 and #46 remain open for database ownership/backup-restore/recovery and transactional email/domain verification/testing. Live staging browser E2E and recovery evidence are not established. API-specific work remains deferred as directed; deferred work is not marked passed.
+>
 # Post2Drive Launch Readiness — Staging Verification
 
 **Review date:** 18 October 2026  
