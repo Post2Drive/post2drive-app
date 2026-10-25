@@ -7,11 +7,16 @@
  */
 :root {
   /*
-   * A small under-damped easing approximation for short UI feedback.
-   * The slight overshoot/settle makes pressed and selected states feel less
-   * timer-driven while keeping durations short and interactions responsive.
+   * A restrained ease-out fallback for browsers without CSS linear() support.
+   * The enhanced curve below adds a small overshoot/settle on supported engines.
    */
-  --motion-spring: linear(0, 0.18, 0.48, 0.78, 1.04, 1.07, 1.02, 1);
+  --motion-spring: var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1));
+}
+
+@supports (transition-timing-function: linear(0, 1)) {
+  :root {
+    --motion-spring: linear(0, 0.18, 0.48, 0.78, 1.04, 1.07, 1.02, 1);
+  }
 }
 
 /* Apply spring-like timing only to existing, explicitly animated controls. */
