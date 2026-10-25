@@ -2692,3 +2692,42 @@ main button:disabled {
   cursor: not-allowed;
   opacity: 1;
 }
+
+
+/* Shared controls: enforce readable contrast for the common primary/secondary patterns. */
+main button:not(.marketplace-job-tabs button),
+.auth-page button[type="submit"] {
+  font-weight: 650;
+  text-decoration: none;
+}
+main button:disabled,
+.auth-page button:disabled,
+.button-link[aria-disabled="true"] {
+  color: #4B5563 !important;
+  background: #E5E7EB !important;
+  border-color: #9CA3AF !important;
+  box-shadow: none !important;
+  cursor: not-allowed !important;
+  opacity: 1 !important;
+}
+main [role="alert"],
+.auth-page [role="alert"],
+.signup-error {
+  color: #7F1D1D;
+  background: #FEF2F2;
+  border: 1px solid #FCA5A5;
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+main .button-link-secondary,
+.auth-page .button-link-secondary {
+  background: #FFFFFF !important;
+  color: #1746B8 !important;
+  border: 1px solid #9DB6E8 !important;
+  text-decoration: none;
+}
+main .button-link-secondary:hover,
+.auth-page .button-link-secondary:hover {
+  background: #EEF4FF !important;
+  border-color: #2457D6 !important;
+}
