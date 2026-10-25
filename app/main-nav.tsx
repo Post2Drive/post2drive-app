@@ -96,7 +96,7 @@ export default function MainNav({ showQaCampaigns = false }: { showQaCampaigns?:
               href={link.href}
               className="mobile-nav-link"
               aria-current={active ? "page" : undefined}
-              aria-label={`${mobileLabel(link.href, link.label)}, ${link.label}`}
+              aria-label={mobileLabel(link.href, link.label)}
               onClick={() => setMoreOpen(false)}
               style={{
                 fontWeight: active ? 800 : 600,
