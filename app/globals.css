@@ -2532,6 +2532,21 @@ main.home-page .home-route-panel .home-route-footer {
     overflow-wrap: normal;
   }
 
+  .mobile-nav-more {
+    background: transparent !important;
+    color: #30343B !important;
+    border-color: transparent !important;
+  }
+
+  .mobile-nav-more * {
+    color: inherit !important;
+  }
+
+  .mobile-nav-more.is-active {
+    background: #EEF3FF !important;
+    color: #2457D6 !important;
+  }
+
   .mobile-nav-more span:first-child {
     font-size: 20px;
     line-height: 1;
