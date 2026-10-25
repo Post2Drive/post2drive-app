@@ -46,14 +46,14 @@ async function POSTHandler(
   if (bidderAccount?.country === "IN" && bidderAccount?.currency === "INR") {
     return NextResponse.json({ error: "Bidding is not available in India. Contact the poster about the fixed quote." }, { status: 403 });
   }
-  if (bidderAccount?.verificationStatus !== "verified" && !bidderAccount?.isTester) {
+  if (bidderAccount?.verificationStatus !== "verified") {
     return NextResponse.json(
       { error: "Your account must be verified before placing bids." },
       { status: 403 }
     );
   }
 
-  if (bidderAccount?.companyVerificationStatus !== "verified" && !bidderAccount?.isTester) {
+  if (bidderAccount?.companyVerificationStatus !== "verified") {
     return NextResponse.json({ error: "Company verification is required before bidding." }, { status: 403 });
   }
 
@@ -138,7 +138,7 @@ async function POSTHandler(
     );
   }
 
-  if (!bidderAccount?.isTester) {
+  {
     const bidderMarket = getLocalisationProfile({ country: bidderAccount.country, currency: bidderAccount.currency });
     const marketToday = marketDateKey(new Date(), bidderMarket?.timeZone ?? "UTC");
     const dateCutoff = new Date(marketToday + "T00:00:00.000Z");
