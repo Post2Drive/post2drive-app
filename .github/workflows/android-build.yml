@@ -2,6 +2,8 @@ name: Android Capacitor build
 
 on:
   workflow_dispatch:
+  push:
+    branches: ["integration/**"]
   pull_request:
     branches: [main]
 
