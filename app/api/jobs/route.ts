@@ -61,7 +61,7 @@ async function GETHandler(req: Request) {
   // Unified accounts can post and carry work; open marketplace discovery is
   // available only after business and vehicle compliance checks. Existing job
   // parties can still see their own job history when these checks lapse.
-  const hasMarketplaceVehicle = actor.isTester || (await prisma.vehicle.findFirst({
+  const hasMarketplaceVehicle = (await prisma.vehicle.findFirst({
     where: {
       accountId,
       verificationStatus: "verified",
@@ -70,8 +70,8 @@ async function GETHandler(req: Request) {
     select: { id: true },
   })) !== null;
   const canBrowseOpenMarketplace = marketplaceAccessCheck.allowed &&
-    (actor.isTester || (actor.verificationStatus === "verified" &&
-      actor.companyVerificationStatus === "verified" && hasMarketplaceVehicle));
+    (actor.verificationStatus === "verified" &&
+      actor.companyVerificationStatus === "verified" && hasMarketplaceVehicle);
 
   const url = new URL(req.url);
 
@@ -404,10 +404,10 @@ async function POSTHandler(req: Request) {
   if (!account || !isSupportedMarket(account)) {
     return NextResponse.json({ error: "Your account market is not supported." }, { status: 403 });
   }
-  if (!account.isTester && account.verificationStatus !== "verified") {
+  if (account.verificationStatus !== "verified") {
     return NextResponse.json({ error: "Verify your account before posting jobs." }, { status: 403 });
   }
-  if (!account.isTester && account.companyVerificationStatus !== "verified") {
+  if (account.companyVerificationStatus !== "verified") {
     return NextResponse.json({ error: "Company verification is required before posting jobs. Submit your business details for review." }, { status: 403 });
   }
 
