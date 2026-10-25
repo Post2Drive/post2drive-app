@@ -1,12 +1,28 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
+import { createServer } from "node:net";
 import { setTimeout as delay } from "node:timers/promises";
 import { createHmac } from "node:crypto";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
+
+async function getAvailablePort() {
+  const socket = createServer();
+  await new Promise((resolve, reject) => {
+    socket.once("error", reject);
+    socket.listen(0, "127.0.0.1", resolve);
+  });
+  const address = socket.address();
+  if (!address || typeof address === "string") {
+    await new Promise((resolve) => socket.close(resolve));
+    throw new Error("Could not determine an available local TCP port");
+  }
+  await new Promise((resolve, reject) => socket.close((error) => error ? reject(error) : resolve()));
+  return address.port;
+}
 const suffix = process.pid + "-" + Date.now();
 const accountIds = [];
 const jobIds = [];
@@ -196,7 +212,7 @@ try {
     insuranceValidUntil: new Date("2035-12-31T00:00:00.000Z"),
   }});
 
-  const port = 32000 + (process.pid % 15000);
+  const port = await getAvailablePort();
   base = "http://127.0.0.1:" + port;
   server = spawn(process.execPath, ["node_modules/next/dist/bin/next", "start", "--port", String(port)], {
     env: { ...process.env, NEXTAUTH_URL: base, NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET || "ci-only-secret", NODE_ENV: "production" },
