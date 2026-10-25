@@ -38,7 +38,7 @@
     "qa:lifecycle-auth-matrix": "node scripts/qa/lifecycle-auth-matrix.mjs"
   },
   "dependencies": {
-    "@capacitor/android": "^8.5.2",
+    "@capacitor/android": "^8.5.3",
     "@capacitor/cli": "^8.5.2",
     "@capacitor/core": "^8.5.2",
     "@prisma/client": "^5.22.0",
