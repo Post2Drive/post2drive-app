@@ -2532,17 +2532,17 @@ main.home-page .home-route-panel .home-route-footer {
     overflow-wrap: normal;
   }
 
-  .mobile-nav-more {
+  button.mobile-nav-more:not(:disabled):not([style*="background: transparent"]):not([style*="background:transparent"]):not([style*="background: var(--color-surface)"]):not([style*="background:var(--color-surface)"]) {
     background: transparent !important;
     color: #30343B !important;
     border-color: transparent !important;
   }
 
-  .mobile-nav-more * {
+  button.mobile-nav-more:not(:disabled):not([style*="background: transparent"]):not([style*="background:transparent"]):not([style*="background: var(--color-surface)"]):not([style*="background:var(--color-surface)"]) * {
     color: inherit !important;
   }
 
-  .mobile-nav-more.is-active {
+  button.mobile-nav-more.is-active:not(:disabled) {
     background: #EEF3FF !important;
     color: #2457D6 !important;
   }
