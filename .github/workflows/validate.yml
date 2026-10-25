@@ -115,6 +115,8 @@ jobs:
           grep -q "(0 rows)" /tmp/qa-inventory.txt
       - name: Validate company verification gates
         run: npm run qa:company-verification-contract
+      - name: Validate mobile UX regression contract
+        run: npm run qa:mobile-ux-contract
       - name: Validate account API privacy and request validation
         run: npm run qa:account-api-security
       - name: Validate accessible design contracts
