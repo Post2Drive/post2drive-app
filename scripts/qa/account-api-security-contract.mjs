@@ -8,6 +8,10 @@ const getHandler = accountRoute.split("async function PATCHHandler")[0];
 const patchHandler = accountRoute.split("async function PATCHHandler")[1]?.split("async function DELETEHandler")[0] || "";
 const nextConfig = read("next.config.js");
 const passwordResetSource = read("lib/passwordReset.ts");
+assert.ok(passwordResetSource.includes("using this link:\\n${resetUrl}\\n\\nThis link expires in one hour"),
+  "password-reset plain-text email must contain newline escape sequences around the reset URL");
+assert.ok(!passwordResetSource.includes("using this link:\\\\n${resetUrl}"),
+  "password-reset plain-text email must not emit double-escaped literal backslash-n sequences");
 
 
 assert.ok(patchHandler, "Account PATCH handler must exist");
@@ -42,6 +46,8 @@ assert.doesNotMatch(nextConfig, /key:\s*"Content-Security-Policy"/,
 
 assert.match(passwordResetSource, /createHmac\("sha256",\s*secret\)\.update\(token\)\.digest\("hex"\)/,
   "high-entropy password-reset tokens must use a keyed HMAC digest");
+assert.match(passwordResetSource, /createdAt:\s*\{\s*gt:\s*cooldownSince\s*\}/,
+  "password-reset cooldown must cover newly created tokens while delivery is in flight");
 assert.match(passwordResetSource, /randomBytes\(32\)/,
   "password-reset tokens must retain at least 256 bits of cryptographic randomness");
 assert.match(passwordResetSource, /if \(!secret\) throw new Error\("Password reset token hashing is not configured\."\)/,
