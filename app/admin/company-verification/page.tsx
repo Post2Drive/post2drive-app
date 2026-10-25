@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { formatMarketDateTime } from "@/lib/localisation";
 
 type Application = {
   id: string;
@@ -75,7 +76,7 @@ export default function CompanyVerificationReviewPage() {
               <p>Account verification: {application.verificationStatus}</p>
               <p>Company status: {application.companyVerificationStatus}</p>
               <p>Contact: {application.users?.[0]?.name || "—"} · {application.users?.[0]?.email || "—"} · {application.users?.[0]?.phone || "—"}</p>
-              <p>Submitted: {application.companyVerificationSubmittedAt ? new Date(application.companyVerificationSubmittedAt).toLocaleString() : "—"}</p>
+              <p>Submitted: {application.companyVerificationSubmittedAt ? formatMarketDateTime(application.companyVerificationSubmittedAt, { country: application.country, currency: application.currency }) : "—"}</p>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                 <button disabled={busyId === application.id} onClick={() => void decide(application, "verified")}>Approve</button>
                 <button disabled={busyId === application.id} onClick={() => void decide(application, "manual_review")}>Needs manual review</button>
