@@ -289,7 +289,8 @@ export default function JobsPage() {
     try {
       const res =
         await fetch(
-          "/api/jobs"
+          "/api/jobs",
+          { credentials: "same-origin", cache: "no-store" }
         );
 
       const data =
