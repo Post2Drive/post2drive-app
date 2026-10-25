@@ -26,6 +26,7 @@ assert.ok(settings.includes("/api/company-verification"));
 assert.ok(jobs.includes('companyVerificationStatus !== "verified"'));
 assert.ok(!jobs.includes("isTester"), "marketplace gates must not inspect test-account status");
 assert.ok(bid.includes('companyVerificationStatus !== "verified"'));
+assert.ok(!bid.includes("isTester"), "bid eligibility must not inspect test-account status");
 assert.ok(accept.includes('companyVerificationStatus !== "verified"'));
 assert.ok(awardBid.includes('companyVerificationStatus !== "verified"'));
 assert.ok(opportunities.includes('driver.companyVerificationStatus !== "verified"'));
