@@ -33,6 +33,11 @@ async function GETHandler() {
     select: {
       id: true,
       companyName: true,
+      companyNumber: true,
+      isSoleTrader: true,
+      companyVerificationStatus: true,
+      companyVerificationSubmittedAt: true,
+      companyVerifiedAt: true,
       country: true,
       currency: true,
       displayId: true,
