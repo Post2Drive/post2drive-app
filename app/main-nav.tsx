@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 
 const baseLinks = [
-  { href: "/", label: "Home" },
+  { href: "/dashboard", label: "Home" },
   { href: "/jobs", label: "Marketplace" },
   { href: "/jobs/new", label: "Post a Job" },
   { href: "/vehicles", label: "Vehicles" },
@@ -22,7 +22,7 @@ function isActive(pathname: string, href: string) {
 
 function mobileLabel(href: string, fallback: string) {
   switch (href) {
-    case "/": return "Home";
+    case "/dashboard": return "Home";
     case "/jobs": return "Jobs";
     case "/jobs/new": return "Post";
     case "/vehicles": return "Vehicles";
@@ -54,7 +54,7 @@ export default function MainNav({ showQaCampaigns = false }: { showQaCampaigns?:
     <>
       <header className="main-nav-header">
         <nav className="main-nav-inner" aria-label="Main navigation">
-          <Link href="/" className="main-nav-brand" aria-label="Post2Drive home">Post2Drive</Link>
+          <Link href="/dashboard" className="main-nav-brand" aria-label="Post2Drive dashboard home">Post2Drive</Link>
           <div className="desktop-nav">
             {links.map((link) => {
               const active = isActive(pathname, link.href);
