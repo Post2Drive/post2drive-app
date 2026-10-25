@@ -2545,7 +2545,7 @@ main.home-page .home-route-panel .home-route-footer {
     box-shadow: 0 12px 32px rgba(16, 42, 67, .18);
   }
 
-  body {
+  body:has(.mobile-bottom-nav) {
     padding-bottom: calc(76px + env(safe-area-inset-bottom)) !important;
   }
 }
