@@ -237,6 +237,10 @@ async function POSTHandler(
   }
 
   await markDriverOpportunityBid(accountId, routeParams.id);
-  return NextResponse.json({ success: true, bid }, { status: 201 });
+
+  return NextResponse.json({
+    success: true,
+    bid,
+  });
 }
 export const POST = withApiMetrics("/api/jobs/[id]/bid", POSTHandler);

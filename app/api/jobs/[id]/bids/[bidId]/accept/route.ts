@@ -152,7 +152,9 @@ async function POSTHandler(
       throw new Error("BID_NO_LONGER_ELIGIBLE");
     }
 
-    // Recheck the current vehicle's insurance and market-specific inspection immediately before award.
+    // An otherwise verified vehicle can become ineligible when insurance or
+    // a required inspection expires. Recheck the market-local calendar date
+    // immediately before awarding the bid.
     const currentBidder = await tx.account.findUnique({
       where: { id: currentBid.bidderId },
       select: { country: true, currency: true, verificationStatus: true, companyVerificationStatus: true },
@@ -285,6 +287,9 @@ async function POSTHandler(
 
   await expireJobOpportunities(routeParams.id, updated.acceptedById);
 
-  return NextResponse.json({ success: true, job: updated });
+  return NextResponse.json({
+    success: true,
+    job: updated,
+  });
 }
 export const POST = withApiMetrics("/api/jobs/[id]/bids/[bidId]/accept", POSTHandler);

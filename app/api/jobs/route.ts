@@ -60,7 +60,8 @@ async function GETHandler(req: Request) {
   const country = actor.country;
   const currency = actor.currency;
   // Unified accounts can post and carry work; open marketplace discovery is
-  // limited to accounts with an eligible, currently insured vehicle.
+  // available only after business and vehicle compliance checks. Existing job
+  // parties can still see their own job history when these checks lapse.
   const eligibleVehicleTypes = await getEligibleVehicleTypes(accountId, actor);
   const canBrowseOpenMarketplace = marketplaceAccessCheck.allowed &&
     actor.verificationStatus === "verified" &&

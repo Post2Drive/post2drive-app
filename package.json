@@ -20,6 +20,51 @@
     "qa:signup-display-id-retry": "node scripts/qa/signup-display-id-retry-contract.mjs",
     "qa:country-matrix": "node --experimental-strip-types scripts/qa/country-matrix-contract.mjs",
     "qa:qa-runner-guard": "node --experimental-strip-types scripts/qa/qa-runner-guard-contract.mjs",
-    "qa:all": "npm run qa:company-verification-contract && npm run qa:vehicle-eligibility-contract && npm run qa:mobile-ux-contract && npm run qa:account-api-security && npm run qa:design-accessibility && npm run qa:health-contract && npm run qa:campaign-builder-contract && npm run qa:signup-display-id-retry && npm run qa:market-timezone && npm run qa:dropoff-timezone && npm run qa:dashboard-localisation && npm run qa:ops-dashboard && npm run qa:market-isolation && npm run qa:qa-isolation-contract && npm run qa:market-parity && npm run qa:country-matrix && npm run qa:localisation && npm run qa:localisation-copy && npm run qa:qa-runner-guard && npm run qa:lifecycle-contract && npm run qa:worker-contract && npm run qa:security-isolation-contract && npm run qa:lifecycle-api-e2e && npm run qa:lifecycle-auth-matrix"
+    "qa:all": "npm run qa:company-verification-contract && npm run qa:vehicle-eligibility-contract && npm run qa:mobile-ux-contract && npm run qa:account-api-security && npm run qa:design-accessibility && npm run qa:health-contract && npm run qa:campaign-builder-contract && npm run qa:signup-display-id-retry && npm run qa:market-timezone && npm run qa:dropoff-timezone && npm run qa:dashboard-localisation && npm run qa:ops-dashboard && npm run qa:market-isolation && npm run qa:qa-isolation-contract && npm run qa:market-parity && npm run qa:country-matrix && npm run qa:localisation && npm run qa:localisation-copy && npm run qa:qa-runner-guard && npm run qa:lifecycle-contract && npm run qa:worker-contract && npm run qa:security-isolation-contract && npm run qa:lifecycle-api-e2e && npm run qa:lifecycle-auth-matrix",
+    "qa:worker": "node --experimental-default-type=module --experimental-strip-types scripts/qa/worker.ts",
+    "qa:worker-contract": "node scripts/qa/worker-contract.mjs",
+    "qa:worker-boot-contract": "node scripts/qa/worker-boot-contract.mjs",
+    "qa:worker-concurrency-contract": "node scripts/qa/worker-concurrency-contract.mjs",
+    "qa:localisation": "node --experimental-strip-types scripts/qa/localisation-contract.mjs",
+    "qa:localisation-copy": "node scripts/qa/localisation-copy-audit.mjs",
+    "ops:dashboard": "node ops-dashboard/server.mjs",
+    "qa:ops-dashboard": "node scripts/qa/ops-dashboard-contract.mjs",
+    "predeploy:staging": "node ops-dashboard/provision-readonly-role.mjs",
+    "qa:market-parity": "node --experimental-strip-types scripts/qa/market-feature-parity-contract.mjs",
+    "qa:qa-isolation-contract": "node scripts/qa/qa-isolation-contract.mjs",
+    "qa:campaign-builder-contract": "node scripts/qa/qa-campaign-builder-contract.mjs",
+    "qa:design-accessibility": "node scripts/qa/design-accessibility-contract.mjs",
+    "qa:account-api-security": "node scripts/qa/account-api-security-contract.mjs",
+    "qa:account-mutation-concurrency": "node scripts/qa/account-mutation-concurrency-contract.mjs",
+    "qa:security-isolation-contract": "node scripts/qa/security-isolation-contract.mjs",
+    "qa:lifecycle-api-e2e": "node scripts/qa/lifecycle-api-e2e.mjs",
+    "qa:lifecycle-auth-matrix": "node scripts/qa/lifecycle-auth-matrix.mjs"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/cli": "^8.5.2",
+    "@capacitor/core": "^8.5.2",
+    "@prisma/client": "^5.22.0",
+    "bcryptjs": "^2.4.3",
+    "next": "15.5.27",
+    "next-auth": "^4.24.8",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^20.14.0",
+    "@types/react": "^18.3.5",
+    "prisma": "^5.20.0",
+    "typescript": "^5.5.4"
+  },
+  "overrides": {
+    "postcss": "^8.5.23",
+    "xcode": {
+      "uuid": "^11.1.1"
+    }
+  },
+  "engines": {
+    "node": ">=22.6.0"
   }
 }
