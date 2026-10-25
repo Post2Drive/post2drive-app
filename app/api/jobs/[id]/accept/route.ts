@@ -8,7 +8,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { markDriverOpportunityAccepted } from "@/lib/opportunities";
 import { recordAcceptedJobUsage } from "@/lib/usage";
-import { hasEligibleVehicleForJob, vehicleEligibilityWhere } from "@/lib/eligibility";
+import { hasEligibleVehicleForJob } from "@/lib/eligibility";
 
 async function POSTHandler(
   req: Request,
@@ -138,19 +138,27 @@ async function POSTHandler(
 
           const currentDriver = await tx.account.findUnique({
             where: { id: accountId },
-            select: { verificationStatus: true, country: true, currency: true },
+            select: { verificationStatus: true, companyVerificationStatus: true, country: true, currency: true },
           });
-          if (!currentDriver || currentDriver.verificationStatus !== "verified") {
+          if (!currentDriver || currentDriver.verificationStatus !== "verified" || currentDriver.companyVerificationStatus !== "verified") {
             throw new Error("DRIVER_NOT_VERIFIED");
           }
-          const matchingVehicle = await tx.vehicle.findFirst({
-            where: {
-              accountId,
-              ...vehicleEligibilityWhere(currentDriver, job.vehicleType),
-            },
-            select: { id: true },
-          });
-          if (!matchingVehicle) throw new Error("DRIVER_VEHICLE_NOT_VERIFIED");
+          if (currentDriver) {
+            const driverMarket = getLocalisationProfile({ country: currentDriver.country, currency: currentDriver.currency });
+            const marketToday = marketDateKey(new Date(), driverMarket?.timeZone ?? "UTC");
+            const dateCutoff = new Date(marketToday + "T00:00:00.000Z");
+            const matchingVehicle = await tx.vehicle.findFirst({
+              where: {
+                accountId,
+                vehicleType: job.vehicleType,
+                verificationStatus: "verified",
+                insuranceValidUntil: { gte: dateCutoff },
+                ...(driverMarket?.inspectionRequiredAtCountryLevel ? { motValidUntil: { gte: dateCutoff } } : {}),
+              },
+              select: { id: true },
+            });
+            if (!matchingVehicle) throw new Error("DRIVER_VEHICLE_NOT_VERIFIED");
+          }
 
           let pickupAt: Date;
 
