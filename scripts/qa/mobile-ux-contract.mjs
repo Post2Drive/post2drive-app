@@ -8,7 +8,7 @@ const layout = read("../../app/layout.tsx");
 
 assert.ok(nav.includes('case "/jobs": return "Jobs"'), "mobile marketplace label should fit narrow screens");
 assert.ok(nav.includes('case "/jobs/new": return "Post"'), "mobile job-posting label should be compact");
-assert.ok(nav.includes('aria-label={`${mobileLabel(link.href, link.label)}, ${link.label}`}'), "accessible names must include the visible compact label and full destination");
+assert.ok(nav.includes('aria-label={mobileLabel(link.href, link.label)}'), "accessible names must match visible compact labels");
 assert.ok(nav.includes('aria-expanded={moreOpen}'), "More menu must expose expanded state");
 assert.ok(css.includes("env(safe-area-inset-bottom)"), "mobile navigation must respect device safe areas");
 assert.ok(css.includes(".mobile-nav-label"), "mobile labels must have a dedicated layout rule");
