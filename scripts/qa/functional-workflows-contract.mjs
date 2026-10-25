@@ -43,7 +43,7 @@ includes("app/api/jobs/route.ts", ".filter((job) => {");
 // Bid API must apply the eligibility and numeric bounds the rest of the workflow assumes.
 includes("app/api/jobs/[id]/bid/route.ts", 'bidderAccount?.verificationStatus !== "verified"');
 includes("app/api/jobs/[id]/bid/route.ts", "hasEligibleVehicleForJob(accountId, bidderAccount, job.vehicleType)");
-includes("app/api/jobs/[id]/bid/route.ts", 'verificationStatus: "verified"');
+includes("lib/eligibility.ts", 'verificationStatus: "verified"');
 includes("app/api/jobs/[id]/bid/route.ts", "vehicleEligibilityWhere(currentBidder, currentJob.vehicleType)");
 includes("lib/eligibility.ts", "insuranceValidUntil: { gte: dateCutoff }");
 includes("lib/eligibility.ts", "inspectionRequiredAtCountryLevel");
