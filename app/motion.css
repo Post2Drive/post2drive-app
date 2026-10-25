@@ -39,6 +39,11 @@ main button,
 
 /* Respect user preferences: no spring overshoot for reduced-motion users. */
 @media (prefers-reduced-motion: reduce) {
+  /* Also avoid smooth programmatic scrolling when reduced motion is requested. */
+  html {
+    scroll-behavior: auto !important;
+  }
+
   .main-nav-link,
   .mobile-nav-link,
   .button-link,
