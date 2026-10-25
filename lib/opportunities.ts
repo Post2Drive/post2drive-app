@@ -56,7 +56,7 @@ export async function isJobSuitableForDriver(
     return false;
   }
 
-  if ((driver.verificationStatus !== "verified" || driver.companyVerificationStatus !== "verified") && !driver.isTester) {
+  if (driver.verificationStatus !== "verified" || driver.companyVerificationStatus !== "verified") {
     return false;
   }
 
@@ -70,12 +70,11 @@ export async function isJobSuitableForDriver(
     driver.vehicles.some(
       (vehicle) =>
         vehicle.vehicleType === job.vehicleType &&
-        (driver.isTester ||
-          (vehicle.verificationStatus === "verified" &&
-            vehicle.motValidUntil !== null &&
-            vehicle.motValidUntil > now &&
-            vehicle.insuranceValidUntil !== null &&
-            vehicle.insuranceValidUntil > now))
+        (vehicle.verificationStatus === "verified" &&
+          vehicle.motValidUntil !== null &&
+          vehicle.motValidUntil > now &&
+          vehicle.insuranceValidUntil !== null &&
+          vehicle.insuranceValidUntil > now)
     );
 
   if (!hasVehicleType) {
