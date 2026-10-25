@@ -571,6 +571,12 @@ const bidAcceptRoute = loadTypeScriptModule("app/api/jobs/[id]/bids/[bidId]/acce
     },
   },
   "@/lib/opportunities": { expireJobOpportunities: async () => {} },
+  "@/lib/eligibility": {
+    canPostJobs: async () => false,
+    isVehicleCurrentlyEligible: async () => false,
+    hasEligibleVehicleForJob: async () => false,
+    vehicleEligibilityWhere: () => ({}),
+  },
   "@/lib/localisation": { getLocalisationProfile: () => ({ timeZone: "Europe/London" }) },
   "@/lib/vehicleDates": { marketDateKey: () => "2026-11-01" },
 });
