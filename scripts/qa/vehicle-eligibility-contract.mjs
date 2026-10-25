@@ -18,6 +18,7 @@ assert.ok(jobs.includes("getEligibleVehicleTypes"));
 assert.ok(jobs.includes("vehicleType: { in: eligibleFeedVehicleTypes }"));
 assert.ok(jobs.includes("canPostJobs(account)"));
 assert.ok(bid.includes("hasEligibleVehicleForJob"));
+assert.ok(bid.includes("vehicleEligibilityWhere(currentBidder, currentJob.vehicleType)"), "bid eligibility must be rechecked against the latest locked job type");
 assert.ok(accept.includes("hasEligibleVehicleForJob"));
 assert.ok(award.includes("vehicleEligibilityWhere"));
 assert.ok(!bid.includes('companyVerificationStatus !== "verified"'));
