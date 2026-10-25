@@ -11,6 +11,7 @@ const awardBid = read("../../app/api/jobs/[id]/bids/[bidId]/accept/route.ts");
 const submit = read("../../app/api/company-verification/route.ts");
 const settings = read("../../app/settings/page.tsx");
 const opportunities = read("../../lib/opportunities.ts");
+const qaRunner = read("../../lib/qaRunner.ts");
 
 assert.ok(schema.includes("companyVerificationStatus VerificationStatus @default(not_started)"));
 assert.ok(schema.includes("companyVerificationSubmittedAt DateTime?"));
@@ -39,4 +40,10 @@ assert.ok(!awardBid.includes("!currentBidder.isTester"));
 assert.ok(!opportunities.includes("driver.isTester"));
 assert.ok(!opportunities.includes("vehicle.isTester"));
 
+// Synthetic accounts and vehicles must be explicitly seeded as fixtures in the
+// staging-only QA runner; application authorization itself has no tester bypass.
+assert.ok(qaRunner.includes('companyVerificationStatus: i === accountTarget - 1 ? "not_started" : "verified"'));
+assert.ok(qaRunner.includes('if (testType === "workflow-e2e")'));
+assert.ok(qaRunner.includes('verificationStatus: "verified" as const'));
+assert.ok(qaRunner.includes("Runtime routes"));
 console.log("Company verification and no-tester-bypass contract passed.");
