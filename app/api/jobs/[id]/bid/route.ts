@@ -41,7 +41,7 @@ async function POSTHandler(
 
   const bidderAccount = await prisma.account.findUnique({
     where: { id: accountId },
-    select: { verificationStatus: true, isTester: true, country: true, currency: true },
+    select: { verificationStatus: true, companyVerificationStatus: true, isTester: true, country: true, currency: true },
   });
   if (bidderAccount?.country === "IN" && bidderAccount?.currency === "INR") {
     return NextResponse.json({ error: "Bidding is not available in India. Contact the poster about the fixed quote." }, { status: 403 });
@@ -51,6 +51,10 @@ async function POSTHandler(
       { error: "Your account must be verified before placing bids." },
       { status: 403 }
     );
+  }
+
+  if (bidderAccount?.companyVerificationStatus !== "verified" && !bidderAccount?.isTester) {
+    return NextResponse.json({ error: "Company verification is required before bidding." }, { status: 403 });
   }
 
   const marketplaceAccessCheck = await getAccountAccess(accountId);
