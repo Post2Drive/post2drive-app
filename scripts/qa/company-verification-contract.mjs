@@ -23,6 +23,7 @@ assert.ok(!submit.includes("isTester"), "test access must not bypass identity ve
 assert.ok(settings.includes("Company verification"));
 assert.ok(settings.includes("/api/company-verification"));
 assert.ok(jobs.includes('companyVerificationStatus !== "verified"'));
+assert.ok(!jobs.includes("isTester"), "marketplace gates must not inspect test-account status");
 assert.ok(bid.includes('companyVerificationStatus !== "verified"'));
 assert.ok(accept.includes('companyVerificationStatus !== "verified"'));
 assert.ok(awardBid.includes('companyVerificationStatus !== "verified"'));
