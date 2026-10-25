@@ -41,16 +41,20 @@ async function POSTHandler(
 
   const bidderAccount = await prisma.account.findUnique({
     where: { id: accountId },
-    select: { verificationStatus: true, isTester: true, country: true, currency: true },
+    select: { verificationStatus: true, companyVerificationStatus: true, country: true, currency: true },
   });
   if (bidderAccount?.country === "IN" && bidderAccount?.currency === "INR") {
     return NextResponse.json({ error: "Bidding is not available in India. Contact the poster about the fixed quote." }, { status: 403 });
   }
-  if (bidderAccount?.verificationStatus !== "verified" && !bidderAccount?.isTester) {
+  if (bidderAccount?.verificationStatus !== "verified") {
     return NextResponse.json(
       { error: "Your account must be verified before placing bids." },
       { status: 403 }
     );
+  }
+
+  if (bidderAccount?.companyVerificationStatus !== "verified") {
+    return NextResponse.json({ error: "Company verification is required before bidding." }, { status: 403 });
   }
 
   const marketplaceAccessCheck = await getAccountAccess(accountId);
@@ -134,7 +138,7 @@ async function POSTHandler(
     );
   }
 
-  if (!bidderAccount?.isTester) {
+  {
     const bidderMarket = getLocalisationProfile({ country: bidderAccount.country, currency: bidderAccount.currency });
     const marketToday = marketDateKey(new Date(), bidderMarket?.timeZone ?? "UTC");
     const dateCutoff = new Date(marketToday + "T00:00:00.000Z");

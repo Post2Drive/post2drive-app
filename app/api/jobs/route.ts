@@ -49,18 +49,29 @@ async function GETHandler(req: Request) {
    * jobs they have already accepted. They simply lose access
    * to new open marketplace activity.
    */
-  const canBrowseOpenMarketplace =
-    marketplaceAccessCheck.allowed;
-
   const actor = await prisma.account.findUnique({
     where: { id: accountId },
-    select: { country: true, currency: true },
+    select: { country: true, currency: true, verificationStatus: true, companyVerificationStatus: true },
   });
   if (!actor || !isSupportedMarket(actor)) {
     return NextResponse.json({ error: "Your account market is not supported." }, { status: 403 });
   }
   const country = actor.country;
   const currency = actor.currency;
+  // Unified accounts can post and carry work; open marketplace discovery is
+  // available only after business and vehicle compliance checks. Existing job
+  // parties can still see their own job history when these checks lapse.
+  const hasMarketplaceVehicle = (await prisma.vehicle.findFirst({
+    where: {
+      accountId,
+      verificationStatus: "verified",
+      insuranceValidUntil: { gte: new Date(new Date().toISOString().slice(0, 10) + "T00:00:00.000Z") },
+    },
+    select: { id: true },
+  })) !== null;
+  const canBrowseOpenMarketplace = marketplaceAccessCheck.allowed &&
+    (actor.verificationStatus === "verified" &&
+      actor.companyVerificationStatus === "verified" && hasMarketplaceVehicle);
 
   const url = new URL(req.url);
 
@@ -388,10 +399,16 @@ async function POSTHandler(req: Request) {
 
   const account = await prisma.account.findUnique({
     where: { id: accountId },
-    select: { country: true, currency: true },
+    select: { country: true, currency: true, verificationStatus: true, companyVerificationStatus: true },
   });
   if (!account || !isSupportedMarket(account)) {
     return NextResponse.json({ error: "Your account market is not supported." }, { status: 403 });
+  }
+  if (account.verificationStatus !== "verified") {
+    return NextResponse.json({ error: "Verify your account before posting jobs." }, { status: 403 });
+  }
+  if (account.companyVerificationStatus !== "verified") {
+    return NextResponse.json({ error: "Company verification is required before posting jobs. Submit your business details for review." }, { status: 403 });
   }
 
   const validation = validateJobInput(body, account);

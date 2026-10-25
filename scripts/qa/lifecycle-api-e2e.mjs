@@ -111,18 +111,21 @@ try {
   poster = await prisma.account.create({ data: {
     type: "poster", companyName: "CI lifecycle poster", displayId: "CIP-" + suffix,
     country: "GB", currency: "GBP", verificationStatus: "verified",
+    companyVerificationStatus: "verified", companyVerifiedAt: new Date(),
     subscriptionStatus: "active", subscriptionPlanKey: "individual",
     subscriptionStartedAt: new Date(), subscriptionEndsAt: new Date("2035-12-31T00:00:00.000Z"),
   }});
   driver = await prisma.account.create({ data: {
     type: "driver", companyName: "CI lifecycle driver", displayId: "CID-" + suffix,
     country: "GB", currency: "GBP", verificationStatus: "verified",
+    companyVerificationStatus: "verified", companyVerifiedAt: new Date(),
     subscriptionStatus: "active", subscriptionPlanKey: "individual",
     subscriptionStartedAt: new Date(), subscriptionEndsAt: new Date("2035-12-31T00:00:00.000Z"),
   }});
   outsider = await prisma.account.create({ data: {
     type: "both", companyName: "CI unrelated account", displayId: "CIO-" + suffix,
     country: "GB", currency: "GBP", verificationStatus: "verified",
+    companyVerificationStatus: "not_started",
     subscriptionStatus: "active", subscriptionPlanKey: "individual",
     subscriptionStartedAt: new Date(), subscriptionEndsAt: new Date("2035-12-31T00:00:00.000Z"),
   }});
@@ -335,6 +338,12 @@ try {
   const ownVehiclesBody = await ownVehicles.text();
   assert.ok(!ownVehiclesBody.includes(posterVehicle.id), "vehicle collection must not expose another account's vehicle ID");
   assert.ok(!ownVehiclesBody.includes(posterVehicle.regPlate), "vehicle collection must not expose another account's registration");
+
+  // An authenticated account with no company approval must not place a bid,
+  // even though its account identity is verified.
+  const unverifiedCompanyBid = await api("/api/jobs/" + bidJob.id + "/bid", "POST", outsiderCookie, { amount: 90 });
+  assert.equal(unverifiedCompanyBid.status, 403, "unverified company must be blocked from bidding");
+  assert.match(await unverifiedCompanyBid.text(), /Company verification is required/i);
 
   const outsiderCases = [
     ["/api/jobs/" + lifecycleJob.id, "GET"],

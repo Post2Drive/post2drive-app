@@ -33,6 +33,11 @@ async function GETHandler() {
     select: {
       id: true,
       companyName: true,
+      companyNumber: true,
+      isSoleTrader: true,
+      companyVerificationStatus: true,
+      companyVerificationSubmittedAt: true,
+      companyVerifiedAt: true,
       country: true,
       currency: true,
       displayId: true,
@@ -178,8 +183,12 @@ async function PATCHHandler(req: Request) {
     }
 
     const accountData: Record<string, unknown> = {};
-    if (typeof companyName === "string") {
+    if (typeof companyName === "string" && companyName.trim() !== account.companyName) {
       accountData.companyName = companyName.trim();
+      // A material change to the legal/trading name invalidates any prior approval.
+      accountData.companyVerificationStatus = "not_started";
+      accountData.companyVerificationSubmittedAt = null;
+      accountData.companyVerifiedAt = null;
     }
     if (typeof marketingConsent === "boolean") {
       accountData.marketingConsent = marketingConsent;

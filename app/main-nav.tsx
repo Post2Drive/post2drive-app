@@ -20,6 +20,16 @@ function isActive(pathname: string, href: string) {
     (href === "/jobs" && pathname.startsWith("/jobs/") && pathname !== "/jobs/new");
 }
 
+function mobileLabel(href: string, fallback: string) {
+  switch (href) {
+    case "/dashboard": return "Home";
+    case "/jobs": return "Jobs";
+    case "/jobs/new": return "Post";
+    case "/vehicles": return "Vehicles";
+    default: return fallback;
+  }
+}
+
 export default function MainNav({ showQaCampaigns = false }: { showQaCampaigns?: boolean }) {
   const pathname = usePathname();
   const { data: session, status } = useSession();
@@ -86,13 +96,14 @@ export default function MainNav({ showQaCampaigns = false }: { showQaCampaigns?:
               href={link.href}
               className="mobile-nav-link"
               aria-current={active ? "page" : undefined}
+              aria-label={mobileLabel(link.href, link.label)}
               onClick={() => setMoreOpen(false)}
               style={{
                 fontWeight: active ? 800 : 600,
                 color: active ? "var(--color-primary-action)" : "var(--color-muted)",
               }}
             >
-              {link.label}
+              <span className="mobile-nav-label">{mobileLabel(link.href, link.label)}</span>
             </Link>
           );
         })}
@@ -101,10 +112,11 @@ export default function MainNav({ showQaCampaigns = false }: { showQaCampaigns?:
           type="button"
           className={`mobile-nav-more${moreActive ? " is-active" : ""}`}
           aria-expanded={moreOpen}
+          aria-label={moreOpen ? "Close more navigation" : "More navigation"}
           aria-controls="mobile-more-menu"
           onClick={() => setMoreOpen((open) => !open)}
         >
-          <span aria-hidden="true">•••</span>
+          <span aria-hidden="true">⋯</span>
           <span>More</span>
         </button>
         <div id="mobile-more-menu" className="mobile-more-menu" hidden={!moreOpen} role="region" aria-label="More navigation links">

@@ -133,6 +133,10 @@ model Account {
   // Verification.
   verificationStatus VerificationStatus @default(not_started)
   verifiedAt         DateTime?
+  // Separate business review from the account identity/payment verification.
+  companyVerificationStatus VerificationStatus @default(not_started)
+  companyVerificationSubmittedAt DateTime?
+  companyVerifiedAt DateTime?
   isTester           Boolean            @default(false)
   testerApprovalStatus TesterApprovalStatus?
 

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { getLocalisationProfile } from "@/lib/localisation";
+import { formatMarketDate, getLocalisationProfile } from "@/lib/localisation";
 
 
 export default function SettingsPage() {
@@ -14,6 +14,8 @@ export default function SettingsPage() {
     name: "",
     phone: "",
     companyName: "",
+    companyNumber: "",
+    isSoleTrader: false,
     country: "GB",
     currency: "GBP",
     marketingConsent: false,
@@ -27,6 +29,9 @@ export default function SettingsPage() {
   const [loadError, setLoadError] = useState("");
   const [saveBusy, setSaveBusy] = useState(false);
   const [passwordBusy, setPasswordBusy] = useState(false);
+  const [companyBusy, setCompanyBusy] = useState(false);
+  const [companyMessage, setCompanyMessage] = useState("");
+  const [companyError, setCompanyError] = useState("");
   const [deleteForm, setDeleteForm] = useState({ currentPassword: "", confirm: "" });
   const [deleteMessage, setDeleteMessage] = useState("");
   const [deleteBusy, setDeleteBusy] = useState(false);
@@ -46,6 +51,8 @@ export default function SettingsPage() {
         name: user?.name || "",
         phone: user?.phone || "",
         companyName: data.account.companyName || "",
+        companyNumber: data.account.companyNumber || "",
+        isSoleTrader: data.account.isSoleTrader || false,
         country: data.account.country,
         currency: data.account.currency,
         marketingConsent: data.account.marketingConsent,
@@ -161,6 +168,51 @@ export default function SettingsPage() {
         {message && <p role="status" aria-live="polite">{message}</p>}
         <button type="submit" disabled={saveBusy}>{saveBusy ? "Saving…" : "Save"}</button>
       </form>
+
+      <section aria-labelledby="company-verification-heading" style={{ marginTop: 32, padding: 18, border: "1px solid var(--color-border)", borderRadius: 12 }}>
+        <h2 id="company-verification-heading" style={{ marginTop: 0 }}>Company verification</h2>
+        <p>All job posters and carriers must have an approved business profile. Sole traders and one-vehicle operators can apply; company size does not change the requirement.</p>
+        <p role="status" aria-live="polite">Status: <strong>{(account.companyVerificationStatus || "not_started").replaceAll("_", " ")}</strong></p>
+        {account.companyVerificationSubmittedAt && <p>Submitted: {formatMarketDate(account.companyVerificationSubmittedAt, { country: account.country, currency: account.currency })}</p>}
+        {account.companyVerifiedAt && <p>Verified: {formatMarketDate(account.companyVerifiedAt, { country: account.country, currency: account.currency })}</p>}
+        <form onSubmit={async (event) => {
+          event.preventDefault();
+          if (companyBusy) return;
+          setCompanyMessage(""); setCompanyError(""); setCompanyBusy(true);
+          try {
+            const response = await fetch("/api/company-verification", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ companyName: form.companyName, companyNumber: form.companyNumber, isSoleTrader: form.isSoleTrader }),
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) { setCompanyError(data.error || "Could not submit company verification."); return; }
+            setAccount((current: any) => ({ ...current, ...data.companyVerification }));
+            setCompanyMessage(data.message || "Business details submitted for review.");
+          } catch {
+            setCompanyError("Network error. Company details were not submitted.");
+          } finally {
+            setCompanyBusy(false);
+          }
+        }} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <label>
+            Legal business or trading name
+            <input required minLength={2} maxLength={160} value={form.companyName} onChange={(event) => setForm({ ...form, companyName: event.target.value })} />
+          </label>
+          <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <input type="checkbox" checked={form.isSoleTrader} onChange={(event) => setForm({ ...form, isSoleTrader: event.target.checked })} />
+            I operate as a sole trader / individual operator
+          </label>
+          {!form.isSoleTrader && <label>
+            Company or business registration number
+            <input required minLength={2} maxLength={80} value={form.companyNumber} onChange={(event) => setForm({ ...form, companyNumber: event.target.value })} />
+          </label>}
+          <p style={{ color: "var(--color-muted)", margin: 0 }}>Submission starts a review; it does not automatically verify your business. A reviewer must confirm the details against appropriate records and evidence.</p>
+          {companyError && <p role="alert">{companyError}</p>}
+          {companyMessage && <p role="status" aria-live="polite">{companyMessage}</p>}
+          <button type="submit" disabled={companyBusy || account.companyVerificationStatus === "pending"}>{companyBusy ? "Submitting…" : account.companyVerificationStatus === "pending" ? "Awaiting review" : "Submit for verification"}</button>
+        </form>
+      </section>
 
       <h2 style={{ marginTop: 32 }}>Change password</h2>
       <form onSubmit={handlePasswordChange} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
