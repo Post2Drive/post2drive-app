@@ -1,0 +1,60 @@
+/*
+ * Post2Drive motion polish inspired by interruptible spring-based interfaces.
+ *
+ * Keep scrolling native: iOS/browser overscroll physics are platform-owned.
+ * Do not replace native scrolling with JS transforms or a guessed logarithmic
+ * curve; that would harm accessibility, momentum scrolling, and nested views.
+ */
+:root {
+  /*
+   * A restrained ease-out fallback for browsers without CSS linear() support.
+   * The enhanced curve below adds a small overshoot/settle on supported engines.
+   */
+  --motion-spring: var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1));
+}
+
+@supports (transition-timing-function: linear(0, 1)) {
+  :root {
+    --motion-spring: linear(0, 0.18, 0.48, 0.78, 1.04, 1.07, 1.02, 1);
+  }
+}
+
+/* Apply spring-like timing only to existing, explicitly animated controls. */
+.main-nav-link,
+.mobile-nav-link,
+.button-link,
+main button,
+.auth-page button[type="submit"],
+.home-action-card,
+.home-button,
+.pricing-tier-card,
+.dashboard-stat-link {
+  transition-timing-function: var(--motion-spring);
+}
+
+/* Keep focus outlines immediate and predictable for keyboard users. */
+:focus-visible {
+  transition-property: none !important;
+}
+
+/* Respect user preferences: no spring overshoot for reduced-motion users. */
+@media (prefers-reduced-motion: reduce) {
+  /* Also avoid smooth programmatic scrolling when reduced motion is requested. */
+  html {
+    scroll-behavior: auto !important;
+  }
+
+  .main-nav-link,
+  .mobile-nav-link,
+  .button-link,
+  main button,
+  .auth-page button[type="submit"],
+  .home-action-card,
+  .home-button,
+  .pricing-tier-card,
+  .dashboard-stat-link {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

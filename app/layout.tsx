@@ -1,4 +1,5 @@
 import "./globals.css";
+import "./motion.css";
 import Providers from "./providers";
 import MainNav from "./main-nav";
 import { isTesterAdmin } from "@/lib/testerAdmin";
