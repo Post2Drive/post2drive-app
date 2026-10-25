@@ -49,18 +49,29 @@ async function GETHandler(req: Request) {
    * jobs they have already accepted. They simply lose access
    * to new open marketplace activity.
    */
-  const canBrowseOpenMarketplace =
-    marketplaceAccessCheck.allowed;
-
   const actor = await prisma.account.findUnique({
     where: { id: accountId },
-    select: { country: true, currency: true },
+    select: { country: true, currency: true, verificationStatus: true, companyVerificationStatus: true, isTester: true },
   });
   if (!actor || !isSupportedMarket(actor)) {
     return NextResponse.json({ error: "Your account market is not supported." }, { status: 403 });
   }
   const country = actor.country;
   const currency = actor.currency;
+  // Unified accounts can post and carry work; open marketplace discovery is
+  // available only after business and vehicle compliance checks. Existing job
+  // parties can still see their own job history when these checks lapse.
+  const hasMarketplaceVehicle = actor.isTester || (await prisma.vehicle.findFirst({
+    where: {
+      accountId,
+      verificationStatus: "verified",
+      insuranceValidUntil: { gte: new Date(new Date().toISOString().slice(0, 10) + "T00:00:00.000Z") },
+    },
+    select: { id: true },
+  })) !== null;
+  const canBrowseOpenMarketplace = marketplaceAccessCheck.allowed &&
+    (actor.isTester || (actor.verificationStatus === "verified" &&
+      actor.companyVerificationStatus === "verified" && hasMarketplaceVehicle));
 
   const url = new URL(req.url);
 
