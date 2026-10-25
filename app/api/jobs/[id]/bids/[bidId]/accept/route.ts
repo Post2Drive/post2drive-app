@@ -81,9 +81,9 @@ async function POSTHandler(
 
   const posterVerification = await prisma.account.findUnique({
     where: { id: accountId },
-    select: { verificationStatus: true, companyVerificationStatus: true, isTester: true },
+    select: { verificationStatus: true, companyVerificationStatus: true },
   });
-  if (!posterVerification || (!posterVerification.isTester && (posterVerification.verificationStatus !== "verified" || posterVerification.companyVerificationStatus !== "verified"))) {
+  if (!posterVerification || posterVerification.verificationStatus !== "verified" || posterVerification.companyVerificationStatus !== "verified") {
     return NextResponse.json({ error: "Verified account and company status are required to award a job." }, { status: 403 });
   }
 
@@ -138,19 +138,14 @@ async function POSTHandler(
         jobId: routeParams.id,
         status: "active",
         bidder: {
-          OR: [
-            { isTester: true },
-            {
+          verificationStatus: "verified",
+          companyVerificationStatus: "verified",
+          vehicles: {
+            some: {
+              vehicleType: currentJob.vehicleType,
               verificationStatus: "verified",
-              companyVerificationStatus: "verified",
-              vehicles: {
-                some: {
-                  vehicleType: currentJob.vehicleType,
-                  verificationStatus: "verified",
-                },
-              },
             },
-          ],
+          },
         },
       },
     });
@@ -164,12 +159,12 @@ async function POSTHandler(
     // immediately before awarding the bid.
     const currentBidder = await tx.account.findUnique({
       where: { id: currentBid.bidderId },
-      select: { country: true, currency: true, verificationStatus: true, companyVerificationStatus: true, isTester: true },
+      select: { country: true, currency: true, verificationStatus: true, companyVerificationStatus: true },
     });
-    if (!currentBidder || ((currentBidder.verificationStatus !== "verified" || currentBidder.companyVerificationStatus !== "verified") && !currentBidder.isTester)) {
+    if (!currentBidder || currentBidder.verificationStatus !== "verified" || currentBidder.companyVerificationStatus !== "verified") {
       throw new Error("BID_NO_LONGER_ELIGIBLE");
     }
-    if (!currentBidder.isTester) {
+    if (currentBidder) {
       const bidderMarket = getLocalisationProfile({ country: currentBidder.country, currency: currentBidder.currency });
       const marketToday = marketDateKey(new Date(), bidderMarket?.timeZone ?? "UTC");
       const dateCutoff = new Date(marketToday + "T00:00:00.000Z");
