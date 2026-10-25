@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { vehicleTypeLabel } from "@/lib/vehicles";
 
 function Status({ value }: { value: string }) {
   return <strong>{value.replaceAll("_", " ")}</strong>;
@@ -18,7 +19,7 @@ export default async function VerificationPage() {
   const [account, user, vehicles] = await Promise.all([
     prisma.account.findUnique({
       where: { id: accountId, deletionRequestedAt: null },
-      select: { verificationStatus: true, companyVerificationStatus: true, companyVerificationSubmittedAt: true },
+      select: { verificationStatus: true, companyVerificationStatus: true, companyVerificationSubmittedAt: true, country: true },
     }),
     prisma.user.findUnique({
       where: { id: userId },
@@ -61,7 +62,7 @@ export default async function VerificationPage() {
           <h2 id="vehicle-verification-heading">3. Vehicles / carrying</h2>
           <p>{verifiedVehicles.length} of {vehicles.length} vehicles verified</p>
           {vehicles.length === 0 ? <p>No vehicles registered yet.</p> : (
-            <ul>{vehicles.map((vehicle) => <li key={vehicle.id}>{vehicle.vehicleType} — <Status value={vehicle.verificationStatus} /></li>)}</ul>
+            <ul>{vehicles.map((vehicle) => <li key={vehicle.id}>{vehicleTypeLabel(vehicle.vehicleType, account.country)} — <Status value={vehicle.verificationStatus} /></li>)}</ul>
           )}
           <p>{carrierReady ? "At least one vehicle is approved. Eligibility is checked against each job's requirements and document expiry." : "Add a vehicle and complete its review before bidding or accepting jobs."}</p>
           <Link className="button-link" href="/vehicles">Manage vehicles</Link>
