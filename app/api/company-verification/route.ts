@@ -37,10 +37,10 @@ async function POSTHandler(req: Request) {
 
   const account = await prisma.account.findUnique({
     where: { id: accountId },
-    select: { verificationStatus: true, isTester: true },
+    select: { verificationStatus: true },
   });
   if (!account) return NextResponse.json({ error: "Account not found." }, { status: 404 });
-  if (!account.isTester && account.verificationStatus !== "verified") {
+  if (account.verificationStatus !== "verified") {
     return NextResponse.json({ error: "Verify your account before submitting company details." }, { status: 403 });
   }
 
