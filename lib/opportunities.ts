@@ -52,18 +52,11 @@ export async function isJobSuitableForDriver(
     return false;
   }
 
-  if (
-    driver.type !== "driver" &&
-    driver.type !== "both"
-  ) {
-    return false;
-  }
-
   if (job.posterId === driverId) {
     return false;
   }
 
-  if (driver.verificationStatus !== "verified" && !driver.isTester) {
+  if ((driver.verificationStatus !== "verified" || driver.companyVerificationStatus !== "verified") && !driver.isTester) {
     return false;
   }
 
