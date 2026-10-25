@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { getLocalisationProfile } from "@/lib/localisation";
+import { formatMarketDate, getLocalisationProfile } from "@/lib/localisation";
 
 
 export default function SettingsPage() {
@@ -173,8 +173,8 @@ export default function SettingsPage() {
         <h2 id="company-verification-heading" style={{ marginTop: 0 }}>Company verification</h2>
         <p>All job posters and carriers must have an approved business profile. Sole traders and one-vehicle operators can apply; company size does not change the requirement.</p>
         <p role="status" aria-live="polite">Status: <strong>{(account.companyVerificationStatus || "not_started").replaceAll("_", " ")}</strong></p>
-        {account.companyVerificationSubmittedAt && <p>Submitted: {new Date(account.companyVerificationSubmittedAt).toLocaleDateString()}</p>}
-        {account.companyVerifiedAt && <p>Verified: {new Date(account.companyVerifiedAt).toLocaleDateString()}</p>}
+        {account.companyVerificationSubmittedAt && <p>Submitted: {formatMarketDate(account.companyVerificationSubmittedAt, { country: account.country, currency: account.currency })}</p>}
+        {account.companyVerifiedAt && <p>Verified: {formatMarketDate(account.companyVerifiedAt, { country: account.country, currency: account.currency })}</p>}
         <form onSubmit={async (event) => {
           event.preventDefault();
           if (companyBusy) return;
