@@ -2542,7 +2542,7 @@ main.home-page .home-route-panel .home-route-footer {
     color: inherit !important;
   }
 
-  button.mobile-nav-more.is-active:not(:disabled) {
+  button.mobile-nav-more.is-active:not(:disabled):not([style*="background: transparent"]):not([style*="background:transparent"]):not([style*="background: var(--color-surface)"]):not([style*="background:var(--color-surface)"]) {
     background: #EEF3FF !important;
     color: #2457D6 !important;
   }
