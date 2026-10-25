@@ -250,6 +250,10 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
               isTester: i !== accountTarget - 1,
               verificationStatus: i === accountTarget - 1 ? "not_started" : "verified",
               verifiedAt: i === accountTarget - 1 ? null : new Date(),
+              // Only isolated synthetic QA fixtures are pre-approved. Runtime routes
+              // never treat isTester as a verification grant.
+              companyVerificationStatus: i === accountTarget - 1 ? "not_started" : "verified",
+              companyVerifiedAt: i === accountTarget - 1 ? null : new Date(),
               promotionParticipant: ukPromotion,
               trialStartedAt: ukPromotion ? new Date() : null,
               trialEndsAt: ukPromotion ? accessEndsAt : null,
@@ -289,6 +293,22 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
     );
     if (poolRows.length < accountTarget) throw new Error("The preserved synthetic-account pool is smaller than the configured account target.");
     const selectedPoolRows = poolRows.slice(0, accountTarget);
+    // Reconcile preserved synthetic accounts created before the company gate existed.
+    // This is explicit fixture setup on the isolated staging QA database, not a runtime bypass.
+    await prisma.$transaction(async tx => {
+      for (const row of selectedPoolRows) {
+        const restricted = Number(row.account_index) === accountTarget || row.cohort === "restricted";
+        await tx.account.update({
+          where: { id: row.account_id },
+          data: {
+            verificationStatus: restricted ? "not_started" : "verified",
+            verifiedAt: restricted ? null : new Date(),
+            companyVerificationStatus: restricted ? "not_started" : "verified",
+            companyVerifiedAt: restricted ? null : new Date(),
+          },
+        });
+      }
+    }, { maxWait: 15000, timeout: 30000 });
     fixtures.push(...selectedPoolRows.map((row) => ({
       index: Number(row.account_index) - 1,
       email: row.email,
@@ -360,6 +380,46 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
       { vehicleType: "Tipper", weightKg: 9000, dimensions: "6.5x2.5x2.5 m", cargo: "aggregate", rate: 2.0, range: "long" },
       { vehicleType: "Pickup truck", weightKg: 300, dimensions: "1.8x1.3x0.6 m", cargo: "site equipment", rate: 1.0, range: "short" },
     ];
+
+    if (testType === "workflow-e2e") {
+      // Seed verified vehicle fixtures for synthetic driver-capable accounts so
+      // acceptance tests exercise the real verification gates without test-code bypasses.
+      const driverFixtures = signed.filter(account => account.index >= 100 && account.index < 499);
+      const expiry = new Date(Date.now() + 180 * 86400000);
+      const registrationRegion = getJurisdictionOptions(selectedMarket.country)[0]?.code;
+      await parallel(driverFixtures, Math.min(executionConcurrency, 8), async account => {
+        await prisma.$transaction(async tx => {
+          for (const [vehicleIndex, profile] of freightProfiles.entries()) {
+            const existing = await tx.vehicle.findFirst({
+              where: { accountId: account.accountId, vehicleType: profile.vehicleType },
+              select: { id: true },
+            });
+            const data = {
+              vehicleType: profile.vehicleType,
+              regPlate: "QAFIX-" + account.accountId.slice(-8) + "-" + String(vehicleIndex + 1).padStart(2, "0"),
+              registrationRegion,
+              ownershipType: "owned",
+              make: "QA Fixture",
+              model: "Verified",
+              mamKg: Math.max(350, profile.weightKg * 5),
+              v5cDocumentUrl: "https://example.invalid/qa-v5c.pdf",
+              insuranceDocumentUrl: "https://example.invalid/qa-insurance.pdf",
+              operatorLicenceNo: "QA-FIXTURE-" + account.accountId.slice(-8),
+              verificationStatus: "verified" as const,
+              verifiedAt: new Date(),
+              motValidUntil: expiry,
+              insuranceValidUntil: expiry,
+            };
+            if (existing) {
+              await tx.vehicle.update({ where: { id: existing.id }, data });
+            } else {
+              await tx.vehicle.create({ data: { ...data, accountId: account.accountId } });
+            }
+          }
+        }, { maxWait: 15000, timeout: 30000 });
+      });
+    }
+
     const pickupSlots = ["06:30", "07:30", "09:00", "11:00", "13:00", "15:30", "17:00"];
     const jobPayload = (n: number, mode: "fixed" | "bid") => {
       // Synthetic distances and prices are deterministic test fixtures, not live routing results or market quotes.
