@@ -1,40 +1,13 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 export default async function HomePage() {
   const session = await getServerSession(authOptions);
 
   if (session?.user) {
-    return (
-      <main className="home-page home-page-authenticated">
-        <section className="home-welcome">
-          <p className="home-eyebrow">POST2DRIVE · YOUR WORKSPACE</p>
-          <h1>Hello, {session.user.name?.trim() || "there"}.</h1>
-          <p className="home-intro">Pick up where you left off. Post a delivery, find available work, or manage your vehicles and verification.</p>
-          <div className="home-action-grid">
-            <Link className="home-action-card home-action-primary" href="/jobs/new">
-              <span className="home-action-label">FOR CUSTOMERS</span>
-              <strong>Post a delivery job</strong>
-              <span>Share the route and requirements to get started.</span>
-              <span className="home-action-cta">Create a job <span aria-hidden="true">→</span></span>
-            </Link>
-            <Link className="home-action-card" href="/jobs">
-              <span className="home-action-label">FOR DRIVERS</span>
-              <strong>Find delivery work</strong>
-              <span>Explore available jobs and review the details.</span>
-              <span className="home-action-cta">Browse jobs <span aria-hidden="true">→</span></span>
-            </Link>
-            <Link className="home-action-card" href="/vehicles">
-              <span className="home-action-label">ACCOUNT READINESS</span>
-              <strong>Vehicles &amp; verification</strong>
-              <span>Review your vehicle information and verification status.</span>
-              <span className="home-action-cta">Manage vehicles <span aria-hidden="true">→</span></span>
-            </Link>
-          </div>
-        </section>
-      </main>
-    );
+    redirect("/dashboard");
   }
 
   return (
