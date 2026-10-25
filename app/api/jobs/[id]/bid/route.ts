@@ -41,7 +41,7 @@ async function POSTHandler(
 
   const bidderAccount = await prisma.account.findUnique({
     where: { id: accountId },
-    select: { verificationStatus: true, companyVerificationStatus: true, isTester: true, country: true, currency: true },
+    select: { verificationStatus: true, companyVerificationStatus: true, country: true, currency: true },
   });
   if (bidderAccount?.country === "IN" && bidderAccount?.currency === "INR") {
     return NextResponse.json({ error: "Bidding is not available in India. Contact the poster about the fixed quote." }, { status: 403 });
