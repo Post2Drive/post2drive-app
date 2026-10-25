@@ -28,4 +28,13 @@ assert.ok(awardBid.includes('companyVerificationStatus !== "verified"'));
 assert.ok(opportunities.includes('driver.companyVerificationStatus !== "verified"'));
 assert.ok(!opportunities.includes('driver.type !== "driver"'));
 
-console.log("Company verification contract passed.");
+// A test-code flag must never act as a substitute for real trust checks.
+assert.ok(!accept.includes("!account?.isTester"));
+assert.ok(!accept.includes("!currentDriver.isTester"));
+assert.ok(!awardBid.includes("{ isTester: true }"));
+assert.ok(!awardBid.includes("!posterVerification.isTester"));
+assert.ok(!awardBid.includes("!currentBidder.isTester"));
+assert.ok(!opportunities.includes("driver.isTester"));
+assert.ok(!opportunities.includes("vehicle.isTester"));
+
+console.log("Company verification and no-tester-bypass contract passed.");
