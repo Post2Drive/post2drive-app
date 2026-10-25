@@ -47,7 +47,8 @@ type Job = {
   status: string;
   posterId: string;
   acceptedById: string | null;
-  previousDriverIds?: string[];
+  hasPreviousDrivers?: boolean;
+  currentUserPreviouslyBackedOut?: boolean;
   deliveryMarkedById: string | null;
   pickupConfirmedById: string | null;
   crossBorder: boolean;
@@ -836,12 +837,11 @@ export default function JobsPage() {
               isOwner ||
               isAcceptedDriver;
 
-            const previousDriverIds = job.previousDriverIds ?? [];
             const canRate =
               (isOwner &&
-                (Boolean(job.acceptedById) || previousDriverIds.length > 0)) ||
+                (Boolean(job.acceptedById) || Boolean(job.hasPreviousDrivers))) ||
               isAcceptedDriver ||
-              previousDriverIds.includes(accountId);
+              Boolean(job.currentUserPreviouslyBackedOut);
 
             const iMarkedDelivered =
               job.deliveryMarkedById ===
