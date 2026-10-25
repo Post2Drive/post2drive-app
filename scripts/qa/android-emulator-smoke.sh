@@ -2,9 +2,8 @@
 set -euo pipefail
 
 adb wait-for-device
-adb shell settings put global window_animation_scale 0
-adb shell settings put global transition_animation_scale 0
-adb shell settings put global animator_duration_scale 0
+# The emulator action's disable-animations option already applies these settings.
+# Reapplying them here races Android's settings service on some cold boots.
 
 APK="${GITHUB_WORKSPACE}/android/app/build/outputs/apk/debug/app-debug.apk"
 if [ ! -s "$APK" ]; then
