@@ -1,0 +1,51 @@
+/*
+ * Post2Drive motion polish inspired by interruptible spring-based interfaces.
+ *
+ * Keep scrolling native: iOS/browser overscroll physics are platform-owned.
+ * Do not replace native scrolling with JS transforms or a guessed logarithmic
+ * curve; that would harm accessibility, momentum scrolling, and nested views.
+ */
+:root {
+  /*
+   * A small under-damped easing approximation for short UI feedback.
+   * The slight overshoot/settle makes pressed and selected states feel less
+   * timer-driven while keeping durations short and interactions responsive.
+   */
+  --motion-spring: linear(0, 0.18, 0.48, 0.78, 1.04, 1.07, 1.02, 1);
+  --motion-spring-duration: 240ms;
+}
+
+/* Apply spring-like timing only to existing, explicitly animated controls. */
+.main-nav-link,
+.mobile-nav-link,
+.button-link,
+main button,
+.auth-page button[type="submit"],
+.home-action-card,
+.home-button,
+.pricing-tier-card,
+.dashboard-stat-link {
+  transition-timing-function: var(--motion-spring);
+}
+
+/* Keep focus outlines immediate and predictable for keyboard users. */
+:focus-visible {
+  transition-property: none !important;
+}
+
+/* Respect user preferences: no spring overshoot for reduced-motion users. */
+@media (prefers-reduced-motion: reduce) {
+  .main-nav-link,
+  .mobile-nav-link,
+  .button-link,
+  main button,
+  .auth-page button[type="submit"],
+  .home-action-card,
+  .home-button,
+  .pricing-tier-card,
+  .dashboard-stat-link {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
