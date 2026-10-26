@@ -50,7 +50,7 @@ export default function SubscriptionPricing({ country = "GB" }: { country?: stri
         Unlimited legitimate marketplace activity · No per-job charges
       </div>
       <p style={{ margin: "14px 0 0", fontSize: 13, color: "var(--color-muted)" }}>
-        Fleets with 56+ vehicles need a custom plan. Prices use each supported non-India market’s local currency; India pricing remains separate. Verification is mandatory in the same order during the free trial and after it. Posting, bidding, and accepting stay locked until the relevant verification and trial/paid entitlement checks pass. Cancellation stops future renewals, while access continues through the paid-through date. Prices are for planning only: payment checkout and automatic recurring billing are not connected yet.
+        Fleets with 56+ vehicles need a custom plan. Prices use each supported non-India market’s local currency; India pricing remains separate. Verification is mandatory in the same order during the free trial and after it. Posting, bidding, and accepting stay locked until the relevant verification and trial/paid entitlement checks pass. Cancellation stops future renewals, while access continues through the paid-through date. Prices are for planning only: payment checkout is not connected yet, and automatic recurring billing is not connected yet.
       </p>
     </section>
   );
