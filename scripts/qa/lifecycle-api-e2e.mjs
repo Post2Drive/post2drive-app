@@ -343,7 +343,7 @@ try {
   // even though its account identity is verified.
   const unverifiedCompanyBid = await api("/api/jobs/" + bidJob.id + "/bid", "POST", outsiderCookie, { amount: 90 });
   assert.equal(unverifiedCompanyBid.status, 403, "unverified company must be blocked from bidding");
-  assert.match(await unverifiedCompanyBid.text(), /Company verification is required/i);
+  assert.match(await unverifiedCompanyBid.text(), /verified vehicle of the required type/i);
 
   const outsiderCases = [
     ["/api/jobs/" + lifecycleJob.id, "GET"],
