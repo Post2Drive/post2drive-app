@@ -294,7 +294,7 @@ assert.match(
 );
 assert.match(
   concurrencyContract,
-  /assert\.notEqual\(\s*before\.sessionVersion,\s*after\.sessionVersion,\s*"an already-issued JWT session version must no longer match after a credential change"\s*\)/,
+  /assert\.notEqual\(\s*before\.sessionVersion,\s*after\.sessionVersion,\s*"an already-issued JWT session version must no longer match after a credential change",?\s*\)/,
   "session-version contract must explicitly assert that a stale JWT version no longer matches",
 );
 assert.doesNotMatch(
