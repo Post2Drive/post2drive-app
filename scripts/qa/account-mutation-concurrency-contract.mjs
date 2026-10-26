@@ -132,6 +132,11 @@ try {
       before.sessionVersion + 1,
       "credential change must advance the per-user session version",
     );
+    assert.notEqual(
+      before.sessionVersion,
+      after.sessionVersion,
+      "an already-issued JWT session version must no longer match after a credential change",
+    );
     await prisma.account.update({
       where: { id: accountId },
       data: { deletionRequestedAt: new Date() },
