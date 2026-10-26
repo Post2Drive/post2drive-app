@@ -292,6 +292,11 @@ assert.match(
   /\/\/ Password changes increment the version stored in JWTs\. Existing token claims\n  \/\/ must stop matching the persisted version after this mutation\./,
   "session-version regression block must remain executable source lines, not escaped newline text",
 );
+assert.match(
+  concurrencyContract,
+  /assert\.notEqual\(\s*before\.sessionVersion,\s*after\.sessionVersion,\s*"an already-issued JWT session version must no longer match after a credential change"\s*\)/,
+  "session-version contract must explicitly assert that a stale JWT version no longer matches",
+);
 assert.doesNotMatch(
   concurrencyContract,
   /Existing token claims\\n  \/\//,
