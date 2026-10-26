@@ -24,7 +24,7 @@ jobs:
       CAPACITOR_SERVER_URL: ${{ inputs.server_url }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Validate configured target
         run: |
           node -e 'const u = new URL(process.env.CAPACITOR_SERVER_URL); if (u.protocol !== "https:" || !u.hostname) process.exit(1); if (!/(^|[.-])(staging|stage|preview|dev|test)([.-]|$)/i.test(u.hostname)) { console.error("Hostname must clearly identify a non-production environment."); process.exit(1); } console.log(`Building for ${u.origin}`);'
