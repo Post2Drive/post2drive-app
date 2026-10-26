@@ -57,8 +57,8 @@ export async function getAccountAccess(accountId: string) {
         country: true,
         currency: true,
         verificationStatus: true,
-      companyVerificationStatus: true,
-      type: true,
+        companyVerificationStatus: true,
+        type: true,
         isTester: true,
         promotionParticipant: true,
         trialStartedAt: true,
@@ -69,7 +69,7 @@ export async function getAccountAccess(accountId: string) {
         subscriptionPlanKey: true,
         planType: true,
         fleetVehicleCount: true,
-      deletionRequestedAt: true,
+        deletionRequestedAt: true,
       },
     });
     if (!account) {
