@@ -29,7 +29,7 @@ jobs:
         run: |
           node -e 'const u = new URL(process.env.CAPACITOR_SERVER_URL); if (u.protocol !== "https:" || !u.hostname) process.exit(1); if (!/(^|[.-])(staging|stage|preview|dev|test)([.-]|$)/i.test(u.hostname)) { console.error("Hostname must clearly identify a non-production environment."); process.exit(1); } console.log(`Building for ${u.origin}`);'
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
