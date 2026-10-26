@@ -9,6 +9,10 @@ type AccessData = {
   planType: "individual" | "fleet";
   fleetVehicleCount: number | null;
   verificationStatus: string;
+  companyVerificationStatus?: string;
+  accountType?: "poster" | "driver" | "both";
+  hasVerifiedVehicle?: boolean;
+  billingCadence?: "monthly" | "weekly";
   trialEndsAt: string | null;
   freeEndsAt: string | null;
   subscriptionStatus: string;
@@ -46,6 +50,8 @@ function formatDate(value: string | null, locale = "en", timeZone = "UTC") {
 
 export default function SubscriptionStatus() {
   const [data, setData] = useState<AccessData | null>(null);
+  const [converting, setConverting] = useState(false);
+  const [conversionMessage, setConversionMessage] = useState("");
 
   useEffect(() => {
     fetch("/api/account/access")
@@ -191,7 +197,7 @@ export default function SubscriptionStatus() {
         >
           <div style={{ maxWidth: 520 }}>
             <div style={{ color: "var(--color-muted)", fontSize: 13 }}>
-              {trialActive ? "After your free access" : "Configured weekly access price"}
+              {trialActive ? "After your free access" : data.billingCadence === "monthly" ? "Poster subscription" : "Configured driver access price"}
             </div>
 
             <div
@@ -202,7 +208,7 @@ export default function SubscriptionStatus() {
                 fontSize: 18,
               }}
             >
-              {formattedPrice} / 7 days
+              {formattedPrice} / {data.billingCadence === "monthly" ? "month" : "7 days"}
             </div>
 
             <div
@@ -215,7 +221,7 @@ export default function SubscriptionStatus() {
               Unlimited legitimate marketplace activity · No per-job charges
             </div>
             <p style={{ margin: "8px 0 0", color: "var(--color-muted)", fontSize: 12, lineHeight: 1.5 }}>
-              Planning price only: payment checkout is not connected yet, so you cannot buy or renew access in the app.
+              Planning price only: payment checkout and automatic recurring billing are not connected yet. Verification fees are separate one-time charges. Poster access is monthly; verified vehicle/fleet access uses the applicable weekly plan.
             </p>
           </div>
 
@@ -234,6 +240,30 @@ export default function SubscriptionStatus() {
             className="button-link">
             View pricing
           </Link>
+        </div>
+      )}
+
+      {data.subscriptionPlanKey === "poster-monthly" && data.hasVerifiedVehicle && data.subscriptionStatus === "active" && (
+        <div style={{ marginTop: 15, border: "1px solid var(--color-primary-action)", borderRadius: 9, padding: "11px 13px", fontSize: 13 }}>
+          <p style={{ margin: "0 0 10px" }}>Your vehicle is verified. Convert your existing monthly plan to weekly driver access now; the first weekly renewal is due seven days after conversion, not immediately. No second subscription is created.</p>
+          <button type="button" disabled={converting} onClick={async () => {
+            setConverting(true);
+            setConversionMessage("");
+            try {
+              const response = await fetch("/api/subscription/convert-to-weekly", { method: "POST", credentials: "same-origin" });
+              const result = await response.json();
+              if (!response.ok) throw new Error(result.error || "Unable to convert subscription.");
+              setData((current) => current ? { ...current, subscriptionPlanKey: result.planKey, subscriptionEndsAt: result.firstWeeklyRenewalAt, endsAt: result.firstWeeklyRenewalAt, billingCadence: "weekly" } : current);
+              setConversionMessage(`Converted. Your first weekly renewal is due ${formatDate(result.firstWeeklyRenewalAt, data.locale, data.timeZone) ?? "in 7 days"}. Automatic charging is not active until a payment provider is connected.`);
+            } catch (error) {
+              setConversionMessage(error instanceof Error ? error.message : "Unable to convert subscription.");
+            } finally {
+              setConverting(false);
+            }
+          }} style={{ border: 0, borderRadius: 8, padding: "9px 12px", background: "var(--color-primary-action)", color: "var(--color-surface)", fontWeight: 700, cursor: converting ? "wait" : "pointer" }}>
+            {converting ? "Converting…" : "Convert to weekly driver access"}
+          </button>
+          {conversionMessage && <p role="status" style={{ margin: "10px 0 0" }}>{conversionMessage}</p>}
         </div>
       )}
 
