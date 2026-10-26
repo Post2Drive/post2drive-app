@@ -21,7 +21,10 @@ async function POSTHandler() {
   });
   if (!account || account.deletionRequestedAt) return NextResponse.json({ error: "Account not found." }, { status: 404 });
   if (!isWeeklyPricingEligible(account)) return NextResponse.json({ error: "Weekly access is not configured for this market." }, { status: 403 });
-  if (account.verificationStatus !== "verified") {\n    return NextResponse.json({ error: "Complete account verification before converting to driver access." }, { status: 403 });\n  }\n  if (account.type !== "both" || account.vehicles.length === 0) {
+  if (account.verificationStatus !== "verified") {
+    return NextResponse.json({ error: "Complete account verification before converting to driver access." }, { status: 403 });
+  }
+  if (account.type !== "both" || account.vehicles.length === 0) {
     return NextResponse.json({ error: "Complete vehicle verification before converting to driver access." }, { status: 403 });
   }
 
