@@ -14,7 +14,7 @@ export interface PricingAccount {
 
 /*
  * UK-model launch pricing for all supported non-India markets.
- * Access is sold in 7-day periods (7 x 24 hours from activation/recharge).
+ * Poster subscriptions use one calendar month; individual/fleet driver plans use 7-day periods.
  * Individual = one verified person + one vehicle.
  * Fleet = 2+ vehicles under the same business/account.
  * All plans: unlimited legitimate marketplace activity and no per-job charges.
