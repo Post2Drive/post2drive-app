@@ -48,7 +48,19 @@ async function GETHandler() {
     },
   });
 
-  const priceMinorUnits = getPaidPriceMinorUnits(access.account);
+  const verifiedVehicle = await prisma.vehicle.findFirst({
+    where: { accountId, verificationStatus: "verified" },
+    select: { id: true },
+  });
+  const keepCurrentMonthlyPlan = access.account.subscriptionPlanKey === "poster-monthly" &&
+    access.account.subscriptionStatus === "active" &&
+    Boolean(access.account.subscriptionEndsAt && access.account.subscriptionEndsAt > new Date());
+  const pricingAccount = {
+    ...access.account,
+    type: keepCurrentMonthlyPlan ? "poster" : access.account.type,
+    hasVerifiedVehicle: Boolean(verifiedVehicle),
+  };
+  const priceMinorUnits = getPaidPriceMinorUnits(pricingAccount);
   const market = marketForAccount(access.account);
   const price = priceMinorUnits === null ? null : minorUnitsToMajorUnits(priceMinorUnits, access.account.currency);
 
@@ -58,6 +70,10 @@ async function GETHandler() {
     planType: access.account.planType,
     fleetVehicleCount: access.account.fleetVehicleCount,
     verificationStatus: access.account.verificationStatus,
+    companyVerificationStatus: access.account.companyVerificationStatus,
+    accountType: access.account.type,
+    hasVerifiedVehicle: Boolean(verifiedVehicle),
+    billingCadence: keepCurrentMonthlyPlan || (!verifiedVehicle && (access.account.type === "poster" || access.account.type === "both")) ? "monthly" : "weekly",
     isTester: access.account.isTester,
     trialStartedAt: access.account.trialStartedAt,
     trialEndsAt: access.account.trialEndsAt,
