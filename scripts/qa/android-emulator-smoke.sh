@@ -16,8 +16,19 @@ if [ -z "${APK:-}" ] || [ ! -s "$APK" ]; then
   exit 1
 fi
 
+# Fresh Android emulators can time out while the package verifier checks a
+# locally built debug APK. This CI-only emulator has no Play Store/user data;
+# disable ADB install verification before installing the test artifact.
+adb shell settings put global verifier_verify_adb_installs 0 || true
+adb shell settings put global package_verifier_enable 0 || true
+
 echo "Installing APK: $APK"
-adb install -r "$APK"
+if ! adb install -r "$APK"; then
+  echo "Standard ADB install failed; retrying without streamed install after verifier settings."
+  adb shell settings put global verifier_verify_adb_installs 0 || true
+  adb shell settings put global package_verifier_enable 0 || true
+  adb install -r --no-streaming "$APK"
+fi
 adb logcat -c
 adb shell am force-stop com.post2drive.app
 adb shell monkey -p com.post2drive.app 1
