@@ -53,7 +53,7 @@ async function GETHandler(
           vehicles: {
             orderBy: { createdAt: "desc" },
             take: 20,
-            select: { id: true, vehicleType: true, regPlate: true },
+            select: { vehicleType: true },
           },
           ratingsReceived: {
             orderBy: { createdAt: "desc" },
