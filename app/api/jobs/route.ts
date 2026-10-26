@@ -320,10 +320,12 @@ async function GETHandler(req: Request) {
       priceMode: job.priceMode,
       notes: job.notes,
       status: job.status,
-      posterId: job.posterId,
-      acceptedById: job.acceptedById,
-      deliveryMarkedById: job.deliveryMarkedById,
-      pickupConfirmedById: job.pickupConfirmedById,
+      // Client-facing role flags avoid disclosing internal account IDs.
+      isCurrentUserPoster: job.posterId === accountId,
+      isCurrentUserAcceptedDriver: job.acceptedById === accountId,
+      hasAcceptedDriver: Boolean(job.acceptedById),
+      currentUserMarkedDelivery: job.deliveryMarkedById === accountId,
+      currentUserConfirmedPickup: job.pickupConfirmedById === accountId,
       crossBorder: job.crossBorder,
       // Boolean history indicators support rating/history UI without disclosing
       // the IDs of other drivers who previously backed out.
@@ -353,8 +355,8 @@ async function GETHandler(req: Request) {
 
     return jobView;
   }).filter((job) => {
-    const keepForHistory = job.posterId === accountId ||
-      job.acceptedById === accountId ||
+    const keepForHistory = job.isCurrentUserPoster ||
+      job.isCurrentUserAcceptedDriver ||
       job.currentUserPreviouslyBackedOut;
     if (job.status !== "open" || keepForHistory) return true;
     return hasFuturePickup(job, actor);
