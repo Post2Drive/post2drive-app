@@ -111,7 +111,44 @@ try {
     assert.ok(account?.deletionRequestedAt, "account deletion marker must remain set");
   }
 
-  // Password changes increment the version stored in JWTs. Existing token claims\n  // must stop matching the persisted version after this mutation.\n  {\n    const { accountId, userId } = await createFixture();\n    const before = await prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { sessionVersion: true } });\n    await prisma.user.update({ where: { id: userId }, data: { sessionVersion: { increment: 1 } } });\n    const after = await prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { sessionVersion: true } });\n    assert.equal(after.sessionVersion, before.sessionVersion + 1, "credential change must advance the per-user session version");\n    await prisma.account.update({ where: { id: accountId }, data: { deletionRequestedAt: new Date() } });\n    const deleted = await prisma.user.findUniqueOrThrow({ where: { id: userId }, include: { account: { select: { deletionRequestedAt: true } } } });\n    assert.ok(deleted.account.deletionRequestedAt, "account deletion marker must be queryable by JWT validation");\n  }\n\n  // PATCH wins first: DELETE waits for the same lock, then deletes the updated
+  // Password changes increment the version stored in JWTs. Existing token claims
+  // must stop matching the persisted version after this mutation.
+  {
+    const { accountId, userId } = await createFixture();
+    const before = await prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { sessionVersion: true },
+    });
+    await prisma.user.update({
+      where: { id: userId },
+      data: { sessionVersion: { increment: 1 } },
+    });
+    const after = await prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { sessionVersion: true },
+    });
+    assert.equal(
+      after.sessionVersion,
+      before.sessionVersion + 1,
+      "credential change must advance the per-user session version",
+    );
+    await prisma.account.update({
+      where: { id: accountId },
+      data: { deletionRequestedAt: new Date() },
+    });
+    const deleted = await prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      include: {
+        account: { select: { deletionRequestedAt: true } },
+      },
+    });
+    assert.ok(
+      deleted.account.deletionRequestedAt,
+      "account deletion marker must be queryable by JWT validation",
+    );
+  }
+
+  // PATCH wins first: DELETE waits for the same lock, then deletes the updated
   // state; there is no window where a post-deletion PATCH can commit.
   {
     const { accountId, userId } = await createFixture();
