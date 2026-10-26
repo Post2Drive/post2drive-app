@@ -119,6 +119,8 @@ jobs:
         run: npm run qa:mobile-ux-contract
       - name: Validate account API privacy and request validation
         run: npm run qa:account-api-security
+      - name: Validate public profile vehicle privacy
+        run: npm run qa:profile-vehicle-privacy-contract
       - name: Validate accessible design contracts
         run: npm run qa:design-accessibility
       - name: Type-check TypeScript
