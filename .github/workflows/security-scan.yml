@@ -26,6 +26,14 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Ensure pull-request base history is available
+        if: github.event_name == 'pull_request'
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          git fetch --no-tags origin "${GITHUB_BASE_REF}"
+          git cat-file -e "${PR_BASE_SHA}^{commit}"
+
       - name: Detect secrets in files and Git history
         uses: gitleaks/gitleaks-action@v3
         env:

@@ -1,3 +1,7 @@
+> **Live staging and release snapshot — 26 October 2026 (replaces older deployment snapshots where they conflict).** Railway reports all four staging services online with no active warnings/critical alerts and no pending environment changes. Web and QA worker remain deployed from `integration/pr12-pr41-resolved`, commit `ebe1d7b442b99b5f94a22f4a15802644dd382bdc`; no new deployment was triggered. The last 24-hour Web traffic query returned 487 requests: 468 2xx, 6 3xx, 13 4xx and 0 5xx. A request to `/api/health` returned a 2xx; this is a limited health signal, not full workflow validation. Both PostgreSQL services are online, but the second service's contents/consumers remain unverified.
+
+> **CI blocker:** PR #73 latest docs head `c36b2bdcc551b460b4f1f1c71d5c4735d88cf72b` — Validate failed, CodeQL and Security Scan passed, Android Capacitor build was still in progress at the last check. The failure is the rendered accessibility audit: `page-has-heading-one` on `/jobs/cmvp2l9k00004sw8y1n92d3mc/edit` at tablet size. Typecheck, production build, migrations and the listed API/security contracts passed within that run. PR #74 proposes retaining the level-one heading in loading/error/not-found states and announcing the loading state; it is open and awaiting exact-head CI. Neither PR is deployed. No production deployment is approved. See the deployment runbook for service configuration and the latest deployment-history records.
+
 > **Status audit — 25 October 2026.** PR #48 and #49 are merged; documentation PR #47 is merged. The integration candidate now includes PR #44's password-reset email formatting/cooldown fixes, regression assertions, service ownership/recovery notes, and the Android emulator setup fix. On the earlier candidate, Validate, CodeQL and Security Scan passed, while Android smoke failed because the workflow redundantly rewrote animation settings already handled by the emulator action. Those duplicate writes are removed, and Android CI now runs on integration pushes. Required Validate, CodeQL, Security Scan and Android WebView checks must all pass on the latest exact head before staging deployment.
 >
 > **Railway staging:** Post2Drive Web remains connected to `integration/pr12-pr41-resolved`; the latest successful Web deployment observed remains `4e58a373cf408fb232db994fda8b217977767928` from 21 October. No new Web deployment has been triggered. Deploy only after current-head checks pass, then verify deployment status and health.
@@ -90,3 +94,21 @@ Test both markets independently with separate test accounts and currency values.
 
 Do not connect retired production infrastructure or reuse old credentials. Preserve staging data, failed QA records and deployment evidence. Keep the retained Redis volume until its data-retention decision is made; it is detached from active service use.
 
+
+## 6. CI and staging release checkpoint — 2026-10-26
+
+- PR #74 was merged into `integration/pr12-pr41-resolved` as commit `6bdd3c1b8dd2e08c3afe56473b2fc3dd54fc0518`. The code fix adds a level-one heading to job-edit loading/error/not-found states, marks loading as a status announcement, aligns two stale QA dashboard contract assertions with the current renderer, and hardens Android emulator APK installation against package-verifier timeouts.
+- On PR #74 head `0ae74edf90b15238f10fc9df14897544408e59c8`, Validate, CodeQL and Security Scan passed. The Android Capacitor build/emulator smoke test was still in progress at the time of deployment; do not record it as passed until GitHub reports a final successful conclusion.
+- Railway staging deployment `01c64736-9e9b-4c73-8a3b-e74398da0974` completed with status `SUCCESS` on 26 October 2026. Deployed commit: `6bdd3c1b8dd2e08c3afe56473b2fc3dd54fc0518`. The service startup logs report Next.js ready.
+- The deployment's pre-deploy step found no pending Prisma migrations on `post2drive_qa`. It also verified the operations dashboard's read-only DB role: 31 readable tables, zero writable tables, zero sequence privileges, no role memberships, no `BYPASSRLS`, and no public-schema `CREATE` privilege.
+- PR #73 remains the documentation handover PR. Its deployment runbook must be kept aligned with this staging release record and the final Android smoke-test result.
+
+## 7. Verified staging deployment — 2026-10-26
+
+- Environment: Railway `Post2Drive Staging` / `staging`; service `Post2Drive Web`.
+- Deployment: `01c64736-9e9b-4c73-8a3b-e74398da0974`; status `SUCCESS`.
+- Source: `integration/pr12-pr41-resolved`; commit `6bdd3c1b8dd2e08c3afe56473b2fc3dd54fc0518`.
+- URL: https://post2drive-web-staging.up.railway.app; health endpoint `/api/health`.
+- The successful Railway rollout and startup log are evidence of deployment and process readiness, not a complete browser/mobile acceptance test.
+- Android emulator smoke test on the PR head and post-merge commit was still running at the time of this record. Confirm its final result and update the documentation before declaring this change fully verified.
+- Production is **not deployed or approved**. Public launch remains blocked on browser/mobile E2E, email delivery, provider-backed payments and refunds, backup/restore, database inventory for the second PostgreSQL service, concurrency/recovery, monitoring, legal review, and final route-level 5xx review.

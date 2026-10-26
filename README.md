@@ -1,265 +1,95 @@
-> **Status audit — 25 October 2026.** PR #48 and #49 are merged; documentation PR #47 is merged. The integration candidate now includes PR #44's password-reset email formatting/cooldown fixes, regression assertions, service ownership/recovery notes, and the Android emulator setup fix. On the earlier candidate, Validate, CodeQL and Security Scan passed, while Android smoke failed because the workflow redundantly rewrote animation settings already handled by the emulator action. Those duplicate writes are removed, and Android CI now runs on integration pushes. Required Validate, CodeQL, Security Scan and Android WebView checks must all pass on the latest exact head before staging deployment.
->
-> **Railway staging:** Post2Drive Web remains connected to `integration/pr12-pr41-resolved`; the latest successful Web deployment observed remains `4e58a373cf408fb232db994fda8b217977767928` from 21 October. No new Web deployment has been triggered. Deploy only after current-head checks pass, then verify deployment status and health.
->
-> **Outstanding release evidence:** issues #45 and #46 remain open for PostgreSQL consumer ownership, backup/restore and rollback/recovery evidence, live staging browser/mobile E2E, and verified transactional-email domain/configuration/delivery. API-specific work remains deferred as directed. Passing CI does not establish live email delivery, deployed browser E2E, successful recovery or launch readiness.
->
-# Post2Drive — UK, India & European Freight and Courier Marketplace
+# Post2Drive — Courier, Delivery & Freight Marketplace
 
-Post2Drive is a two-sided freight and courier marketplace in active development. It is designed for people and businesses that post freight jobs and drivers or transport operators who discover, bid on, and fulfil those jobs.
+Post2Drive is a two-sided marketplace for customers/businesses posting delivery jobs and drivers, couriers and fleet/transport operators discovering, bidding on and fulfilling jobs. It is designed for the UK, India and supported European markets with server-enforced market and currency isolation.
 
-The product is being built around a unified account: users can post jobs, find jobs, bid, accept work, and manage delivery workflows from the same account, with access and actions determined by their account setup and permissions.
+> **Status (26 October 2026):** Active development/staging. Not approved for unrestricted public launch. A past successful build or staging deployment does not prove the latest commit is deployed or launch-ready. See [Launch Readiness](docs/LAUNCH_READINESS.md).
 
-> **Current status:** Clean-start prototype / active development. The previous version had repeatable staging synthetic-test evidence, but that evidence does not certify this rebuilt source. Email verification and payment-provider integration are not verified end to end. This repository should not be represented as an unrestricted, fully launched marketplace.
->
-> See [Launch Readiness](docs/LAUNCH_READINESS.md) for the current release gates and verified operational status. See [Vibrant Design System](docs/VIBRANT_DESIGN_SYSTEM.md) for the shared colour palette and component semantics.
+## Essential project documents
 
-## Clean-start safeguards
+These files travel with a clone, source ZIP, fork or ownership transfer. They preserve product intent and recovery steps outside chat history.
 
-- This repository is the new source of truth. Do not connect it to a previous production database or reuse deleted Railway URLs.
-- Keep country and currency immutable after signup; GB/GBP, India/INR, and each euro-using European country/EUR market are kept separate on the server.
-- Never commit `.env` files, signing keys, API keys, tokens, or database credentials.
-- Payment and email integrations remain disabled until their providers and end-to-end verification are configured.
-- Destructive QA runs must use an isolated non-production database and explicit authorization; do not copy production data into tests.
-- Builds that use Capacitor remote-server mode must provide `CAPACITOR_SERVER_URL` at build time. It must be the deliberate target for that build; no default server URL is embedded.
+- [Application workflows, pricing and dashboards](docs/APP_WORKFLOWS_AND_DASHBOARDS.md) — end-to-end user journeys, poster/driver/fleet dashboards, user analytics, app-owner analytics, admin operations, metric governance and unresolved pricing conflicts.
+- [Product, account and verification policy](docs/PRODUCT_AND_VERIFICATION_POLICY.md) — three onboarding steps, role choices, verification fee packages, no-refund and correction windows, the 90-calendar-day return window, active-paid-plan exemptions, company changes, subscription separation and required tests. It describes target policy, not proof every rule is implemented.
+- [Analytics Dashboard Product Spec](docs/ANALYTICS_DASHBOARD_PRODUCT_SPEC.md) — internal operations and logistics intelligence dashboard specification; does not itself prove the service is deployed.
+- [Repository portability, ownership continuity and deployment runbook](docs/REPOSITORY_PORTABILITY_AND_DEPLOYMENT.md) — independent source mirror, repository ownership changes, clean checkout, deployment recovery, low-cost hosting, rollback and release checklist.
+- [Launch Readiness](docs/LAUNCH_READINESS.md) — dated test evidence and outstanding release gates.
+- [Railway staging setup](docs/RAILWAY_STAGING_SETUP.md) — dated infrastructure notes; verify live Railway state before changing anything.
+- [Vibrant Design System](docs/VIBRANT_DESIGN_SYSTEM.md) — UI palette and component semantics.
 
-## Product scope and current capabilities
+## Product model
 
-### Accounts and access
-- Email/password registration and login.
-- Account types for posters, drivers, and users who need both capabilities.
-- NextAuth credentials authentication with JWT sessions.
-- Optional email-verification flow using Resend, controlled by configuration. Keep it disabled until the sender domain, delivery, token expiry, single-use behavior, resend cooldown, and protected-action checks have been tested end to end.
-- Country-first onboarding for the United Kingdom (GBP), India (INR), all 21 EU euro-area countries, and six additional European euro-using states. Each country has its own currency and local timezone, with server-enforced listing isolation.
+A single account may post jobs, carry jobs, or do both. Role choice guides onboarding but should not permanently lock a user into one role. Verification, subscription entitlements and role selection are separate.
 
-### Freight marketplace and job lifecycle
-- Create and post freight jobs.
-- Discover and search available jobs with filters.
-- Edit and cancel jobs.
-- Submit bids and review bids.
-- Accept a bid and assign a job.
-- Track job lifecycle transitions and delivery-related actions.
-- Activity history and operational dashboards for visibility into marketplace activity.
+1. **Step 1 — free registration:** choose post jobs, carry jobs, or both. Registration alone does not grant restricted access.
+2. **Step 2 — person and applicable company verification:** required identity/business checks remain mandatory. Driver-only users may skip the Step 2 posting fee and poster subscription, not required checks.
+3. **Step 3 — driver and vehicle verification:** verify each vehicle and required MOT/inspection, insurance and other documents. Eligibility is per vehicle.
 
-### Vehicles, ratings, and administration
-- Vehicle records associated with marketplace workflows.
-- Ratings and related activity history.
-- Admin/operational dashboard capabilities and guarded QA tooling.
-- Subscription-related API flows and payment-status tracking.
+### Intended GBP verification policy
 
-Feature availability and workflow rules are enforced by the application. The list above describes implemented application areas; it does not mean every external service or every production launch requirement has been verified.
+| Package | Intended fee |
+| --- | ---: |
+| Step 2: person, with applicable company verification | £2.50 |
+| Step 3: person/driver plus first vehicle, including required MOT/insurance checks | £3.50 |
+| Additional vehicle during initial verification, where applicable | £0.50 |
 
-## Subscriptions and commercial rules
+No refunds. First failure: 10 working days to submit corrections. Next failure: final 3 working days. Another failure generally requires a new verification fee, subject to the active-paid-plan maintenance exemption. The free inactive-return window is **90 calendar days from successful verification**; checks are free inside it even if documents expired, but the findings still govern eligibility. Active paid users pay no fee for routine rechecks or adding vehicles. Changing the responsible person within the same company is free; a new company relationship incurs the applicable fee. See the complete policy document for edge cases and required tests.
 
-The weekly-access commercial model applies to **UK/GB accounts using GBP and supported euro markets using EUR**. India remains separately configured. Euro plans use the same numeric tiers as the UK:
+## Commercial rules: do not silently merge conflicting price models
 
-| Plan | UK price | Euro-market price | Access |
-| --- | ---: | ---: | --- |
-| Individual | £9.99 | €9.99 | One-off 7-day access |
-| Fleet: 2–5 vehicles | £16.99 | €16.99 | 7-day access |
-| Fleet: 6–15 vehicles | £24.99 | €24.99 | 7-day access |
-| Fleet: 16–30 vehicles | £36.99 | €36.99 | 7-day access |
-| Fleet: 31–55 vehicles | £49.99 | €49.99 | 7-day access |
-| Fleet: 56+ vehicles | Custom | Custom | Contact / custom pricing |
+The existing repository's launch-readiness notes describe UK/euro weekly access: individual £9.99 for 7 days; fleet £16.99 (2–5 vehicles), £24.99 (6–15), £36.99 (16–30), £49.99 (31–55), and custom pricing for 56+; no automatic recurring billing and no per-job fee in that documented model. A more recent product discussion proposes poster £9.99/month and driver £9.99/week. These models conflict and need one explicit approved pricing matrix before implementation or advertising. See [Application Workflows and Dashboards](docs/APP_WORKFLOWS_AND_DASHBOARDS.md). Payment records or a provider-neutral confirmation boundary do not prove live payment-provider settlement.
 
-Current rules:
-- Paid access starts only after trusted payment confirmation.
-- A repeat purchase extends an active subscription from its current expiry rather than replacing the remaining time.
-- There is no automatic recurring billing in the current model.
-- There is no per-job fee in the current model.
-- One access period is 7 × 24 hours from activation or renewal. All tiers include unlimited legitimate marketplace activity and no per-job charges.
-- UK launch promotion, tester invitations, and referral rules remain UK-only; euro markets use the same base weekly plan tiers.
-- These changes establish product pricing logic, not a live checkout. Do not accept real payments until a provider is integrated and settlement/webhook flows are validated.
+## Technology and capabilities
 
-### Payment integration status
+- Next.js App Router, TypeScript, React
+- PostgreSQL and Prisma
+- NextAuth credentials/JWT sessions; bcryptjs
+- Optional Resend email; Capacitor Android tooling
+- Application areas include accounts, market-aware onboarding, job posting/search/edit/cancellation, bidding/acceptance, delivery lifecycle, vehicles/documents, ratings, notifications, incident/evidence flows and guarded QA/admin tools.
 
-The application has a provider-neutral subscription-payment record and confirmation boundary. This is **not the same as a live payment-provider integration**. Production does not currently have a selected provider and verified provider credentials configured.
-
-Before accepting real subscription payments, select a provider and implement/test its authenticated webhook or signature verification, event idempotency and replay handling, success/failure/cancellation/refund paths, and reconciliation. The confirmation boundary must not be treated as proof of settlement by itself.
-
-## Technology stack
-
-- **Framework:** Next.js 15 App Router
-- **Language:** TypeScript
-- **UI:** React 18
-- **Database:** PostgreSQL
-- **ORM and migrations:** Prisma 5
-- **Authentication:** NextAuth credentials provider with JWT sessions
-- **Password hashing:** bcryptjs
-- **Optional email:** Resend
-- **Hosting/deployment:** Railway staging currently runs the web application from `feature/country-localisation-audit`; this is a test environment, not production approval. See `docs/RAILWAY_STAGING_SETUP.md` for the live service and database map.
-- **Mobile tooling dependencies:** Capacitor Android tooling is present in the project dependencies
+These areas do not imply every integration or end-to-end workflow is production-verified.
 
 ## Local development
 
-### Requirements
-- Node.js version compatible with the project's Next.js/TypeScript dependencies.
-- npm.
-- A local or development PostgreSQL database.
+Requirements: compatible Node.js, npm and a development PostgreSQL database.
 
-### Setup
+```bash
+git clone https://github.com/Post2Drive/post2drive-app.git
+cd post2drive-app
+npm ci
+cp .env.example .env
+# Configure development-only DATABASE_URL and NEXTAUTH_SECRET.
+npx prisma validate --schema=prisma/schema.prisma
+npx prisma generate --schema=prisma/schema.prisma
+npx prisma migrate deploy --schema=prisma/schema.prisma
+npx tsc --noEmit
+npm run build
+npm run dev
+```
 
-1. Clone the repository and enter the project directory.
+Open `http://localhost:3000`. Check `package.json` for current QA script names before relying on them. Never use production data for local development or destructive QA.
 
-   ```bash
-   git clone https://github.com/Post2Drive/post2drive-app.git
-   cd post2drive-app
-   ```
+## Environment and security
 
-   The repository is public. Keep all environment secrets out of commits and configure only the credentials needed for a development environment.
+Start with `.env.example` and verify names against current source. Environment settings may include `DATABASE_URL`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`, `EMAIL_VERIFICATION_ENABLED`, `RESEND_API_KEY`, `EMAIL_FROM`, `SUBSCRIPTION_WEBHOOK_SECRET`, `POST2DRIVE_ADMIN_EMAILS`, `POST2DRIVE_TESTER_CODE`, `OPS_DASHBOARD_DATABASE_URL` and build-time `CAPACITOR_SERVER_URL`. These are names only, not secret values or a guarantee of live configuration.
 
-2. Install dependencies.
+Never commit environment files, tokens, API keys, signing keys, database credentials or production data. Recreate secrets manually after an ownership transfer. Keep email and live payments disabled until providers and end-to-end tests are verified. Separate staging and production databases and credentials.
 
-   ```bash
-   npm ci
-   ```
+## Deployment and recovery
 
-3. Create your local environment file.
+- Treat `main` as the default source branch unless deliberately changed; Railway may deploy a different branch. Record the exact deployed commit SHA.
+- Review Prisma migrations and confirm the target database before applying them.
+- Do not delete/repoint an unknown database, volume or service until data, consumers and backups have been audited.
+- Verify health, logs, auth, market isolation, job lifecycle, vehicle eligibility, email/payment state, browser/mobile workflows and database writes after a deployment.
+- Code rollback does not restore lost database data; backup/restore must be tested separately.
 
-   ```bash
-   cp .env.example .env
-   ```
+Use the [portability and deployment runbook](docs/REPOSITORY_PORTABILITY_AND_DEPLOYMENT.md) for mirroring the source, repository-owner changes, reconnecting Railway, low-cost/free-tier considerations, rollback and release checks. A new repository or Railway project is not automatically required just because ownership changes; first confirm what access and resources remain available.
 
-4. Set `DATABASE_URL` to your development PostgreSQL database and set `NEXTAUTH_SECRET` to a strong random secret. Keep real secrets in local environment variables or the deployment secret manager—never commit them.
+## QA and launch gates
 
-5. Apply the existing Prisma migrations.
+Use synthetic data in isolated non-production environments. Keep destructive cleanup disabled by default. Historical staging load-test figures are not production reliability guarantees or proof of real email/payment functionality.
 
-   ```bash
-   npx prisma migrate deploy --schema=prisma/schema.prisma
-   ```
+Before public launch, require evidence for latest-commit CI/security/build checks, auth and email delivery, payment settlement/refund/reconciliation, market isolation and verification enforcement, browser/mobile E2E, database ownership, backup/restore, monitoring, rollback, legal policies and domain/HTTPS. See [Launch Readiness](docs/LAUNCH_READINESS.md) for dated evidence and blockers.
 
-   For local schema development when creating new migrations, use:
+## Change discipline
 
-   ```bash
-   npx prisma migrate dev --schema=prisma/schema.prisma
-   ```
-
-6. Start the development server.
-
-   ```bash
-   npm run dev
-   ```
-
-7. Open [http://localhost:3000](http://localhost:3000).
-
-### Useful commands
-
-| Command | Purpose |
-| --- | --- |
-| `npm run dev` | Start the Next.js development server |
-| `npm run build` | Generate the Prisma client and build the app |
-| `npm start` | Start the production Next.js server |
-| `npx tsc --noEmit` | Run TypeScript type checking |
-| `npx prisma migrate deploy --schema=prisma/schema.prisma` | Apply committed migrations |
-| `npm run qa:lifecycle-contract` | Run lifecycle, incident, and market-isolation regression guards |
-| `npm run qa:market-timezone` | Run UK, India and euro-market timezone/DST edge-case tests |
-| `node scripts/qa/reliability-budget.mjs` | Verify reliability confidence-bound calculations |
-
-Run the timezone and lifecycle contract checks, Prisma migration checks, TypeScript check, and production build before proposing a release. Review the scripts in `package.json` before adding or changing commands.
-
-## Environment variables
-
-Start from `.env.example`. Values below describe configuration intent; use real values only in local development or the deployment platform's secret-variable settings.
-
-| Variable | Purpose | Guidance |
-| --- | --- | --- |
-| `DATABASE_URL` | PostgreSQL connection string | Use the correct database/schema for the environment |
-| `NEXTAUTH_SECRET` | Signs/authenticates NextAuth session tokens | Generate a strong random value |
-| `NEXTAUTH_URL` | Canonical application URL | Use the local URL in development and canonical HTTPS URL in production |
-| `EMAIL_VERIFICATION_ENABLED` | Feature flag for email verification | Keep `false` until the complete email flow is verified |
-| `RESEND_API_KEY` | Resend API credential | Store as a secret; never commit it |
-| `EMAIL_FROM` | Verified sender address | Must belong to a verified Resend sending domain |
-| `SUBSCRIPTION_WEBHOOK_SECRET` | Secret for the provider-neutral confirmation boundary | Not a substitute for provider signature verification |
-| `POST2DRIVE_ADMIN_EMAILS` | Admin email allowlist | Limit to explicitly authorized operators |
-| `POST2DRIVE_TESTER_CODE` | Optional private tester code | Keep private and rotate when needed |
-
-### Email verification setup
-
-Email verification uses Resend and stores SHA-256 hashes of one-time verification tokens. Links expire after 24 hours, and resend requests have a 60-second cooldown.
-
-Before enabling the flow in production:
-1. Verify a sending domain with Resend.
-2. Configure `RESEND_API_KEY`, `EMAIL_FROM`, and the canonical `NEXTAUTH_URL`.
-3. Test real inbox delivery.
-4. Verify expiry and single-use token behavior, resend cooldown, generic responses for unknown addresses, and that unverified users cannot perform protected actions.
-5. Only then set `EMAIL_VERIFICATION_ENABLED=true`.
-
-## Deployment and environments
-
-As of 18 October 2026, the private Railway project `Post2Drive Staging` has a deployed Next.js application at [`post2drive-web-staging.up.railway.app`](https://post2drive-web-staging.up.railway.app). The application-code revision inspected was commit `b15e0ff754860c564db6fc26930a024d85234938` on `feature/country-localisation-audit`. The subsequent Redis-cleanup and documentation-only staging redeploys both completed successfully; the documentation-only changes did not alter application runtime code. Railway deploys the feature branch, not `main`, so do not assume a main-branch commit is what Railway is running.
-
-### Staging database ownership
-
-The latest web deployment's Prisma migration logs identify database `post2drive_qa` on `postgres-j8xl.railway.internal`, corresponding to the Railway service `Postgres-J8xl`. Treat that as the active staging application's database unless a deliberate, backed-up migration is approved.
-
-A separate PostgreSQL service named `Postgres` and its own persistent volume also exist. Its contents and any remaining consumer have not been established. Do not delete, migrate, or repoint it until its tables/data and every connection string—including `OPS_DASHBOARD_DATABASE_URL`—have been checked. The operations-dashboard connection is intended to use a dedicated read-only database role; verify its actual target and read-only access independently.
-
-### Other staging services
-
-The Railway service still displayed as `Post2Drive Infra Smoke Test` is configured to run `npm run qa:worker`; it is a durable QA worker, not an HTTP smoke-test service. It has no public domain. Rename the service in Railway when convenient so its display name reflects its real purpose.
-
-Redis was provisioned but no Redis client/dependency or runtime usage was found in the application, operations dashboard, or QA worker. It has been removed from the active staging services; its persistent volume is retained unattached rather than deleting its data. The `REDIS_URL` value has been blanked in the web and worker service configurations. The application dashboard cache is process-local, and the QA queue is PostgreSQL-backed; do not claim Redis is improving performance.
-
-### Deployment rules
-
-- Keep staging and production credentials/data isolated. Use synthetic data only in staging.
-- Keep email verification and real payments disabled until provider configuration and end-to-end tests are complete.
-- Apply Prisma migrations only to the intended environment/database after checking the target and reviewing the migration.
-- Verify signup/login, market isolation, jobs, bids, delivery transitions, incidents/evidence, notifications, account deletion, browser/mobile UX, backup/restore, and operational alerting before any public release.
-- Keep destructive QA cleanup disabled by default; require the explicit staging allow-list and safeguards.
-- Do not promote the currently deployed feature branch to production without reviewed CI results and the remaining launch gates.
-
-`CAPACITOR_SERVER_URL` must be supplied explicitly at build time for any remote-server mobile build; do not embed an implicit production target.
-
-## QA, staging, and data safety
-
-The project includes a synthetic QA runner and guarded cleanup. Keep QA mode and destructive cleanup disabled unless the target is a newly provisioned, isolated non-production database.
-
-The 17 October 2026 staging report records final successful GB/IN sessions covering 20,000 synthetic accounts, 28,000 API-load checks, and 29,914 workflow/E2E checks. It also preserves earlier failures and reports 555 raw HTTP 5xx responses in the sampled 24-hour window; 552 were attributed to the intentionally unconfigured verification-start webhook, while three remained unattributed in that analysis. These figures are staging evidence only and do not certify production reliability or launch readiness.
-
-These results are useful repeatable synthetic-test evidence, but they are **not** browser-based usability tests, real email delivery tests, real payment-settlement tests, or proof of a one-in-a-million failure rate. See [Launch Readiness](docs/LAUNCH_READINESS.md) for limitations and the latest release gates.
-
-Safety rules:
-- Never run destructive QA cleanup against production.
-- Keep `POST2DRIVE_QA_MODE` and `QA_ALLOW_CLEANUP` disabled and `QA_RUN_TOKEN` empty/unset in production.
-- Do not bypass exact-target cleanup guards.
-- Verify the environment and database schema before any cleanup or risky migration.
-- Confirm an independent backup and a tested restore process before production data cleanup or risky changes.
-
-## Before public launch
-
-The marketplace core is not yet cleared for unrestricted public launch. Complete these gates first:
-
-- **Email/account security:** configure and verify real email delivery, token expiry/single-use behavior, resend cooldown, protected actions, and the admin allowlist.
-- **Payments:** select a provider and verify authenticated provider events, idempotency/replay handling, refunds and failures, and payment-to-database reconciliation.
-- **Real user testing:** test browser and mobile workflows for registration/login, responsive layouts, job posting/search/editing, bids, acceptance, pickup, delivery confirmation/rejection, cancellation, ratings, and admin functions.
-- **Operational readiness:** verify backups/restores, monitoring, alerting, incident ownership, rollback, and release notes.
-- **Legal and marketplace policies:** publish and review Terms of Service, Privacy Notice, applicable cookie/analytics disclosures, support contact, data retention/deletion procedures, and UK GDPR handling.
-- **UK marketplace operations:** confirm eligibility and verification wording, dispute handling, and any applicable insurance/document checks before onboarding real carriers.
-- **Domain and HTTPS:** verify the public hostname and HTTPS redirects. A branded custom domain is recommended before marketing.
-
-The next appropriate step is a controlled internal or closed beta after the required gates are addressed—not an unrestricted public launch.
-
-## Security
-
-- Never commit `.env` files, production URLs containing credentials, API keys, webhook secrets, or other private credentials.
-- Use separate secrets per environment and store them only in the chosen deployment provider’s secret-variable settings.
-- Keep admin access limited to explicitly authorized addresses.
-- Do not use production for synthetic QA or destructive cleanup.
-- Review [Launch Readiness](docs/LAUNCH_READINESS.md) before deployments that affect authentication, subscriptions, job lifecycle state, or data cleanup.
-
-## Contributing and change discipline
-
-Before proposing changes:
-1. Understand the current workflow and relevant tests.
-2. Preserve the agreed commercial model unless the product decision is explicitly changed.
-3. Add or update tests for lifecycle, authorization, payment, and data-integrity behavior where applicable.
-4. Run the build and TypeScript checks.
-5. Review environment-specific behavior, migrations, and rollback implications.
-6. Update this README and [Launch Readiness](docs/LAUNCH_READINESS.md) when product capabilities or release status materially change.
-
-## Project status
-
-Post2Drive is in active development. Its core marketplace workflows and staging synthetic QA have meaningful implementation and test coverage, while real email verification, live subscription payments, browser/mobile usability, and other launch gates still require explicit verification.
-
-For the current evidence and outstanding release requirements, see [docs/LAUNCH_READINESS.md](docs/LAUNCH_READINESS.md).
+Inspect the current code, tests and open PRs before changing rules. Keep verification, payment status and feature entitlements separate; preserve server-side market isolation; add regression tests; run checks on the exact proposed commit; update the relevant docs; and do not deploy without review and release approval.
