@@ -161,21 +161,61 @@ This is a point-in-time record from Railway's staging environment, not a product
 - QA worker: service still named `Post2Drive Infra Smoke Test`, online; latest successful deployment created **25 October 2026 20:44 UTC**, deployment `0973bb81-2d62-4253-afe5-4da48d4a9bb5`, same branch and commit as Web. It runs `npm run qa:worker`; it is not a public smoke-test endpoint.
 - PostgreSQL services: `Postgres-J8xl` and `Postgres` both report online; their latest successful deployments were created **16 October 2026 21:34 UTC** and **16 October 2026 17:17 UTC**, respectively. `Postgres-J8xl` is the historically observed app database; the second service's data and consumers remain unverified. Do not remove or repoint either service without a verified consumer inventory and tested backup/restore.
 - Staging configuration: Web is connected to `Post2Drive/post2drive-app` branch `integration/pr12-pr41-resolved`, build command `npm run build`, start command `npm run start`, pre-deploy Prisma migration/staging preparation, health path `/api/health`, domain `https://post2drive-web-staging.up.railway.app`.
-- Recent deployment history returned by Railway (10 most recent records at the time of this check; UTC timestamps; `REMOVED` means not live):
-  | Status | Service | Created (UTC) | Commit | Deployment ID |
-  | --- | --- | --- | --- | --- |
-  | `SUCCESS` | QA worker | 2026-10-25 20:44 | `ebe1d7b442b99b5f94a22f4a15802644dd382bdc` | `0973bb81-2d62-4253-afe5-4da48d4a9bb5` |
-  | `SUCCESS` | Web | 2026-10-25 20:44 | `ebe1d7b442b99b5f94a22f4a15802644dd382bdc` | `12c1fa62-e47a-480c-b585-9153fc379c91` |
-  | `REMOVED` | QA worker | 2026-10-25 20:44 | `b9547ef8be7920014d4cd6b5e8d8ef428a646d8e` | `a5346858-9081-4799-904c-7ccb9e8f367f` |
-  | `REMOVED` | Web | 2026-10-25 20:44 | `b9547ef8be7920014d4cd6b5e8d8ef428a646d8e` | `52584d37-51ea-497d-b3af-256975fdb66f` |
-  | `REMOVED` | QA worker | 2026-10-25 19:44 | `0d03572d14121a0fa2f8e39f43949feec091fdd0` | `1a4d2691-d702-4d1f-a4d3-8983beed8232` |
-  | `REMOVED` | Web | 2026-10-25 19:44 | `0d03572d14121a0fa2f8e39f43949feec091fdd0` | `494fca31-2365-4bd4-aa29-eaf1d4da24ec` |
-  | `REMOVED` | Web | 2026-10-25 19:12 | `aaa4ac7c223ed6274466cfd4dd71f177d56aba0f` | `d6e5fdd4-8580-4440-ba48-5ac106f33f2c` |
-  | `REMOVED` | QA worker | 2026-10-25 19:12 | `aaa4ac7c223ed6274466cfd4dd71f177d56aba0f` | `16ccd611-ba59-4266-9e64-99d5affdcf8e` |
-  | `REMOVED` | Web | 2026-10-25 19:12 | `7d56eba854a7a3e7705ac636c670e0aa157d9b74` | `e45b27de-a072-48f9-885f-a0e561162007` |
-  | `REMOVED` | QA worker | 2026-10-25 19:12 | `7d56eba854a7a3e7705ac636c670e0aa157d9b74` | `d8b54748-4583-4827-bbae-358ee0beed2a` |
+- Recent deployment history returned by Railway (**50 records**, newest first, at the time of this check; timestamps are UTC):
+  | Status | Service | Created | Branch | Commit | Deployment ID |
+  | --- | --- | --- | --- | --- | --- |
+  | `SUCCESS` | QA worker | 2026-10-25 20:44 UTC | `integration/pr12-pr41-resolved` | `ebe1d7b442b99b5f94a22f4a15802644dd382bdc` | `0973bb81-2d62-4253-afe5-4da48d4a9bb5` |
+  | `SUCCESS` | Web | 2026-10-25 20:44 UTC | `integration/pr12-pr41-resolved` | `ebe1d7b442b99b5f94a22f4a15802644dd382bdc` | `12c1fa62-e47a-480c-b585-9153fc379c91` |
+  | `REMOVED` | QA worker | 2026-10-25 20:44 UTC | `integration/pr12-pr41-resolved` | `b9547ef8be7920014d4cd6b5e8d8ef428a646d8e` | `a5346858-9081-4799-904c-7ccb9e8f367f` |
+  | `REMOVED` | Web | 2026-10-25 20:44 UTC | `integration/pr12-pr41-resolved` | `b9547ef8be7920014d4cd6b5e8d8ef428a646d8e` | `52584d37-51ea-497d-b3af-256975fdb66f` |
+  | `REMOVED` | QA worker | 2026-10-25 19:44 UTC | `integration/pr12-pr41-resolved` | `0d03572d14121a0fa2f8e39f43949feec091fdd0` | `1a4d2691-d702-4d1f-a4d3-8983beed8232` |
+  | `REMOVED` | Web | 2026-10-25 19:44 UTC | `integration/pr12-pr41-resolved` | `0d03572d14121a0fa2f8e39f43949feec091fdd0` | `494fca31-2365-4bd4-aa29-eaf1d4da24ec` |
+  | `REMOVED` | Web | 2026-10-25 19:44 UTC | `integration/pr12-pr41-resolved` | `aaa4ac7c223ed6274466cfd4dd71f177d56aba0f` | `d6e5fdd4-8580-4440-ba48-5ac106f33f2c` |
+  | `REMOVED` | QA worker | 2026-10-25 19:44 UTC | `integration/pr12-pr41-resolved` | `aaa4ac7c223ed6274466cfd4dd71f177d56aba0f` | `16ccd611-ba59-4266-9e64-99d5affdcf8e` |
+  | `REMOVED` | Web | 2026-10-25 19:12 UTC | `integration/pr12-pr41-resolved` | `7d56eba854a7a3e7705ac636c670e0aa157d9b74` | `e45b27de-a072-48f9-885f-a0e561162007` |
+  | `REMOVED` | QA worker | 2026-10-25 19:12 UTC | `integration/pr12-pr41-resolved` | `7d56eba854a7a3e7705ac636c670e0aa157d9b74` | `d8b54748-4583-4827-bbae-358ee0beed2a` |
+  | `REMOVED` | Web | 2026-10-25 19:12 UTC | `integration/pr12-pr41-resolved` | `0eb12fb664c52bb10462432b77c13ad89a7c353d` | `99eff8ab-4d2c-4f19-85ae-13e2fe8549d9` |
+  | `REMOVED` | QA worker | 2026-10-25 19:12 UTC | `integration/pr12-pr41-resolved` | `0eb12fb664c52bb10462432b77c13ad89a7c353d` | `32802f5a-64a5-4567-9a10-3c5616bdc271` |
+  | `REMOVED` | Web | 2026-10-25 19:05 UTC | `integration/pr12-pr41-resolved` | `64988fabe789de193310c6fe6a4ed2a2233258c0` | `94bd75a0-8502-4334-a7a6-cb7a058fb6b1` |
+  | `REMOVED` | QA worker | 2026-10-25 19:05 UTC | `integration/pr12-pr41-resolved` | `64988fabe789de193310c6fe6a4ed2a2233258c0` | `90c549b5-d8a3-4dec-9ef5-25c91b30fc59` |
+  | `REMOVED` | QA worker | 2026-10-25 18:57 UTC | `integration/pr12-pr41-resolved` | `8dfa0f6824637af9e452f6532f96880dece1bf1f` | `b0f6088e-4c1d-4697-9b7e-72bd4a2b5403` |
+  | `REMOVED` | Web | 2026-10-25 18:57 UTC | `integration/pr12-pr41-resolved` | `8dfa0f6824637af9e452f6532f96880dece1bf1f` | `548493ca-8eb4-4d57-85ee-91469b7b999a` |
+  | `REMOVED` | Web | 2026-10-25 18:32 UTC | `integration/pr12-pr41-resolved` | `4d4a7482067442add236647a699b4cb9f347a413` | `b184ac77-f0c5-40c6-ba51-15bffdddd24d` |
+  | `REMOVED` | Web | 2026-10-25 17:40 UTC | `integration/pr12-pr41-resolved` | `4d4a7482067442add236647a699b4cb9f347a413` | `a506f161-6244-435f-9b0b-4995cd33a67a` |
+  | `REMOVED` | QA worker | 2026-10-25 17:28 UTC | `integration/pr12-pr41-resolved` | `4d4a7482067442add236647a699b4cb9f347a413` | `5ca20a4b-0fcb-4d25-8e10-5c4efd07c8d7` |
+  | `REMOVED` | QA worker | 2026-10-25 17:25 UTC | `integration/pr12-pr41-resolved` | `405809850f616616eb3e85ecb538d64a283b8532` | `7c9fd92f-4c02-4eed-8727-06090fc36ee4` |
+  | `REMOVED` | QA worker | 2026-10-25 17:24 UTC | `integration/pr12-pr41-resolved` | `505995b052c577adf12df04215afd7838b8f3e4a` | `8842e6f1-de3d-4264-8862-7fb0ecddafb4` |
+  | `REMOVED` | QA worker | 2026-10-25 17:23 UTC | `integration/pr12-pr41-resolved` | `2e9087833cff3325f2dee4b26ed5a73e19407864` | `6aab0c84-3173-42d7-abaf-06667865c3d8` |
+  | `REMOVED` | QA worker | 2026-10-25 17:23 UTC | `integration/pr12-pr41-resolved` | `f98aab3f63a66aa90e4e87a82f56158f5d1f64f9` | `d0d8674d-aec0-4e4c-ac7e-1a950ec34709` |
+  | `REMOVED` | QA worker | 2026-10-25 17:23 UTC | `integration/pr12-pr41-resolved` | `7605507bbbc7c7d5fba04ce9888ba1ed716fc569` | `01a6ce80-b1b1-4c30-8be6-2089dc0cccaf` |
+  | `REMOVED` | QA worker | 2026-10-25 17:22 UTC | `integration/pr12-pr41-resolved` | `5055e4681852d7426cd3f0457c6905d96142261d` | `3a976b83-e65a-4339-977e-59df22f92ea1` |
+  | `REMOVED` | QA worker | 2026-10-25 17:22 UTC | `integration/pr12-pr41-resolved` | `2a77b02380f5e298c41801ba81d2920ba751b625` | `119a144d-c2e7-4608-93da-3f60de4e5526` |
+  | `REMOVED` | QA worker | 2026-10-25 17:19 UTC | `integration/pr12-pr41-resolved` | `09e90fcb802c1088a7d886d9f149035355197d99` | `00d36fd1-c425-48ba-bd3d-a3373ac6b904` |
+  | `REMOVED` | QA worker | 2026-10-25 17:06 UTC | `integration/pr12-pr41-resolved` | `aef887334cdb0a0a41e32ef43e9f181d3ae7d73d` | `99080c62-7690-4745-8696-1cb38dd74fe4` |
+  | `REMOVED` | QA worker | 2026-10-25 17:01 UTC | `integration/pr12-pr41-resolved` | `2cc726e9ff43768da92e395462fe5e10a6410a28` | `f89c639b-58ed-4efd-b56d-3a94137f9a9a` |
+  | `REMOVED` | QA worker | 2026-10-21 00:08 UTC | `feature/country-localisation-audit` | `4e58a373cf408fb232db994fda8b217977767928` | `5bd62b5f-a943-464f-89d4-92cc51aff310` |
+  | `REMOVED` | Web | 2026-10-21 00:08 UTC | `feature/country-localisation-audit` | `4e58a373cf408fb232db994fda8b217977767928` | `c49a17ca-2f3d-4f72-8e09-1da705cae01b` |
+  | `REMOVED` | QA worker | 2026-10-19 19:44 UTC | `feature/country-localisation-audit` | `566284c6ebdfd44e5d5af9d416258c21c84010a9` | `237c8e04-646b-4959-b1a9-624a6a167221` |
+  | `REMOVED` | Web | 2026-10-19 19:44 UTC | `feature/country-localisation-audit` | `566284c6ebdfd44e5d5af9d416258c21c84010a9` | `f2755518-bfd5-4b18-9803-1e6fbbd5c800` |
+  | `REMOVED` | Web | 2026-10-19 18:00 UTC | `feature/country-localisation-audit` | `4571b5f5c833eb2cec28356f095fecaff6180e68` | `d8a2db08-ba18-4ba4-870a-031a989ec9b0` |
+  | `REMOVED` | QA worker | 2026-10-19 18:00 UTC | `feature/country-localisation-audit` | `4571b5f5c833eb2cec28356f095fecaff6180e68` | `49a96b55-01e9-411f-83cd-8ef1032aeb48` |
+  | `FAILED` | Web | 2026-10-18 23:49 UTC | `feature/country-localisation-audit` | `96e1f1288249894866bab2f50e7445205de668ea` | `2f60a58f-5c51-4e3f-91ea-5fa65452c2c8` |
+  | `REMOVED` | QA worker | 2026-10-18 23:49 UTC | `feature/country-localisation-audit` | `96e1f1288249894866bab2f50e7445205de668ea` | `b422d2a6-e6f9-44ad-a922-e4eb90b00b5e` |
+  | `REMOVED` | QA worker | 2026-10-18 22:03 UTC | `feature/country-localisation-audit` | `1b2041a97d8b4d2b6d5704972080809ebc20c000` | `324fcf15-c21f-416e-b38e-0012ae699482` |
+  | `REMOVED` | Web | 2026-10-18 22:03 UTC | `feature/country-localisation-audit` | `1b2041a97d8b4d2b6d5704972080809ebc20c000` | `ac8bf958-23cc-4ca1-908b-7fc2a1b5a745` |
+  | `REMOVED` | Web | 2026-10-18 21:40 UTC | `feature/country-localisation-audit` | `b5e5e3361925f219d4da876bbc8d67ec424c4d99` | `302c53f6-33c2-4f6b-845f-62f041e0f157` |
+  | `REMOVED` | QA worker | 2026-10-18 21:40 UTC | `feature/country-localisation-audit` | `b5e5e3361925f219d4da876bbc8d67ec424c4d99` | `5bc765ef-b747-436e-b2f4-5ab9b1587f86` |
+  | `REMOVED` | Web | 2026-10-18 21:20 UTC | `feature/country-localisation-audit` | `4f29996585311a47df93cf7d04163cd3cef9ab3f` | `f1a2c6f6-df8b-48e5-98a3-31b2134b82fa` |
+  | `REMOVED` | QA worker | 2026-10-18 21:20 UTC | `feature/country-localisation-audit` | `4f29996585311a47df93cf7d04163cd3cef9ab3f` | `3d1c7288-e3bd-4418-800f-0fb3f3ab6367` |
+  | `REMOVED` | QA worker | 2026-10-18 20:57 UTC | `feature/country-localisation-audit` | `33e313bd7d1ab568cf810c83a2d49bfd7d66b01d` | `951e4944-4b83-48b7-94f9-1e623c32359e` |
+  | `REMOVED` | Web | 2026-10-18 20:57 UTC | `feature/country-localisation-audit` | `33e313bd7d1ab568cf810c83a2d49bfd7d66b01d` | `50f9e29f-a66d-4631-bcf9-398deeb66f1f` |
+  | `REMOVED` | Web | 2026-10-18 20:42 UTC | `feature/country-localisation-audit` | `ecfa88b4f32b6784ef44a9f4cb9a52aed8ff37fb` | `175f2c22-ff7a-4c8c-ad13-053d0bfffebc` |
+  | `REMOVED` | QA worker | 2026-10-18 20:42 UTC | `feature/country-localisation-audit` | `ecfa88b4f32b6784ef44a9f4cb9a52aed8ff37fb` | `ac8beef1-1e80-4c02-8c55-0a371d1665cf` |
+  | `REMOVED` | Web | 2026-10-18 19:59 UTC | `feature/country-localisation-audit` | `f78566f50200badc11608a75a47393a5252fe71f` | `2dec0e1e-a60f-4c81-ba6e-a7f3a20b1eb5` |
+  | `REMOVED` | QA worker | 2026-10-18 19:59 UTC | `feature/country-localisation-audit` | `f78566f50200badc11608a75a47393a5252fe71f` | `91ae4195-3bc7-4969-aaf0-de758019df9d` |
+  | `REMOVED` | QA worker | 2026-10-18 19:39 UTC | `feature/country-localisation-audit` | `c69da117ba833e68766862d47da1313f71684855` | `1fe8f729-7552-455c-a9c0-2ad9bdd484f7` |
 
-  This is the most recent 10-record window, not a complete lifetime audit export. Export the full Railway deployment history before any compliance/audit requirement that needs every historical deployment. Removed deployments are history only, not rollback guarantees.
+  This is the full set returned by the current Railway history query (limit 50), not a guaranteed lifetime export if the platform has older records beyond this window. Export the full Railway deployment history before any compliance/audit requirement that needs every historical deployment. Removed deployments are history only, not rollback guarantees.
 - Environment snapshot: all four services reported online, zero active warnings/critical alerts and no pending Railway changes at the time checked. This is platform status, not proof every user journey works.
 - GitHub release candidate: PR #73 head `caae14c7a9350cf5335bd9b06d59633b3a27d175` is documentation-only and is **not deployed**. At the observation time, Validate was pending, Android Capacitor build was in progress, and CodeQL/Security Scan had succeeded. No combined commit statuses were returned. Do not describe checks as fully passed until the exact head finishes and results are rechecked.
 - Release decision: staging only; no production deployment approved. Keep public launch blocked pending exact-head CI, live browser/mobile E2E, email/payment evidence, database ownership and read-only dashboard DB verification, backup/restore, rollback/recovery, monitoring and legal readiness.
