@@ -1,13 +1,15 @@
 import { isUkAccount } from "@/lib/uk";
 import { isWeeklyPricingMarket, marketForAccount, MARKETS } from "@/lib/market";
 
-export type PricingPlan = "individual" | "fleet";
+export type PricingPlan = "poster-monthly" | "individual" | "fleet";
 
 export interface PricingAccount {
   country?: string | null;
   currency?: string | null;
-  planType?: PricingPlan | null;
+  planType?: "individual" | "fleet" | null;
   fleetVehicleCount?: number | null;
+  type?: "poster" | "driver" | "both" | null;
+  hasVerifiedVehicle?: boolean | null;
 }
 
 /*
@@ -21,6 +23,7 @@ export interface PricingAccount {
 export const INDIVIDUAL_PRICE_GBP = 9.99;
 export const INDIVIDUAL_PRICE_EUR = 9.99;
 export const INDIVIDUAL_ACCESS_DAYS = 7;
+export const POSTER_MONTHLY_ACCESS_MONTHS = 1;
 
 export const FLEET_PRICES_GBP = {
   "2-5": 16.99,
@@ -63,6 +66,11 @@ export function getIndividualWeeklyPrice(account?: PricingAccount) {
   return pricesFor(account)?.individual ?? null;
 }
 
+/** Poster access is billed monthly until the account advances to verified vehicle/fleet access. */
+export function getPosterMonthlyPrice(account?: PricingAccount) {
+  return pricesFor(account)?.individual ?? null;
+}
+
 export function calculateIndividualWeeklyPrice(account?: PricingAccount) {
   return getIndividualWeeklyPrice(account);
 }
@@ -93,6 +101,19 @@ export function getPlanDisplay(
       price: null,
       currency: account?.currency ?? null,
       description: "Pricing for this country will be configured separately.",
+    };
+  }
+
+  if (planKey === "poster-monthly") {
+    const price = getPosterMonthlyPrice(account);
+    return {
+      key: "poster-monthly",
+      name: "Poster",
+      price,
+      currency: prices.currency,
+      description: price === null
+        ? "Poster pricing is unavailable for this market."
+        : `${prices.format(price)} per calendar month. Posting remains locked until account and business verification are approved. Cancel anytime under the rolling-subscription rules.`,
     };
   }
 
