@@ -80,7 +80,7 @@ export async function createPendingSubscriptionPayment(accountId: string) {
   }
   const amountMinorUnits = getPaidPriceMinorUnits(pricingAccount);
   if (!planKey || amountMinorUnits === null) {
-    throw new Error("This account does not have a valid weekly subscription price.");
+    throw new Error("This account does not have a valid subscription price.");
   }
 
   return prisma.subscriptionPayment.create({
