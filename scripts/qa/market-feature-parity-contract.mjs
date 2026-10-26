@@ -90,6 +90,7 @@ contains("lib/subscription.ts", "isWeeklyPricingEligible(account)", "paid access
 contains("lib/pricing.ts", '"poster-monthly" | "individual" | "fleet"', "poster subscription cadence must be represented separately from weekly driver plans");
 contains("lib/subscription.ts", 'account.type === "poster" || (account.type === "both" && !account.hasVerifiedVehicle)', "poster-only and not-yet-vehicle-verified dual-role accounts must use monthly poster pricing");
 contains("lib/subscription.ts", "calculatePaidAccessEnd(currentEnd, payment.planKey)", "paid access duration must follow the selected monthly or weekly plan");
+contains("lib/subscription.ts", "The subscription plan changed. Create a payment for the current plan instead.", "stale pending payments must not reverse a monthly-to-weekly conversion");
 contains("components/subscription-pricing.tsx", "per calendar month", "pricing UI must disclose monthly poster billing");
 contains("components/subscription-pricing.tsx", "automatic recurring billing is not connected yet", "pricing UI must not imply live recurring billing before provider integration");
 contains("components/subscription-status.tsx", "first weekly renewal is due seven days after conversion", "upgrade UI must disclose the first weekly renewal timing");
