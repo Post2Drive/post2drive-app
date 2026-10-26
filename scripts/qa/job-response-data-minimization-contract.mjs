@@ -12,6 +12,9 @@ assert.ok(!route.includes("...jobData") && !route.includes("...jobWithMatchHisto
 assert.ok(route.includes("poster: canSeePartyContacts") && route.includes("acceptedBy: job.acceptedBy"), "nested party data must remain behind the contact-visibility policy");
 assert.ok(!route.includes("const jobWithMatchHistory = { ...jobData, previousDriverIds }"), "do not serialize job row plus all previous driver IDs");
 assert.ok(route.includes("currentUserPreviouslyBackedOut: previousDriverIds.includes(accountId)"));
+assert.ok(route.includes("isCurrentUserPoster: job.posterId === accountId") && route.includes("isCurrentUserAcceptedDriver: job.acceptedById === accountId"), "API should return caller-relative role flags instead of account IDs");
+assert.ok(!route.includes("      posterId: job.posterId,") && !route.includes("      acceptedById: job.acceptedById,"), "do not serialize job-party account IDs in marketplace responses");
+assert.ok(!page.includes("job.posterId") && !page.includes("job.acceptedById") && !page.includes("job.deliveryMarkedById"), "client must use caller-relative flags, not internal account IDs");
 assert.ok(route.includes("hasPreviousDrivers: previousDriverIds.length > 0"));
 assert.ok(route.includes("pickupContactName: canSeePartyContacts ? pickupContactName : null"));
 assert.ok(route.includes("pickupContactPhone: canSeePartyContacts ? pickupContactPhone : null"));
