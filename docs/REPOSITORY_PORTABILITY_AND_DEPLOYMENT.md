@@ -217,5 +217,16 @@ This is a point-in-time record from Railway's staging environment, not a product
 
   This is the full set returned by the current Railway history query (limit 50), not a guaranteed lifetime export if the platform has older records beyond this window. Export the full Railway deployment history before any compliance/audit requirement that needs every historical deployment. Removed deployments are history only, not rollback guarantees.
 - Environment snapshot: all four services reported online, zero active warnings/critical alerts and no pending Railway changes at the time checked. This is platform status, not proof every user journey works.
-- GitHub release candidate: PR #73 documentation head `fbce4fe5adaab16c335a3c55bf54ed17ab655714` is documentation-only and remains unmerged/not deployed. Validate, CodeQL, Security Scan and Android Capacitor build passed on that exact head. PR #74 contains the job-edit heading fix plus two test-contract alignment updates; its latest head is `6bb60dca01f30d2c9fcfdbb706a4642610b9c31a`, and all four required workflows are rerunning. The earlier head failed the QA contract test because it expected the obsolete `table(d.qaFailures)` renderer pattern; the test now matches the current direct `qaFailures` table renderer. Wait for all checks on the latest SHA before any merge or staging deployment.
+- GitHub release candidate: PR #74 was merged into `integration/pr12-pr41-resolved` on 26 October 2026 as merge commit `6bdd3c1b8dd2e08c3afe56473b2fc3dd54fc0518` (PR head `0ae74edf90b15238f10fc9df14897544408e59c8`). Its pre-merge Validate, CodeQL and Security Scan checks passed. The Android Capacitor build/emulator smoke test was still running when the staging rollout began; treat that check as pending until the run reaches a final conclusion. PR #73 remains the documentation handover PR and must be updated with this deployment record before merge.
+
+## 11. Verified staging deployment — 26 October 2026
+
+- Environment: Railway `Post2Drive Staging` / `staging`; service `Post2Drive Web`.
+- Deployment ID: `01c64736-9e9b-4c73-8a3b-e74398da0974`.
+- Result: Railway reports `SUCCESS`; deployment logs show the app reached `Ready` and the health-check rollout completed.
+- Source branch: `integration/pr12-pr41-resolved`; deployed commit `6bdd3c1b8dd2e08c3afe56473b2fc3dd54fc0518`.
+- Public staging URL: https://post2drive-web-staging.up.railway.app (health endpoint `/api/health`).
+- Pre-deploy database migration step reported **no pending migrations** against `post2drive_qa`. Staging startup verified the ops dashboard read-only boundary: role `post2drive_ops_readonly`, 31 readable tables, zero writable tables, zero sequence privileges, no role memberships, no `BYPASSRLS`, and no public-schema `CREATE` privilege.
+- Deployment is staging-only. This is not production approval and does not prove all browser/mobile journeys, email, payments, backup restore or incident recovery are complete.
+- Android emulator smoke test for the PR head and post-merge commit was still in progress at the time of this record; update this line when both runs reach a final result.
 - Release decision: staging only; no production deployment approved. Keep public launch blocked pending exact-head CI, live browser/mobile E2E, email/payment evidence, database ownership and read-only dashboard DB verification, backup/restore, rollback/recovery, monitoring and legal readiness.
