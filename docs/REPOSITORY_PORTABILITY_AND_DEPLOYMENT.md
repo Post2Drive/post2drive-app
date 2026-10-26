@@ -161,7 +161,21 @@ This is a point-in-time record from Railway's staging environment, not a product
 - QA worker: service still named `Post2Drive Infra Smoke Test`, online; latest successful deployment created **25 October 2026 20:44 UTC**, deployment `0973bb81-2d62-4253-afe5-4da48d4a9bb5`, same branch and commit as Web. It runs `npm run qa:worker`; it is not a public smoke-test endpoint.
 - PostgreSQL services: `Postgres-J8xl` and `Postgres` both report online; their latest successful deployments were created **16 October 2026 21:34 UTC** and **16 October 2026 17:17 UTC**, respectively. `Postgres-J8xl` is the historically observed app database; the second service's data and consumers remain unverified. Do not remove or repoint either service without a verified consumer inventory and tested backup/restore.
 - Staging configuration: Web is connected to `Post2Drive/post2drive-app` branch `integration/pr12-pr41-resolved`, build command `npm run build`, start command `npm run start`, pre-deploy Prisma migration/staging preparation, health path `/api/health`, domain `https://post2drive-web-staging.up.railway.app`.
-- Other recent deployment history returned by Railway: earlier revisions `b9547ef8be7920014d4cd6b5e8d8ef428a646d8e`, `0d03572d14121a0fa2f8e39f43949feec091fdd0`, `aaa4ac7c223ed6274466cfd4dd71f177d56aba0f`, and `7d56eba854a7a3e7705ac636c670e0aa157d9b74` were later marked `REMOVED`. Removed deployments are history only, not rollback guarantees.
+- Recent deployment history returned by Railway (10 most recent records at the time of this check; UTC timestamps; `REMOVED` means not live):
+  | Status | Service | Created (UTC) | Commit | Deployment ID |
+  | --- | --- | --- | --- | --- |
+  | `SUCCESS` | QA worker | 2026-10-25 20:44 | `ebe1d7b442b99b5f94a22f4a15802644dd382bdc` | `0973bb81-2d62-4253-afe5-4da48d4a9bb5` |
+  | `SUCCESS` | Web | 2026-10-25 20:44 | `ebe1d7b442b99b5f94a22f4a15802644dd382bdc` | `12c1fa62-e47a-480c-b585-9153fc379c91` |
+  | `REMOVED` | QA worker | 2026-10-25 20:44 | `b9547ef8be7920014d4cd6b5e8d8ef428a646d8e` | `a5346858-9081-4799-904c-7ccb9e8f367f` |
+  | `REMOVED` | Web | 2026-10-25 20:44 | `b9547ef8be7920014d4cd6b5e8d8ef428a646d8e` | `52584d37-51ea-497d-b3af-256975fdb66f` |
+  | `REMOVED` | QA worker | 2026-10-25 19:44 | `0d03572d14121a0fa2f8e39f43949feec091fdd0` | `1a4d2691-d702-4d1f-a4d3-8983beed8232` |
+  | `REMOVED` | Web | 2026-10-25 19:44 | `0d03572d14121a0fa2f8e39f43949feec091fdd0` | `494fca31-2365-4bd4-aa29-eaf1d4da24ec` |
+  | `REMOVED` | Web | 2026-10-25 19:12 | `aaa4ac7c223ed6274466cfd4dd71f177d56aba0f` | `d6e5fdd4-8580-4440-ba48-5ac106f33f2c` |
+  | `REMOVED` | QA worker | 2026-10-25 19:12 | `aaa4ac7c223ed6274466cfd4dd71f177d56aba0f` | `16ccd611-ba59-4266-9e64-99d5affdcf8e` |
+  | `REMOVED` | Web | 2026-10-25 19:12 | `7d56eba854a7a3e7705ac636c670e0aa157d9b74` | `e45b27de-a072-48f9-885f-a0e561162007` |
+  | `REMOVED` | QA worker | 2026-10-25 19:12 | `7d56eba854a7a3e7705ac636c670e0aa157d9b74` | `d8b54748-4583-4827-bbae-358ee0beed2a` |
+
+  This is the most recent 10-record window, not a complete lifetime audit export. Export the full Railway deployment history before any compliance/audit requirement that needs every historical deployment. Removed deployments are history only, not rollback guarantees.
 - Environment snapshot: all four services reported online, zero active warnings/critical alerts and no pending Railway changes at the time checked. This is platform status, not proof every user journey works.
 - GitHub release candidate: PR #73 head `caae14c7a9350cf5335bd9b06d59633b3a27d175` is documentation-only and is **not deployed**. At the observation time, Validate was pending, Android Capacitor build was in progress, and CodeQL/Security Scan had succeeded. No combined commit statuses were returned. Do not describe checks as fully passed until the exact head finishes and results are rechecked.
 - Release decision: staging only; no production deployment approved. Keep public launch blocked pending exact-head CI, live browser/mobile E2E, email/payment evidence, database ownership and read-only dashboard DB verification, backup/restore, rollback/recovery, monitoring and legal readiness.
