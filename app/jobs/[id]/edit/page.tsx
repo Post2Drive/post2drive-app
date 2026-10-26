@@ -299,7 +299,8 @@ export default function EditJobPage() {
           fontFamily: "Arial, sans-serif",
         }}
       >
-        <p>Loading job...</p>
+        <h1 style={{ margin: "0 0 12px" }}>Edit job</h1>
+        <p role="status">Loading job...</p>
       </main>
     );
   }
@@ -314,6 +315,7 @@ export default function EditJobPage() {
           fontFamily: "Arial, sans-serif",
         }}
       >
+        <h1 style={{ margin: "0 0 16px" }}>Edit job</h1>
         <div
           style={{
             padding: 14,
@@ -342,6 +344,7 @@ export default function EditJobPage() {
           fontFamily: "Arial, sans-serif",
         }}
       >
+        <h1 style={{ margin: "0 0 12px" }}>Edit job</h1>
         <p>Job not found.</p>
         <Link href="/jobs" className="button-link button-link-secondary">Back to jobs</Link>
       </main>
