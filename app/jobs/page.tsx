@@ -45,8 +45,11 @@ type Job = {
   priceMode: string;
   notes: string | null;
   status: string;
-  posterId: string;
-  acceptedById: string | null;
+  isCurrentUserPoster: boolean;
+  isCurrentUserAcceptedDriver: boolean;
+  hasAcceptedDriver: boolean;
+  currentUserMarkedDelivery: boolean;
+  currentUserConfirmedPickup: boolean;
   hasPreviousDrivers?: boolean;
   currentUserPreviouslyBackedOut?: boolean;
   deliveryMarkedById: string | null;
@@ -817,12 +820,10 @@ export default function JobsPage() {
         {visibleJobs.map(
           (job) => {
             const isOwner =
-              job.posterId ===
-              accountId;
+              job.isCurrentUserPoster;
 
             const isAcceptedDriver =
-              job.acceptedById ===
-              accountId;
+              job.isCurrentUserAcceptedDriver;
 
             const involved =
               isOwner ||
@@ -830,13 +831,12 @@ export default function JobsPage() {
 
             const canRate =
               (isOwner &&
-                (Boolean(job.acceptedById) || Boolean(job.hasPreviousDrivers))) ||
+                (job.hasAcceptedDriver || Boolean(job.hasPreviousDrivers))) ||
               isAcceptedDriver ||
               Boolean(job.currentUserPreviouslyBackedOut);
 
             const iMarkedDelivered =
-              job.deliveryMarkedById ===
-              accountId;
+              job.currentUserMarkedDelivery;
 
             const matched =
               job.status !==
@@ -927,7 +927,7 @@ export default function JobsPage() {
                   </span>
                 </div>
 
-                {involved && (job.status !== "open" || Boolean(job.acceptedById)) && (
+                {involved && (job.status !== "open" || job.hasAcceptedDriver) && (
                   <div style={{ marginTop: 12 }}>
                     <Link
                       href={`/jobs/${job.id}/incidents`}
