@@ -324,6 +324,11 @@ const cancelRoute = loadTypeScriptModule("app/api/jobs/[id]/cancel/route.ts", {
     },
   },
   "@/lib/opportunities": { expireJobOpportunities: async () => {} },
+  "@/lib/eligibility": {
+    canPostJobs: async () => false,
+    isVehicleCurrentlyEligible: async () => false,
+    hasEligibleVehicleForJob: async () => false,
+  },
   "@/lib/cancellationLimits": { isCancellationRestricted: async () => false },
 });
 const cancelRequest = () => cancelRoute.POST(new Request("https://fixture.invalid/api/jobs/job-race/cancel", { method: "POST" }), { params: Promise.resolve({ id: "job-race" }) });
@@ -566,6 +571,12 @@ const bidAcceptRoute = loadTypeScriptModule("app/api/jobs/[id]/bids/[bidId]/acce
     },
   },
   "@/lib/opportunities": { expireJobOpportunities: async () => {} },
+  "@/lib/eligibility": {
+    canPostJobs: async () => false,
+    isVehicleCurrentlyEligible: async () => false,
+    hasEligibleVehicleForJob: async () => false,
+    vehicleEligibilityWhere: () => ({}),
+  },
   "@/lib/localisation": { getLocalisationProfile: () => ({ timeZone: "Europe/London" }) },
   "@/lib/vehicleDates": { marketDateKey: () => "2026-11-01" },
 });
@@ -628,6 +639,10 @@ const acceptRoute = loadTypeScriptModule("app/api/jobs/[id]/accept/route.ts", {
   "@/lib/usage": { recordAcceptedJobUsage: async () => {} },
   "@/lib/localisation": { getLocalisationProfile: () => ({ timeZone: "Europe/London", inspectionRequiredAtCountryLevel: false }) },
   "@/lib/vehicleDates": { marketDateKey: () => "2026-11-01" },
+  "@/lib/eligibility": {
+    hasEligibleVehicleForJob: async () => true,
+    vehicleEligibilityWhere: () => ({}),
+  },
 });
 const acceptRequest = () => acceptRoute.POST(
   new Request("https://fixture.invalid/api/jobs/job-accept-race/accept", { method: "POST" }),

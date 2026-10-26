@@ -8,8 +8,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { markDriverOpportunityBid } from "@/lib/opportunities";
-import { getLocalisationProfile } from "@/lib/localisation";
-import { marketDateKey } from "@/lib/vehicleDates";
+import { hasEligibleVehicleForJob, vehicleEligibilityWhere } from "@/lib/eligibility";
 
 async function POSTHandler(
   req: Request,
@@ -51,10 +50,6 @@ async function POSTHandler(
       { error: "Your account must be verified before placing bids." },
       { status: 403 }
     );
-  }
-
-  if (bidderAccount?.companyVerificationStatus !== "verified") {
-    return NextResponse.json({ error: "Company verification is required before bidding." }, { status: 403 });
   }
 
   const marketplaceAccessCheck = await getAccountAccess(accountId);
@@ -138,26 +133,11 @@ async function POSTHandler(
     );
   }
 
-  {
-    const bidderMarket = getLocalisationProfile({ country: bidderAccount.country, currency: bidderAccount.currency });
-    const marketToday = marketDateKey(new Date(), bidderMarket?.timeZone ?? "UTC");
-    const dateCutoff = new Date(marketToday + "T00:00:00.000Z");
-    const matchingVehicle = await prisma.vehicle.findFirst({
-      where: {
-        accountId,
-        vehicleType: job.vehicleType,
-        verificationStatus: "verified",
-        insuranceValidUntil: { gte: dateCutoff },
-        ...(bidderMarket?.inspectionRequiredAtCountryLevel ? { motValidUntil: { gte: dateCutoff } } : {}),
-      },
-      select: { id: true },
-    });
-    if (!matchingVehicle) {
-      return NextResponse.json(
-        { error: "You need a verified vehicle of the required type with current insurance and any required inspection before placing a bid." },
-        { status: 403 }
-      );
-    }
+  if (!(await hasEligibleVehicleForJob(accountId, bidderAccount, job.vehicleType))) {
+    return NextResponse.json(
+      { error: "You need a verified vehicle of the required type with current insurance and any required inspection before placing a bid." },
+      { status: 403 }
+    );
   }
 
   if (job.status !== "open") {
@@ -207,11 +187,27 @@ async function POSTHandler(
         posterId: string;
         status: string;
         priceMode: string;
-      }>>`SELECT "id", "posterId", "status", "priceMode" FROM "Job" WHERE "id" = ${routeParams.id} FOR UPDATE`;
+        vehicleType: string;
+      }>>`SELECT "id", "posterId", "status", "priceMode", "vehicleType" FROM "Job" WHERE "id" = ${routeParams.id} FOR UPDATE`;
       const currentJob = lockedJobs[0];
       if (!currentJob || currentJob.status !== "open" || currentJob.priceMode !== "bid" || currentJob.posterId === accountId) {
         return null;
       }
+
+      // Recheck the latest job type and driver verification while holding the job lock.
+      const currentBidder = await tx.account.findUnique({
+        where: { id: accountId },
+        select: { verificationStatus: true, country: true, currency: true },
+      });
+      if (!currentBidder || currentBidder.verificationStatus !== "verified") return null;
+      const eligibleVehicle = await tx.vehicle.findFirst({
+        where: {
+          accountId,
+          ...vehicleEligibilityWhere(currentBidder, currentJob.vehicleType),
+        },
+        select: { id: true },
+      });
+      if (!eligibleVehicle) return null;
 
       const createdBid = await tx.bid.create({
         data: {
