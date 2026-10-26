@@ -84,7 +84,7 @@ for (const [name, pattern] of [
   ["passing checks clear active issues without deleting history", /A later pass clears the active issue; skipped or absent checks do not/],
   ["failed QA issue query is not rendered as zero active issues", /qaFailuresAvailable===false\?'<div class="notice">Active QA issue status unavailable/],
   ["read-only boundary logs effective privilege evidence", /sequence privileges=\$\{identity\.sequence_privileges\}; role memberships=\$\{identity\.role_memberships\}/],
-  ["active QA issue table is rendered", /table\(d\.qaFailures/],
+  ["active QA issue table is rendered", /\$\("qaFailures"\)\.innerHTML=\(d\.qaFailures\?\.length\?\x27<div class="qa-issues-wrap"><table class="qa-issues-table"/],
   ["attention queue has deterministic priority/category/market/issue sorting", /categoryRank=\{\"Security\":0,\"QA regression\":1[\s\S]*?queue\.sort\(\(a,b\)=>[\s\S]*?categoryRank\[a\.category\][\s\S]*?localeCompare\(String\(b\.issue\|\|\"\"\)\)/],
   ["vehicle compliance metrics", /"motExpired"/],
   ["source provenance and limitations", /External logistics industry trends/],
