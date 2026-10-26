@@ -1038,7 +1038,7 @@ export default function JobsPage() {
                   }}
                 >
                   Posted by{" "}
-                  <Link href={`/profile/${job.posterId}`}>
+                  <Link href={`/profile/${job.poster.displayId}`}>
                     {job.poster.companyName}
                     {job.poster.displayId
                       ? ` (${job.poster.displayId})`
