@@ -119,6 +119,8 @@ jobs:
         run: npm run qa:mobile-ux-contract
       - name: Validate account API privacy and request validation
         run: npm run qa:account-api-security
+      - name: Validate password reset URL hygiene
+        run: npm run qa:password-reset-url-contract
       - name: Validate accessible design contracts
         run: npm run qa:design-accessibility
       - name: Type-check TypeScript
