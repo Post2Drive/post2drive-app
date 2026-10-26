@@ -151,3 +151,17 @@ Update this section in a reviewed PR after each verified ownership or hosting ch
 - Railway project/environment and current deployed commit: **verify in Railway at release time; dated records live in `docs/RAILWAY_STAGING_SETUP.md`**.
 - Database backup location and last successful restore test: **not confirmed; release blocker**.
 - Production deployment: **not approved/verified by this document**.
+
+## 10. Verified staging deployment record — 26 October 2026
+
+This is a point-in-time record from Railway's staging environment, not a production release. Recheck the live platform before every release.
+
+- Project/environment: `Post2Drive Staging` / `staging`.
+- Web service: `Post2Drive Web`, online; latest successful deployment created **25 October 2026 20:44 UTC**, deployment `12c1fa62-e47a-480c-b585-9153fc379c91`, source branch `integration/pr12-pr41-resolved`, commit `ebe1d7b442b99b5f94a22f4a15802644dd382bdc`.
+- QA worker: service still named `Post2Drive Infra Smoke Test`, online; latest successful deployment created **25 October 2026 20:44 UTC**, deployment `0973bb81-2d62-4253-afe5-4da48d4a9bb5`, same branch and commit as Web. It runs `npm run qa:worker`; it is not a public smoke-test endpoint.
+- PostgreSQL services: `Postgres-J8xl` and `Postgres` both report online; their latest successful deployments were created **16 October 2026 21:34 UTC** and **16 October 2026 17:17 UTC**, respectively. `Postgres-J8xl` is the historically observed app database; the second service's data and consumers remain unverified. Do not remove or repoint either service without a verified consumer inventory and tested backup/restore.
+- Staging configuration: Web is connected to `Post2Drive/post2drive-app` branch `integration/pr12-pr41-resolved`, build command `npm run build`, start command `npm run start`, pre-deploy Prisma migration/staging preparation, health path `/api/health`, domain `https://post2drive-web-staging.up.railway.app`.
+- Other recent deployment history returned by Railway: earlier revisions `b9547ef8be7920014d4cd6b5e8d8ef428a646d8e`, `0d03572d14121a0fa2f8e39f43949feec091fdd0`, `aaa4ac7c223ed6274466cfd4dd71f177d56aba0f`, and `7d56eba854a7a3e7705ac636c670e0aa157d9b74` were later marked `REMOVED`. Removed deployments are history only, not rollback guarantees.
+- Environment snapshot: all four services reported online, zero active warnings/critical alerts and no pending Railway changes at the time checked. This is platform status, not proof every user journey works.
+- GitHub release candidate: PR #73 head `caae14c7a9350cf5335bd9b06d59633b3a27d175` is documentation-only and is **not deployed**. At the observation time, Validate was pending, Android Capacitor build was in progress, and CodeQL/Security Scan had succeeded. No combined commit statuses were returned. Do not describe checks as fully passed until the exact head finishes and results are rechecked.
+- Release decision: staging only; no production deployment approved. Keep public launch blocked pending exact-head CI, live browser/mobile E2E, email/payment evidence, database ownership and read-only dashboard DB verification, backup/restore, rollback/recovery, monitoring and legal readiness.
