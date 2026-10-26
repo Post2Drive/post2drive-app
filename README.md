@@ -8,7 +8,9 @@ Post2Drive is a two-sided marketplace for customers/businesses posting delivery 
 
 These files travel with a clone, source ZIP, fork or ownership transfer. They preserve product intent and recovery steps outside chat history.
 
-- [Product, account and verification policy](docs/PRODUCT_AND_VERIFICATION_POLICY.md) — three onboarding steps, role choices, verification fee packages, no-refund and correction windows, the 90-calendar-day return window, active-paid-plan exemptions, company changes, subscription separation, and required tests. It describes target policy, not proof every rule is implemented.
+- [Application workflows, pricing and dashboards](docs/APP_WORKFLOWS_AND_DASHBOARDS.md) — end-to-end user journeys, poster/driver/fleet dashboards, user analytics, app-owner analytics, admin operations, metric governance and unresolved pricing conflicts.
+- [Product, account and verification policy](docs/PRODUCT_AND_VERIFICATION_POLICY.md) — three onboarding steps, role choices, verification fee packages, no-refund and correction windows, the 90-calendar-day return window, active-paid-plan exemptions, company changes, subscription separation and required tests. It describes target policy, not proof every rule is implemented.
+- [Analytics Dashboard Product Spec](docs/ANALYTICS_DASHBOARD_PRODUCT_SPEC.md) — internal operations and logistics intelligence dashboard specification; does not itself prove the service is deployed.
 - [Repository portability, ownership continuity and deployment runbook](docs/REPOSITORY_PORTABILITY_AND_DEPLOYMENT.md) — independent source mirror, repository ownership changes, clean checkout, deployment recovery, low-cost hosting, rollback and release checklist.
 - [Launch Readiness](docs/LAUNCH_READINESS.md) — dated test evidence and outstanding release gates.
 - [Railway staging setup](docs/RAILWAY_STAGING_SETUP.md) — dated infrastructure notes; verify live Railway state before changing anything.
@@ -32,7 +34,9 @@ A single account may post jobs, carry jobs, or do both. Role choice guides onboa
 
 No refunds. First failure: 10 working days to submit corrections. Next failure: final 3 working days. Another failure generally requires a new verification fee, subject to the active-paid-plan maintenance exemption. The free inactive-return window is **90 calendar days from successful verification**; checks are free inside it even if documents expired, but the findings still govern eligibility. Active paid users pay no fee for routine rechecks or adding vehicles. Changing the responsible person within the same company is free; a new company relationship incurs the applicable fee. See the complete policy document for edge cases and required tests.
 
-Previously discussed subscription proposals include £9.99/month for posters and £9.99/week for drivers. Verify the actual configured commercial model before advertising: payment records or a provider-neutral confirmation boundary do not prove live payment-provider settlement.
+## Commercial rules: do not silently merge conflicting price models
+
+The existing repository's launch-readiness notes describe UK/euro weekly access: individual £9.99 for 7 days; fleet £16.99 (2–5 vehicles), £24.99 (6–15), £36.99 (16–30), £49.99 (31–55), and custom pricing for 56+; no automatic recurring billing and no per-job fee in that documented model. A more recent product discussion proposes poster £9.99/month and driver £9.99/week. These models conflict and need one explicit approved pricing matrix before implementation or advertising. See [Application Workflows and Dashboards](docs/APP_WORKFLOWS_AND_DASHBOARDS.md). Payment records or a provider-neutral confirmation boundary do not prove live payment-provider settlement.
 
 ## Technology and capabilities
 
@@ -62,7 +66,7 @@ npm run build
 npm run dev
 ```
 
-Open `http://localhost:3000`. Check `package.json` for the current QA script names before relying on them. Never use production data for local development or destructive QA.
+Open `http://localhost:3000`. Check `package.json` for current QA script names before relying on them. Never use production data for local development or destructive QA.
 
 ## Environment and security
 
