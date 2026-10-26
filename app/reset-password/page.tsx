@@ -12,7 +12,17 @@ export default function ResetPasswordPage() {
   const [completed, setCompleted] = useState(false);
 
   useEffect(() => {
-    setToken(new URLSearchParams(window.location.search).get("token") || "");
+    const url = new URL(window.location.href);
+    const resetToken = url.searchParams.get("token") || "";
+    setToken(resetToken);
+
+    // The reset token is needed only in component state. Remove it from the
+    // visible URL/history immediately to reduce accidental referrer/log leaks.
+    if (url.searchParams.has("token")) {
+      url.searchParams.delete("token");
+      const cleanUrl = url.pathname + url.search + url.hash;
+      window.history.replaceState(window.history.state, "", cleanUrl);
+    }
   }, []);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {

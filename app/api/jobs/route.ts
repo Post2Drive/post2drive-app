@@ -12,6 +12,7 @@ import { isQaAccount } from "@/lib/qaIsolation";
 import { isSupportedMarket, marketForAccount } from "@/lib/market";
 import { getTimeZoneOptions } from "@/lib/localisation";
 import { enforceRateLimit } from "@/lib/rateLimit";
+import { canPostJobs, getEligibleVehicleTypes } from "@/lib/eligibility";
 
 function hasFuturePickup(
   job: { jobDate: Date; pickupTime: string | null; pickupTimeZone: string | null },
@@ -61,17 +62,10 @@ async function GETHandler(req: Request) {
   // Unified accounts can post and carry work; open marketplace discovery is
   // available only after business and vehicle compliance checks. Existing job
   // parties can still see their own job history when these checks lapse.
-  const hasMarketplaceVehicle = (await prisma.vehicle.findFirst({
-    where: {
-      accountId,
-      verificationStatus: "verified",
-      insuranceValidUntil: { gte: new Date(new Date().toISOString().slice(0, 10) + "T00:00:00.000Z") },
-    },
-    select: { id: true },
-  })) !== null;
+  const eligibleVehicleTypes = await getEligibleVehicleTypes(accountId, actor);
   const canBrowseOpenMarketplace = marketplaceAccessCheck.allowed &&
-    (actor.verificationStatus === "verified" &&
-      actor.companyVerificationStatus === "verified" && hasMarketplaceVehicle);
+    actor.verificationStatus === "verified" &&
+    eligibleVehicleTypes.length > 0;
 
   const url = new URL(req.url);
 
@@ -133,7 +127,12 @@ async function GETHandler(req: Request) {
     );
   }
 
-  const vehicleTypeFilter: Record<string, never> = {};
+  // Intersect user-selected filters with the account's currently eligible fleet.
+  // An empty intersection intentionally yields no open marketplace results.
+  const eligibleFeedVehicleTypes = vehicleType
+    ? (eligibleVehicleTypes.includes(vehicleType) ? [vehicleType] : [])
+    : eligibleVehicleTypes;
+  const vehicleTypeFilter = { vehicleType: { in: eligibleFeedVehicleTypes } };
 
   const searchFilter = buildJobFilters({
     search,
@@ -286,67 +285,78 @@ async function GETHandler(req: Request) {
       pickupContactPhone,
       dropoffContactName,
       dropoffContactPhone,
-      ...jobData
     } = job;
     const previousDriverIds = [...new Set(
       activities
         .map((activity) => activity.actorId)
         .filter((id): id is string => Boolean(id))
     )];
-    const jobWithMatchHistory = { ...jobData, previousDriverIds };
+    const isJobParty = job.posterId === accountId || job.acceptedById === accountId;
+    const canSeePartyContacts = contactVisibleStatuses.includes(job.status) && isJobParty;
 
-    // Contact details are private to the current job parties. A driver
-    // who previously backed out may retain job visibility/history, but must
-    // not inherit the current driver's or poster's private contact details.
-    if (
-      !contactVisibleStatuses.includes(job.status) ||
-      (job.posterId !== accountId && job.acceptedById !== accountId)
-    ) {
-      return {
-        ...jobWithMatchHistory,
-        // Site-contact names and phone numbers are not marketplace discovery
-        // fields; disclose them only once the requester is a current party to
-        // an accepted/in-progress/completed job.
-        pickupContactName: null,
-        pickupContactPhone: null,
-        dropoffContactName: null,
-        dropoffContactPhone: null,
-
-        poster: {
-          companyName:
-            job.poster.companyName,
-          displayId:
-            job.poster.displayId,
-          createdAt:
-            job.poster.createdAt,
-        },
-
-        acceptedBy:
-          job.acceptedBy
-            ? {
-                companyName:
-                  job.acceptedBy.companyName,
-                displayId:
-                  job.acceptedBy.displayId,
-                createdAt:
-                  job.acceptedBy.createdAt,
-              }
-            : null,
-      };
-    }
-
-    return {
-      ...jobWithMatchHistory,
-      pickupContactName,
-      pickupContactPhone,
-      dropoffContactName,
-      dropoffContactPhone,
+    // Explicit response allowlist: do not serialize the Prisma job row wholesale.
+    // In particular, never send other drivers' account IDs or activity-derived
+    // history to every marketplace viewer.
+    const jobView = {
+      id: job.id,
+      pickup: job.pickup,
+      pickupLat: job.pickupLat,
+      pickupLng: job.pickupLng,
+      dropoff: job.dropoff,
+      dropoffLat: job.dropoffLat,
+      dropoffLng: job.dropoffLng,
+      jobDate: job.jobDate,
+      pickupTime: job.pickupTime,
+      dropoffTime: job.dropoffTime,
+      pickupTimeZone: job.pickupTimeZone,
+      dropoffTimeZone: job.dropoffTimeZone,
+      vehicleType: job.vehicleType,
+      weightKg: job.weightKg,
+      dimensions: job.dimensions,
+      price: job.price,
+      pricePerMile: job.pricePerMile,
+      currency: job.currency,
+      priceMode: job.priceMode,
+      notes: job.notes,
+      status: job.status,
+      // Client-facing role flags avoid disclosing internal account IDs.
+      isCurrentUserPoster: job.posterId === accountId,
+      isCurrentUserAcceptedDriver: job.acceptedById === accountId,
+      hasAcceptedDriver: Boolean(job.acceptedById),
+      currentUserMarkedDelivery: job.deliveryMarkedById === accountId,
+      currentUserConfirmedPickup: job.pickupConfirmedById === accountId,
+      crossBorder: job.crossBorder,
+      // Boolean history indicators support rating/history UI without disclosing
+      // the IDs of other drivers who previously backed out.
+      hasPreviousDrivers: previousDriverIds.length > 0,
+      currentUserPreviouslyBackedOut: previousDriverIds.includes(accountId),
+      pickupContactName: canSeePartyContacts ? pickupContactName : null,
+      pickupContactPhone: canSeePartyContacts ? pickupContactPhone : null,
+      dropoffContactName: canSeePartyContacts ? dropoffContactName : null,
+      dropoffContactPhone: canSeePartyContacts ? dropoffContactPhone : null,
+      poster: canSeePartyContacts
+        ? job.poster
+        : {
+            companyName: job.poster.companyName,
+            displayId: job.poster.displayId,
+            createdAt: job.poster.createdAt,
+          },
+      acceptedBy: job.acceptedBy
+        ? canSeePartyContacts
+          ? job.acceptedBy
+          : {
+              companyName: job.acceptedBy.companyName,
+              displayId: job.acceptedBy.displayId,
+              createdAt: job.acceptedBy.createdAt,
+            }
+        : null,
     };
+
+    return jobView;
   }).filter((job) => {
-    const previousDriverIds = Array.isArray(job.previousDriverIds) ? job.previousDriverIds : [];
-    const keepForHistory = job.posterId === accountId ||
-      job.acceptedById === accountId ||
-      previousDriverIds.includes(accountId);
+    const keepForHistory = job.isCurrentUserPoster ||
+      job.isCurrentUserAcceptedDriver ||
+      job.currentUserPreviouslyBackedOut;
     if (job.status !== "open" || keepForHistory) return true;
     return hasFuturePickup(job, actor);
   });
@@ -404,11 +414,8 @@ async function POSTHandler(req: Request) {
   if (!account || !isSupportedMarket(account)) {
     return NextResponse.json({ error: "Your account market is not supported." }, { status: 403 });
   }
-  if (account.verificationStatus !== "verified") {
-    return NextResponse.json({ error: "Verify your account before posting jobs." }, { status: 403 });
-  }
-  if (account.companyVerificationStatus !== "verified") {
-    return NextResponse.json({ error: "Company verification is required before posting jobs. Submit your business details for review." }, { status: 403 });
+  if (!canPostJobs(account)) {
+    return NextResponse.json({ error: "Complete account verification and obtain business approval before posting jobs. Submit your business details for review." }, { status: 403 });
   }
 
   const validation = validateJobInput(body, account);

@@ -87,7 +87,16 @@ contains("app/api/jobs/[id]/bid/route.ts", "requireJobMarketAccess", "bidding mu
 contains("app/api/jobs/[id]/accept/route.ts", "requireJobMarketAccess", "job acceptance must enforce same-market boundaries");
 contains("app/api/subscription/create-payment/route.ts", "createPendingSubscriptionPayment", "all eligible markets need the shared subscription request path");
 contains("lib/subscription.ts", "isWeeklyPricingEligible(account)", "paid access eligibility must use the shared market policy");
+contains("lib/pricing.ts", '"poster-monthly" | "individual" | "fleet"', "poster subscription cadence must be represented separately from weekly driver plans");
+contains("lib/subscription.ts", 'account.type === "poster" || (account.type === "both" && !account.hasVerifiedVehicle)', "poster-only and not-yet-vehicle-verified dual-role accounts must use monthly poster pricing");
+contains("lib/subscription.ts", "calculatePaidAccessEnd(currentEnd, payment.planKey)", "paid access duration must follow the selected monthly or weekly plan");
+contains("lib/subscription.ts", "The subscription plan changed. Create a payment for the current plan instead.", "stale pending payments must not reverse a monthly-to-weekly conversion");
+contains("components/subscription-pricing.tsx", "per calendar month", "pricing UI must disclose monthly poster billing");
+contains("components/subscription-pricing.tsx", "automatic recurring billing is not connected yet", "pricing UI must not imply live recurring billing before provider integration");
+contains("components/subscription-status.tsx", "first weekly renewal is due seven days after conversion", "upgrade UI must disclose the first weekly renewal timing");
+contains("app/api/subscription/convert-to-weekly/route.ts", "firstWeeklyRenewalAt", "subscription conversion must schedule the first weekly period without immediate billing");
 contains("app/api/promotion/status/route.ts", "paidPlan:\n      isWeeklyPricingEligible(account)", "paid plan details must not be hidden from eligible non-GB markets");
+contains("app/api/promotion/status/route.ts", 'account.type === "both" && !verifiedVehicle', "promotion status must expose monthly poster pricing until a dual-role account verifies a vehicle");
 contains("app/api/promotion/status/route.ts", "active:\n        ukEligible &&\n        promotion.active", "the GB-only launch promotion must remain GB-only");
 contains("app/api/account/access/route.ts", "minorUnitsToMajorUnits(priceMinorUnits, access.account.currency)", "access API must convert minor units using the account currency");
 contains("lib/subscription.ts", "majorUnitsToMinorUnits(price, currency)", "subscription price must use currency-specific minor units");

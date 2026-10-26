@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { zoneMates } from "@/lib/zones";
 import { getLocalisationProfile } from "@/lib/localisation";
-import { marketDateKey } from "@/lib/vehicleDates";
+import { isVehicleCurrentlyEligible } from "@/lib/eligibility";
 
 /**
  * Determines whether a job can reasonably be considered available
@@ -58,7 +58,7 @@ export async function isJobSuitableForDriver(
     return false;
   }
 
-  if (driver.verificationStatus !== "verified" || driver.companyVerificationStatus !== "verified") {
+  if (driver.verificationStatus !== "verified") {
     return false;
   }
 
@@ -67,19 +67,10 @@ export async function isJobSuitableForDriver(
   }
 
   const driverMarket = getLocalisationProfile({ country: driver.country, currency: driver.currency });
-  const marketToday = marketDateKey(new Date(), driverMarket?.timeZone ?? "UTC");
-  const dateCutoff = new Date(marketToday + "T00:00:00.000Z");
 
-  const hasVehicleType =
-    driver.vehicles.some(
-      (vehicle) =>
-        vehicle.vehicleType === job.vehicleType &&
-        vehicle.verificationStatus === "verified" &&
-        vehicle.insuranceValidUntil !== null &&
-        vehicle.insuranceValidUntil >= dateCutoff &&
-        (!driverMarket?.inspectionRequiredAtCountryLevel ||
-          (vehicle.motValidUntil !== null && vehicle.motValidUntil >= dateCutoff))
-    );
+  const hasVehicleType = driver.vehicles.some((vehicle) =>
+    isVehicleCurrentlyEligible(vehicle, driverMarket ?? { country: driver.country, currency: driver.currency }, job.vehicleType)
+  );
 
   if (!hasVehicleType) {
     return false;

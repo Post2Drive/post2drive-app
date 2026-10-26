@@ -339,11 +339,13 @@ try {
   assert.ok(!ownVehiclesBody.includes(posterVehicle.id), "vehicle collection must not expose another account's vehicle ID");
   assert.ok(!ownVehiclesBody.includes(posterVehicle.regPlate), "vehicle collection must not expose another account's registration");
 
-  // An authenticated account with no company approval must not place a bid,
-  // even though its account identity is verified.
-  const unverifiedCompanyBid = await api("/api/jobs/" + bidJob.id + "/bid", "POST", outsiderCookie, { amount: 90 });
-  assert.equal(unverifiedCompanyBid.status, 403, "unverified company must be blocked from bidding");
-  assert.match(await unverifiedCompanyBid.text(), /Company verification is required/i);
+  // Carrier eligibility is independent of business approval: an authenticated
+  // driver without a verified, insured matching vehicle must still be blocked.
+  // This fixture deliberately gives the outsider no vehicle, so it exercises
+  // the vehicle-eligibility gate rather than incorrectly expecting a company gate.
+  const ineligibleVehicleBid = await api("/api/jobs/" + bidJob.id + "/bid", "POST", outsiderCookie, { amount: 90 });
+  assert.equal(ineligibleVehicleBid.status, 403, "driver without an eligible vehicle must be blocked from bidding");
+  assert.match(await ineligibleVehicleBid.text(), /verified vehicle of the required type/i);
 
   const outsiderCases = [
     ["/api/jobs/" + lifecycleJob.id, "GET"],

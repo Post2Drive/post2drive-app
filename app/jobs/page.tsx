@@ -45,9 +45,13 @@ type Job = {
   priceMode: string;
   notes: string | null;
   status: string;
-  posterId: string;
-  acceptedById: string | null;
-  previousDriverIds?: string[];
+  isCurrentUserPoster: boolean;
+  isCurrentUserAcceptedDriver: boolean;
+  hasAcceptedDriver: boolean;
+  currentUserMarkedDelivery: boolean;
+  currentUserConfirmedPickup: boolean;
+  hasPreviousDrivers?: boolean;
+  currentUserPreviouslyBackedOut?: boolean;
   deliveryMarkedById: string | null;
   pickupConfirmedById: string | null;
   crossBorder: boolean;
@@ -216,6 +220,7 @@ export default function JobsPage() {
     useState(true);
 
   const [loadError, setLoadError] = useState("");
+  const [sessionRequired, setSessionRequired] = useState(false);
 
   const [message, setMessage] =
     useState("");
@@ -284,16 +289,23 @@ export default function JobsPage() {
   async function loadJobs() {
     setLoading(true);
     setLoadError("");
+    setSessionRequired(false);
     try {
       const res =
         await fetch(
-          "/api/jobs"
+          "/api/jobs",
+          { credentials: "same-origin", cache: "no-store" }
         );
 
       const data =
         await res.json();
 
       if (!res.ok) {
+        if (res.status === 401) {
+          setSessionRequired(true);
+          setLoadError("Please sign in to view the job marketplace. If you were already signed in, your session may have expired.");
+          return;
+        }
         setLoadError(data.error || "Could not load jobs. Try again.");
         return;
       }
@@ -791,6 +803,7 @@ export default function JobsPage() {
       {loadError && (
         <div role="alert" aria-live="assertive">
           <p>{loadError}</p>
+          {sessionRequired && <p><Link className="button-link button-link-secondary" href="/login?callbackUrl=%2Fjobs">Sign in to continue</Link></p>}
           <button type="button" onClick={() => void loadJobs()} disabled={loading}>
             {loading ? "Retrying…" : "Retry loading jobs"}
           </button>
@@ -816,27 +829,23 @@ export default function JobsPage() {
         {visibleJobs.map(
           (job) => {
             const isOwner =
-              job.posterId ===
-              accountId;
+              job.isCurrentUserPoster;
 
             const isAcceptedDriver =
-              job.acceptedById ===
-              accountId;
+              job.isCurrentUserAcceptedDriver;
 
             const involved =
               isOwner ||
               isAcceptedDriver;
 
-            const previousDriverIds = job.previousDriverIds ?? [];
             const canRate =
               (isOwner &&
-                (Boolean(job.acceptedById) || previousDriverIds.length > 0)) ||
+                (job.hasAcceptedDriver || Boolean(job.hasPreviousDrivers))) ||
               isAcceptedDriver ||
-              previousDriverIds.includes(accountId);
+              Boolean(job.currentUserPreviouslyBackedOut);
 
             const iMarkedDelivered =
-              job.deliveryMarkedById ===
-              accountId;
+              job.currentUserMarkedDelivery;
 
             const matched =
               job.status !==
@@ -927,7 +936,7 @@ export default function JobsPage() {
                   </span>
                 </div>
 
-                {involved && (job.status !== "open" || Boolean(job.acceptedById)) && (
+                {involved && (job.status !== "open" || job.hasAcceptedDriver) && (
                   <div style={{ marginTop: 12 }}>
                     <Link
                       href={`/jobs/${job.id}/incidents`}
@@ -1038,7 +1047,7 @@ export default function JobsPage() {
                   }}
                 >
                   Posted by{" "}
-                  <Link href={`/profile/${job.posterId}`}>
+                  <Link href={`/profile/${job.poster.displayId}`}>
                     {job.poster.companyName}
                     {job.poster.displayId
                       ? ` (${job.poster.displayId})`

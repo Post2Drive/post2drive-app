@@ -3,11 +3,12 @@
 import { COUNTRIES } from "@/lib/currency";
 
 const plans = [
-  { name: "Individual", detail: "1 verified person · 1 vehicle", amount: 9.99 },
-  { name: "Fleet 2–5", detail: "2–5 vehicles", amount: 16.99 },
-  { name: "Fleet 6–15", detail: "6–15 vehicles", amount: 24.99 },
-  { name: "Fleet 16–30", detail: "16–30 vehicles", amount: 36.99 },
-  { name: "Fleet 31–55", detail: "31–55 vehicles", amount: 49.99 },
+  { name: "Poster", detail: "Verified person/business · posting access", amount: 9.99, period: "per calendar month" },
+  { name: "Individual driver", detail: "1 verified person · 1 eligible vehicle", amount: 9.99, period: "per 7 days" },
+  { name: "Fleet 2–5", detail: "2–5 vehicles", amount: 16.99, period: "per 7 days" },
+  { name: "Fleet 6–15", detail: "6–15 vehicles", amount: 24.99, period: "per 7 days" },
+  { name: "Fleet 16–30", detail: "16–30 vehicles", amount: 36.99, period: "per 7 days" },
+  { name: "Fleet 31–55", detail: "31–55 vehicles", amount: 49.99, period: "per 7 days" },
 ];
 
 export default function SubscriptionPricing({ country = "GB" }: { country?: string }) {
@@ -21,9 +22,9 @@ export default function SubscriptionPricing({ country = "GB" }: { country?: stri
   return (
     <section className="pricing-panel" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: 14, padding: 24, boxShadow: "0 1px 3px rgba(16, 42, 67, 0.08)" }}>
       <div style={{ marginBottom: 18 }}>
-        <h2 style={{ margin: 0, fontSize: 20, color: "var(--color-primary)" }}>Simple 7-day access</h2>
+        <h2 style={{ margin: 0, fontSize: 20, color: "var(--color-primary)" }}>Plans follow your verified role</h2>
         <p style={{ margin: "8px 0 0", color: "var(--color-muted)", lineHeight: 1.5 }}>
-          Choose an individual account or a fleet tier. Each access period lasts 7 × 24 hours from activation or renewal.
+          Poster access is {formatter.format(9.99)} per calendar month. When you advance to verified vehicle or fleet access, the subscription converts to the applicable 7-day driver plan. Verification fees are separate one-time charges.
         </p>
       </div>
 
@@ -39,7 +40,7 @@ export default function SubscriptionPricing({ country = "GB" }: { country?: stri
               <h3 className="pricing-tier-name" style={{ margin: "0 0 4px", fontSize: 14, color: "var(--color-muted)" }}>{plan.name}</h3>
               <div style={{ fontSize: 12, color: "var(--color-muted)", marginBottom: 12 }}>{plan.detail}</div>
               <div className="pricing-tier-price" style={{ fontSize: 22, fontWeight: 700, color: "var(--color-primary)" }}>{formatter.format(plan.amount)}</div>
-              <div style={{ fontSize: 13, color: "var(--color-muted)", marginTop: 4 }}>per 7 days</div>
+              <div style={{ fontSize: 13, color: "var(--color-muted)", marginTop: 4 }}>{plan.period}</div>
             </div>
           ))}
         </div>
@@ -49,7 +50,7 @@ export default function SubscriptionPricing({ country = "GB" }: { country?: stri
         Unlimited legitimate marketplace activity · No per-job charges
       </div>
       <p style={{ margin: "14px 0 0", fontSize: 13, color: "var(--color-muted)" }}>
-        Fleets with 56+ vehicles need a custom plan. The same numeric tiers apply in each supported non-India market using that market’s local currency. India pricing remains separate. Prices are published for product planning; payment checkout is not connected yet.
+        Fleets with 56+ vehicles need a custom plan. Prices use each supported non-India market’s local currency; India pricing remains separate. Verification is mandatory in the same order during the free trial and after it. Posting, bidding, and accepting stay locked until the relevant verification and trial/paid entitlement checks pass. Cancellation stops future renewals, while access continues through the paid-through date. Prices are for planning only: payment checkout is not connected yet, and automatic recurring billing is not connected yet.
       </p>
     </section>
   );

@@ -23,13 +23,13 @@ assert.ok(!submit.includes('companyVerificationStatus: "verified"'));
 assert.ok(!submit.includes("isTester"), "test access must not bypass identity verification for company submission");
 assert.ok(settings.includes("Company verification"));
 assert.ok(settings.includes("/api/company-verification"));
-assert.ok(jobs.includes('companyVerificationStatus !== "verified"'));
+assert.ok(jobs.includes("canPostJobs(account)"));
 assert.ok(!jobs.includes("isTester"), "marketplace gates must not inspect test-account status");
-assert.ok(bid.includes('companyVerificationStatus !== "verified"'));
+assert.ok(bid.includes("hasEligibleVehicleForJob"));
 assert.ok(!bid.includes("isTester"), "bid eligibility must not inspect test-account status");
-assert.ok(accept.includes('companyVerificationStatus !== "verified"'));
-assert.ok(awardBid.includes('companyVerificationStatus !== "verified"'));
-assert.ok(opportunities.includes('driver.companyVerificationStatus !== "verified"'));
+assert.ok(accept.includes("hasEligibleVehicleForJob"));
+assert.ok(awardBid.includes("canPostJobs(posterVerification)"));
+assert.ok(opportunities.includes("isVehicleCurrentlyEligible"));
 assert.ok(!opportunities.includes('driver.type !== "driver"'));
 
 // A test-code flag must never act as a substitute for real trust checks.
