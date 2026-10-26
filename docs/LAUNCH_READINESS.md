@@ -94,3 +94,10 @@ Test both markets independently with separate test accounts and currency values.
 
 Do not connect retired production infrastructure or reuse old credentials. Preserve staging data, failed QA records and deployment evidence. Keep the retained Redis volume until its data-retention decision is made; it is detached from active service use.
 
+
+## 6. Latest CI follow-up — 2026-10-26
+
+- PR #73 documentation head `ef3882775bbde200383bb27d4e838b9b80544ed9`: Validate, CodeQL and Security Scan passed on this exact head; Android Capacitor build was still running at the latest check. PR remains unmerged and not deployed.
+- PR #74 fix head `124b42d1d98ab7073ef22da7ff595d53bc36bf59`: Security Scan and CodeQL passed, but Validate failed in `scripts/qa/ops-dashboard-contract.mjs`. The contract expected the previous QA issue partition expression; the server now normalizes dynamic route IDs before partitioning and orders by `runStartedAt`. The accessibility heading fix itself still needs a green Validate run. Android build was still running at the latest check.
+- A follow-up commit on PR #74 updates that contract assertion to match the route-normalization behavior. New head: `350805e406f15ed1b545d153c402fc54e7d61c71`. Re-run and inspect every required check on this exact head before any merge or staging deployment.
+- No deployment was triggered by these CI checks. The deployed staging revision remains `ebe1d7b442b99b5f94a22f4a15802644dd382bdc` until a verified, authorized staging release is performed.
