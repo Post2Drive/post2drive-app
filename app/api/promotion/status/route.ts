@@ -53,24 +53,21 @@ async function GETHandler() {
     isUkAccount(account);
 
   // Keep launch-promotion eligibility GB-only, but expose the paid plan to
-  // every supported non-India market that uses weekly pricing.
+  // every supported non-India market that uses paid access.
+  const verifiedVehicle = await prisma.vehicle.findFirst({
+    where: { accountId, verificationStatus: "verified" },
+    select: { id: true },
+  });
+  const activeMonthlyPoster = account.subscriptionPlanKey === "poster-monthly" &&
+    account.subscriptionStatus === "active" &&
+    Boolean(account.subscriptionEndsAt && account.subscriptionEndsAt > new Date());
+  const posterMonthlyStage = activeMonthlyPoster || account.type === "poster" ||
+    (account.type === "both" && !verifiedVehicle);
+  const planKey = posterMonthlyStage
+    ? "poster-monthly"
+    : account.planType === "fleet" ? "fleet" : "individual";
 
-  const planKey =
-    account.subscriptionPlanKey ===
-      "fleet" ||
-    account.subscriptionPlanKey ===
-      "individual"
-      ? account.subscriptionPlanKey
-      : account.planType ===
-        "fleet"
-      ? "fleet"
-      : "individual";
-
-  const plan =
-    getPlanDisplay(
-      planKey,
-      account
-    );
+  const plan = getPlanDisplay(planKey, { ...account, hasVerifiedVehicle: Boolean(verifiedVehicle) });
 
   const trialCycle =
     ukEligible && account.promotionParticipant && account.trialStartedAt
