@@ -294,7 +294,7 @@ assert.match(
 );
 assert.doesNotMatch(
   concurrencyContract,
-  /Existing token claims\\\\n  \/\//,
+  /Existing token claims\\n  \/\//,
   "session-version regression comment must not contain a literal escaped newline that comments out the test block",
 );
 
