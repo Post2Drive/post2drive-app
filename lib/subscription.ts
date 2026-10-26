@@ -114,6 +114,15 @@ export async function confirmSubscriptionPayment(
     if (payment.currency !== payment.account.currency) {
       throw new Error("Payment currency does not match the account market.");
     }
+    if (
+      payment.account.subscriptionStatus === "active" &&
+      payment.account.subscriptionEndsAt &&
+      payment.account.subscriptionEndsAt > new Date() &&
+      payment.account.subscriptionPlanKey &&
+      payment.account.subscriptionPlanKey !== payment.planKey
+    ) {
+      throw new Error("The subscription plan changed. Create a payment for the current plan instead.");
+    }
     if (!isWeeklyPricingEligible(payment.account)) {
       throw new Error("This account is not eligible for paid weekly access.");
     }
