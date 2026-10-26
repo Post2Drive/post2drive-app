@@ -19,5 +19,6 @@ assert.ok(route.includes("dropoffContactName: canSeePartyContacts ? dropoffConta
 assert.ok(route.includes("dropoffContactPhone: canSeePartyContacts ? dropoffContactPhone : null"));
 assert.ok(!page.includes("previousDriverIds"), "client should not require other drivers' account IDs");
 assert.ok(page.includes("job.currentUserPreviouslyBackedOut"));
+assert.ok(page.includes("href={`/profile/${job.poster.displayId}`}"), "profile links must use the public display ID expected by the profile API");
 assert.ok(page.includes("job.hasPreviousDrivers"));
 console.log("Job response data-minimization contract passed.");
