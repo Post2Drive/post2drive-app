@@ -637,6 +637,10 @@ const acceptRoute = loadTypeScriptModule("app/api/jobs/[id]/accept/route.ts", {
   },
   "@/lib/opportunities": { markDriverOpportunityAccepted: async () => {} },
   "@/lib/usage": { recordAcceptedJobUsage: async () => {} },
+  "@/lib/eligibility": {
+    hasEligibleVehicleForJob: async () => true,
+    vehicleEligibilityWhere: () => ({ verificationStatus: "verified" }),
+  },
   "@/lib/localisation": { getLocalisationProfile: () => ({ timeZone: "Europe/London", inspectionRequiredAtCountryLevel: false }) },
   "@/lib/vehicleDates": { marketDateKey: () => "2026-11-01" },
 });
