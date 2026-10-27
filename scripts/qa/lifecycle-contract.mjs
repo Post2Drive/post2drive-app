@@ -285,4 +285,22 @@ contains("scripts/qa/account-mutation-concurrency-contract.mjs", [
   "deletion must anonymize the last committed profile state",
 ]);
 
+const concurrencyContract = read("scripts/qa/account-mutation-concurrency-contract.mjs");
+assert.match(
+  concurrencyContract,
+  /\/\/ Password changes increment the version stored in JWTs\. Existing token claims\n  \/\/ must stop matching the persisted version after this mutation\./,
+  "session-version regression block must remain executable source lines, not escaped newline text",
+);
+assert.match(
+  concurrencyContract,
+  /assert\.notEqual\(\s*before\.sessionVersion,\s*after\.sessionVersion,\s*"an already-issued JWT session version must no longer match after a credential change",?\s*\)/,
+  "session-version contract must explicitly assert that a stale JWT version no longer matches",
+);
+assert.doesNotMatch(
+  concurrencyContract,
+  /Existing token claims\\n  \/\//,
+  "session-version regression comment must not contain a literal escaped newline that comments out the test block",
+);
+
 console.log("Lifecycle contract checks passed. These are static regression guards, not substitutes for API integration, browser, concurrency, or staging live tests.");
+
