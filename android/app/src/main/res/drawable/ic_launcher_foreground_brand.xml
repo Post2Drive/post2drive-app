@@ -4,20 +4,17 @@
     android:height="108dp"
     android:viewportWidth="512"
     android:viewportHeight="512">
-    <!-- Brand mark only: keep the wordmark off the small launcher icon. -->
-    <group
-        android:translateX="85"
-        android:translateY="89"
-        android:scaleX="0.71"
-        android:scaleY="0.71">
-        <path
-            android:fillColor="#0754E8"
-            android:pathData="M153,92h187c74,0 121,49 121,116 0,67 -48,114 -120,114h-67l-56,70h-91l91,-116h119c31,0 51,-22 51,-53 0,-30 -21,-51 -52,-51H105z"/>
-        <path
-            android:fillColor="#071B48"
-            android:pathData="M107,199h224l-37,48c-6,8 -14,12 -25,12h-54c-12,0 -21,5 -28,15L119,379H44l54,-71H40c-12,0 -18,-9 -11,-19l20,-29c6,-8 13,-12 24,-12h54l19,-25H48c-10,0 -15,-8 -9,-17l19,-27c7,-9 15,-12 26,-12z"/>
-        <path
-            android:fillColor="#0875FF"
-            android:pathData="M58,160h111c9,0 13,7 7,15l-16,22c-5,7 -11,10 -20,10H30c-9,0 -13,-7 -7,-15l16,-22c5,-7 11,-10 19,-10z"/>
-    </group>
+    <!-- P2D monogram using the Post2Drive brand blue and navy palette. -->
+    <!-- P -->
+    <path
+        android:fillColor="#0754E8"
+        android:pathData="M48,104h105c68,0 106,34 106,91 0,58 -40,94 -108,94h-39v119H48z M112,164v65h39c29,0 44,-11 44,-34 0,-21 -15,-31 -44,-31z"/>
+    <!-- 2 -->
+    <path
+        android:fillColor="#071B48"
+        android:pathData="M270,174c10,-49 46,-75 96,-75 59,0 96,33 96,83 0,36 -18,60 -56,91l-53,43h112v61H251v-52l111,-91c25,-21 35,-32 35,-49 0,-18 -12,-29 -32,-29 -22,0 -35,13 -40,37z"/>
+    <!-- Blue speed accent -->
+    <path
+        android:fillColor="#0875FF"
+        android:pathData="M251,398h265v28H251z"/>
 </vector>
