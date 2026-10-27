@@ -6,10 +6,10 @@
     android:viewportHeight="512">
     <!-- Brand mark only: keep the wordmark off the small launcher icon. -->
     <group
-        android:translateX="18"
-        android:translateY="19"
-        android:scaleX="0.15"
-        android:scaleY="0.15">
+        android:translateX="85"
+        android:translateY="89"
+        android:scaleX="0.71"
+        android:scaleY="0.71">
         <path
             android:fillColor="#0754E8"
             android:pathData="M153,92h187c74,0 121,49 121,116 0,67 -48,114 -120,114h-67l-56,70h-91l91,-116h119c31,0 51,-22 51,-53 0,-30 -21,-51 -52,-51H105z"/>
