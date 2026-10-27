@@ -2,14 +2,14 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
+    android:viewportWidth="512"
+    android:viewportHeight="512">
     <!-- Brand mark only: keep the wordmark off the small launcher icon. -->
     <group
-        android:translateX="3.8"
-        android:translateY="3.8"
-        android:scaleX="0.021"
-        android:scaleY="0.021">
+        android:translateX="18"
+        android:translateY="19"
+        android:scaleX="0.15"
+        android:scaleY="0.15">
         <path
             android:fillColor="#0754E8"
             android:pathData="M153,92h187c74,0 121,49 121,116 0,67 -48,114 -120,114h-67l-56,70h-91l91,-116h119c31,0 51,-22 51,-53 0,-30 -21,-51 -52,-51H105z"/>
