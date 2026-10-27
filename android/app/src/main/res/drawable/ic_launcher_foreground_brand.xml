@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Brand mark only: keep the wordmark off the small launcher icon. -->
+    <group
+        android:translateX="3.8"
+        android:translateY="3.8"
+        android:scaleX="0.021"
+        android:scaleY="0.021">
+        <path
+            android:fillColor="#0754E8"
+            android:pathData="M153,92h187c74,0 121,49 121,116 0,67 -48,114 -120,114h-67l-56,70h-91l91,-116h119c31,0 51,-22 51,-53 0,-30 -21,-51 -52,-51H105z"/>
+        <path
+            android:fillColor="#071B48"
+            android:pathData="M107,199h224l-37,48c-6,8 -14,12 -25,12h-54c-12,0 -21,5 -28,15L119,379H44l54,-71H40c-12,0 -18,-9 -11,-19l20,-29c6,-8 13,-12 24,-12h54l19,-25H48c-10,0 -15,-8 -9,-17l19,-27c7,-9 15,-12 26,-12z"/>
+        <path
+            android:fillColor="#0875FF"
+            android:pathData="M58,160h111c9,0 13,7 7,15l-16,22c-5,7 -11,10 -20,10H30c-9,0 -13,-7 -7,-15l16,-22c5,-7 11,-10 19,-10z"/>
+    </group>
+</vector>
