@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+    <!-- P2D monogram in Post2Drive blue and navy. -->
+    <path
+        android:fillColor="#0754E8"
+        android:pathData="M28,142h55c45,0 69,22 69,60 0,38 -25,61 -70,61h-18v105H28z M64,177v51h18c22,0 33,-8 33,-26 0,-17 -11,-25 -33,-25z"/>
+    <path
+        android:fillColor="#071B48"
+        android:pathData="M164,190c7,-35 32,-54 68,-54 42,0 67,24 67,59 0,26 -13,43 -40,65l-37,30h79v46H159v-38l79,-65c18,-15 25,-23 25,-35 0,-13 -9,-21 -22,-21 -16,0 -25,10 -29,26z"/>
+    <path
+        android:fillColor="#0754E8"
+        android:pathData="M320,142h54c67,0 108,42 108,113s-41,113 -108,113h-54z M359,190v130h15c42,0 66,-23 66,-65s-24,-65 -66,-65z"/>
+    <path
+        android:fillColor="#0875FF"
+        android:pathData="M28,389h454v20H28z"/>
+</vector>
