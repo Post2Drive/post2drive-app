@@ -13,7 +13,7 @@ export async function readBoundedBytes(request: Request, maxBytes: number): Prom
 
   const declaredLength = request.headers.get("content-length");
   if (declaredLength !== null) {
-    if (!/^\\d+$/.test(declaredLength)) return { ok: false, status: 400 };
+    if (!/^\d+$/.test(declaredLength)) return { ok: false, status: 400 };
     if (Number(declaredLength) > maxBytes) return { ok: false, status: 413 };
   }
 
