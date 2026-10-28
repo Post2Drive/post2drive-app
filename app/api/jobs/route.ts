@@ -366,7 +366,7 @@ async function POSTHandler(req: Request) {
   }
 
 
-  const parsedBody = await readBoundedJson(req, 16 * 1024);
+  const parsedBody = await readBoundedJson(req, 32 * 1024);
   if (!parsedBody.ok) {
     return NextResponse.json(
       { error: parsedBody.status === 413 ? "Request body is too large." : "Invalid request body." },
