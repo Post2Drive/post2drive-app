@@ -168,22 +168,24 @@ assert.doesNotMatch(passwordResetSource, /createHash\("sha256"\)/,
 
 
 const subscriptionCreatePaymentRoute = read("app/api/subscription/create-payment/route.ts");
-assert.match(subscriptionCreatePaymentRoute, /SAFE_CLIENT_ERRORS/,
+assert.ok(subscriptionCreatePaymentRoute.includes("SAFE_CLIENT_ERRORS"),
   "subscription creation may expose only explicitly allowlisted business-rule errors");
-assert.doesNotMatch(subscriptionCreatePaymentRoute, /error:\\s*error\\.message/,
+assert.ok(!subscriptionCreatePaymentRoute.includes("error: error.message"),
   "subscription creation must not return arbitrary internal exception messages");
-assert.match(subscriptionCreatePaymentRoute, /errorName: error instanceof Error \\? error.name : "UnknownError"/,
+assert.ok(subscriptionCreatePaymentRoute.includes('errorName: error instanceof Error ? error.name : "UnknownError"'),
   "subscription creation failures must log only the error class, not internal details");
 
 const apiMetricsSource = read("lib/apiMetrics.ts");
 const rateLimitSource = read("lib/rateLimit.ts");
-assert.doesNotMatch(apiMetricsSource, /console\\.error\\([^\\n]*,\\s*error\\)/,
+assert.ok(!apiMetricsSource.includes('console.error("Unable to persist API performance metric:", error)'),
   "API metrics persistence logs must not emit raw ORM errors");
-assert.doesNotMatch(rateLimitSource, /console\\.error\\([^\\n]*,\\s*error\\)/,
+assert.ok(!rateLimitSource.includes('console.error("Rate-limit expiry cleanup failed:", error)'),
+  "rate-limit cleanup logs must not emit raw ORM errors");
+assert.ok(!rateLimitSource.includes('console.error(`Rate-limit control unavailable for ${options.scope}:`, error)'),
   "rate-limit control logs must not emit raw ORM errors");
-assert.match(apiMetricsSource, /errorName: error instanceof Error \\? error.name : "UnknownError"/,
+assert.ok(apiMetricsSource.includes('errorName: error instanceof Error ? error.name : "UnknownError"'),
   "API metrics errors must log only a safe error class");
-assert.match(rateLimitSource, /errorName: error instanceof Error \\? error.name : "UnknownError"/,
+assert.ok(rateLimitSource.includes('errorName: error instanceof Error ? error.name : "UnknownError"'),
   "rate-limit errors must log only a safe error class");
 
 console.log("Account API security contracts passed: minimized GET response, current-user scoping, deletion guard, bounded signup/reset/webhook inputs, bcrypt password byte limits, constant-time webhook authentication, lifecycle lock and report-only CSP.");
