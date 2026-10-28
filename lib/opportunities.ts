@@ -63,6 +63,10 @@ export async function isJobSuitableForDriver(
     return false;
   }
 
+  if (driver.type !== "driver" && driver.companyVerificationStatus !== "verified") {
+    return false;
+  }
+
   if (driver.verificationStatus !== "verified" && !driver.isTester) {
     return false;
   }
