@@ -17,6 +17,11 @@ const adminCampaignRoute = read("app/api/admin/qa-campaigns/route.ts");
 const adminCampaignStartRoute = read("app/api/admin/qa-campaigns/[id]/start/route.ts");
 const verificationWebhook = read("app/api/verification/start/webhook/route.ts");
 const qaRunnerRoute = read("app/api/qa/run/route.ts");
+const jobsRoute = read("app/api/jobs/route.ts");
+const jobBidRoute = read("app/api/jobs/[id]/bid/route.ts");
+const jobEditRoute = read("app/api/jobs/[id]/edit/route.ts");
+const vehiclesRoute = read("app/api/vehicles/route.ts");
+const ratingsRoute = read("app/api/ratings/route.ts");
 assert.ok(passwordResetSource.includes("using this link:\\n${resetUrl}\\n\\nThis link expires in one hour"),
   "password-reset plain-text email must contain newline escape sequences around the reset URL");
 assert.ok(!passwordResetSource.includes("using this link:\\\\n${resetUrl}"),
@@ -52,6 +57,16 @@ assert.match(qaRunnerRoute, /readBoundedJson\(req, 16 \* 1024\)/,
   "destructive QA runner must cap and stream request JSON");
 assert.doesNotMatch(qaRunnerRoute, /error:\s*error\.message/,
   "QA cleanup must not expose internal exception messages");
+assert.match(jobsRoute, /readBoundedJson\(req, 16 \* 1024\)/,
+  "job creation must cap and stream request JSON");
+assert.match(jobBidRoute, /readBoundedJson\(req, 8 \* 1024\)/,
+  "job bid creation must cap and stream request JSON");
+assert.match(jobEditRoute, /readBoundedJson\(req, 16 \* 1024\)/,
+  "job edits must cap and stream request JSON");
+assert.match(vehiclesRoute, /readBoundedJson\(req, 16 \* 1024\)/,
+  "vehicle creation must cap and stream request JSON");
+assert.match(ratingsRoute, /readBoundedJson\(req, 8 \* 1024\)/,
+  "ratings must cap and stream request JSON");
 assert.match(subscriptionWebhook, /timingSafeEqual/,
   "shared webhook secret comparison must be constant-time");
 assert.match(subscriptionWebhook, /readBoundedJson\(request, 16 \* 1024\)/,
