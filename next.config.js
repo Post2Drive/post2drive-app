@@ -16,6 +16,7 @@ const contentSecurityPolicyReportOnly = [
   "img-src 'self' data: blob: https:",
   "font-src 'self' data: https:",
   "connect-src 'self' https: wss:",
+  "report-uri /api/security/csp-report",
   "media-src 'self' blob: https:",
 ].join("; ");
 
