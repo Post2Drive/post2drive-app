@@ -11,6 +11,7 @@ const passwordResetSource = read("lib/passwordReset.ts");
 const signupRoute = read("app/api/signup/route.ts");
 const resetPasswordRoute = read("app/api/auth/reset-password/route.ts");
 const requestBodySource = read("lib/requestBody.ts");
+const adminBridgeRoute = read("app/api/internal/admin-bridge/route.ts");
 const subscriptionWebhook = read("app/api/subscription/webhook/route.ts");
 const adminAccessRoute = read("app/api/admin/qa-campaigns/access/route.ts");
 const adminCampaignRoute = read("app/api/admin/qa-campaigns/route.ts");
@@ -45,6 +46,10 @@ assert.match(adminCampaignRoute, /readBoundedJson\(request, 32 \* 1024\)/,
   "admin QA campaign creation must cap and stream request JSON");
 assert.match(adminCampaignStartRoute, /readBoundedJson\(request, 4 \* 1024\)/,
   "admin QA campaign execution must cap and stream request JSON");
+assert.match(adminBridgeRoute, /readBoundedText\(req, 24_000\)/,
+  "signed internal admin bridge must enforce a streaming request-size cap");
+assert.doesNotMatch(adminBridgeRoute, /await req\.text\(\)/,
+  "signed internal admin bridge must not buffer an unbounded request before checking its size");
 assert.match(requestBodySource, /totalBytes > maxBytes/,
   "bounded JSON parser must enforce the byte cap while reading the request stream");
 assert.match(signupRoute, /readBoundedJson\(req, 16 \* 1024\)/,
