@@ -1,6 +1,7 @@
 import { withApiMetrics } from "@/lib/apiMetrics";
 import { requireJobMarketAccess } from "@/lib/jobMarket";
 import { NextResponse } from "next/server";
+import { readBoundedJson } from "@/lib/requestBody";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -95,12 +96,17 @@ async function POSTHandler(req: Request, { params }: RouteContext) {
     );
   }
 
-  let body: any;
-  try {
-    body = await req.json();
-  } catch {
+  const parsedBody = await readBoundedJson(req, 16 * 1024);
+  if (!parsedBody.ok) {
+    return NextResponse.json(
+      { error: parsedBody.status === 413 ? "Request body is too large." : "Request body must be valid JSON." },
+      { status: parsedBody.status },
+    );
+  }
+  if (!parsedBody.value || typeof parsedBody.value !== "object" || Array.isArray(parsedBody.value)) {
     return NextResponse.json({ error: "Request body must be valid JSON." }, { status: 400 });
   }
+  const body = parsedBody.value as Record<string, unknown>;
 
   const reason = typeof body?.reason === "string" ? body.reason : "";
   const description = typeof body?.description === "string" ? body.description.trim() : "";
