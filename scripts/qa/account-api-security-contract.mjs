@@ -64,7 +64,7 @@ assert.doesNotMatch(adminBridgeRoute, /await req\.text\(\)/,
   "signed internal admin bridge must not buffer an unbounded request before checking its size");
 assert.match(requestBodySource, /totalBytes > maxBytes/,
   "bounded JSON parser must enforce the byte cap while reading the request stream");
-assert.match(signupRoute, /readBoundedJson\(req, 16 \* 1024\)/,
+assert.match(signupRoute, /Buffer\.byteLength\(password, "utf8"\) > 72/,
   "signup passwords must not exceed bcrypt's 72-byte input limit");
 assert.match(signupRoute, /typeof companyName === "string" && companyName.length > 160/,
   "signup must cap company-name length on the server");
