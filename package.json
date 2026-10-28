@@ -41,7 +41,7 @@
     "@capacitor/android": "^8.5.3",
     "@capacitor/cli": "^8.5.3",
     "@capacitor/core": "^8.5.3",
-    "@prisma/client": "^5.22.0",
+    "@prisma/client": "^7.10.1",
     "bcryptjs": "^3.0.3",
     "next": "15.5.28",
     "next-auth": "^4.24.8",
