@@ -22,6 +22,13 @@ const jobBidRoute = read("app/api/jobs/[id]/bid/route.ts");
 const jobEditRoute = read("app/api/jobs/[id]/edit/route.ts");
 const vehiclesRoute = read("app/api/vehicles/route.ts");
 const ratingsRoute = read("app/api/ratings/route.ts");
+const adminIncidentRoute = read("app/api/admin/incidents/resolve/route.ts");
+const adminTesterRoute = read("app/api/admin/testers/route.ts");
+const emailVerifyRoute = read("app/api/email/verify/route.ts");
+const emailResendRoute = read("app/api/email/verification/resend/route.ts");
+const jobIncidentRoute = read("app/api/jobs/[id]/incidents/route.ts");
+const jobIncidentTerminateRoute = read("app/api/jobs/[id]/incidents/terminate/route.ts");
+const jobIncidentUpdatesRoute = read("app/api/jobs/[id]/incidents/updates/route.ts");
 assert.ok(passwordResetSource.includes("using this link:\\n${resetUrl}\\n\\nThis link expires in one hour"),
   "password-reset plain-text email must contain newline escape sequences around the reset URL");
 assert.ok(!passwordResetSource.includes("using this link:\\\\n${resetUrl}"),
@@ -67,6 +74,20 @@ assert.match(vehiclesRoute, /readBoundedJson\(req, 16 \* 1024\)/,
   "vehicle creation must cap and stream request JSON");
 assert.match(ratingsRoute, /readBoundedJson\(req, 8 \* 1024\)/,
   "ratings must cap and stream request JSON");
+assert.match(adminIncidentRoute, /readBoundedJson\(req, 8 \* 1024\)/,
+  "admin incident resolution must cap and stream request JSON");
+assert.match(adminTesterRoute, /readBoundedJson\(req, 4 \* 1024\)/,
+  "admin tester actions must cap and stream request JSON");
+assert.match(emailVerifyRoute, /readBoundedJson\(req, 4 \* 1024\)/,
+  "email verification must cap and stream request JSON");
+assert.match(emailResendRoute, /readBoundedJson\(req, 4 \* 1024\)/,
+  "verification email resend must cap and stream request JSON");
+assert.match(jobIncidentRoute, /readBoundedJson\(req, 16 \* 1024\)/,
+  "incident reporting must cap and stream request JSON");
+assert.match(jobIncidentTerminateRoute, /readBoundedJson\(req, 8 \* 1024\)/,
+  "incident termination must cap and stream request JSON");
+assert.match(jobIncidentUpdatesRoute, /readBoundedJson\(req, 8 \* 1024\)/,
+  "incident updates must cap and stream request JSON");
 assert.match(subscriptionWebhook, /timingSafeEqual/,
   "shared webhook secret comparison must be constant-time");
 assert.match(subscriptionWebhook, /readBoundedJson\(request, 16 \* 1024\)/,
