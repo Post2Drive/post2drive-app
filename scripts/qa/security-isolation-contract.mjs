@@ -585,6 +585,7 @@ const bidAcceptRoute = loadTypeScriptModule("app/api/jobs/[id]/bids/[bidId]/acce
   "@/lib/opportunities": { expireJobOpportunities: async () => {} },
   "@/lib/localisation": { getLocalisationProfile: () => ({ timeZone: "Europe/London" }) },
   "@/lib/vehicleDates": { marketDateKey: () => "2026-11-01" },
+  "@/lib/eligibility": { canPostJobs: async () => true },
 });
 const outsiderBidAccept = await bidAcceptRoute.POST(
   new Request("https://fixture.invalid/api/jobs/job-bid-private/bids/bid-1/accept", { method: "POST" }),
