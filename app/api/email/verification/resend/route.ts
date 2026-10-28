@@ -2,6 +2,7 @@ import { withApiMetrics } from "@/lib/apiMetrics";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { enforceRateLimit } from "@/lib/rateLimit";
+import { readBoundedJson } from "@/lib/requestBody";
 import {
   createEmailVerificationToken,
   emailDeliveryConfigured,
@@ -30,8 +31,15 @@ async function POSTHandler(req: Request) {
     }, { status: 503 });
   }
 
-  const body = await req.json().catch(() => null);
-  const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
+  const parsedBody = await readBoundedJson(req, 4 * 1024);
+  if (!parsedBody.ok) {
+    if (parsedBody.status === 413) return NextResponse.json({ error: "Request body is too large." }, { status: 413 });
+    return NextResponse.json(genericResponse);
+  }
+  const body = parsedBody.value && typeof parsedBody.value === "object" && !Array.isArray(parsedBody.value)
+    ? parsedBody.value as Record<string, unknown>
+    : {};
+  const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
   if (!email || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return NextResponse.json(genericResponse);
   }
