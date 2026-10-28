@@ -231,6 +231,14 @@ const routeModule = loadTypeScriptModule("app/api/vehicles/route.ts", {
   "@/lib/vehicles": { VEHICLE_TYPES: ["van", "truck", "car"] },
   "@/lib/localisation": { getLocalisationProfile: () => null, getJurisdictionOptions: () => [] },
   "@/lib/vehicleDates": { marketDateKey: () => "2026-10-20", parseOptionalDateField: () => ({ date: null, dateKey: null, error: null }) },
+  "@/lib/requestBody": {
+    readBoundedJson: async (request, maxBytes) => {
+      const text = await request.text();
+      if (new TextEncoder().encode(text).byteLength > maxBytes) return { ok: false, status: 413 };
+      try { return { ok: true, value: JSON.parse(text) }; }
+      catch { return { ok: false, status: 400 }; }
+    },
+  },
 });
 const deletedGet = await routeModule.GET(new Request("https://fixture.invalid/api/vehicles"));
 assert.equal(deletedGet.status, 401, "deleted account vehicle GET must be unauthorized");
