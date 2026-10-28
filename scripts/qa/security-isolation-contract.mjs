@@ -617,7 +617,7 @@ const acceptTx = {
       return { count: 1 };
     },
   },
-  account: { findUnique: async () => ({ verificationStatus: "verified", isTester: true, country: "GB", currency: "GBP" }) },
+  account: { findUnique: async () => ({ type: "driver", verificationStatus: "verified", isTester: true, country: "GB", currency: "GBP" }) },
   vehicle: { findFirst: async () => ({ id: "vehicle-fixture" }) },
   jobActivity: { create: async () => { acceptAuditEvents++; return {}; } },
   notification: { create: async () => ({}) },
@@ -636,7 +636,7 @@ const acceptRoute = loadTypeScriptModule("app/api/jobs/[id]/accept/route.ts", {
   "@/lib/prisma": {
     prisma: {
       job: { findUnique: async ({ where }) => where.id === acceptJob.id ? { ...acceptJob } : null },
-      account: { findUnique: async () => ({ verificationStatus: "verified", isTester: true, country: "GB", currency: "GBP" }) },
+      account: { findUnique: async () => ({ type: "driver", verificationStatus: "verified", isTester: true, country: "GB", currency: "GBP" }) },
       vehicle: { findFirst: async () => ({ id: "vehicle-fixture" }) },
       $transaction: async (callback) => callback(acceptTx),
       driverOpportunity: { updateMany: async () => ({ count: 0 }) },
