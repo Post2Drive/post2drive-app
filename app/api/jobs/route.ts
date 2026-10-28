@@ -392,12 +392,12 @@ async function POSTHandler(req: Request) {
 
   const account = await prisma.account.findUnique({
     where: { id: accountId },
-    select: { country: true, currency: true, verificationStatus: true, companyVerificationStatus: true },
+    select: { country: true, currency: true, verificationStatus: true, companyVerificationStatus: true, isTester: true },
   });
   if (!account || !isSupportedMarket(account)) {
     return NextResponse.json({ error: "Your account market is not supported." }, { status: 403 });
   }
-  if (!canPostJobs(account)) {
+  if (!account.isTester && !canPostJobs(account)) {
     return NextResponse.json({ error: "Complete identity verification and obtain company approval before posting jobs." }, { status: 403 });
   }
 
