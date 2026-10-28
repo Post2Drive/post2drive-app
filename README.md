@@ -4,6 +4,51 @@ Post2Drive is a two-sided marketplace for customers/businesses posting delivery 
 
 > **Status (26 October 2026):** Active development/staging. Not approved for unrestricted public launch. A past successful build or staging deployment does not prove the latest commit is deployed or launch-ready. See [Launch Readiness](docs/LAUNCH_READINESS.md).
 
+## Repository branches
+
+The 35 retained work branches below remain in this repository. They are intentionally listed here so they are discoverable when opening the repository README; the list links directly to each branch. See the [full GitHub branches page](https://github.com/Post2Drive/post2drive-app/branches) for all branches, including those aligned with `main`.
+
+<details>
+<summary><strong>Show all 35 retained branches</strong></summary>
+
+- [audit/follow-up-hardening-2026-10-22](https://github.com/Post2Drive/post2drive-app/tree/audit%2Ffollow-up-hardening-2026-10-22)
+- [audit/security-ux-hardening-2026-10](https://github.com/Post2Drive/post2drive-app/tree/audit%2Fsecurity-ux-hardening-2026-10)
+- [chore/karpathy-workflow-adaptations](https://github.com/Post2Drive/post2drive-app/tree/chore%2Fkarpathy-workflow-adaptations)
+- [feat/add-mainstream-markets](https://github.com/Post2Drive/post2drive-app/tree/feat%2Fadd-mainstream-markets)
+- [feat/euro-market-pricing](https://github.com/Post2Drive/post2drive-app/tree/feat%2Feuro-market-pricing)
+- [feat/euro-weekly-market-model](https://github.com/Post2Drive/post2drive-app/tree/feat%2Feuro-weekly-market-model)
+- [feat/poster-monthly-driver-weekly-billing-policy](https://github.com/Post2Drive/post2drive-app/tree/feat%2Fposter-monthly-driver-weekly-billing-policy)
+- [feature/country-localisation-audit](https://github.com/Post2Drive/post2drive-app/tree/feature%2Fcountry-localisation-audit)
+- [feature/cx-hx-verification-gates](https://github.com/Post2Drive/post2drive-app/tree/feature%2Fcx-hx-verification-gates)
+- [fix/admin-dashboard-readonly-boundary](https://github.com/Post2Drive/post2drive-app/tree/fix%2Fadmin-dashboard-readonly-boundary)
+- [fix/all-market-feature-parity](https://github.com/Post2Drive/post2drive-app/tree/fix%2Fall-market-feature-parity)
+- [fix/android-post2drive-launcher-icon](https://github.com/Post2Drive/post2drive-app/tree/fix%2Fandroid-post2drive-launcher-icon)
+- [fix/atomic-display-id-retry](https://github.com/Post2Drive/post2drive-app/tree/fix%2Fatomic-display-id-retry)
+- [fix/functional-workflow-audit](https://github.com/Post2Drive/post2drive-app/tree/fix%2Ffunctional-workflow-audit)
+- [fix/india-fixed-quote-market](https://github.com/Post2Drive/post2drive-app/tree/fix%2Findia-fixed-quote-market)
+- [fix/localisation-core-2026-10](https://github.com/Post2Drive/post2drive-app/tree/fix%2Flocalisation-core-2026-10)
+- [fix/nextjs-15.5.28-security](https://github.com/Post2Drive/post2drive-app/tree/fix%2Fnextjs-15.5.28-security)
+- [fix/ops-dashboard-evidence-integrity](https://github.com/Post2Drive/post2drive-app/tree/fix%2Fops-dashboard-evidence-integrity)
+- [fix/qa-admin-origin-behind-proxy](https://github.com/Post2Drive/post2drive-app/tree/fix%2Fqa-admin-origin-behind-proxy)
+- [fix/qa-runner-market-narrowing](https://github.com/Post2Drive/post2drive-app/tree/fix%2Fqa-runner-market-narrowing)
+- [fix/unified-verification-vehicle-eligibility](https://github.com/Post2Drive/post2drive-app/tree/fix%2Funified-verification-vehicle-eligibility)
+- [fix/user-side-market-workflows-audit](https://github.com/Post2Drive/post2drive-app/tree/fix%2Fuser-side-market-workflows-audit)
+- [integration/pr12-pr41-resolved](https://github.com/Post2Drive/post2drive-app/tree/integration%2Fpr12-pr41-resolved)
+- [integration/security-eligibility-subscription-20261026](https://github.com/Post2Drive/post2drive-app/tree/integration%2Fsecurity-eligibility-subscription-20261026)
+- [integration/security-privacy-bundle-20261026](https://github.com/Post2Drive/post2drive-app/tree/integration%2Fsecurity-privacy-bundle-20261026)
+- [qa/durable-worker-lifecycle](https://github.com/Post2Drive/post2drive-app/tree/qa%2Fdurable-worker-lifecycle)
+- [qa/durable-worker-mainline](https://github.com/Post2Drive/post2drive-app/tree/qa%2Fdurable-worker-mainline)
+- [qa/live-runner-20261016](https://github.com/Post2Drive/post2drive-app/tree/qa%2Flive-runner-20261016)
+- [qa/multi-country-runner](https://github.com/Post2Drive/post2drive-app/tree/qa%2Fmulti-country-runner)
+- [security/job-response-data-minimization](https://github.com/Post2Drive/post2drive-app/tree/security%2Fjob-response-data-minimization)
+- [security/job-response-data-minimization-clean](https://github.com/Post2Drive/post2drive-app/tree/security%2Fjob-response-data-minimization-clean)
+- [security/main-hardening-20261028](https://github.com/Post2Drive/post2drive-app/tree/security%2Fmain-hardening-20261028)
+- [security/minimize-public-profile-vehicle-data](https://github.com/Post2Drive/post2drive-app/tree/security%2Fminimize-public-profile-vehicle-data)
+- [security/password-reset-token-url-hygiene](https://github.com/Post2Drive/post2drive-app/tree/security%2Fpassword-reset-token-url-hygiene)
+- [ui/spring-motion-overscroll-2026-10-25](https://github.com/Post2Drive/post2drive-app/tree/ui%2Fspring-motion-overscroll-2026-10-25)
+
+</details>
+
 ## Essential project documents
 
 These files travel with a clone, source ZIP, fork or ownership transfer. They preserve product intent and recovery steps outside chat history.
