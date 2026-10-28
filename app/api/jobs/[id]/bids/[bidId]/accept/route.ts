@@ -82,9 +82,9 @@ async function POSTHandler(
 
   const posterVerification = await prisma.account.findUnique({
     where: { id: accountId },
-    select: { verificationStatus: true, companyVerificationStatus: true },
+    select: { verificationStatus: true, companyVerificationStatus: true, isTester: true },
   });
-  if (!posterVerification || !canPostJobs(posterVerification)) {
+  if (!posterVerification || (!posterVerification.isTester && !canPostJobs(posterVerification))) {
     return NextResponse.json({ error: "Complete identity verification and obtain company approval before awarding a job." }, { status: 403 });
   }
 
@@ -134,9 +134,9 @@ async function POSTHandler(
 
     const currentPoster = await tx.account.findUnique({
       where: { id: accountId },
-      select: { verificationStatus: true, companyVerificationStatus: true },
+      select: { verificationStatus: true, companyVerificationStatus: true, isTester: true },
     });
-    if (!currentPoster || !canPostJobs(currentPoster)) {
+    if (!currentPoster || (!currentPoster.isTester && !canPostJobs(currentPoster))) {
       throw new Error("POSTER_NOT_VERIFIED");
     }
 
