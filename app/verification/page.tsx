@@ -1,6 +1,7 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { useState } from "react";
+import type { FormEvent } from "react";
 
 export default function VerificationPage() {
   const [companyName, setCompanyName] = useState("");
