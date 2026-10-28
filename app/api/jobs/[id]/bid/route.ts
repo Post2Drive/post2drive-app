@@ -4,6 +4,7 @@ import { requireJobMarketAccess } from "@/lib/jobMarket";
 import { getJobPickupAtForAccount, pickupAccessError } from "@/lib/jobAccess";
 import { getAccountAccess } from "@/lib/access";
 import { NextResponse } from "next/server";
+import { readBoundedJson } from "@/lib/requestBody";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -166,15 +167,14 @@ async function POSTHandler(
     );
   }
 
-  let body: unknown;
-  try {
-    body = await req.json();
-  } catch {
+  const parsedBody = await readBoundedJson(req, 8 * 1024);
+  if (!parsedBody.ok) {
     return NextResponse.json(
-      { error: "Invalid request body." },
-      { status: 400 }
+      { error: parsedBody.status === 413 ? "Request body is too large." : "Invalid request body." },
+      { status: parsedBody.status },
     );
   }
+  const body = parsedBody.value;
 
   const rawAmount =
     body && typeof body === "object" && "amount" in body
