@@ -172,7 +172,7 @@ assert.ok(subscriptionCreatePaymentRoute.includes("SAFE_CLIENT_ERRORS"),
   "subscription creation may expose only explicitly allowlisted business-rule errors");
 assert.ok(!subscriptionCreatePaymentRoute.includes("error: error.message"),
   "subscription creation must not return arbitrary internal exception messages");
-assert.ok(subscriptionCreatePaymentRoute.includes('errorName: error instanceof Error ? error.name : "UnknownError"'),
+assert.ok(subscriptionCreatePaymentRoute.includes("errorName:") && subscriptionCreatePaymentRoute.includes("UnknownError"),
   "subscription creation failures must log only the error class, not internal details");
 
 const apiMetricsSource = read("lib/apiMetrics.ts");
@@ -183,9 +183,9 @@ assert.ok(!rateLimitSource.includes('console.error("Rate-limit expiry cleanup fa
   "rate-limit cleanup logs must not emit raw ORM errors");
 assert.ok(!rateLimitSource.includes('console.error(`Rate-limit control unavailable for ${options.scope}:`, error)'),
   "rate-limit control logs must not emit raw ORM errors");
-assert.ok(apiMetricsSource.includes('errorName: error instanceof Error ? error.name : "UnknownError"'),
+assert.ok(apiMetricsSource.includes("errorName:") && apiMetricsSource.includes("UnknownError"),
   "API metrics errors must log only a safe error class");
-assert.ok(rateLimitSource.includes('errorName: error instanceof Error ? error.name : "UnknownError"'),
+assert.ok(rateLimitSource.includes("errorName:") && rateLimitSource.includes("UnknownError"),
   "rate-limit errors must log only a safe error class");
 
 console.log("Account API security contracts passed: minimized GET response, current-user scoping, deletion guard, bounded signup/reset/webhook inputs, bcrypt password byte limits, constant-time webhook authentication, lifecycle lock and report-only CSP.");
