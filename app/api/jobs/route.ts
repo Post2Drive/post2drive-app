@@ -13,6 +13,7 @@ import { isQaAccount } from "@/lib/qaIsolation";
 import { isSupportedMarket, marketForAccount } from "@/lib/market";
 import { getTimeZoneOptions } from "@/lib/localisation";
 import { enforceRateLimit } from "@/lib/rateLimit";
+import { canPostJobs } from "@/lib/eligibility";
 
 function hasFuturePickup(
   job: { jobDate: Date; pickupTime: string | null; pickupTimeZone: string | null },
@@ -391,10 +392,13 @@ async function POSTHandler(req: Request) {
 
   const account = await prisma.account.findUnique({
     where: { id: accountId },
-    select: { country: true, currency: true },
+    select: { country: true, currency: true, verificationStatus: true, companyVerificationStatus: true },
   });
   if (!account || !isSupportedMarket(account)) {
     return NextResponse.json({ error: "Your account market is not supported." }, { status: 403 });
+  }
+  if (!canPostJobs(account)) {
+    return NextResponse.json({ error: "Complete identity verification and obtain company approval before posting jobs." }, { status: 403 });
   }
 
   const validation = validateJobInput(body, account);
