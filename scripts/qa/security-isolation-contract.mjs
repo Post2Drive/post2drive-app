@@ -127,6 +127,7 @@ const malformedDeleteModule = loadTypeScriptModule("app/api/account/route.ts", {
   "crypto": { randomBytes: () => ({ toString: () => "fixture" }) },
   "@/lib/market": { isSupportedMarket: () => true },
   "@/lib/auth": { authOptions: {} },
+  "@/lib/rateLimit": { enforceRateLimit: async () => null },
   "@prisma/client": { Prisma: { DbNull: null } },
   "@/lib/prisma": { prisma: fakePrisma },
   "@/lib/uk": { isUkAccount: () => false, isUkPromotionLocked: () => false },
