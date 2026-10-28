@@ -82,6 +82,7 @@ assert.doesNotMatch(verificationWebhook, /error:\s*error\.message/,
   "verification webhook must not expose exception messages");
 assert.match(qaRunnerRoute, /Bearer.*exec\(authorization\)/,
   "QA runner must require a Bearer authorization scheme");
+assert.match(qaRunnerRoute, /timingSafeEqual/,
   "destructive QA runner token comparison must be constant-time");
 assert.match(qaRunnerRoute, /readBoundedJson\(req, 16 \* 1024\)/,
   "destructive QA runner must cap and stream request JSON");
