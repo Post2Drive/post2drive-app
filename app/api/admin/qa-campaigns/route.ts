@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { isTesterAdmin } from "@/lib/testerAdmin";
 import { prisma } from "@/lib/prisma";
 import { isQaRunnerEnabled } from "@/lib/qaRunnerGuard";
+import { readBoundedJson } from "@/lib/requestBody";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -105,9 +106,17 @@ export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Not logged in." }, { status: 401 });
   if (!(await isTesterAdmin())) return NextResponse.json({ error: "Admin access required." }, { status: 403 });
-  let body: any;
-  try { body = await request.json(); } catch { return NextResponse.json({ error: "Request body must be JSON." }, { status: 400 }); }
-  const { errors, value } = validate(body);
+  const parsedBody = await readBoundedJson(request, 16 * 1024);
+  if (!parsedBody.ok) {
+    return NextResponse.json(
+      { error: parsedBody.status === 413 ? "Request body is too large." : "Request body must be JSON." },
+      { status: parsedBody.status },
+    );
+  }
+  if (!parsedBody.value || typeof parsedBody.value !== "object" || Array.isArray(parsedBody.value)) {
+    return NextResponse.json({ error: "Request body must be a JSON object." }, { status: 400 });
+  }
+  const { errors, value } = validate(parsedBody.value);
   if (errors.length) return NextResponse.json({ error: errors.join(" "), validationErrors: errors }, { status: 400 });
   const id = "campaign-" + randomUUID();
   const createdBy = session.user?.email ? String(session.user.email).slice(0, 254) : null;
