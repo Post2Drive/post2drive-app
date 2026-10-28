@@ -18,11 +18,11 @@ assert.match(migration, /ADD COLUMN "companyVerificationStatus"/);
 assert.match(migration, /DEFAULT 'not_started'/);
 assert.match(submit, /companyVerificationStatus: "pending"/);
 assert.doesNotMatch(submit, /companyVerificationStatus:\s*"verified"/);
-assert.match(jobs, /companyVerificationStatus !== "verified"/);
-assert.match(bid, /companyVerificationStatus !== "verified"/);
-assert.match(accept, /companyVerificationStatus !== "verified"/);
+assert.match(jobs, /canPostJobs\(account\)/);
+assert.match(bid, /bidderAccount.*type !== "driver".*companyVerificationStatus !== "verified"/s);
+assert.match(accept, /account.*type !== "driver".*companyVerificationStatus !== "verified"/s);
 assert.match(awardBid, /companyVerificationStatus !== "verified"/);
-assert.match(opportunities, /driver\.companyVerificationStatus !== "verified"/);
-assert.doesNotMatch(opportunities, /driver\.type !== "driver"/);
+assert.match(opportunities, /driver\.type !== "driver".*driver\.companyVerificationStatus !== "verified"/s);
+assert.match(opportunities, /driver\.type !== "driver"/);
 
 console.log("Company verification contract passed.");
