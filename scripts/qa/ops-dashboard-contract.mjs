@@ -3,6 +3,7 @@ import { strict as assert } from "node:assert";
 import { Script } from "node:vm";
 
 const server = readFileSync(new URL("../../ops-dashboard/server.mjs", import.meta.url), "utf8");
+const start = readFileSync(new URL("../../ops-dashboard/start-staging.mjs", import.meta.url), "utf8");
 const proxyRoute = readFileSync(new URL("../../app/admin-access/[[...path]]/route.ts", import.meta.url), "utf8");
 const retiredPerformanceApi = readFileSync(new URL("../../app/api/admin/performance/route.ts", import.meta.url), "utf8");
 const bridge = readFileSync(new URL("../../app/api/internal/admin-bridge/route.ts", import.meta.url), "utf8");
@@ -15,6 +16,8 @@ const browserScript = inlineScript.replace(/\\\$\{/g, "${");
 assert.doesNotThrow(() => new Script(browserScript), "Operations dashboard browser script must parse before deployment");
 
 for (const [name, pattern] of [
+  ["deployed start command fails closed unless NODE_ENV is production", /process\.env\.NODE_ENV !== "production"/],
+  ["deployed start command gives a safe development alternative", /Use npm run dev for local development/],
   ["separate operations service", /post2drive-ops-dashboard/],
   ["separate admin username", /OPS_DASHBOARD_USERNAME/],
   ["separate operator credential", /OPS_DASHBOARD_PASSWORD/],
