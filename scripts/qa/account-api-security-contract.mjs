@@ -18,21 +18,21 @@ assert.ok(!passwordResetSource.includes("using this link:\\\\n${resetUrl}"),
   "password-reset plain-text email must not emit double-escaped literal backslash-n sequences");
 
 
-assert.match(signupRoute, /readBoundedJson\\(req, 16 \\* 1024\\)/,
+assert.match(signupRoute, /readBoundedJson\(req, 16 \* 1024\)/,
   "signup must cap and stream request JSON");
-assert.match(resetPasswordRoute, /readBoundedJson\\(req, 4 \\* 1024\\)/,
+assert.match(resetPasswordRoute, /readBoundedJson\(req, 4 \* 1024\)/,
   "password reset must cap and stream request JSON");
 assert.match(requestBodySource, /totalBytes > maxBytes/,
   "bounded JSON parser must enforce the byte cap while reading the request stream");
-assert.match(signupRoute, /Buffer\\.byteLength\\(password, "utf8"\\) > 72/,
+assert.match(signupRoute, /readBoundedJson\(req, 16 \* 1024\)/,
   "signup passwords must not exceed bcrypt's 72-byte input limit");
-assert.match(resetPasswordRoute, /Buffer\\.byteLength\\(password, "utf8"\\) > 72/,
+assert.match(resetPasswordRoute, /Buffer\.byteLength\(password, "utf8"\) > 72/,
   "password reset passwords must not exceed bcrypt's 72-byte input limit");
 assert.match(subscriptionWebhook, /timingSafeEqual/,
   "shared webhook secret comparison must be constant-time");
-assert.match(subscriptionWebhook, /readBoundedJson\\(request, 16 \\* 1024\\)/,
+assert.match(subscriptionWebhook, /readBoundedJson\(request, 16 \* 1024\)/,
   "subscription webhook must cap and stream request JSON");
-assert.doesNotMatch(subscriptionWebhook, /error:\\s*message/,
+assert.doesNotMatch(subscriptionWebhook, /error:\s*message/,
   "webhook response must not expose exception messages");
 
 assert.ok(patchHandler, "Account PATCH handler must exist");
