@@ -175,4 +175,15 @@ assert.doesNotMatch(subscriptionCreatePaymentRoute, /error:\\s*error\\.message/,
 assert.match(subscriptionCreatePaymentRoute, /errorName: error instanceof Error \\? error.name : "UnknownError"/,
   "subscription creation failures must log only the error class, not internal details");
 
+const apiMetricsSource = read("lib/apiMetrics.ts");
+const rateLimitSource = read("lib/rateLimit.ts");
+assert.doesNotMatch(apiMetricsSource, /console\\.error\\([^\\n]*,\\s*error\\)/,
+  "API metrics persistence logs must not emit raw ORM errors");
+assert.doesNotMatch(rateLimitSource, /console\\.error\\([^\\n]*,\\s*error\\)/,
+  "rate-limit control logs must not emit raw ORM errors");
+assert.match(apiMetricsSource, /errorName: error instanceof Error \\? error.name : "UnknownError"/,
+  "API metrics errors must log only a safe error class");
+assert.match(rateLimitSource, /errorName: error instanceof Error \\? error.name : "UnknownError"/,
+  "rate-limit errors must log only a safe error class");
+
 console.log("Account API security contracts passed: minimized GET response, current-user scoping, deletion guard, bounded signup/reset/webhook inputs, bcrypt password byte limits, constant-time webhook authentication, lifecycle lock and report-only CSP.");
