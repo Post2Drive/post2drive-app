@@ -79,7 +79,10 @@ export function withApiMetrics<T extends RouteHandler>(routeTemplate: string, ha
           });
         }
       } catch (error) {
-        console.error("Unable to persist API performance metric:", error);
+        // ORM errors can contain query and database metadata; log only a safe class name.
+        console.error("Unable to persist API performance metric.", {
+          errorName: error instanceof Error ? error.name : "UnknownError",
+        });
       }
     }
   };
