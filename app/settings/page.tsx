@@ -89,6 +89,14 @@ export default function SettingsPage() {
   async function handlePasswordChange(e: React.FormEvent) {
     e.preventDefault();
     if (passwordBusy) return;
+    if (pwForm.newPassword.length < 8) {
+      setPwError("Your password must contain at least 8 characters.");
+      return;
+    }
+    if (new TextEncoder().encode(pwForm.newPassword).byteLength > 72) {
+      setPwError("Your password must be no more than 72 UTF-8 bytes.");
+      return;
+    }
     setPwMessage("");
     setPwError("");
     setPasswordBusy(true);
@@ -180,6 +188,7 @@ export default function SettingsPage() {
             type="password"
             required
             minLength={8}
+            maxLength={72}
             autoComplete="new-password"
             value={pwForm.newPassword}
             onChange={(e) => setPwForm({ ...pwForm, newPassword: e.target.value })}
