@@ -111,6 +111,7 @@ try {
   poster = await prisma.account.create({ data: {
     type: "poster", companyName: "CI lifecycle poster", displayId: "CIP-" + suffix,
     country: "GB", currency: "GBP", verificationStatus: "verified",
+    companyVerificationStatus: "verified", companyVerifiedAt: new Date(),
     subscriptionStatus: "active", subscriptionPlanKey: "individual",
     subscriptionStartedAt: new Date(), subscriptionEndsAt: new Date("2035-12-31T00:00:00.000Z"),
   }});
