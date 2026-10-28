@@ -96,12 +96,18 @@ async function POSTHandler(
         id: accountId,
       },
       select: {
+        type: true,
         verificationStatus: true,
+        companyVerificationStatus: true,
         isTester: true,
         country: true,
         currency: true,
       },
     });
+
+  if (account && account.type !== "driver" && account.companyVerificationStatus !== "verified") {
+    return NextResponse.json({ error: "Company approval is required for this account before accepting jobs." }, { status: 403 });
+  }
 
   if (account?.verificationStatus !== "verified" && !account?.isTester) {
     return NextResponse.json(
@@ -154,9 +160,9 @@ async function POSTHandler(
 
           const currentDriver = await tx.account.findUnique({
             where: { id: accountId },
-            select: { verificationStatus: true, isTester: true, country: true, currency: true },
+            select: { type: true, verificationStatus: true, companyVerificationStatus: true, isTester: true, country: true, currency: true },
           });
-          if (!currentDriver || (currentDriver.verificationStatus !== "verified" && !currentDriver.isTester)) {
+          if (!currentDriver || (currentDriver.type !== "driver" && currentDriver.companyVerificationStatus !== "verified") || (currentDriver.verificationStatus !== "verified" && !currentDriver.isTester)) {
             throw new Error("DRIVER_NOT_VERIFIED");
           }
           if (!currentDriver.isTester) {
