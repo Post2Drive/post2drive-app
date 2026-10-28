@@ -53,6 +53,8 @@ jobs:
         run: npm run qa:health-contract
       - name: Validate QA campaign builder safety contract
         run: npm run qa:campaign-builder-contract
+      - name: Validate company verification gates
+        run: node scripts/qa/company-verification-contract.mjs
       - name: Validate lifecycle, incident, and market-guard contracts
         run: npm run qa:lifecycle-contract
       - name: Validate signup display ID collision retries
