@@ -5,6 +5,8 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { enforceRateLimit } from "@/lib/rateLimit";
+import { readBoundedBytes } from "@/lib/requestBody";
 
 type RouteContext = { params: Promise<{ id: string; incidentId: string }> };
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
@@ -41,15 +43,37 @@ async function POSTHandler(req: Request, { params }: RouteContext) {
     return NextResponse.json({ error: "Only the poster or accepted driver can upload evidence for this job." }, { status: 403 });
   }
 
+  const uploadLimit = await enforceRateLimit(req, {
+    scope: "incident-evidence-upload",
+    identity: accountId,
+    limit: 20,
+    windowMs: 60 * 60 * 1000,
+  });
+  if (uploadLimit) return uploadLimit;
+
   const incident = await prisma.jobActivity.findFirst({
     where: { id: incidentId, jobId, action: "INCIDENT_REPORTED" },
     select: { id: true },
   });
   if (!incident) return NextResponse.json({ error: "Incident report not found for this job." }, { status: 404 });
 
+  const boundedBody = await readBoundedBytes(req, MAX_FILE_BYTES + 256 * 1024);
+  if (!boundedBody.ok) {
+    return NextResponse.json(
+      { error: boundedBody.status === 413 ? "Upload request exceeds the 5 MB file limit." : "Upload body is invalid." },
+      { status: boundedBody.status },
+    );
+  }
+  const boundedHeaders = new Headers(req.headers);
+  boundedHeaders.delete("content-length");
   let form: FormData;
   try {
-    form = await req.formData();
+    const boundedRequest = new Request(req.url, {
+      method: "POST",
+      headers: boundedHeaders,
+      body: boundedBody.bytes,
+    });
+    form = await boundedRequest.formData();
   } catch {
     return NextResponse.json({ error: "Upload must use multipart form data." }, { status: 400 });
   }
