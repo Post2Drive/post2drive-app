@@ -1,5 +1,10 @@
 import { spawn } from "node:child_process";
 
+if (process.env.NODE_ENV !== "production") {
+  console.error("Refusing to start the deployed application unless NODE_ENV=production. Use npm run dev for local development.");
+  process.exit(1);
+}
+
 const dashboardEnabled = process.env.ENABLE_EMBEDDED_OPS_DASHBOARD === "true";
 const appPort = String(process.env.PORT || 3000);
 const children = [];
