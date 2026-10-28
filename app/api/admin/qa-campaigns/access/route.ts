@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { createOpsQaAdminSessionToken, OPS_QA_ADMIN_COOKIE } from "@/lib/testerAdmin";
+import { readBoundedJson } from "@/lib/requestBody";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -59,14 +60,17 @@ export async function POST(request: NextRequest) {
   });
   if (limited) return limited;
 
-  const declaredLength = Number(request.headers.get("content-length") || 0);
-  if (declaredLength > 4000) return NextResponse.json({ error: "Request too large." }, { status: 413 });
-
-  let body: unknown;
-  try { body = await request.json(); } catch {
-    return NextResponse.json({ error: "Request body must be JSON." }, { status: 400 });
+  const parsedBody = await readBoundedJson(request, 4 * 1024);
+  if (!parsedBody.ok) {
+    return NextResponse.json(
+      { error: parsedBody.status === 413 ? "Request too large." : "Request body must be JSON." },
+      { status: parsedBody.status },
+    );
   }
-  const candidate = body as { username?: unknown; password?: unknown };
+  if (!parsedBody.value || typeof parsedBody.value !== "object" || Array.isArray(parsedBody.value)) {
+    return NextResponse.json({ error: "Request body must be a JSON object." }, { status: 400 });
+  }
+  const candidate = parsedBody.value as { username?: unknown; password?: unknown };
   const username = typeof candidate?.username === "string" ? candidate.username.trim() : "";
   const password = typeof candidate?.password === "string" ? candidate.password : "";
   const expectedUsername = process.env.OPS_DASHBOARD_USERNAME?.trim() || "";

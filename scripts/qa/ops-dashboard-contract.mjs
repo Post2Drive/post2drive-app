@@ -3,6 +3,7 @@ import { strict as assert } from "node:assert";
 import { Script } from "node:vm";
 
 const server = readFileSync(new URL("../../ops-dashboard/server.mjs", import.meta.url), "utf8");
+const start = readFileSync(new URL("../../ops-dashboard/start-staging.mjs", import.meta.url), "utf8");
 const proxyRoute = readFileSync(new URL("../../app/admin-access/[[...path]]/route.ts", import.meta.url), "utf8");
 const retiredPerformanceApi = readFileSync(new URL("../../app/api/admin/performance/route.ts", import.meta.url), "utf8");
 const bridge = readFileSync(new URL("../../app/api/internal/admin-bridge/route.ts", import.meta.url), "utf8");
@@ -103,6 +104,8 @@ for (const [name, pattern] of [
   else assert.match(server, pattern, name);
 }
 assert.equal(pkg.scripts["qa:ops-dashboard"], "node scripts/qa/ops-dashboard-contract.mjs");
+assert.match(start, /process\.env\.NODE_ENV !== "production"/, "deployed start command must fail closed unless NODE_ENV is production");
+assert.match(start, /Use npm run dev for local development/, "deployed start command must direct development to npm run dev");
 assert.match(proxyRoute, /127\.0\.0\.1:3101/);
 assert.match(proxyRoute, /ENABLE_EMBEDDED_OPS_DASHBOARD/);
 assert.match(proxyRoute, /Same-origin admin request required/);

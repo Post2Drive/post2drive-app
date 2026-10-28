@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { createHash, randomBytes } from "crypto";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { readBoundedJson } from "@/lib/requestBody";
 import { prisma } from "@/lib/prisma";
 import { isTesterAdmin } from "@/lib/testerAdmin";
 import { getPromotion, calculatePromotionalEnd } from "@/lib/promotion";
@@ -68,18 +69,28 @@ async function POSTHandler(req: Request) {
     return NextResponse.json({ error: session ? "Admin access required." : "Not logged in." }, { status: session ? 403 : 401 });
   }
 
-  const body = await req.json().catch(() => null);
+  const parsedBody = await readBoundedJson(req, 4 * 1024);
+  if (!parsedBody.ok) {
+    return NextResponse.json(
+      { error: parsedBody.status === 413 ? "Request body is too large." : "Invalid request body." },
+      { status: parsedBody.status },
+    );
+  }
+  if (!parsedBody.value || typeof parsedBody.value !== "object" || Array.isArray(parsedBody.value)) {
+    return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
+  }
+  const body = parsedBody.value as { action?: unknown; accountId?: unknown; decision?: unknown };
 
-  if (body?.action === "generate-code") {
+  if (body.action === "generate-code") {
     const rawCode = "P2D-" + randomBytes(2).toString("hex").toUpperCase() + "-" + randomBytes(2).toString("hex").toUpperCase() + "-" + randomBytes(2).toString("hex").toUpperCase();
     const codeHash = createHash("sha256").update(rawCode).digest("hex");
     await prisma.testerAccessCode.create({ data: { codeHash } });
     return NextResponse.json({ success: true, code: rawCode });
   }
 
-  const accountId = typeof body?.accountId === "string" ? body.accountId : "";
-  const decision = body?.decision;
-  if (!accountId || !["approve", "reject"].includes(decision)) {
+  const accountId = typeof body.accountId === "string" ? body.accountId : "";
+  const decision = body.decision;
+  if (!accountId || (decision !== "approve" && decision !== "reject")) {
     return NextResponse.json({ error: "Choose an application and approve or reject it." }, { status: 400 });
   }
 

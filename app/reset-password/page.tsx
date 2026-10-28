@@ -23,6 +23,10 @@ export default function ResetPasswordPage() {
       setError("Your password must contain at least 8 characters.");
       return;
     }
+    if (new TextEncoder().encode(password).byteLength > 72) {
+      setError("Your password must be no more than 72 UTF-8 bytes.");
+      return;
+    }
     if (password !== confirmPassword) {
       setError("The passwords do not match.");
       return;
@@ -59,10 +63,10 @@ export default function ResetPasswordPage() {
     {completed ? <><p role="status">{message}</p><p><a href="/login">Log in with your new password</a></p></> :
       <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <label>New password
-          <input type="password" required minLength={8} maxLength={1024} autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} />
+          <input type="password" required minLength={8} maxLength={72} autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} />
         </label>
         <label>Confirm new password
-          <input type="password" required minLength={8} maxLength={1024} autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} />
+          <input type="password" required minLength={8} maxLength={72} autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} />
         </label>
         {error && <p role="alert" style={{ color: "var(--color-danger)" }}>{error}</p>}
         <button className="auth-submit-button" type="submit" disabled={loading || !token}>

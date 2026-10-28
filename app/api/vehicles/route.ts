@@ -1,5 +1,6 @@
 import { withApiMetrics } from "@/lib/apiMetrics";
 import { NextResponse } from "next/server";
+import { readBoundedJson } from "@/lib/requestBody";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -47,15 +48,17 @@ async function POSTHandler(req: Request) {
     }
 
     const marketProfile = getLocalisationProfile({ country: account.country, currency: account.currency });
-    let body: any;
-    try {
-      body = await req.json();
-    } catch {
-      return NextResponse.json({ error: "Request body must be valid JSON." }, { status: 400 });
+    const parsedBody = await readBoundedJson(req, 16 * 1024);
+    if (!parsedBody.ok) {
+      return NextResponse.json(
+        { error: parsedBody.status === 413 ? "Request body is too large." : "Request body must be valid JSON." },
+        { status: parsedBody.status },
+      );
     }
-    if (!body || typeof body !== "object" || Array.isArray(body)) {
+    if (!parsedBody.value || typeof parsedBody.value !== "object" || Array.isArray(parsedBody.value)) {
       return NextResponse.json({ error: "Vehicle details must be sent as a JSON object." }, { status: 400 });
     }
+    const body = parsedBody.value as Record<string, unknown>;
     const vehicleType = String(body.vehicleType ?? "").trim();
     const regPlate = String(body.regPlate ?? "").trim().toUpperCase();
     const registrationRegion = String(body.registrationRegion ?? "").trim().toUpperCase();

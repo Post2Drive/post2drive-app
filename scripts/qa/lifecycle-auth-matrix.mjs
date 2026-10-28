@@ -107,6 +107,19 @@ function loadRoute(path) {
     if (name === "@/lib/jobMarket") return { requireJobMarketAccess: async () => null };
     if (name === "@/lib/access") return { getAccountAccess: async () => ({ allowed: true }) };
     if (name === "@/lib/vehicles") return { VEHICLE_TYPES: ["van", "truck", "car"] };
+    if (name === "@/lib/requestBody") return {
+      readBoundedJson: async (request, maxBytes) => {
+        const text = await request.text();
+        if (new TextEncoder().encode(text).byteLength > maxBytes) return { ok: false, status: 413 };
+        try { return { ok: true, value: JSON.parse(text) }; }
+        catch { return { ok: false, status: 400 }; }
+      },
+      readBoundedBytes: async (request, maxBytes) => {
+        const bytes = new Uint8Array(await request.arrayBuffer());
+        if (bytes.byteLength > maxBytes) return { ok: false, status: 413 };
+        return { ok: true, bytes, byteLength: bytes.byteLength };
+      },
+    };
     if (name.startsWith("@/lib/")) return genericModule;
     try { return requireExternal(name); } catch { return genericModule; }
   };

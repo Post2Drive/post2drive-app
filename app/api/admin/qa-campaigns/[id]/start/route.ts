@@ -6,6 +6,7 @@ import { isTesterAdmin } from "@/lib/testerAdmin";
 import { isQaRunnerEnabled } from "@/lib/qaRunnerGuard";
 import { prisma } from "@/lib/prisma";
 import { getMarket } from "@/lib/market";
+import { readBoundedJson } from "@/lib/requestBody";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,9 +26,18 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   if (!(await isTesterAdmin())) return NextResponse.json({ error: "Admin access required." }, { status: 403 });
   if (!isQaRunnerEnabled()) return NextResponse.json({ error: "Campaign execution is available only on the allow-listed staging environment." }, { status: 404 });
 
-  let body: any;
-  try { body = await request.json(); } catch { return NextResponse.json({ error: "Request body must be JSON." }, { status: 400 }); }
-  if (body?.target !== "staging" || body?.confirm !== "RUN_QA_CAMPAIGN_ON_STAGING") {
+  const parsedBody = await readBoundedJson(request, 4 * 1024);
+  if (!parsedBody.ok) {
+    return NextResponse.json(
+      { error: parsedBody.status === 413 ? "Request body is too large." : "Request body must be JSON." },
+      { status: parsedBody.status },
+    );
+  }
+  if (!parsedBody.value || typeof parsedBody.value !== "object" || Array.isArray(parsedBody.value)) {
+    return NextResponse.json({ error: "Request body must be a JSON object." }, { status: 400 });
+  }
+  const body = parsedBody.value as Record<string, unknown>;
+  if (body.target !== "staging" || body.confirm !== "RUN_QA_CAMPAIGN_ON_STAGING") {
     return NextResponse.json({ error: "Explicit staging target and RUN_QA_CAMPAIGN_ON_STAGING confirmation are required." }, { status: 400 });
   }
   const { id: campaignId } = await context.params;

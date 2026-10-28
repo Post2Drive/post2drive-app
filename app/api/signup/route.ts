@@ -9,6 +9,7 @@ import { getPromotion } from "@/lib/promotion";
 import { createEmailVerificationToken, emailDeliveryConfigured, emailVerificationEnabled, sendVerificationEmail } from "@/lib/emailVerification";
 import { marketForAccount } from "@/lib/market";
 import { enforceRateLimit } from "@/lib/rateLimit";
+import { readBoundedJson } from "@/lib/requestBody";
 
 const MARKET_RESEARCH_OPTIONS = {
   role: ["driver", "fleet", "shipper", "broker"],
@@ -37,7 +38,33 @@ async function POSTHandler(
   if (networkLimit) return networkLimit;
 
   try {
-    const body = await req.json();
+    const parsedBody = await readBoundedJson(req, 16 * 1024);
+    if (!parsedBody.ok) {
+      return NextResponse.json(
+        { error: parsedBody.status === 413 ? "Request body is too large." : "Request body must be valid JSON." },
+        { status: parsedBody.status },
+      );
+    }
+    if (!parsedBody.value || typeof parsedBody.value !== "object" || Array.isArray(parsedBody.value)) {
+      return NextResponse.json({ error: "Request body must be a JSON object." }, { status: 400 });
+    }
+    const body = parsedBody.value as {
+      name?: unknown;
+      email?: unknown;
+      phone?: unknown;
+      password?: unknown;
+      companyName?: unknown;
+      planType?: unknown;
+      fleetVehicleCount?: unknown;
+      isSoleTrader?: unknown;
+      country?: unknown;
+      currency?: unknown;
+      referralCode?: unknown;
+      testerCode?: unknown;
+      termsAccepted?: unknown;
+      termsVersion?: unknown;
+      marketResearch?: unknown;
+    };
 
     const {
       name,
@@ -81,6 +108,19 @@ async function POSTHandler(
       return NextResponse.json({ error: "Select whether you are registering as a sole trader." }, { status: 400 });
     }
 
+    if (
+      typeof country !== "string" ||
+      typeof currency !== "string" ||
+      (companyName !== undefined && companyName !== null && typeof companyName !== "string") ||
+      (typeof companyName === "string" && companyName.length > 160) ||
+      (planType !== undefined && typeof planType !== "string") ||
+      (fleetVehicleCount !== undefined && typeof fleetVehicleCount !== "string" && typeof fleetVehicleCount !== "number") ||
+      (referralCode !== undefined && (typeof referralCode !== "string" || referralCode.length > 32)) ||
+      (testerCode !== undefined && (typeof testerCode !== "string" || testerCode.length > 100))
+    ) {
+      return NextResponse.json({ error: "One or more request fields have an invalid type." }, { status: 400 });
+    }
+
     const market = marketForAccount({ country, currency });
     if (!market) {
       return NextResponse.json({ error: "Choose one of the supported markets and its matching currency." }, { status: 400 });
@@ -89,8 +129,8 @@ async function POSTHandler(
     if (typeof name !== "string" || name.trim().length < 2 || name.trim().length > 100 ||
         typeof email !== "string" || email.trim().length > 254 ||
         typeof phone !== "string" || phone.trim().length < 5 || phone.trim().length > 50 ||
-        typeof password !== "string" || password.length < 8 || password.length > 128) {
-      return NextResponse.json({ error: "Check your name, email, phone number and password. Passwords must be 8–128 characters." }, { status: 400 });
+        typeof password !== "string" || password.length < 8 || password.length > 128 || Buffer.byteLength(password, "utf8") > 72) {
+      return NextResponse.json({ error: "Check your name, email, phone number and password. Passwords must be 8–72 UTF-8 bytes (and no more than 128 characters)." }, { status: 400 });
     }
 
     const verificationRequired = emailVerificationEnabled();
@@ -118,7 +158,7 @@ async function POSTHandler(
 
     const selectedPlan = planType || "individual";
     const parsedFleetVehicleCount = Number(fleetVehicleCount);
-    const normalizedCompanyName = String(companyName || "").trim() || (isSoleTrader ? name.trim() : "");
+    const normalizedCompanyName = (typeof companyName === "string" ? companyName.trim() : "") || (isSoleTrader ? name.trim() : "");
 
     if (selectedPlan !== "individual" && selectedPlan !== "fleet") {
       return NextResponse.json(

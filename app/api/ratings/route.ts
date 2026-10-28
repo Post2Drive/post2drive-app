@@ -2,6 +2,7 @@ import { withApiMetrics } from "@/lib/apiMetrics";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { readBoundedJson } from "@/lib/requestBody";
 import { prisma } from "@/lib/prisma";
 
 // POST /api/ratings — rate the other party on a job you were matched on.
@@ -17,14 +18,18 @@ async function POSTHandler(req: Request) {
     return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   }
 
-  let body: any;
-  try {
-    body = await req.json();
-  } catch {
+  const parsedBody = await readBoundedJson(req, 8 * 1024);
+  if (!parsedBody.ok) {
+    return NextResponse.json(
+      { error: parsedBody.status === 413 ? "Request body is too large." : "Invalid request body." },
+      { status: parsedBody.status },
+    );
+  }
+  if (!parsedBody.value || typeof parsedBody.value !== "object" || Array.isArray(parsedBody.value)) {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
   }
-
-  const { jobId, stars, comment } = body ?? {};
+  const body = parsedBody.value as Record<string, unknown>;
+  const { jobId, stars, comment } = body;
   const numericStars = Number(stars);
 
   if (

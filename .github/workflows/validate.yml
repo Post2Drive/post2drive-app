@@ -45,6 +45,8 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
+      - name: Audit dependencies for high and critical vulnerabilities
+        run: npm audit --audit-level=high
       - name: Validate reliability confidence-bound calculations
         run: node scripts/qa/reliability-budget.mjs
       - name: Validate Railway health endpoint contract
@@ -131,6 +133,8 @@ jobs:
       - name: Verify runtime JWT session revocation against CI PostgreSQL
         run: npx tsx scripts/qa/auth-session-revocation.ts
       - name: Start production build for rendered accessibility tests
+        env:
+          NODE_ENV: production
         run: |
           npm run start > /tmp/post2drive-next.log 2>&1 &
           echo $! > /tmp/post2drive-next.pid

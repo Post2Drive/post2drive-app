@@ -4,6 +4,7 @@ import { getJobPickupAtForAccount, pickupAccessError } from "@/lib/jobAccess";
 import { isSupportedMarket } from "@/lib/market";
 import { getAccountAccess } from "@/lib/access";
 import { NextResponse } from "next/server";
+import { readBoundedJson } from "@/lib/requestBody";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -44,19 +45,14 @@ async function PATCHHandler(
   const marketAccessError = await requireJobMarketAccess(accountId, routeParams.id);
   if (marketAccessError) return marketAccessError;
 
-  let body: any;
-
-  try {
-    body = await req.json();
-  } catch {
+  const parsedBody = await readBoundedJson(req, 32 * 1024);
+  if (!parsedBody.ok) {
     return NextResponse.json(
-      {
-        error:
-          "Invalid request body.",
-      },
-      { status: 400 }
+      { error: parsedBody.status === 413 ? "Request body is too large." : "Invalid request body." },
+      { status: parsedBody.status },
     );
   }
+  const body = parsedBody.value;
 
   const accountMarket = await prisma.account.findUnique({
     where: { id: accountId },

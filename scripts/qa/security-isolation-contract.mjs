@@ -49,7 +49,7 @@ assert.match(accountRoute, /sessionVersion: \{ increment: 1 \}/,
 assert.match(source("app/api/auth/reset-password/route.ts"), /sessionVersion: \{ increment: 1 \}/,
   "password resets must increment sessionVersion");
 
-assert.match(accountRoute, /let body: unknown;[\s\S]*?body = await req\.json\(\);[\s\S]*?if \(!body \|\| typeof body !== "object" \|\| Array\.isArray\(body\)\)[\s\S]*?const parsed = body as \{ currentPassword\?: unknown; confirm\?: unknown \}/,
+assert.match(accountRoute, /async function DELETEHandler[\s\S]*?const parsedBody = await readBoundedJson\(req, 8 \* 1024\);[\s\S]*?if \(!parsedBody\.value \|\| typeof parsedBody\.value !== "object" \|\| Array\.isArray\(parsedBody\.value\)\)[\s\S]*?const parsed = parsedBody\.value as \{ currentPassword\?: unknown; confirm\?: unknown \}/,
   "account DELETE must reject null, arrays, and primitive JSON bodies with a controlled 400 response");
 assert.match(source("app/api/account/route.ts"), /boundedString\(name, 120\)[\s\S]*?marketingConsent !== undefined && typeof marketingConsent !== "boolean"/,
   "account PATCH must validate field types and bounds before persistence");
@@ -127,9 +127,18 @@ const malformedDeleteModule = loadTypeScriptModule("app/api/account/route.ts", {
   "crypto": { randomBytes: () => ({ toString: () => "fixture" }) },
   "@/lib/market": { isSupportedMarket: () => true },
   "@/lib/auth": { authOptions: {} },
+  "@/lib/rateLimit": { enforceRateLimit: async () => null },
   "@prisma/client": { Prisma: { DbNull: null } },
   "@/lib/prisma": { prisma: fakePrisma },
   "@/lib/uk": { isUkAccount: () => false, isUkPromotionLocked: () => false },
+  "@/lib/requestBody": {
+    readBoundedJson: async (request, maxBytes) => {
+      const text = await request.text();
+      if (new TextEncoder().encode(text).byteLength > maxBytes) return { ok: false, status: 413 };
+      try { return { ok: true, value: JSON.parse(text) }; }
+      catch { return { ok: false, status: 400 }; }
+    },
+  },
 });
 for (const malformedBody of ["{", "null", "[]", "42"]) {
   const malformedResponse = await malformedDeleteModule.DELETE(
@@ -222,6 +231,14 @@ const routeModule = loadTypeScriptModule("app/api/vehicles/route.ts", {
   "@/lib/vehicles": { VEHICLE_TYPES: ["van", "truck", "car"] },
   "@/lib/localisation": { getLocalisationProfile: () => null, getJurisdictionOptions: () => [] },
   "@/lib/vehicleDates": { marketDateKey: () => "2026-10-20", parseOptionalDateField: () => ({ date: null, dateKey: null, error: null }) },
+  "@/lib/requestBody": {
+    readBoundedJson: async (request, maxBytes) => {
+      const text = await request.text();
+      if (new TextEncoder().encode(text).byteLength > maxBytes) return { ok: false, status: 413 };
+      try { return { ok: true, value: JSON.parse(text) }; }
+      catch { return { ok: false, status: 400 }; }
+    },
+  },
 });
 const deletedGet = await routeModule.GET(new Request("https://fixture.invalid/api/vehicles"));
 assert.equal(deletedGet.status, 401, "deleted account vehicle GET must be unauthorized");
