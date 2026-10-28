@@ -1,19 +1,19 @@
 /**
- * Read a request body as strict UTF-8 while enforcing a byte cap during streaming.
- * The byte cap applies even when Content-Length is absent or the request is chunked.
+ * Read request bytes with a strict cap while streaming. The cap is enforced even
+ * when Content-Length is missing or the transport uses chunked framing.
  */
-export type BoundedTextResult =
-  | { ok: true; text: string; byteLength: number }
+export type BoundedBytesResult =
+  | { ok: true; bytes: Uint8Array; byteLength: number }
   | { ok: false; status: 400 | 413 };
 
-export async function readBoundedText(request: Request, maxBytes: number): Promise<BoundedTextResult> {
+export async function readBoundedBytes(request: Request, maxBytes: number): Promise<BoundedBytesResult> {
   if (!Number.isSafeInteger(maxBytes) || maxBytes < 1) {
     throw new Error("A positive safe integer maxBytes is required.");
   }
 
   const declaredLength = request.headers.get("content-length");
   if (declaredLength !== null) {
-    if (!/^\d+$/.test(declaredLength)) return { ok: false, status: 400 };
+    if (!/^\\d+$/.test(declaredLength)) return { ok: false, status: 400 };
     if (Number(declaredLength) > maxBytes) return { ok: false, status: 413 };
   }
 
@@ -46,10 +46,20 @@ export async function readBoundedText(request: Request, maxBytes: number): Promi
     bytes.set(chunk, offset);
     offset += chunk.byteLength;
   }
+  return { ok: true, bytes, byteLength: totalBytes };
+}
+
+export type BoundedTextResult =
+  | { ok: true; text: string; byteLength: number }
+  | { ok: false; status: 400 | 413 };
+
+export async function readBoundedText(request: Request, maxBytes: number): Promise<BoundedTextResult> {
+  const bounded = await readBoundedBytes(request, maxBytes);
+  if (!bounded.ok) return { ok: false, status: bounded.status };
 
   try {
-    const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
-    return { ok: true, text, byteLength: totalBytes };
+    const text = new TextDecoder("utf-8", { fatal: true }).decode(bounded.bytes);
+    return { ok: true, text, byteLength: bounded.byteLength };
   } catch {
     return { ok: false, status: 400 };
   }
