@@ -167,4 +167,12 @@ assert.doesNotMatch(passwordResetSource, /createHash\("sha256"\)/,
   "password-reset token digests must not revert to an unkeyed SHA-256 digest");
 
 
+const subscriptionCreatePaymentRoute = read("app/api/subscription/create-payment/route.ts");
+assert.match(subscriptionCreatePaymentRoute, /SAFE_CLIENT_ERRORS/,
+  "subscription creation may expose only explicitly allowlisted business-rule errors");
+assert.doesNotMatch(subscriptionCreatePaymentRoute, /error:\\s*error\\.message/,
+  "subscription creation must not return arbitrary internal exception messages");
+assert.match(subscriptionCreatePaymentRoute, /errorName: error instanceof Error \\? error.name : "UnknownError"/,
+  "subscription creation failures must log only the error class, not internal details");
+
 console.log("Account API security contracts passed: minimized GET response, current-user scoping, deletion guard, bounded signup/reset/webhook inputs, bcrypt password byte limits, constant-time webhook authentication, lifecycle lock and report-only CSP.");
