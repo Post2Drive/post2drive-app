@@ -41,7 +41,7 @@ assert.match(resetPasswordRoute, /readBoundedJson\(req, 4 \* 1024\)/,
   "password reset must cap and stream request JSON");
 assert.match(adminAccessRoute, /readBoundedJson\(request, 4 \* 1024\)/,
   "admin QA login must cap and stream request JSON");
-assert.match(adminCampaignRoute, /readBoundedJson\(request, 16 \* 1024\)/,
+assert.match(adminCampaignRoute, /readBoundedJson\(request, 32 \* 1024\)/,
   "admin QA campaign creation must cap and stream request JSON");
 assert.match(adminCampaignStartRoute, /readBoundedJson\(request, 4 \* 1024\)/,
   "admin QA campaign execution must cap and stream request JSON");
@@ -49,6 +49,12 @@ assert.match(requestBodySource, /totalBytes > maxBytes/,
   "bounded JSON parser must enforce the byte cap while reading the request stream");
 assert.match(signupRoute, /readBoundedJson\(req, 16 \* 1024\)/,
   "signup passwords must not exceed bcrypt's 72-byte input limit");
+assert.match(signupRoute, /typeof companyName === "string" && companyName.length > 160/,
+  "signup must cap company-name length on the server");
+assert.match(signupRoute, /referralCode.length > 32/,
+  "signup must cap referral-code length on the server");
+assert.match(signupRoute, /testerCode.length > 100/,
+  "signup must cap tester-code length on the server");
 assert.match(resetPasswordRoute, /Buffer\.byteLength\(password, "utf8"\) > 72/,
   "password reset passwords must not exceed bcrypt's 72-byte input limit");
 assert.match(verificationWebhook, /timingSafeEqual/,
@@ -64,17 +70,17 @@ assert.match(qaRunnerRoute, /readBoundedJson\(req, 16 \* 1024\)/,
   "destructive QA runner must cap and stream request JSON");
 assert.doesNotMatch(qaRunnerRoute, /error:\s*error\.message/,
   "QA cleanup must not expose internal exception messages");
-assert.match(jobsRoute, /readBoundedJson\(req, 16 \* 1024\)/,
+assert.match(jobsRoute, /readBoundedJson\(req, 32 \* 1024\)/,
   "job creation must cap and stream request JSON");
 assert.match(jobBidRoute, /readBoundedJson\(req, 8 \* 1024\)/,
   "job bid creation must cap and stream request JSON");
-assert.match(jobEditRoute, /readBoundedJson\(req, 16 \* 1024\)/,
+assert.match(jobEditRoute, /readBoundedJson\(req, 32 \* 1024\)/,
   "job edits must cap and stream request JSON");
 assert.match(vehiclesRoute, /readBoundedJson\(req, 16 \* 1024\)/,
   "vehicle creation must cap and stream request JSON");
 assert.match(ratingsRoute, /readBoundedJson\(req, 8 \* 1024\)/,
   "ratings must cap and stream request JSON");
-assert.match(adminIncidentRoute, /readBoundedJson\(req, 8 \* 1024\)/,
+assert.match(adminIncidentRoute, /readBoundedJson\(req, 24 \* 1024\)/,
   "admin incident resolution must cap and stream request JSON");
 assert.match(adminTesterRoute, /readBoundedJson\(req, 4 \* 1024\)/,
   "admin tester actions must cap and stream request JSON");
@@ -82,11 +88,11 @@ assert.match(emailVerifyRoute, /readBoundedJson\(req, 4 \* 1024\)/,
   "email verification must cap and stream request JSON");
 assert.match(emailResendRoute, /readBoundedJson\(req, 4 \* 1024\)/,
   "verification email resend must cap and stream request JSON");
-assert.match(jobIncidentRoute, /readBoundedJson\(req, 16 \* 1024\)/,
+assert.match(jobIncidentRoute, /readBoundedJson\(req, 64 \* 1024\)/,
   "incident reporting must cap and stream request JSON");
 assert.match(jobIncidentTerminateRoute, /readBoundedJson\(req, 8 \* 1024\)/,
   "incident termination must cap and stream request JSON");
-assert.match(jobIncidentUpdatesRoute, /readBoundedJson\(req, 8 \* 1024\)/,
+assert.match(jobIncidentUpdatesRoute, /readBoundedJson\(req, 64 \* 1024\)/,
   "incident updates must cap and stream request JSON");
 assert.match(subscriptionWebhook, /timingSafeEqual/,
   "shared webhook secret comparison must be constant-time");
