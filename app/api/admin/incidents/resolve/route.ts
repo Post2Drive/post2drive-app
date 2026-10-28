@@ -77,7 +77,7 @@ async function POSTHandler(req: Request) {
   const accountId = (session.user as any)?.accountId;
   if (!accountId) return NextResponse.json({ error: "Administrator account is not linked to an account record." }, { status: 403 });
 
-  const parsedBody = await readBoundedJson(req, 8 * 1024);
+  const parsedBody = await readBoundedJson(req, 24 * 1024);
   if (!parsedBody.ok) {
     return NextResponse.json(
       { error: parsedBody.status === 413 ? "Request body is too large." : "Request body must be valid JSON." },
