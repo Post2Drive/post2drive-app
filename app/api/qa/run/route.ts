@@ -239,7 +239,7 @@ export async function POST(req: Request) {
   if (!isQaRunnerEnabled()) {
     return NextResponse.json({ error: "QA actions require an explicitly allow-listed staging deployment and isolated QA database." }, { status: 403 });
   }
-  const providedToken = (req.headers.get("authorization") || "").replace(/^Bearer\\s+/i, "");
+  const providedToken = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
   if (!constantTimeTokenMatches(expectedToken, providedToken)) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
