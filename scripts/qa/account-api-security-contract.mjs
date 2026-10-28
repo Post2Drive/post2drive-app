@@ -8,11 +8,32 @@ const getHandler = accountRoute.split("async function PATCHHandler")[0];
 const patchHandler = accountRoute.split("async function PATCHHandler")[1]?.split("async function DELETEHandler")[0] || "";
 const nextConfig = read("next.config.js");
 const passwordResetSource = read("lib/passwordReset.ts");
+const signupRoute = read("app/api/signup/route.ts");
+const resetPasswordRoute = read("app/api/auth/reset-password/route.ts");
+const requestBodySource = read("lib/requestBody.ts");
+const subscriptionWebhook = read("app/api/subscription/webhook/route.ts");
 assert.ok(passwordResetSource.includes("using this link:\\n${resetUrl}\\n\\nThis link expires in one hour"),
   "password-reset plain-text email must contain newline escape sequences around the reset URL");
 assert.ok(!passwordResetSource.includes("using this link:\\\\n${resetUrl}"),
   "password-reset plain-text email must not emit double-escaped literal backslash-n sequences");
 
+
+assert.match(signupRoute, /readBoundedJson\\(req, 16 \\* 1024\\)/,
+  "signup must cap and stream request JSON");
+assert.match(resetPasswordRoute, /readBoundedJson\\(req, 4 \\* 1024\\)/,
+  "password reset must cap and stream request JSON");
+assert.match(requestBodySource, /totalBytes > maxBytes/,
+  "bounded JSON parser must enforce the byte cap while reading the request stream");
+assert.match(signupRoute, /Buffer\\.byteLength\\(password, "utf8"\\) > 72/,
+  "signup passwords must not exceed bcrypt's 72-byte input limit");
+assert.match(resetPasswordRoute, /Buffer\\.byteLength\\(password, "utf8"\\) > 72/,
+  "password reset passwords must not exceed bcrypt's 72-byte input limit");
+assert.match(subscriptionWebhook, /timingSafeEqual/,
+  "shared webhook secret comparison must be constant-time");
+assert.match(subscriptionWebhook, /readBoundedJson\\(request, 16 \\* 1024\\)/,
+  "subscription webhook must cap and stream request JSON");
+assert.doesNotMatch(subscriptionWebhook, /error:\\s*message/,
+  "webhook response must not expose exception messages");
 
 assert.ok(patchHandler, "Account PATCH handler must exist");
 assert.match(getHandler, /where:\s*\{\s*id:\s*accountId,\s*deletionRequestedAt:\s*null\s*\}/,
@@ -56,4 +77,4 @@ assert.doesNotMatch(passwordResetSource, /createHash\("sha256"\)/,
   "password-reset token digests must not revert to an unkeyed SHA-256 digest");
 
 
-console.log("Account API security contracts passed: minimized GET response, current-user scoping, deletion guard, bounded PATCH input, lifecycle lock, blank-field clearing and report-only CSP.");
+console.log("Account API security contracts passed: minimized GET response, current-user scoping, deletion guard, bounded signup/reset/webhook inputs, bcrypt password byte limits, constant-time webhook authentication, lifecycle lock and report-only CSP.");
