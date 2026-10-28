@@ -5,6 +5,8 @@ import bcrypt from "bcryptjs";
 import { randomBytes } from "crypto";
 import { isSupportedMarket } from "@/lib/market";
 import { authOptions } from "@/lib/auth";
+import { enforceRateLimit } from "@/lib/rateLimit";
+import { readBoundedJson } from "@/lib/requestBody";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
@@ -67,16 +69,17 @@ async function PATCHHandler(req: Request) {
     return NextResponse.json({ error: "Invalid session." }, { status: 401 });
   }
 
-  let body: Record<string, unknown>;
-  try {
-    const parsed: unknown = await req.json();
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-      return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
-    }
-    body = parsed as Record<string, unknown>;
-  } catch {
+  const parsedBody = await readBoundedJson(req, 16 * 1024);
+  if (!parsedBody.ok) {
+    return NextResponse.json(
+      { error: parsedBody.status === 413 ? "Request body is too large." : "Invalid request body." },
+      { status: parsedBody.status },
+    );
+  }
+  if (!parsedBody.value || typeof parsedBody.value !== "object" || Array.isArray(parsedBody.value)) {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
   }
+  const body = parsedBody.value as Record<string, unknown>;
 
   const {
     name,
@@ -108,9 +111,20 @@ async function PATCHHandler(req: Request) {
     !boundedString(currency, 3) ||
     !boundedString(currentPassword, 1024) ||
     !boundedString(newPassword, 1024) ||
+    (typeof newPassword === "string" && newPassword.length > 0 && Buffer.byteLength(newPassword, "utf8") > 72) ||
     (marketingConsent !== undefined && typeof marketingConsent !== "boolean")
   ) {
     return NextResponse.json({ error: "One or more settings fields are invalid." }, { status: 400 });
+  }
+
+  if (newPassword) {
+    const passwordLimit = await enforceRateLimit(req, {
+      scope: "account-password-change",
+      identity: userId,
+      limit: 5,
+      windowMs: 15 * 60 * 1000,
+    });
+    if (passwordLimit) return passwordLimit;
   }
 
   // Stage all mutations in memory first. The transaction below acquires the
@@ -213,16 +227,17 @@ async function DELETEHandler(req: Request) {
     return NextResponse.json({ error: "Invalid session." }, { status: 401 });
   }
 
-  let body: unknown;
-  try {
-    body = await req.json();
-  } catch {
+  const parsedBody = await readBoundedJson(req, 8 * 1024);
+  if (!parsedBody.ok) {
+    return NextResponse.json(
+      { error: parsedBody.status === 413 ? "Request body is too large." : "Invalid request body." },
+      { status: parsedBody.status },
+    );
+  }
+  if (!parsedBody.value || typeof parsedBody.value !== "object" || Array.isArray(parsedBody.value)) {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
   }
-  if (!body || typeof body !== "object" || Array.isArray(body)) {
-    return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
-  }
-  const parsed = body as { currentPassword?: unknown; confirm?: unknown };
+  const parsed = parsedBody.value as { currentPassword?: unknown; confirm?: unknown };
   if (parsed.confirm !== "DELETE") {
     return NextResponse.json({ error: "Type DELETE to confirm account deletion." }, { status: 400 });
   }
