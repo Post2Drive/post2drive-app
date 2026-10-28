@@ -66,7 +66,7 @@ export default function ResetPasswordPage() {
           <input type="password" required minLength={8} maxLength={72} autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} />
         </label>
         <label>Confirm new password
-          <input type="password" required minLength={8} maxLength={1024} autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} />
+          <input type="password" required minLength={8} maxLength={72} autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} />
         </label>
         {error && <p role="alert" style={{ color: "var(--color-danger)" }}>{error}</p>}
         <button className="auth-submit-button" type="submit" disabled={loading || !token}>
