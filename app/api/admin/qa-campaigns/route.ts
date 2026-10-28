@@ -106,7 +106,7 @@ export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Not logged in." }, { status: 401 });
   if (!(await isTesterAdmin())) return NextResponse.json({ error: "Admin access required." }, { status: 403 });
-  const parsedBody = await readBoundedJson(request, 16 * 1024);
+  const parsedBody = await readBoundedJson(request, 32 * 1024);
   if (!parsedBody.ok) {
     return NextResponse.json(
       { error: parsedBody.status === 413 ? "Request body is too large." : "Request body must be JSON." },
