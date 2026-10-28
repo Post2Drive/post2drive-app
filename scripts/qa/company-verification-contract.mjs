@@ -21,7 +21,8 @@ assert.doesNotMatch(submit, /companyVerificationStatus:\s*"verified"/);
 assert.match(jobs, /canPostJobs\(account\)/);
 assert.match(bid, /bidderAccount.*type !== "driver".*companyVerificationStatus !== "verified"/s);
 assert.match(accept, /account.*type !== "driver".*companyVerificationStatus !== "verified"/s);
-assert.match(awardBid, /companyVerificationStatus !== "verified"/);
+assert.match(awardBid, /canPostJobs\(posterVerification\)/);
+assert.match(awardBid, /canPostJobs\(currentPoster\)/);
 assert.match(opportunities, /driver\.type !== "driver".*driver\.companyVerificationStatus !== "verified"/s);
 assert.match(opportunities, /driver\.type !== "driver"/);
 
