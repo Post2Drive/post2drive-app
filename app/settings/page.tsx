@@ -188,8 +188,8 @@ export default function SettingsPage() {
             type="password"
             required
             minLength={8}
-            maxLength={72}
             autoComplete="new-password"
+            maxLength={72}
             value={pwForm.newPassword}
             onChange={(e) => setPwForm({ ...pwForm, newPassword: e.target.value })}
           />
