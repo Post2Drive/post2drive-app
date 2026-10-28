@@ -12,6 +12,9 @@ const signupRoute = read("app/api/signup/route.ts");
 const resetPasswordRoute = read("app/api/auth/reset-password/route.ts");
 const requestBodySource = read("lib/requestBody.ts");
 const subscriptionWebhook = read("app/api/subscription/webhook/route.ts");
+const adminAccessRoute = read("app/api/admin/qa-campaigns/access/route.ts");
+const adminCampaignRoute = read("app/api/admin/qa-campaigns/route.ts");
+const adminCampaignStartRoute = read("app/api/admin/qa-campaigns/[id]/start/route.ts");
 assert.ok(passwordResetSource.includes("using this link:\\n${resetUrl}\\n\\nThis link expires in one hour"),
   "password-reset plain-text email must contain newline escape sequences around the reset URL");
 assert.ok(!passwordResetSource.includes("using this link:\\\\n${resetUrl}"),
@@ -22,6 +25,12 @@ assert.match(signupRoute, /readBoundedJson\(req, 16 \* 1024\)/,
   "signup must cap and stream request JSON");
 assert.match(resetPasswordRoute, /readBoundedJson\(req, 4 \* 1024\)/,
   "password reset must cap and stream request JSON");
+assert.match(adminAccessRoute, /readBoundedJson\(request, 4 \* 1024\)/,
+  "admin QA login must cap and stream request JSON");
+assert.match(adminCampaignRoute, /readBoundedJson\(request, 16 \* 1024\)/,
+  "admin QA campaign creation must cap and stream request JSON");
+assert.match(adminCampaignStartRoute, /readBoundedJson\(request, 4 \* 1024\)/,
+  "admin QA campaign execution must cap and stream request JSON");
 assert.match(requestBodySource, /totalBytes > maxBytes/,
   "bounded JSON parser must enforce the byte cap while reading the request stream");
 assert.match(signupRoute, /readBoundedJson\(req, 16 \* 1024\)/,
