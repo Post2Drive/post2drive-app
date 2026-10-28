@@ -276,67 +276,74 @@ async function GETHandler(req: Request) {
       pickupContactPhone,
       dropoffContactName,
       dropoffContactPhone,
-      ...jobData
     } = job;
     const previousDriverIds = [...new Set(
       activities
         .map((activity) => activity.actorId)
         .filter((id): id is string => Boolean(id))
     )];
-    const jobWithMatchHistory = { ...jobData, previousDriverIds };
+    const isJobParty = job.posterId === accountId || job.acceptedById === accountId;
+    const canSeePartyContacts = contactVisibleStatuses.includes(job.status) && isJobParty;
 
-    // Contact details are private to the current job parties. A driver
-    // who previously backed out may retain job visibility/history, but must
-    // not inherit the current driver's or poster's private contact details.
-    if (
-      !contactVisibleStatuses.includes(job.status) ||
-      (job.posterId !== accountId && job.acceptedById !== accountId)
-    ) {
-      return {
-        ...jobWithMatchHistory,
-        // Site-contact names and phone numbers are not marketplace discovery
-        // fields; disclose them only once the requester is a current party to
-        // an accepted/in-progress/completed job.
-        pickupContactName: null,
-        pickupContactPhone: null,
-        dropoffContactName: null,
-        dropoffContactPhone: null,
-
-        poster: {
-          companyName:
-            job.poster.companyName,
-          displayId:
-            job.poster.displayId,
-          createdAt:
-            job.poster.createdAt,
-        },
-
-        acceptedBy:
-          job.acceptedBy
-            ? {
-                companyName:
-                  job.acceptedBy.companyName,
-                displayId:
-                  job.acceptedBy.displayId,
-                createdAt:
-                  job.acceptedBy.createdAt,
-              }
-            : null,
-      };
-    }
-
-    return {
-      ...jobWithMatchHistory,
-      pickupContactName,
-      pickupContactPhone,
-      dropoffContactName,
-      dropoffContactPhone,
+    // Explicit response allowlist: never serialize the full Prisma row.
+    // Internal account IDs and other drivers' identities stay server-side.
+    const jobView = {
+      id: job.id,
+      pickup: job.pickup,
+      pickupLat: job.pickupLat,
+      pickupLng: job.pickupLng,
+      dropoff: job.dropoff,
+      dropoffLat: job.dropoffLat,
+      dropoffLng: job.dropoffLng,
+      jobDate: job.jobDate,
+      pickupTime: job.pickupTime,
+      dropoffTime: job.dropoffTime,
+      pickupTimeZone: job.pickupTimeZone,
+      dropoffTimeZone: job.dropoffTimeZone,
+      vehicleType: job.vehicleType,
+      weightKg: job.weightKg,
+      dimensions: job.dimensions,
+      price: job.price,
+      pricePerMile: job.pricePerMile,
+      currency: job.currency,
+      priceMode: job.priceMode,
+      notes: job.notes,
+      status: job.status,
+      isCurrentUserPoster: job.posterId === accountId,
+      isCurrentUserAcceptedDriver: job.acceptedById === accountId,
+      hasAcceptedDriver: Boolean(job.acceptedById),
+      currentUserMarkedDelivery: job.deliveryMarkedById === accountId,
+      currentUserConfirmedPickup: job.pickupConfirmedById === accountId,
+      crossBorder: job.crossBorder,
+      hasPreviousDrivers: previousDriverIds.length > 0,
+      currentUserPreviouslyBackedOut: previousDriverIds.includes(accountId),
+      pickupContactName: canSeePartyContacts ? pickupContactName : null,
+      pickupContactPhone: canSeePartyContacts ? pickupContactPhone : null,
+      dropoffContactName: canSeePartyContacts ? dropoffContactName : null,
+      dropoffContactPhone: canSeePartyContacts ? dropoffContactPhone : null,
+      poster: canSeePartyContacts
+        ? job.poster
+        : {
+            companyName: job.poster.companyName,
+            displayId: job.poster.displayId,
+            createdAt: job.poster.createdAt,
+          },
+      acceptedBy: job.acceptedBy
+        ? canSeePartyContacts
+          ? job.acceptedBy
+          : {
+              companyName: job.acceptedBy.companyName,
+              displayId: job.acceptedBy.displayId,
+              createdAt: job.acceptedBy.createdAt,
+            }
+        : null,
     };
+
+    return jobView;
   }).filter((job) => {
-    const previousDriverIds = Array.isArray(job.previousDriverIds) ? job.previousDriverIds : [];
-    const keepForHistory = job.posterId === accountId ||
-      job.acceptedById === accountId ||
-      previousDriverIds.includes(accountId);
+    const keepForHistory = job.isCurrentUserPoster ||
+      job.isCurrentUserAcceptedDriver ||
+      job.currentUserPreviouslyBackedOut;
     if (job.status !== "open" || keepForHistory) return true;
     return hasFuturePickup(job, actor);
   });

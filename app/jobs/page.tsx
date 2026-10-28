@@ -45,11 +45,13 @@ type Job = {
   priceMode: string;
   notes: string | null;
   status: string;
-  posterId: string;
-  acceptedById: string | null;
-  previousDriverIds?: string[];
-  deliveryMarkedById: string | null;
-  pickupConfirmedById: string | null;
+  isCurrentUserPoster: boolean;
+  isCurrentUserAcceptedDriver: boolean;
+  hasAcceptedDriver: boolean;
+  currentUserMarkedDelivery: boolean;
+  currentUserConfirmedPickup: boolean;
+  hasPreviousDrivers?: boolean;
+  currentUserPreviouslyBackedOut?: boolean;
   crossBorder: boolean;
   pickupContactName: string | null;
   pickupContactPhone: string | null;
@@ -815,28 +817,14 @@ export default function JobsPage() {
       >
         {visibleJobs.map(
           (job) => {
-            const isOwner =
-              job.posterId ===
-              accountId;
-
-            const isAcceptedDriver =
-              job.acceptedById ===
-              accountId;
-
-            const involved =
-              isOwner ||
-              isAcceptedDriver;
-
-            const previousDriverIds = job.previousDriverIds ?? [];
+            const isOwner = job.isCurrentUserPoster;
+            const isAcceptedDriver = job.isCurrentUserAcceptedDriver;
+            const involved = isOwner || isAcceptedDriver;
             const canRate =
-              (isOwner &&
-                (Boolean(job.acceptedById) || previousDriverIds.length > 0)) ||
+              (isOwner && (job.hasAcceptedDriver || Boolean(job.hasPreviousDrivers))) ||
               isAcceptedDriver ||
-              previousDriverIds.includes(accountId);
-
-            const iMarkedDelivered =
-              job.deliveryMarkedById ===
-              accountId;
+              Boolean(job.currentUserPreviouslyBackedOut);
+            const iMarkedDelivered = job.currentUserMarkedDelivery;
 
             const matched =
               job.status !==
@@ -927,7 +915,7 @@ export default function JobsPage() {
                   </span>
                 </div>
 
-                {involved && (job.status !== "open" || Boolean(job.acceptedById)) && (
+                {involved && (job.status !== "open" || job.hasAcceptedDriver) && (
                   <div style={{ marginTop: 12 }}>
                     <Link
                       href={`/jobs/${job.id}/incidents`}
@@ -1038,7 +1026,7 @@ export default function JobsPage() {
                   }}
                 >
                   Posted by{" "}
-                  <Link href={`/profile/${job.posterId}`}>
+                  <Link href={`/profile/${job.poster.displayId}`}>
                     {job.poster.companyName}
                     {job.poster.displayId
                       ? ` (${job.poster.displayId})`

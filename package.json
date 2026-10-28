@@ -17,7 +17,7 @@
     "qa:signup-display-id-retry": "node scripts/qa/signup-display-id-retry-contract.mjs",
     "qa:country-matrix": "node --experimental-strip-types scripts/qa/country-matrix-contract.mjs",
     "qa:qa-runner-guard": "node --experimental-strip-types scripts/qa/qa-runner-guard-contract.mjs",
-    "qa:all": "npm run qa:account-api-security && npm run qa:design-accessibility && npm run qa:health-contract && npm run qa:campaign-builder-contract && npm run qa:signup-display-id-retry && npm run qa:market-timezone && npm run qa:dropoff-timezone && npm run qa:dashboard-localisation && npm run qa:ops-dashboard && npm run qa:market-isolation && npm run qa:qa-isolation-contract && npm run qa:market-parity && npm run qa:country-matrix && npm run qa:localisation && npm run qa:localisation-copy && npm run qa:qa-runner-guard && npm run qa:lifecycle-contract && npm run qa:worker-contract && npm run qa:security-isolation-contract && npm run qa:lifecycle-api-e2e && npm run qa:lifecycle-auth-matrix",
+    "qa:all": "npm run qa:account-api-security && npm run qa:design-accessibility && npm run qa:health-contract && npm run qa:campaign-builder-contract && npm run qa:signup-display-id-retry && npm run qa:market-timezone && npm run qa:dropoff-timezone && npm run qa:dashboard-localisation && npm run qa:ops-dashboard && npm run qa:market-isolation && npm run qa:qa-isolation-contract && npm run qa:market-parity && npm run qa:country-matrix && npm run qa:localisation && npm run qa:localisation-copy && npm run qa:qa-runner-guard && npm run qa:lifecycle-contract && npm run qa:worker-contract && npm run qa:security-isolation-contract && npm run qa:lifecycle-api-e2e && npm run qa:lifecycle-auth-matrix && npm run qa:job-response-data-minimization && npm run qa:profile-vehicle-privacy && npm run qa:password-reset-url",
     "qa:worker": "node --experimental-default-type=module --experimental-strip-types scripts/qa/worker.ts",
     "qa:worker-contract": "node scripts/qa/worker-contract.mjs",
     "qa:worker-boot-contract": "node scripts/qa/worker-boot-contract.mjs",
@@ -35,7 +35,10 @@
     "qa:account-mutation-concurrency": "node scripts/qa/account-mutation-concurrency-contract.mjs",
     "qa:security-isolation-contract": "node scripts/qa/security-isolation-contract.mjs",
     "qa:lifecycle-api-e2e": "node scripts/qa/lifecycle-api-e2e.mjs",
-    "qa:lifecycle-auth-matrix": "node scripts/qa/lifecycle-auth-matrix.mjs"
+    "qa:lifecycle-auth-matrix": "node scripts/qa/lifecycle-auth-matrix.mjs",
+    "qa:job-response-data-minimization": "node scripts/qa/job-response-data-minimization-contract.mjs",
+    "qa:profile-vehicle-privacy": "node scripts/qa/profile-vehicle-privacy-contract.mjs",
+    "qa:password-reset-url": "node scripts/qa/password-reset-url-contract.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.3",

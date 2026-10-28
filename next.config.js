@@ -47,6 +47,13 @@ const nextConfig = {
           { key: "Pragma", value: "no-cache" },
         ],
       },
+      {
+        source: "/reset-password",
+        headers: [
+          { key: "Referrer-Policy", value: "no-referrer" },
+          { key: "Cache-Control", value: "no-store, max-age=0" },
+        ],
+      },
     ];
   },
 };

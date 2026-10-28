@@ -88,7 +88,7 @@ export default function ProfilePage() {
           <ul>
             {account.vehicles.map((v: any, i: number) => (
               <li key={i}>
-                {vehicleTypeLabel(v.vehicleType, account.country)} — {v.regPlate}
+                {vehicleTypeLabel(v.vehicleType, account.country)}
               </li>
             ))}
           </ul>
