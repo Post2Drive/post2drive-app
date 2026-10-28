@@ -26,7 +26,7 @@ assert.ok(startRoute.includes("RUN_QA_CAMPAIGN_ON_STAGING") && startRoute.includ
 assert.ok(worker.includes("WITH queue_lock AS MATERIALIZED"), "worker campaign advancement must serialize queue access without selecting PostgreSQL void");
 assert.ok(worker.includes("advanceCampaign") && worker.includes("qa_test_campaign_steps"), "worker must advance campaign steps sequentially");
 assert.ok(runner.includes("testIterations") && runner.includes("executionConcurrency") && runner.includes("accountTarget"), "runner must use configured iteration, concurrency and account targets");
-assert.ok((runner.match(/\\.toISOString\\(\\)\\.slice\\(0, 10\\)/g) || []).length >= 2, "vehicle date fixtures must send YYYY-MM-DD calendar dates accepted by the vehicle API");
+assert.ok(runner.includes('motValidUntil: new Date(Date.now() + 180 * 86400000).toISOString().slice(0, 10)') && runner.includes('insuranceValidUntil: new Date(Date.now() + 180 * 86400000).toISOString().slice(0, 10)'), "vehicle date fixtures must send YYYY-MM-DD calendar dates accepted by the vehicle API");
 assert.ok(!route.includes("DELETE FROM qa_test_runs") && !route.includes("DELETE FROM qa_test_events") && !route.includes("DELETE FROM qa_test_accounts"), "campaign API must not modify or clean existing QA history");
 
 console.log(JSON.stringify({status:"passed",checks:17,covered:["admin access","staging-only database constraint","sequential execution migration","constrained campaign statuses","bounded workload configuration","variation allocation validation","per-variation result reporting","explicit staging confirmation","sequential worker orchestration","no QA history deletion","Ops Dashboard routing"]},null,2));
