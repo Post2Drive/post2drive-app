@@ -7,7 +7,9 @@ import { confirmSubscriptionPayment } from "@/lib/subscription";
 function constantTimeSecretEqual(expected: string, supplied: string) {
   const expectedBytes = Buffer.from(expected, "utf8");
   const suppliedBytes = Buffer.from(supplied, "utf8");
-  return expectedBytes.length > 0 && expectedBytes.length === suppliedBytes.length && timingSafeEqual(expectedBytes, suppliedBytes);
+  return expectedBytes.length > 0 &&
+    expectedBytes.length === suppliedBytes.length &&
+    timingSafeEqual(expectedBytes, suppliedBytes);
 }
 
 async function POSTHandler(request: Request) {
@@ -15,31 +17,34 @@ async function POSTHandler(request: Request) {
   const providedSecret = request.headers.get("x-post2drive-webhook-secret");
 
   if (!expectedSecret || !providedSecret || !constantTimeSecretEqual(expectedSecret, providedSecret)) {
-    return NextResponse.json(
-      { error: "Unauthorized." },
-      { status: 401 }
-    );
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
   const parsedBody = await readBoundedJson(request, 16 * 1024);
   if (!parsedBody.ok) {
-    return NextResponse.json({ error: parsedBody.status === 413 ? "Request body is too large." : "Request body must be valid JSON." }, { status: parsedBody.status });
+    return NextResponse.json(
+      { error: parsedBody.status === 413 ? "Request body is too large." : "Request body must be valid JSON." },
+      { status: parsedBody.status },
+    );
   }
   if (!parsedBody.value || typeof parsedBody.value !== "object" || Array.isArray(parsedBody.value)) {
     return NextResponse.json({ error: "Request body must be a JSON object." }, { status: 400 });
   }
+
   const body = parsedBody.value as Record<string, unknown>;
   if (typeof body.paymentId !== "string" || body.paymentId.length < 1 || body.paymentId.length > 200) {
-      return NextResponse.json(
-        { error: "paymentId is required." },
-        { status: 400 }
-      );
-    }
+    return NextResponse.json({ error: "paymentId is required or invalid." }, { status: 400 });
+  }
 
+  try {
     const payment = await confirmSubscriptionPayment(body.paymentId, {
       provider: typeof body.provider === "string" && body.provider.length <= 80 ? body.provider : undefined,
-      providerPaymentId: typeof body.providerPaymentId === "string" && body.providerPaymentId.length <= 200 ? body.providerPaymentId : undefined,
-      providerCheckoutId: typeof body.providerCheckoutId === "string" && body.providerCheckoutId.length <= 200 ? body.providerCheckoutId : undefined,
+      providerPaymentId: typeof body.providerPaymentId === "string" && body.providerPaymentId.length <= 200
+        ? body.providerPaymentId
+        : undefined,
+      providerCheckoutId: typeof body.providerCheckoutId === "string" && body.providerCheckoutId.length <= 200
+        ? body.providerCheckoutId
+        : undefined,
     });
 
     return NextResponse.json({
@@ -55,7 +60,7 @@ async function POSTHandler(request: Request) {
     });
     return NextResponse.json(
       { error: "Unable to confirm subscription payment." },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
