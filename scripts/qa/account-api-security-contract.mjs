@@ -15,6 +15,8 @@ const subscriptionWebhook = read("app/api/subscription/webhook/route.ts");
 const adminAccessRoute = read("app/api/admin/qa-campaigns/access/route.ts");
 const adminCampaignRoute = read("app/api/admin/qa-campaigns/route.ts");
 const adminCampaignStartRoute = read("app/api/admin/qa-campaigns/[id]/start/route.ts");
+const verificationWebhook = read("app/api/verification/start/webhook/route.ts");
+const qaRunnerRoute = read("app/api/qa/run/route.ts");
 assert.ok(passwordResetSource.includes("using this link:\\n${resetUrl}\\n\\nThis link expires in one hour"),
   "password-reset plain-text email must contain newline escape sequences around the reset URL");
 assert.ok(!passwordResetSource.includes("using this link:\\\\n${resetUrl}"),
@@ -37,6 +39,18 @@ assert.match(signupRoute, /readBoundedJson\(req, 16 \* 1024\)/,
   "signup passwords must not exceed bcrypt's 72-byte input limit");
 assert.match(resetPasswordRoute, /Buffer\.byteLength\(password, "utf8"\) > 72/,
   "password reset passwords must not exceed bcrypt's 72-byte input limit");
+assert.match(verificationWebhook, /timingSafeEqual/,
+  "verification webhook secret comparison must be constant-time");
+assert.match(verificationWebhook, /readBoundedJson\(req, 16 \* 1024\)/,
+  "verification webhook must cap and stream request JSON");
+assert.doesNotMatch(verificationWebhook, /error:\s*error\.message/,
+  "verification webhook must not expose exception messages");
+assert.match(qaRunnerRoute, /timingSafeEqual/,
+  "destructive QA runner token comparison must be constant-time");
+assert.match(qaRunnerRoute, /readBoundedJson\(req, 16 \* 1024\)/,
+  "destructive QA runner must cap and stream request JSON");
+assert.doesNotMatch(qaRunnerRoute, /error:\s*error\.message/,
+  "QA cleanup must not expose internal exception messages");
 assert.match(subscriptionWebhook, /timingSafeEqual/,
   "shared webhook secret comparison must be constant-time");
 assert.match(subscriptionWebhook, /readBoundedJson\(request, 16 \* 1024\)/,
