@@ -48,7 +48,23 @@ async function POSTHandler(
     if (!parsedBody.value || typeof parsedBody.value !== "object" || Array.isArray(parsedBody.value)) {
       return NextResponse.json({ error: "Request body must be a JSON object." }, { status: 400 });
     }
-    const body = parsedBody.value as Record<string, unknown>;
+    const body = parsedBody.value as {
+      name?: unknown;
+      email?: unknown;
+      phone?: unknown;
+      password?: unknown;
+      companyName?: unknown;
+      planType?: unknown;
+      fleetVehicleCount?: unknown;
+      isSoleTrader?: unknown;
+      country?: unknown;
+      currency?: unknown;
+      referralCode?: unknown;
+      testerCode?: unknown;
+      termsAccepted?: unknown;
+      termsVersion?: unknown;
+      marketResearch?: unknown;
+    };
 
     const {
       name,
@@ -90,6 +106,15 @@ async function POSTHandler(
 
     if (typeof isSoleTrader !== "boolean") {
       return NextResponse.json({ error: "Select whether you are registering as a sole trader." }, { status: 400 });
+    }
+
+    if (
+      typeof country !== "string" ||
+      typeof currency !== "string" ||
+      (referralCode !== undefined && typeof referralCode !== "string") ||
+      (testerCode !== undefined && typeof testerCode !== "string")
+    ) {
+      return NextResponse.json({ error: "One or more request fields have an invalid type." }, { status: 400 });
     }
 
     const market = marketForAccount({ country, currency });
