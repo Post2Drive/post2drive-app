@@ -3,6 +3,7 @@
 const isProduction = process.env.NODE_ENV === "production";
 
 // Report-only first: observe compatibility before enforcing a stricter policy.
+// Deliberately omit unsafe-eval in report-only mode to surface eval usage before any enforcement.
 // Tighten external source allowlists only after reviewing deployed violation evidence.
 const contentSecurityPolicyReportOnly = [
   "default-src 'self'",
@@ -10,7 +11,7 @@ const contentSecurityPolicyReportOnly = [
   "object-src 'none'",
   "frame-ancestors 'none'",
   "form-action 'self' https:",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https:",
+  "script-src 'self' 'unsafe-inline' https:",
   "style-src 'self' 'unsafe-inline' https:",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data: https:",
