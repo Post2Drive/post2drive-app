@@ -173,7 +173,6 @@ model Account {
 
   verificationAttempts VerificationAttempt[]
 
-  @@index([companyVerificationStatus])
 
   referralsGiven   Referral[] @relation("Referrer")
   referralReceived Referral?  @relation("ReferredAccount")
@@ -194,6 +193,8 @@ model Account {
   moderationReportsFiled ModerationReport[] @relation("ModerationReportReporter")
   moderationReportsReceived ModerationReport[] @relation("ModerationReportTarget")
   moderationReportsReviewed ModerationReport[] @relation("ModerationReportReviewer")
+
+  @@index([companyVerificationStatus])
 }
 
 model SubscriptionPayment {
