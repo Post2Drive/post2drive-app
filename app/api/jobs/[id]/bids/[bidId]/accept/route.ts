@@ -9,6 +9,7 @@ import { prisma } from "@/lib/prisma";
 import { expireJobOpportunities } from "@/lib/opportunities";
 import { getLocalisationProfile } from "@/lib/localisation";
 import { marketDateKey } from "@/lib/vehicleDates";
+import { canPostJobs, vehicleEligibilityWhere } from "@/lib/eligibility";
 
 // POST /api/jobs/[id]/bids/[bidId]/accept
 // Poster accepts one bid and assigns the job to that driver.
@@ -79,6 +80,14 @@ async function POSTHandler(
     );
   }
 
+  const posterVerification = await prisma.account.findUnique({
+    where: { id: accountId },
+    select: { verificationStatus: true, companyVerificationStatus: true },
+  });
+  if (!posterVerification || !canPostJobs(posterVerification)) {
+    return NextResponse.json({ error: "Complete identity verification and obtain company approval before awarding a job." }, { status: 403 });
+  }
+
   if (job.status !== "open") {
     return NextResponse.json(
       { error: "This job is no longer open." },
@@ -121,6 +130,14 @@ async function POSTHandler(
     });
     if (!currentJob || currentJob.status !== "open" || currentJob.posterId !== accountId || currentJob.priceMode !== "bid") {
       throw new Error("JOB_ALREADY_TAKEN");
+    }
+
+    const currentPoster = await tx.account.findUnique({
+      where: { id: accountId },
+      select: { verificationStatus: true, companyVerificationStatus: true },
+    });
+    if (!currentPoster || !canPostJobs(currentPoster)) {
+      throw new Error("POSTER_NOT_VERIFIED");
     }
 
     // A bid is selectable only while its driver and matching vehicle remain approved.
