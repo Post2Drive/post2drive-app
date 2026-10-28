@@ -6,6 +6,7 @@ import { getPromotion, calculatePromotionalEnd } from "@/lib/promotion";
 import { emailVerificationEnabled } from "@/lib/emailVerification";
 import { getMarket } from "@/lib/market";
 import { isQaRunnerEnabled } from "@/lib/qaRunnerGuard";
+import { readBoundedText } from "@/lib/requestBody";
 
 const ALLOWED_OUTCOMES = new Set([
   "resume", "reassign", "return_goods", "terminate_with_incident",
@@ -58,10 +59,14 @@ async function authenticateBridge(req: Request, rawBody: string) {
 }
 
 async function handler(req: Request) {
-  const declaredLength = Number(req.headers.get("content-length") || 0);
-  if (declaredLength > 24_000) return NextResponse.json({ error: "Request too large." }, { status: 413 });
-  const rawBody = await req.text();
-  if (rawBody.length > 24_000) return NextResponse.json({ error: "Request too large." }, { status: 413 });
+  const boundedBody = await readBoundedText(req, 24_000);
+  if (!boundedBody.ok) {
+    return NextResponse.json(
+      { error: boundedBody.status === 413 ? "Request too large." : "Request body must be valid UTF-8." },
+      { status: boundedBody.status },
+    );
+  }
+  const rawBody = boundedBody.text;
   const auth = await authenticateBridge(req, rawBody);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
