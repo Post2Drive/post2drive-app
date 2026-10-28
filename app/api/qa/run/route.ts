@@ -1,4 +1,6 @@
 import { isQaRunnerEnabled } from "@/lib/qaRunnerGuard";
+import { timingSafeEqual } from "node:crypto";
+import { readBoundedJson } from "@/lib/requestBody";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getMarket } from "@/lib/market";
@@ -6,6 +8,14 @@ import { getMarket } from "@/lib/market";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
+
+function constantTimeTokenMatches(expected: string, supplied: string) {
+  const expectedBytes = Buffer.from(expected, "utf8");
+  const suppliedBytes = Buffer.from(supplied, "utf8");
+  return expectedBytes.length >= 32 &&
+    expectedBytes.length === suppliedBytes.length &&
+    timingSafeEqual(expectedBytes, suppliedBytes);
+}
 
 async function cleanupSyntheticRuns(runIds: string[], base: string) {
   return prisma.$transaction(async tx => {
@@ -141,7 +151,7 @@ export async function GET(req: Request) {
   }
 
   if (report) {
-    if (!expectedToken || token !== expectedToken) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    if (!constantTimeTokenMatches(expectedToken, token)) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
     const runId = url.searchParams.get("runId") || "";
     if (!runId || !/^[A-Za-z0-9._:-]{1,80}$/.test(runId)) return NextResponse.json({ error: "A valid runId is required." }, { status: 400 });
     if (report === "failures") {
@@ -174,7 +184,7 @@ export async function GET(req: Request) {
   // One-time, high-entropy trigger for controlled staging automation when POST dispatch is unavailable.
   // Never log or echo the token; rotate QA_RUN_TOKEN after the run and its preserved report have been retrieved.
   if (url.searchParams.get("mode") === "status") {
-    if (!expectedToken || token !== expectedToken) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    if (!constantTimeTokenMatches(expectedToken, token)) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
     try {
       const [activeRows, latestRows] = await Promise.all([
         prisma.$queryRawUnsafe<Array<{ id: string; status: string; started_at: Date; target_accounts: number; created_accounts: number; successful_checks: number; failed_checks: number; summary: unknown }>>(
@@ -208,7 +218,7 @@ export async function GET(req: Request) {
     }
   }
   if (!token) return NextResponse.json({ ok: true, stagingOnly: true });
-  if (!expectedToken || token !== expectedToken || accounts !== "10000" || target !== "staging" || !validType || confirm !== "RUN_10000_QA_ON_STAGING") {
+  if (!constantTimeTokenMatches(expectedToken, token) || accounts !== "10000" || target !== "staging" || !validType || confirm !== "RUN_10000_QA_ON_STAGING") {
     return NextResponse.json({ error: "Unauthorized or invalid staging confirmation." }, { status: 401 });
   }
   const requestedCountry = (url.searchParams.get("country") || process.env.QA_MARKET_COUNTRY || "GB").trim().toUpperCase();
@@ -229,11 +239,29 @@ export async function POST(req: Request) {
   if (!isQaRunnerEnabled()) {
     return NextResponse.json({ error: "QA actions require an explicitly allow-listed staging deployment and isolated QA database." }, { status: 403 });
   }
-  if (!expectedToken || expectedToken.length < 32 || req.headers.get("authorization") !== "Bearer " + expectedToken) {
+  const providedToken = (req.headers.get("authorization") || "").replace(/^Bearer\\s+/i, "");
+  if (!constantTimeTokenMatches(expectedToken, providedToken)) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
-  let body: any;
-  try { body = await req.json(); } catch { return NextResponse.json({ error: "JSON body required." }, { status: 400 }); }
+  const parsedBody = await readBoundedJson(req, 16 * 1024);
+  if (!parsedBody.ok) {
+    return NextResponse.json(
+      { error: parsedBody.status === 413 ? "Request body is too large." : "JSON body required." },
+      { status: parsedBody.status },
+    );
+  }
+  if (!parsedBody.value || typeof parsedBody.value !== "object" || Array.isArray(parsedBody.value)) {
+    return NextResponse.json({ error: "Request body must be a JSON object." }, { status: 400 });
+  }
+  const body = parsedBody.value as {
+    action?: unknown;
+    target?: unknown;
+    confirm?: unknown;
+    runIds?: unknown;
+    country?: unknown;
+    testType?: unknown;
+    accounts?: unknown;
+  };
   if (body?.action === "cleanup") {
     const base = (process.env.QA_BASE_URL || "").replace(/\/+$/, "");
     const configuredBase = (process.env.QA_BASE_URL || "").replace(/\/+$/, "");
@@ -249,12 +277,13 @@ export async function POST(req: Request) {
       const results = await cleanupSyntheticRuns(body.runIds, base);
       return NextResponse.json({ cleaned: true, target: "staging", results });
     } catch (error) {
-      return NextResponse.json({ error: error instanceof Error ? error.message : "Cleanup failed." }, { status: 409 });
+      console.error("Staging QA cleanup failed.", { errorName: error instanceof Error ? error.name : "UnknownError" });
+      return NextResponse.json({ error: "Cleanup failed. Confirm that each run is completed and cleanup-eligible." }, { status: 409 });
     }
   }
   const requestedCountry = String(body?.country || process.env.QA_MARKET_COUNTRY || "GB").trim().toUpperCase();
   if (!getMarket(requestedCountry)) return NextResponse.json({ error: "Unsupported country code." }, { status: 400 });
-  const testType = body?.testType;
+  const testType = typeof body.testType === "string" ? body.testType : "";
   if (body?.target !== "staging" || body?.accounts !== 10_000 || body?.confirm !== "RUN_10000_QA_ON_STAGING" || !["api-load", "synthetic-accounts", "workflow-e2e"].includes(testType)) {
     return NextResponse.json({ error: "Explicit staging target, supported testType, accounts=10000 and confirmation token required." }, { status: 400 });
   }
