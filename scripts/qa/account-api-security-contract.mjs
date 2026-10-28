@@ -12,6 +12,7 @@ const signupRoute = read("app/api/signup/route.ts");
 const resetPasswordRoute = read("app/api/auth/reset-password/route.ts");
 const requestBodySource = read("lib/requestBody.ts");
 const adminBridgeRoute = read("app/api/internal/admin-bridge/route.ts");
+const incidentEvidenceUploadRoute = read("app/api/jobs/[id]/incidents/[incidentId]/evidence/route.ts");
 const subscriptionWebhook = read("app/api/subscription/webhook/route.ts");
 const adminAccessRoute = read("app/api/admin/qa-campaigns/access/route.ts");
 const adminCampaignRoute = read("app/api/admin/qa-campaigns/route.ts");
@@ -46,6 +47,17 @@ assert.match(adminCampaignRoute, /readBoundedJson\(request, 32 \* 1024\)/,
   "admin QA campaign creation must cap and stream request JSON");
 assert.match(adminCampaignStartRoute, /readBoundedJson\(request, 4 \* 1024\)/,
   "admin QA campaign execution must cap and stream request JSON");
+assert.match(requestBodySource, /export async function readBoundedBytes/,
+  "shared request utilities must support bounded binary uploads");
+assert.match(incidentEvidenceUploadRoute, /readBoundedBytes\(req, MAX_FILE_BYTES \+ 256 \* 1024\)/,
+  "incident evidence must be byte-capped before multipart parsing");
+assert.ok(
+  incidentEvidenceUploadRoute.indexOf("readBoundedBytes(req, MAX_FILE_BYTES") <
+    incidentEvidenceUploadRoute.indexOf("boundedRequest.formData()"),
+  "multipart parsing must occur only after the upload byte cap is enforced",
+);
+assert.match(incidentEvidenceUploadRoute, /scope: "incident-evidence-upload"/,
+  "incident evidence uploads must have an account-scoped rate limit");
 assert.match(adminBridgeRoute, /readBoundedText\(req, 24_000\)/,
   "signed internal admin bridge must enforce a streaming request-size cap");
 assert.doesNotMatch(adminBridgeRoute, /await req\.text\(\)/,
