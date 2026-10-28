@@ -50,7 +50,7 @@
   },
   "devDependencies": {
     "@types/bcryptjs": "^3.0.0",
-    "@types/node": "^20.14.0",
+    "@types/node": "^26.6.5",
     "@types/react": "^18.3.5",
     "prisma": "^5.20.0",
     "typescript": "^5.5.4"
