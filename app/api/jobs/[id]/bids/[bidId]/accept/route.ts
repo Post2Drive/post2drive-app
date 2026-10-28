@@ -9,7 +9,7 @@ import { prisma } from "@/lib/prisma";
 import { expireJobOpportunities } from "@/lib/opportunities";
 import { getLocalisationProfile } from "@/lib/localisation";
 import { marketDateKey } from "@/lib/vehicleDates";
-import { canPostJobs, vehicleEligibilityWhere } from "@/lib/eligibility";
+import { canPostJobs } from "@/lib/eligibility";
 
 // POST /api/jobs/[id]/bids/[bidId]/accept
 // Poster accepts one bid and assigns the job to that driver.
@@ -291,8 +291,15 @@ async function POSTHandler(
     ) {
       return "BID_NO_LONGER_ELIGIBLE" as const;
     }
+    if (error instanceof Error && error.message === "POSTER_NOT_VERIFIED") {
+      return "POSTER_NOT_VERIFIED" as const;
+    }
     throw error;
   });
+
+  if (updated === "POSTER_NOT_VERIFIED") {
+    return NextResponse.json({ error: "Complete identity verification and obtain company approval before awarding a job." }, { status: 403 });
+  }
 
   if (updated === "BID_NO_LONGER_ELIGIBLE") {
     return NextResponse.json(
