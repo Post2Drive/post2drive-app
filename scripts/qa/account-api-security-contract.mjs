@@ -54,10 +54,16 @@ assert.match(getHandler, /where:\s*\{\s*id:\s*userId\s*\}/,
 assert.doesNotMatch(getHandler, /include:\s*\{/,
   "Account GET must not serialize the full Account model through include");
 
-assert.match(patchHandler, /const parsed:\s*unknown = await req\.json\(\)/,
+assert.match(patchHandler, /readBoundedJson\(req, 16 \* 1024\)/,
   "Account PATCH must parse JSON as untrusted input");
-assert.match(patchHandler, /Array\.isArray\(parsed\)/,
+assert.match(patchHandler, /Array\.isArray\(parsedBody\.value\)/,
   "Account PATCH must reject array and non-object JSON bodies");
+assert.match(patchHandler, /Buffer\.byteLength\(newPassword, "utf8"\) > 72/,
+  "direct password changes must respect bcrypt's 72-byte input limit");
+assert.match(patchHandler, /scope: "account-password-change"/,
+  "direct password changes must have an account-scoped rate limit");
+assert.match(accountRoute.split("async function DELETEHandler")[1] || "", /readBoundedJson\(req, 8 \* 1024\)/,
+  "account deletion must cap and stream request JSON");
 assert.match(patchHandler, /Invalid request body\./,
   "Malformed or non-object JSON must return a client error");
 assert.match(patchHandler, /boundedString\(name, 120\)[\s\S]*?boundedString\(phone, 40\)[\s\S]*?boundedString\(companyName, 160\)[\s\S]*?boundedString\(country, 2\)[\s\S]*?boundedString\(currency, 3\)/,
