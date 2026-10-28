@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { passwordResetTokenHash } from "@/lib/passwordReset";
+import { readBoundedJson } from "@/lib/requestBody";
 
 async function POSTHandler(req: Request) {
   const limit = await enforceRateLimit(req, {
@@ -13,10 +14,19 @@ async function POSTHandler(req: Request) {
   });
   if (limit) return limit;
 
-  const body = await req.json().catch(() => null);
-  const token = typeof body?.token === "string" ? body.token : "";
-  const password = typeof body?.password === "string" ? body.password : "";
-  if (!token || token.length > 256 || password.length < 8 || password.length > 1024) {
+  const parsedBody = await readBoundedJson(req, 4 * 1024);
+  if (!parsedBody.ok) {
+    return NextResponse.json(
+      { success: false, message: "This reset link is invalid or expired. Request a new one." },
+      { status: parsedBody.status },
+    );
+  }
+  const body = parsedBody.value && typeof parsedBody.value === "object" && !Array.isArray(parsedBody.value)
+    ? parsedBody.value as Record<string, unknown>
+    : {};
+  const token = typeof body.token === "string" ? body.token : "";
+  const password = typeof body.password === "string" ? body.password : "";
+  if (!token || token.length > 256 || password.length < 8 || Buffer.byteLength(password, "utf8") > 72) {
     return NextResponse.json({ success: false, message: "This reset link is invalid or expired. Request a new one." }, { status: 400 });
   }
 
