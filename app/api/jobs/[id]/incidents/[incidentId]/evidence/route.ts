@@ -64,6 +64,8 @@ async function POSTHandler(req: Request, { params }: RouteContext) {
       { status: boundedBody.status },
     );
   }
+  const boundedBodyBuffer = new ArrayBuffer(boundedBody.bytes.byteLength);
+  new Uint8Array(boundedBodyBuffer).set(boundedBody.bytes);
   const boundedHeaders = new Headers(req.headers);
   boundedHeaders.delete("content-length");
   let form: FormData;
@@ -71,7 +73,7 @@ async function POSTHandler(req: Request, { params }: RouteContext) {
     const boundedRequest = new Request(req.url, {
       method: "POST",
       headers: boundedHeaders,
-      body: boundedBody.bytes,
+      body: boundedBodyBuffer,
     });
     form = await boundedRequest.formData();
   } catch {
