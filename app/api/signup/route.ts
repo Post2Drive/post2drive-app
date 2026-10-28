@@ -111,8 +111,12 @@ async function POSTHandler(
     if (
       typeof country !== "string" ||
       typeof currency !== "string" ||
-      (referralCode !== undefined && typeof referralCode !== "string") ||
-      (testerCode !== undefined && typeof testerCode !== "string")
+      (companyName !== undefined && companyName !== null && typeof companyName !== "string") ||
+      (typeof companyName === "string" && companyName.length > 160) ||
+      (planType !== undefined && typeof planType !== "string") ||
+      (fleetVehicleCount !== undefined && typeof fleetVehicleCount !== "string" && typeof fleetVehicleCount !== "number") ||
+      (referralCode !== undefined && (typeof referralCode !== "string" || referralCode.length > 32)) ||
+      (testerCode !== undefined && (typeof testerCode !== "string" || testerCode.length > 100))
     ) {
       return NextResponse.json({ error: "One or more request fields have an invalid type." }, { status: 400 });
     }
@@ -154,7 +158,7 @@ async function POSTHandler(
 
     const selectedPlan = planType || "individual";
     const parsedFleetVehicleCount = Number(fleetVehicleCount);
-    const normalizedCompanyName = String(companyName || "").trim() || (isSoleTrader ? name.trim() : "");
+    const normalizedCompanyName = (typeof companyName === "string" ? companyName.trim() : "") || (isSoleTrader ? name.trim() : "");
 
     if (selectedPlan !== "individual" && selectedPlan !== "fleet") {
       return NextResponse.json(
