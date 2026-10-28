@@ -170,8 +170,8 @@ assert.doesNotMatch(passwordResetSource, /createHash\("sha256"\)/,
 const subscriptionCreatePaymentRoute = read("app/api/subscription/create-payment/route.ts");
 assert.ok(subscriptionCreatePaymentRoute.includes("SAFE_CLIENT_ERRORS"),
   "subscription creation may expose only explicitly allowlisted business-rule errors");
-assert.ok(!subscriptionCreatePaymentRoute.includes("error: error.message"),
-  "subscription creation must not return arbitrary internal exception messages");
+assert.ok(!subscriptionCreatePaymentRoute.includes("{ error: message }"),
+  "subscription creation must not return an unfiltered error message");
 assert.ok(subscriptionCreatePaymentRoute.includes("errorName:") && subscriptionCreatePaymentRoute.includes("UnknownError"),
   "subscription creation failures must log only the error class, not internal details");
 
