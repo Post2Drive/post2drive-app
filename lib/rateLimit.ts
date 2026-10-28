@@ -39,7 +39,9 @@ export async function checkRateLimit({ scope, identity, limit, windowMs }: RateL
   // Opportunistic expiry cleanup; this table never stores raw identifiers.
   if (Math.random() < 0.01) {
     void prisma.rateLimitBucket.deleteMany({ where: { expiresAt: { lt: new Date(now) } } })
-      .catch((error) => console.error("Rate-limit expiry cleanup failed:", error));
+      .catch((error) => console.error("Rate-limit expiry cleanup failed.", {
+        errorName: error instanceof Error ? error.name : "UnknownError",
+      }));
   }
 
   return {
@@ -80,7 +82,9 @@ export async function enforceRateLimit(request: Request, options: Omit<RateLimit
     if (!result.allowed) return rateLimitResponse(result.retryAfterSeconds);
     return null;
   } catch (error) {
-    console.error(`Rate-limit control unavailable for ${options.scope}:`, error);
+    console.error(`Rate-limit control unavailable for ${options.scope}.`, {
+      errorName: error instanceof Error ? error.name : "UnknownError",
+    });
     return NextResponse.json(
       { error: "This action is temporarily unavailable. Please try again shortly.", code: "RATE_LIMIT_UNAVAILABLE" },
       { status: 503, headers: { "Retry-After": "30", "Cache-Control": "no-store" } },
