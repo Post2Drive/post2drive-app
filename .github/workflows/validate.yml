@@ -133,6 +133,8 @@ jobs:
       - name: Verify runtime JWT session revocation against CI PostgreSQL
         run: npx tsx scripts/qa/auth-session-revocation.ts
       - name: Start production build for rendered accessibility tests
+        env:
+          NODE_ENV: production
         run: |
           npm run start > /tmp/post2drive-next.log 2>&1 &
           echo $! > /tmp/post2drive-next.pid
