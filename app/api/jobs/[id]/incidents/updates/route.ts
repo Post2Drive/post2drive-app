@@ -28,7 +28,7 @@ async function POSTHandler(req: Request, { params }: RouteContext) {
     return NextResponse.json({ error: "Only the poster or accepted driver can add incident updates." }, { status: 403 });
   }
 
-  const parsedBody = await readBoundedJson(req, 8 * 1024);
+  const parsedBody = await readBoundedJson(req, 64 * 1024);
   if (!parsedBody.ok) {
     return NextResponse.json(
       { error: parsedBody.status === 413 ? "Request body is too large." : "Request body must be valid JSON." },
