@@ -131,7 +131,8 @@ async function enqueueQaRun(country: string, testType: QaTestType) {
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
-  const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+  const authorization = req.headers.get("authorization") || "";
+  const token = /^Bearer\s+(.+)$/i.exec(authorization)?.[1] || "";
   const confirm = url.searchParams.get("confirm") || "";
   const requestedType = url.searchParams.get("type") || "workflow-e2e";
   const validType = ["api-load", "synthetic-accounts", "workflow-e2e"].includes(requestedType);
@@ -239,7 +240,8 @@ export async function POST(req: Request) {
   if (!isQaRunnerEnabled()) {
     return NextResponse.json({ error: "QA actions require an explicitly allow-listed staging deployment and isolated QA database." }, { status: 403 });
   }
-  const providedToken = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+  const postAuthorization = req.headers.get("authorization") || "";
+  const providedToken = /^Bearer\s+(.+)$/i.exec(postAuthorization)?.[1] || "";
   if (!constantTimeTokenMatches(expectedToken, providedToken)) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
