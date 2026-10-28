@@ -3,12 +3,22 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { hashEmailVerificationToken } from "@/lib/emailVerification";
+import { readBoundedJson } from "@/lib/requestBody";
 
 async function POSTHandler(req: Request) {
   const limit = await enforceRateLimit(req, { scope: "email-verification-confirm", limit: 20, windowMs: 15 * 60 * 1000 });
   if (limit) return limit;
-  const body = await req.json().catch(() => null);
-  const rawToken = typeof body?.token === "string" ? body.token.trim() : "";
+  const parsedBody = await readBoundedJson(req, 4 * 1024);
+  if (!parsedBody.ok) {
+    return NextResponse.json(
+      { error: "That verification link is invalid or incomplete." },
+      { status: parsedBody.status },
+    );
+  }
+  const body = parsedBody.value && typeof parsedBody.value === "object" && !Array.isArray(parsedBody.value)
+    ? parsedBody.value as Record<string, unknown>
+    : {};
+  const rawToken = typeof body.token === "string" ? body.token.trim() : "";
   if (!/^[a-f0-9]{64}$/i.test(rawToken)) {
     return NextResponse.json({ error: "That verification link is invalid or incomplete." }, { status: 400 });
   }
