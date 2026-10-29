@@ -21,6 +21,9 @@ assert.ok(css.includes(".desktop-nav") && css.includes("display: none !important
 assert.ok(css.includes("overflow-x: auto") && css.includes(".mobile-bottom-nav"), "Mobile navigation must be horizontally scrollable when all routes do not fit");
 assert.ok(css.includes("min-height: 48px !important"), "Mobile navigation links must provide 48px touch targets");
 assert.ok(css.includes("min-height: 44px;") && css.includes("touch-action: manipulation"), "Controls must use touch-friendly target sizing");
+assert.ok(css.includes("env(safe-area-inset-bottom)") && css.includes("env(safe-area-inset-left)"), "Mobile layout must respect device safe areas");
+assert.ok(css.includes("-webkit-text-size-adjust: 100%") && css.includes("font-size: 16px"), "Mobile form text must avoid iOS focus zoom and preserve legibility");
+assert.ok(css.includes("overflow-wrap: anywhere") && css.includes("max-width: 100%"), "Long content and media must not widen narrow viewports");
 assert.ok(css.includes("main table") && css.includes("overflow-x: auto"), "Wide tables must scroll within the viewport rather than widen the page");
 assert.ok(css.includes('[style*="minmax(280px"]') && css.includes("grid-template-columns: minmax(0, 1fr) !important"), "Wide inline grids must collapse to one column on phones");
 assert.ok(css.includes(".ops-theme-dashboard .dashboard-stat-link") && css.includes("min-width: 0 !important"), "Dashboard KPI cards must not enforce widths that overflow narrow screens");
