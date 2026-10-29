@@ -1,3 +1,4 @@
+import type { Viewport } from "next";
 import "./globals.css";
 import "./mobile-fit.css";
 import "./motion.css";
@@ -6,6 +7,12 @@ import MainNav from "./main-nav";
 import { isTesterAdmin } from "@/lib/testerAdmin";
 import { isQaRunnerEnabled } from "@/lib/qaRunnerGuard";
 import PilotFeedbackLauncher from "@/app/components/pilot-feedback-launcher";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
 
 export const metadata = {
   title: "Post2Drive",
