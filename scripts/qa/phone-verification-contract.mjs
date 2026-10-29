@@ -9,6 +9,8 @@ assert.ok(phoneSource.includes('phone.startsWith("+44")'), "UK numbers must rout
 assert.ok(phoneSource.includes('phone.startsWith("+91")'), "India numbers must route by +91 calling code");
 assert.ok(phoneSource.includes("POST2DRIVE_SMS_UK_PROVIDER"), "UK provider selection must be independent");
 assert.ok(phoneSource.includes("POST2DRIVE_SMS_INDIA_PROVIDER"), "India provider selection must be independent");
+assert.ok(phoneSource.includes("POST2DRIVE_SMS_GLOBAL_PROVIDER"), "all other configured markets must have a separate global provider slot");
+assert.ok(phoneSource.includes("Object.values(MARKETS)"), "global routing must be limited to configured market calling codes");
 assert.ok(phoneSource.includes('providerName ? "provider-adapter-not-integrated" : "provider-selection-required"'), "provider configuration must not falsely imply a working adapter");
 assert.ok(phoneSource.includes('process.env.POST2DRIVE_STAGING_TEST_PHONE_VERIFICATION === "true"'), "staging test mode must require explicit opt-in");
 assert.ok(phoneSource.includes("isQaRunnerEnabled()"), "staging test mode must use the shared isolated QA guard");
