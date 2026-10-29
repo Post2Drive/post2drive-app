@@ -34,6 +34,8 @@ assert.match(css, /prefers-reduced-motion:\s*reduce/, "Global reduced-motion sup
 assert.match(css, /\.skip-link:focus(?:-visible)?[\s\S]*?transform: translateY\(0\)/, "Skip link must become visible whenever it receives keyboard focus");
 assert.match(css, /main input,\s*main select,\s*main textarea\s*\{\s*min-height:\s*44px;/, "Form controls must meet the 44px minimum target height");
 assert.match(css, /main button \{\s*min-height: 44px;/, "Buttons must meet the 44px minimum target height");
+assert.match(css, /\.dashboard-action-button:not\(:disabled\)[\s\S]*?color:\s*#FFFFFF\s*!important;[\s\S]*?background(?:-color)?:\s*#2457D6\s*!important;/, "Dashboard primary action buttons must keep high-contrast white text on blue even when legacy overrides use !important");
+assert.match(css, /\.dashboard-action-button:disabled[\s\S]*?color:\s*#30343B\s*!important;/, "Disabled dashboard actions must remain visibly distinct and readable");
 
 
 assert.match(css, /--ease-out:\s*cubic-bezier\(0\.23, 1, 0\.32, 1\)/,
