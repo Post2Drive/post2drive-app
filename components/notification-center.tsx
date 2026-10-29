@@ -63,7 +63,7 @@ export default function NotificationCenter() {
     <section style={{ marginTop: 20, border: "1px solid var(--color-border)", borderRadius: 12, padding: 16 }}>
       <div style={{ display: "flex", gap: 12, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
         <h2 style={{ margin: 0 }}>Notifications {unread > 0 ? `· ${unread} unread` : ""}</h2>
-        <button className="dashboard-action-button" onClick={() => refresh().catch((reason) => setError(reason instanceof Error ? reason.message : "Refresh failed."))} style={dashboardActionStyle}>Refresh</button>
+        <button className="dashboard-action-button primary" onClick={() => refresh().catch((reason) => setError(reason instanceof Error ? reason.message : "Refresh failed."))} style={dashboardActionStyle}>Refresh</button>
       </div>
       {error && <p role="alert">{error}</p>}
       {items.length === 0 ? <p>No notifications yet.</p> : (
