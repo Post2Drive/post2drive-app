@@ -8,6 +8,8 @@ import { prisma } from "@/lib/prisma";
 import { isTesterAdmin } from "@/lib/testerAdmin";
 import { getPromotion, calculatePromotionalEnd } from "@/lib/promotion";
 import { emailVerificationEnabled } from "@/lib/emailVerification";
+import { isQaRunnerEnabled } from "@/lib/qaRunnerGuard";
+import { hashPilotAccessCode, PILOT_ACCESS_CODE_TTL_MS } from "@/lib/pilotAccess";
 
 async function GETHandler() {
   if (!(await isTesterAdmin())) {
@@ -80,6 +82,37 @@ async function POSTHandler(req: Request) {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
   }
   const body = parsedBody.value as { action?: unknown; accountId?: unknown; decision?: unknown };
+
+  if (body.action === "generate-pilot-code") {
+    if (!isQaRunnerEnabled()) {
+      return NextResponse.json({ error: "The UK student pilot code can only be generated in the explicitly allow-listed staging environment." }, { status: 503 });
+    }
+    const rawCode = "P2D-PILOT-" + randomBytes(12).toString("hex").toUpperCase();
+    const expiresAt = new Date(Date.now() + PILOT_ACCESS_CODE_TTL_MS);
+    const adminSession = await getServerSession(authOptions);
+    await prisma.adminAuditEvent.create({
+      data: {
+        actor: adminSession?.user?.email?.trim().toLowerCase() || "pilot-admin",
+        action: "pilot_access_code_generated",
+        entityType: "pilot_access_code",
+        entityId: "active-uk-student-pilot",
+        market: "GB",
+        details: {
+          codeHash: hashPilotAccessCode(rawCode),
+          expiresAt: expiresAt.toISOString(),
+          reusable: true,
+          plaintextStored: false,
+          purpose: "UK student end-to-end pilot",
+        },
+      },
+    });
+    return NextResponse.json({
+      success: true,
+      code: rawCode,
+      expiresAt: expiresAt.toISOString(),
+      note: "This shared code is shown once. Generating another code invalidates this one.",
+    }, { status: 201 });
+  }
 
   if (body.action === "generate-code") {
     const rawCode = "P2D-" + randomBytes(2).toString("hex").toUpperCase() + "-" + randomBytes(2).toString("hex").toUpperCase() + "-" + randomBytes(2).toString("hex").toUpperCase();
