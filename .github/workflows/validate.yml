@@ -6,7 +6,7 @@ permissions:
 on:
   workflow_dispatch:
   pull_request:
-    branches: [main, "feature/**", "integration/**"]
+    branches: [main, "feat/**", "feature/**", "integration/**"]
   push:
     branches: [main, "feat/**", "feature/**", "qa/**", "security/**", "design/**", "integration/**"]
 
