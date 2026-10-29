@@ -25,10 +25,10 @@ function numberField(value: unknown, min: number, max: number) {
   return Math.max(min, Math.min(max, Math.round(value * 100) / 100));
 }
 
-function diagnosticsOnly(value: unknown) {
+function diagnosticsOnly(value: unknown): Record<string, string | number | boolean> | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const d = value as Record<string, unknown>;
-  const output: Record<string, unknown> = {};
+  const output: Record<string, string | number | boolean> = {};
   const numeric: Record<string, [number, number]> = {
     viewportWidth: [0, 10000], viewportHeight: [0, 10000], documentWidth: [0, 20000],
     documentHeight: [0, 50000], horizontalOverflowPx: [0, 20000], screenWidth: [0, 10000],
