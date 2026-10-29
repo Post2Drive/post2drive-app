@@ -4,10 +4,10 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { generateDisplayId } from "@/lib/displayId";
 import { isUkAccount } from "@/lib/uk";
-import { calculatePromotionalEnd, getPromotion } from "@/lib/promotion";
+import { getPromotion } from "@/lib/promotion";
 import { createEmailVerificationToken, emailDeliveryConfigured, emailVerificationEnabled, sendVerificationEmail } from "@/lib/emailVerification";
 import { marketForAccount } from "@/lib/market";
-import { hashPilotAccessCode, isPilotTesterCode } from "@/lib/pilotAccess";
+import { hashPilotAccessCode, isPilotTesterCode, PILOT_ACCESS_CODE_TTL_MS } from "@/lib/pilotAccess";
 import { isQaRunnerEnabled } from "@/lib/qaRunnerGuard";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { readBoundedJson } from "@/lib/requestBody";
@@ -206,17 +206,9 @@ async function POSTHandler(
     let pilotFreeEndsAt: Date | undefined;
     if (isPilotAccess) {
       pilotTrialStartedAt = new Date();
-      const calculatedEnd = await calculatePromotionalEnd({
-        country,
-        currency,
-        planType: selectedPlan,
-        trialStartedAt: pilotTrialStartedAt,
-        freeMonthsEarned: 0,
-      });
-      if (!calculatedEnd) {
-        return NextResponse.json({ error: "Unable to start the UK staging pilot access window." }, { status: 503 });
-      }
-      pilotFreeEndsAt = calculatedEnd;
+      // A staging QA account needs its own bounded access window; do not make
+      // product testing dependent on whether the public UK launch promotion is active.
+      pilotFreeEndsAt = new Date(pilotTrialStartedAt.getTime() + 90 * 24 * 60 * 60 * 1000);
     }
 
     const normalizedEmail = email.trim().toLowerCase();
@@ -408,6 +400,9 @@ async function POSTHandler(
           if (testerCodeHash) {
             const accessCode = await tx.testerAccessCode.findUnique({ where: { codeHash: testerCodeHash } });
             if (!accessCode || accessCode.claimedAt || accessCode.claimedByAccountId) {
+              throw new Error("TESTER_CODE_INVALID_OR_USED");
+            }
+            if (isPilotAccess && Date.now() - accessCode.createdAt.getTime() > PILOT_ACCESS_CODE_TTL_MS) {
               throw new Error("TESTER_CODE_INVALID_OR_USED");
             }
             const claim = await tx.testerAccessCode.updateMany({
