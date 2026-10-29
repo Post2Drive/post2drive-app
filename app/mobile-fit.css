@@ -183,3 +183,13 @@ textarea {
     overflow-wrap: anywhere;
   }
 }
+
+
+/* Keep compact navigation labels readable even when global active-state
+   styling changes button or child text colors. */
+@media (max-width: 700px) {
+  .mobile-nav-more,
+  .mobile-nav-more > span {
+    color: #30343B !important;
+  }
+}
