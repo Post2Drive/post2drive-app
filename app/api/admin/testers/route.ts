@@ -9,7 +9,7 @@ import { isTesterAdmin } from "@/lib/testerAdmin";
 import { getPromotion, calculatePromotionalEnd } from "@/lib/promotion";
 import { emailVerificationEnabled } from "@/lib/emailVerification";
 import { isQaRunnerEnabled } from "@/lib/qaRunnerGuard";
-import { hashPilotAccessCode, PILOT_ACCESS_CODE_TTL_MS } from "@/lib/pilotAccess";
+import { hashPilotAccessCode } from "@/lib/pilotAccess";
 
 async function GETHandler() {
   if (!(await isTesterAdmin())) {
@@ -83,34 +83,39 @@ async function POSTHandler(req: Request) {
   }
   const body = parsedBody.value as { action?: unknown; accountId?: unknown; decision?: unknown };
 
-  if (body.action === "generate-pilot-code") {
+  if (body.action === "generate-pilot-codes") {
     if (!isQaRunnerEnabled()) {
-      return NextResponse.json({ error: "The UK student pilot code can only be generated in the explicitly allow-listed staging environment." }, { status: 503 });
+      return NextResponse.json({ error: "UK-market QA codes can only be generated in the explicitly allow-listed staging environment." }, { status: 503 });
     }
-    const rawCode = "P2D-PILOT-" + randomBytes(12).toString("hex").toUpperCase();
-    const expiresAt = new Date(Date.now() + PILOT_ACCESS_CODE_TTL_MS);
+    const requestedCount = body.count === undefined ? 10 : Number(body.count);
+    if (!Number.isInteger(requestedCount) || requestedCount < 1 || requestedCount > 100) {
+      return NextResponse.json({ error: "Generate between 1 and 100 single-use QA codes." }, { status: 400 });
+    }
+
+    const codes = Array.from({ length: requestedCount }, () =>
+      "P2D-UKQA-" + randomBytes(12).toString("hex").toUpperCase()
+    );
     const adminSession = await getServerSession(authOptions);
-    await prisma.adminAuditEvent.create({
-      data: {
-        actor: adminSession?.user?.email?.trim().toLowerCase() || "pilot-admin",
-        action: "pilot_access_code_generated",
-        entityType: "pilot_access_code",
-        entityId: "active-uk-student-pilot",
-        market: "GB",
-        details: {
-          codeHash: hashPilotAccessCode(rawCode),
-          expiresAt: expiresAt.toISOString(),
-          reusable: true,
-          plaintextStored: false,
-          purpose: "UK student end-to-end pilot",
+    await prisma.$transaction(async tx => {
+      await tx.testerAccessCode.createMany({
+        data: codes.map(code => ({ codeHash: hashPilotAccessCode(code) })),
+      });
+      await tx.adminAuditEvent.create({
+        data: {
+          actor: adminSession?.user?.email?.trim().toLowerCase() || "pilot-admin",
+          action: "pilot_tester_codes_generated",
+          entityType: "tester_access_code_batch",
+          market: "GB",
+          details: { count: requestedCount, prefix: "P2D-UKQA", singleUse: true, plaintextStored: false, stagingOnly: true },
         },
-      },
+      });
     });
+
     return NextResponse.json({
       success: true,
-      code: rawCode,
-      expiresAt: expiresAt.toISOString(),
-      note: "This shared code is shown once. Generating another code invalidates this one.",
+      count: codes.length,
+      codes,
+      note: "Each code works once for one GB/GBP staging test account. Copy the list now; plaintext is not stored or retrievable.",
     }, { status: 201 });
   }
 
