@@ -46,8 +46,14 @@ assert.match(auth, /allowedStagingPilotLogin/);
 assert.match(auth, /isQaRunnerEnabled/);
 assert.match(signupPage, /UK-market QA \/ tester code/);
 assert.match(signupPage, /Tester mode skips real identity, company and vehicle eligibility checks/);
-assert.match(bid, /!bidderAccount\.isTester && bidderAccount\.type !== "driver"/);
-assert.match(directAccept, /!account\.isTester && account\.type !== "driver"/);
+assert.match(bid, /isQaRunnerEnabled\(\)/);
+assert.match(bid, /const stagingQaTester = Boolean/);
+assert.match(bid, /!stagingQaTester && bidderAccount\.type !== "driver"/);
+assert.match(directAccept, /isQaRunnerEnabled\(\)/);
+assert.match(directAccept, /const stagingQaTester = Boolean/);
+assert.match(directAccept, /!stagingQaTester && account\.type !== "driver"/);
+assert.match(directAccept, /currentDriverStagingQaTester = Boolean/);
+assert.match(directAccept, /!currentDriverStagingQaTester/);
 
 assert.match(feedback, /if \(!isQaRunnerEnabled\(\)\)/);
 assert.match(feedback, /!account\.isTester \|\| !isUkAccount\(account\)/);
