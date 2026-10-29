@@ -86,6 +86,8 @@ jobs:
         run: node scripts/qa/ui-contrast-contract.mjs
       - name: Validate QA runner staging-only guard
         run: npm run qa:qa-runner-guard
+      - name: Validate country-aware phone verification routing
+        run: npm run qa:phone-verification-contract
       - name: Validate durable QA queue and worker lifecycle
         run: npm run qa:worker-contract
       - name: Validate all-market time zones, overseas destinations and DST edges
