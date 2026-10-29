@@ -11,9 +11,9 @@ export const authOptions: NextAuthOptions = {
   pages: { signIn: "/login" },
   providers: [
     CredentialsProvider({
-      name: "Email and password",
+      name: "Email or India phone and password",
       credentials: {
-        email: { label: "Email", type: "email" },
+        email: { label: "Email or phone number (India accounts)", type: "text" },
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials, req) {
