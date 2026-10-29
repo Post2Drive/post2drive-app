@@ -18,6 +18,7 @@ const docs = read("../../docs/UK_STUDENT_PILOT.md");
 
 assert.match(pilotAccess, /P2D-UKQA-\[A-F0-9\]\{24\}/);
 assert.match(pilotAccess, /createHash\("sha256"\)/);
+assert.match(pilotAccess, /PILOT_ACCESS_CODE_TTL_MS = 14 \* 24 \* 60 \* 60 \* 1000/);
 assert.match(signup, /isPilotTesterCode\(suppliedTesterCode\)/);
 assert.match(signup, /isQaRunnerEnabled\(\)/);
 assert.match(signup, /hashPilotAccessCode\(suppliedTesterCode\)/);
@@ -29,6 +30,8 @@ assert.match(signup, /runId: "uk-market-student-qa"/);
 assert.match(signup, /emailVerifiedAt: isPilotAccess/);
 assert.match(signup, /tx\.testerAccessCode\.updateMany/);
 assert.match(signup, /if \(testerCodeHash\) \{/);
+assert.match(signup, /accessCode\.createdAt\.getTime\(\) > PILOT_ACCESS_CODE_TTL_MS/);
+assert.match(signup, /new Date\(pilotTrialStartedAt\.getTime\(\) \+ 90 \* 24 \* 60 \* 60 \* 1000\)/);
 assert.match(signup, /testerApplicationPending: Boolean\(testerCodeHash\) && !isPilotAccess/);
 assert.doesNotMatch(signup, /verificationStatus:\s*"verified"/);
 
