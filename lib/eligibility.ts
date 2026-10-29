@@ -46,6 +46,7 @@ export async function hasEligibleVehicleForJob(accountId: string, market: Vehicl
 }
 
 /** Posting and awarding a bid require both verified identity and approved company status. */
-export function canPostJobs(account: { verificationStatus: string; companyVerificationStatus: string }) {
+export function canPostJobs(account: { verificationStatus: string; companyVerificationStatus: string; country?: string | null; currency?: string | null; phoneVerifiedAt?: Date | string | null }) {
+  if (account.country === "IN" && account.currency === "INR") return Boolean(account.phoneVerifiedAt);
   return account.verificationStatus === "verified" && account.companyVerificationStatus === "verified";
 }
