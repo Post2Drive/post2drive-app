@@ -168,3 +168,14 @@ textarea {
   min-width: 0;
   max-width: 100%;
 }
+
+
+/* The shared navigation sets nowrap for desktop. On compact bottom navigation,
+   allow labels to wrap within each equal-width target instead of overflowing. */
+@media (max-width: 700px) {
+  .mobile-nav-link,
+  .mobile-nav-more {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}
