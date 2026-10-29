@@ -108,3 +108,63 @@ main input, main select, main textarea { max-width: 100%; }
     transition: none !important;
   }
 }
+
+
+/* Keep the public homepage hero and route panel from retaining desktop grid
+   minimums when gutters are added on small phones. */
+@media (max-width: 760px) {
+  main.home-page {
+    width: 100%;
+    max-width: 100%;
+    padding: 20px 12px 24px;
+  }
+
+  .home-hero {
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+    padding: clamp(18px, 5vw, 28px);
+    border-radius: 18px;
+  }
+
+  .home-hero > *,
+  .home-hero-copy,
+  .home-route-panel {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .home-hero h1 {
+    font-size: clamp(28px, 8vw, 40px);
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (max-width: 380px) {
+  main.home-page {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .home-hero {
+    padding: 16px 12px;
+  }
+}
+
+/* Form controls must be allowed to shrink inside flex/grid columns. */
+input,
+select,
+textarea {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.auth-page {
+  width: 100%;
+  min-width: 0;
+}
+
+.auth-page > * {
+  min-width: 0;
+  max-width: 100%;
+}
