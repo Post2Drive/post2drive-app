@@ -16,8 +16,40 @@ if [ -z "${APK:-}" ] || [ ! -s "$APK" ]; then
   exit 1
 fi
 
+echo "Waiting for Android boot and package manager readiness."
+booted=0
+for attempt in $(seq 1 60); do
+  if [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\\r')" = "1" ] && \
+     adb shell service check package 2>/dev/null | grep -qi "found"; then
+    booted=1
+    break
+  fi
+  sleep 2
+done
+if [ "$booted" -ne 1 ]; then
+  echo "Android emulator did not become ready for package installation."
+  adb shell getprop sys.boot_completed || true
+  adb shell service check package || true
+  exit 1
+fi
+
 echo "Installing APK: $APK"
-adb install -r "$APK"
+installed=0
+for attempt in 1 2 3; do
+  if adb install -r "$APK"; then
+    installed=1
+    break
+  fi
+  echo "APK installation attempt $attempt failed; reconnecting to the emulator before retry."
+  adb reconnect || true
+  adb wait-for-device
+  sleep $((attempt * 3))
+done
+if [ "$installed" -ne 1 ]; then
+  echo "Could not install the debug APK after 3 attempts."
+  adb logcat -d -t 200 || true
+  exit 1
+fi
 adb logcat -c
 adb shell am force-stop com.post2drive.app
 adb shell monkey -p com.post2drive.app 1
