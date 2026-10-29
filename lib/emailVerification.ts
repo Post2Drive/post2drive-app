@@ -53,12 +53,10 @@ function escapeHtml(value: string) {
 }
 
 export async function sendVerificationEmail(email: string, name: string, token: string) {
-  const apiKey = process.env.RESEND_API_KEY?.trim();
-  const from = process.env.EMAIL_FROM?.trim();
   const configuredBaseUrl = process.env.NEXTAUTH_URL?.trim();
-  const baseUrl = (configuredBaseUrl || "").replace(/\/+$/, "");
+  const baseUrl = (configuredBaseUrl || "").replace(/\\/+$/, "");
 
-  if (!apiKey || !from || !baseUrl) {
+  if (!baseUrl) {
     throw new Error("Email delivery is not configured.");
   }
 
@@ -75,25 +73,17 @@ export async function sendVerificationEmail(email: string, name: string, token: 
     </div>
   `;
 
-  const response = await fetch(RESEND_ENDPOINT, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from,
-      to: [email],
-      subject: "Verify your Post2Drive email",
-      html,
-      text: `Hello ${name || "there"},\n\nVerify your Post2Drive email using this link:\n${verificationUrl}\n\nThis link expires in 24 hours and can only be used once. If you did not create an account, ignore this email.`,
-    }),
+  const { deliverTransactionalEmail } = await import("@/lib/emailProvider");
+  const result = await deliverTransactionalEmail({
+    to: email,
+    subject: "Verify your Post2Drive email",
+    html,
+    text: `Hello ${name || "there"},\\n\\nVerify your Post2Drive email using this link:\\n${verificationUrl}\\n\\nThis link expires in 24 hours and can only be used once. If you did not create an account, ignore this email.`,
   });
-
-  if (!response.ok) {
-    const responseText = await response.text().catch(() => "");
-    console.error("Email verification delivery failed:", response.status, responseText.slice(0, 300));
-    throw new Error("Could not send verification email.");
+  if (!result.accepted) {
+    throw new Error(result.reason === "not_configured"
+      ? "Email delivery is not configured."
+      : "Could not send verification email.");
   }
 
   await prisma.emailVerificationToken.updateMany({
