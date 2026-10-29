@@ -2,7 +2,6 @@ import { createHash, randomBytes } from "crypto";
 import { prisma } from "@/lib/prisma";
 
 const TOKEN_LIFETIME_MS = 24 * 60 * 60 * 1000;
-const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
 export function emailVerificationEnabled() {
   return process.env.EMAIL_VERIFICATION_ENABLED?.trim().toLowerCase() === "true";
