@@ -284,7 +284,7 @@ async function GETHandler(req: Request) {
         .filter((id): id is string => Boolean(id))
     )];
     const isJobParty = job.posterId === accountId || job.acceptedById === accountId;
-    const canSeePartyContacts = contactVisibleStatuses.includes(job.status) && isJobParty;
+    const canSeePartyContacts = country === "IN" || (contactVisibleStatuses.includes(job.status) && isJobParty);
 
     // Explicit response allowlist: never serialize the full Prisma row.
     // Internal account IDs and other drivers' identities stay server-side.
