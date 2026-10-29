@@ -272,3 +272,165 @@ textarea {
     border-color: #2457D6 !important;
   }
 }
+
+
+/* Keep marketplace status-filter labels readable despite legacy global button
+   colour overrides that force white text on inline-styled buttons. */
+.marketplace-job-tabs button,
+.marketplace-job-tabs button:visited,
+.marketplace-job-tabs button > *,
+.marketplace-job-tabs button > * > * {
+  color: #172B4D !important;
+  -webkit-text-fill-color: #172B4D !important;
+}
+
+.marketplace-job-tabs button[aria-pressed="true"],
+.marketplace-job-tabs button[aria-pressed="true"] > *,
+.marketplace-job-tabs button[aria-pressed="true"] > * > * {
+  color: #173FA8 !important;
+  -webkit-text-fill-color: #173FA8 !important;
+  background-color: #EAF0FF !important;
+  border-bottom-color: #2457D6 !important;
+}
+
+.marketplace-job-tabs button:focus-visible {
+  outline: 3px solid #2457D6 !important;
+  outline-offset: 2px;
+}
+
+/* The homepage hero CTAs need the same contrast on desktop and mobile. */
+.home-button.home-button-primary,
+.home-button.home-button-primary:visited,
+.home-button.home-button-primary > *,
+.home-button.home-button-primary > * > * {
+  background-color: #2457D6 !important;
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+  border-color: #2457D6 !important;
+}
+
+.home-button.home-button-primary:hover,
+.home-button.home-button-primary:focus-visible {
+  background-color: #173FA8 !important;
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+  border-color: #173FA8 !important;
+}
+
+.home-button.home-button-secondary,
+.home-button.home-button-secondary:visited,
+.home-button.home-button-secondary > *,
+.home-button.home-button-secondary > * > * {
+  background-color: #FFFFFF !important;
+  color: #2457D6 !important;
+  -webkit-text-fill-color: #2457D6 !important;
+  border-color: #2457D6 !important;
+}
+
+
+/* Product-wide selected-control contrast guardrails.
+   Inline-style colour declarations are otherwise overridden by legacy global
+   rules that assume every button has a saturated primary background. */
+button[aria-pressed],
+button[aria-pressed] *,
+[role="tab"],
+[role="tab"] *,
+[role="tab"][aria-selected="true"],
+[role="tab"][aria-selected="true"] * {
+  -webkit-text-fill-color: currentColor;
+}
+
+button[aria-pressed="true"],
+button[aria-pressed="true"] *,
+[role="tab"][aria-selected="true"],
+[role="tab"][aria-selected="true"] * {
+  color: #173FA8 !important;
+  -webkit-text-fill-color: #173FA8 !important;
+}
+
+.main-nav-link[aria-current="page"],
+.mobile-nav-link[aria-current="page"],
+.mobile-more-link[aria-current="page"] {
+  color: #173FA8 !important;
+  -webkit-text-fill-color: #173FA8 !important;
+}
+
+.main-nav-link[aria-current="page"] {
+  background-color: #EAF0FF !important;
+  border-radius: 8px;
+}
+
+/* The separate operations analytics dashboard uses its own stylesheet. Keep
+   secondary/filter actions readable on white, including disabled controls. */
+.ops-theme-dashboard button:not(.primary),
+.ops-theme-dashboard button:not(.primary) *,
+.ops-theme-dashboard .button-secondary,
+.ops-theme-dashboard .button-secondary * {
+  color: #2457D6;
+  -webkit-text-fill-color: #2457D6;
+}
+
+.ops-theme-dashboard button.primary,
+.ops-theme-dashboard button.primary *,
+.ops-theme-dashboard button.primary:disabled,
+.ops-theme-dashboard button.primary:disabled * {
+  color: #FFFFFF;
+  -webkit-text-fill-color: #FFFFFF;
+}
+
+/* Rendered-browser audit fix: keep active mobile navigation labels distinct
+   from their surfaces. Legacy global rules paint active nav blue; pair that
+   with a pale-blue surface rather than overriding the foreground alone. */
+@media (max-width: 700px) {
+  .mobile-bottom-nav .mobile-nav-link[aria-current="page"],
+  .mobile-bottom-nav .mobile-nav-link[aria-current="page"] *,
+  .mobile-bottom-nav .mobile-more-link[aria-current="page"],
+  .mobile-bottom-nav .mobile-more-link[aria-current="page"] * {
+    color: #173FA8 !important;
+    -webkit-text-fill-color: #173FA8 !important;
+    background-color: #EAF0FF !important;
+    border-color: #2457D6 !important;
+  }
+
+  .mobile-bottom-nav .mobile-nav-more,
+  .mobile-bottom-nav .mobile-nav-more > span {
+    color: #30343B !important;
+    -webkit-text-fill-color: #30343B !important;
+    background-color: #FFFFFF !important;
+  }
+
+  .mobile-bottom-nav .mobile-nav-more.is-active,
+  .mobile-bottom-nav .mobile-nav-more.is-active > span {
+    color: #173FA8 !important;
+    -webkit-text-fill-color: #173FA8 !important;
+    background-color: #EAF0FF !important;
+  }
+
+  .mobile-bottom-nav .mobile-more-menu {
+    color: #172B4D !important;
+    background-color: #FFFFFF !important;
+  }
+}
+
+/* The mobile navigation can remain visible at tablet breakpoints. Keep this
+   contrast pairing independent of viewport media queries and defeat legacy
+   active-state rules that force a blue background behind blue text. */
+.mobile-bottom-nav .mobile-nav-link[aria-current="page"],
+.mobile-bottom-nav .mobile-nav-link[aria-current="page"] *,
+.mobile-bottom-nav .mobile-more-link[aria-current="page"],
+.mobile-bottom-nav .mobile-more-link[aria-current="page"] * {
+  color: #173FA8 !important;
+  -webkit-text-fill-color: #173FA8 !important;
+  background: #EAF0FF !important;
+  background-color: #EAF0FF !important;
+  border-color: #2457D6 !important;
+}
+
+.mobile-bottom-nav .mobile-nav-more.is-active,
+.mobile-bottom-nav .mobile-nav-more.is-active > span {
+  color: #173FA8 !important;
+  -webkit-text-fill-color: #173FA8 !important;
+  background: #EAF0FF !important;
+  background-color: #EAF0FF !important;
+}
+
