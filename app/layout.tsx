@@ -1,4 +1,5 @@
 import "./globals.css";
+import "./mobile-fit.css";
 import "./motion.css";
 import Providers from "./providers";
 import MainNav from "./main-nav";
