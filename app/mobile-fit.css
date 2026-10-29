@@ -434,3 +434,43 @@ button[aria-pressed="true"] *,
   background-color: #EAF0FF !important;
 }
 
+
+
+/* Dashboard action buttons must override the later mobile-fit legacy rule,
+   which applies blue -webkit-text-fill-color to every non-primary button.
+   This stylesheet is imported after globals.css, so keep the final override here. */
+.ops-theme-dashboard button.dashboard-action-button,
+.ops-theme-dashboard button.dashboard-action-button *,
+.ops-theme-dashboard button.dashboard-action-button:visited,
+.ops-theme-dashboard button.dashboard-action-button:visited * {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+  background-color: #2457D6 !important;
+  border-color: #2457D6 !important;
+}
+
+.ops-theme-dashboard button.dashboard-action-button:hover,
+.ops-theme-dashboard button.dashboard-action-button:hover *,
+.ops-theme-dashboard button.dashboard-action-button:focus-visible,
+.ops-theme-dashboard button.dashboard-action-button:focus-visible * {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+  background-color: #173FA8 !important;
+  border-color: #173FA8 !important;
+}
+
+.ops-theme-dashboard button.dashboard-action-button:active,
+.ops-theme-dashboard button.dashboard-action-button:active * {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+  background-color: #123783 !important;
+  border-color: #123783 !important;
+}
+
+.ops-theme-dashboard button.dashboard-action-button:disabled,
+.ops-theme-dashboard button.dashboard-action-button:disabled * {
+  color: #30343B !important;
+  -webkit-text-fill-color: #30343B !important;
+  background-color: #E8EBF0 !important;
+  border-color: #9299A5 !important;
+}
