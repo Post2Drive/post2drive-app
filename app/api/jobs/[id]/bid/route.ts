@@ -144,7 +144,7 @@ async function POSTHandler(
     );
   }
 
-  if (!bidderAccount?.isTester || (isPilotQaAccount && !stagingQaTester)) {
+  if (bidderAccount && (!bidderAccount.isTester || (isPilotQaAccount && !stagingQaTester))) {
     const bidderMarket = getLocalisationProfile({ country: bidderAccount.country, currency: bidderAccount.currency });
     const marketToday = marketDateKey(new Date(), bidderMarket?.timeZone ?? "UTC");
     const dateCutoff = new Date(marketToday + "T00:00:00.000Z");

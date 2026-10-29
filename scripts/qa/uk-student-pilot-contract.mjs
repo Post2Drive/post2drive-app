@@ -51,7 +51,7 @@ assert.match(signupPage, /Tester mode skips real identity, company and vehicle e
 assert.match(bid, /isQaRunnerEnabled\(\)/);
 assert.match(bid, /const stagingQaTester = Boolean/);
 assert.match(bid, /qaTestAccounts: \{ select: \{ runId: true \} \}/, "bid route must identify the pilot cohort explicitly");
-assert.match(bid, /isPilotQaAccount && !stagingQaTester/, "pilot vehicle bypass must stop when the staging guard is off");
+assert.match(bid, /bidderAccount && \(!bidderAccount\.isTester \|\| \(isPilotQaAccount && !stagingQaTester\)\)/, "pilot vehicle bypass must stop when the staging guard is off");
 assert.match(bid, /!stagingQaTester && bidderAccount\.type !== "driver"/);
 assert.match(directAccept, /isQaRunnerEnabled\(\)/);
 assert.match(directAccept, /const stagingQaTester = Boolean/);
