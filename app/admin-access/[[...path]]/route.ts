@@ -74,7 +74,12 @@ async function proxy(request: NextRequest, context: RouteContext): Promise<Respo
   }
   // The public request's origin is checked above. The embedded service then
   // receives a trusted internal same-origin value for its own CSRF guard.
-  if (isAdminAction) headers.set("origin", "https://127.0.0.1:3101");
+  if (isAdminAction) {
+    // The upstream dashboard validates Origin against Host. Pin both to the
+    // internal service authority after the public same-origin check above.
+    headers.set("host", "127.0.0.1:3101");
+    headers.set("origin", "https://127.0.0.1:3101");
+  }
   else {
     const origin = request.headers.get("origin");
     if (origin) headers.set("origin", origin);
