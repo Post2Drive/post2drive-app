@@ -1,15 +1,25 @@
 # Provider-independent integration plan
 
-**Status:** contracts defined; provider adapters and live-provider tests remain pending.
+**Status:** email sends now route through a configurable provider adapter; OTP lifecycle and payment-event integrity primitives plus contract tests are added. Persistent OTP storage, route integration, durable webhook deduplication, and provider-backed checkout/webhook integration remain pending.
 **Rule:** no credentials, provider selection, deployment, or production configuration is required to complete this phase.
 
 ## Boundaries
 
 - `lib/providerContracts.ts` defines typed boundaries for transactional email, SMS OTP, checkout creation, and verified payment events.
+- `lib/emailProvider.ts` contains the configurable Resend adapter and fails closed when unconfigured; it does not log provider response bodies.
+- `lib/providerLifecycle.ts` contains OTP expiry/cooldown/attempt/single-use rules and a payment-event validation boundary. Its in-memory store is test-only; production OTP storage must be durable and its `consume` operation atomic.
+- `scripts/qa/provider-lifecycle-contract.mjs` is included in `qa:all` for provider-unconfigured, OTP expiry/cooldown/attempt/single-use, and payment replay/amount/currency checks.
 - Existing account, market, pricing, and job logic remains authoritative. Adapters must not decide eligibility or calculate prices.
 - Provider delivery acceptance is not proof that a message was received or a payment settled.
 - A production adapter is unavailable until it is implemented, registered, configured with secrets in the deployment secret store, and tested.
 - Test fakes must be injected by tests; never activate fake success using a production environment variable or silently fall back to a fake provider.
+
+## Implementation status and remaining integration work
+
+- Existing email verification and password reset functions now call the provider-independent email delivery interface. Their token creation, SHA-256/HMAC hashing, 24-hour/1-hour expiry, and token-use database guards were preserved. Existing cooldown/invalidation logic was not redesigned.
+- OTP currently has a store interface and an explicitly test-only in-memory implementation. It is **not production-ready** until a Prisma-backed store, atomic consume/update, delivery adapter call, API endpoints, and account `phoneVerifiedAt` transition are wired and tested. No test code or OTP is exposed to production users.
+- Payment validation primitives reject unverified events and amount/currency mismatch and require event IDs for deduplication. They are **not yet wired** to the existing subscription webhook or a durable unique event ledger. Do not interpret this as payment-provider integration or live settlement readiness.
+- Keep India access free after phone OTP with no person/company verification fee. UK pricing/verification remains separate.
 
 ## Email: account verification and password reset
 
