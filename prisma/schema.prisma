@@ -136,6 +136,8 @@ model Account {
   companyVerificationSubmittedAt DateTime?
   companyVerifiedAt DateTime?
   verifiedAt         DateTime?
+  // India marketplace access is unlocked only after phone OTP verification.
+  phoneVerifiedAt     DateTime?
   isTester           Boolean            @default(false)
   testerApprovalStatus TesterApprovalStatus?
 
@@ -325,7 +327,7 @@ model User {
   accountId String
 
   name         String
-  email          String    @unique
+  email          String?   @unique
   emailVerifiedAt DateTime?
   phone          String
   passwordHash   String

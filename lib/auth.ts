@@ -2,7 +2,7 @@ import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
-import { emailVerificationEnabled } from "@/lib/emailVerification";
+import { emailVerificationRequiredForCountry } from "@/lib/emailVerification";
 import { checkRateLimit, clientNetworkIdentity } from "@/lib/rateLimit";
 import { isAuthorizedQaRunId } from "@/lib/qaRunAuthorization";
 
@@ -11,15 +11,16 @@ export const authOptions: NextAuthOptions = {
   pages: { signIn: "/login" },
   providers: [
     CredentialsProvider({
-      name: "Email and password",
+      name: "Email or India phone and password",
       credentials: {
-        email: { label: "Email", type: "email" },
+        email: { label: "Email or phone number (India accounts)", type: "text" },
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials, req) {
         if (!credentials?.email || !credentials?.password) return null;
 
-        const normalizedEmail = credentials.email.trim().toLowerCase();
+        const identifier = credentials.email.trim();
+        const normalizedEmail = identifier.toLowerCase();
         const rawQaRunId = req.headers?.["x-post2drive-qa-run-id"];
         const qaRunId = Array.isArray(rawQaRunId) ? rawQaRunId[0] : rawQaRunId;
         const authorizedQaRun = qaRunId ? await isAuthorizedQaRunId(qaRunId) : false;
@@ -56,10 +57,21 @@ export const authOptions: NextAuthOptions = {
           if (!networkLimit.allowed || !emailLimit.allowed) return null;
         }
 
-        const user = await prisma.user.findUnique({
-          where: { email: normalizedEmail },
-          include: { account: true },
-        });
+        const looksLikeEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail);
+        let user = looksLikeEmail
+          ? await prisma.user.findUnique({ where: { email: normalizedEmail }, include: { account: true } })
+          : null;
+
+        // India accounts may register without email. Phone sign-in is India-only
+        // and fails closed if legacy duplicate phone numbers make the identity ambiguous.
+        if (!looksLikeEmail) {
+          const phoneMatches = await prisma.user.findMany({
+            where: { phone: identifier, account: { country: "IN" } },
+            include: { account: true },
+            take: 2,
+          });
+          if (phoneMatches.length === 1) user = phoneMatches[0];
+        }
         if (!user || user.account.deletionRequestedAt) return null;
 
         const valid = await bcrypt.compare(credentials.password, user.passwordHash);
@@ -68,7 +80,7 @@ export const authOptions: NextAuthOptions = {
         // Tester applicants can sign in to add the vehicle details needed for admin review.
         // All other new accounts must verify email when the feature is enabled.
         if (
-          emailVerificationEnabled() &&
+          emailVerificationRequiredForCountry(user.account.country) &&
           !user.emailVerifiedAt &&
           user.account.testerApprovalStatus !== "pending"
         ) {

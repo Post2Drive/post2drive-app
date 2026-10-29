@@ -158,7 +158,8 @@ try {
     if (viewport.width === 320) {
       await page.goto(new URL("/signup", baseURL).toString(), { waitUntil: "domcontentloaded" });
       await page.getByLabel("Choose your market").selectOption("IN");
-      await page.getByLabel("Registered company name").fill("QA accessibility fixture business");
+      // India intentionally has no registered-company-name field. Exercise its
+      // market-specific first step without relying on UK/international fields.
       await page.getByRole("button", { name: "Continue" }).click();
       await page.waitForFunction(() => document.activeElement?.textContent?.trim() === "Vehicles & capacity");
       await page.getByRole("button", { name: "Back" }).click();
@@ -166,7 +167,9 @@ try {
     }
 
     await page.goto(new URL("/login", baseURL).toString(), { waitUntil: "domcontentloaded" });
-    await page.getByLabel("Email", { exact: true }).fill(email);
+    // The fixture is an India-market account, whose identifier label explicitly
+    // permits email or phone; non-India accounts keep the email-only label.
+    await page.getByLabel(/Email or phone number \(India accounts\)/).fill(email);
     await page.getByLabel("Password", { exact: true }).fill(password);
     await page.getByRole("button", { name: "Log in" }).click();
     await page.waitForURL(url => url.pathname === "/dashboard", { timeout: 15_000 });

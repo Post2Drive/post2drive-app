@@ -109,7 +109,7 @@ async function POSTHandler(req: Request) {
 
     const now = new Date();
     const todayInMarket = marketDateKey(now, marketProfile?.timeZone ?? "UTC");
-    if (!account.isTester && account.testerApprovalStatus !== "pending") {
+    if (account.country !== "IN" && !account.isTester && account.testerApprovalStatus !== "pending") {
       // Date inputs represent whole local calendar days. Treat today's expiry as valid
       // through the end of that market day instead of rejecting it at midnight UTC.
       if (!insuranceValidUntil || !insuranceDate.dateKey || insuranceDate.dateKey < todayInMarket) {

@@ -10,6 +10,7 @@ import { markDriverOpportunityAccepted } from "@/lib/opportunities";
 import { recordAcceptedJobUsage } from "@/lib/usage";
 import { getLocalisationProfile } from "@/lib/localisation";
 import { marketDateKey } from "@/lib/vehicleDates";
+import { isIndiaPhoneVerifiedAccount } from "@/lib/eligibility";
 
 async function POSTHandler(
   req: Request,
@@ -102,14 +103,15 @@ async function POSTHandler(
         isTester: true,
         country: true,
         currency: true,
+        phoneVerifiedAt: true,
       },
     });
 
-  if (account && account.type !== "driver" && account.companyVerificationStatus !== "verified") {
+  if (account && !isIndiaPhoneVerifiedAccount(account) && account.type !== "driver" && account.companyVerificationStatus !== "verified") {
     return NextResponse.json({ error: "Company approval is required for this account before accepting jobs." }, { status: 403 });
   }
 
-  if (account?.verificationStatus !== "verified" && !account?.isTester) {
+  if (!account || (!isIndiaPhoneVerifiedAccount(account) && account.verificationStatus !== "verified" && !account.isTester)) {
     return NextResponse.json(
       {
         error:
@@ -119,7 +121,7 @@ async function POSTHandler(
     );
   }
 
-  if (!account?.isTester) {
+  if (account && !account.isTester && !isIndiaPhoneVerifiedAccount(account)) {
     const driverMarket = getLocalisationProfile({ country: account.country, currency: account.currency });
     const marketToday = marketDateKey(new Date(), driverMarket?.timeZone ?? "UTC");
     const dateCutoff = new Date(marketToday + "T00:00:00.000Z");
@@ -160,12 +162,12 @@ async function POSTHandler(
 
           const currentDriver = await tx.account.findUnique({
             where: { id: accountId },
-            select: { type: true, verificationStatus: true, companyVerificationStatus: true, isTester: true, country: true, currency: true },
+            select: { type: true, verificationStatus: true, companyVerificationStatus: true, isTester: true, country: true, currency: true, phoneVerifiedAt: true },
           });
-          if (!currentDriver || (currentDriver.type !== "driver" && currentDriver.companyVerificationStatus !== "verified") || (currentDriver.verificationStatus !== "verified" && !currentDriver.isTester)) {
+          if (!currentDriver || (!isIndiaPhoneVerifiedAccount(currentDriver) && ((currentDriver.type !== "driver" && currentDriver.companyVerificationStatus !== "verified") || (currentDriver.verificationStatus !== "verified" && !currentDriver.isTester)))) {
             throw new Error("DRIVER_NOT_VERIFIED");
           }
-          if (!currentDriver.isTester) {
+          if (!currentDriver.isTester && !isIndiaPhoneVerifiedAccount(currentDriver)) {
             const driverMarket = getLocalisationProfile({ country: currentDriver.country, currency: currentDriver.currency });
             const marketToday = marketDateKey(new Date(), driverMarket?.timeZone ?? "UTC");
             const dateCutoff = new Date(marketToday + "T00:00:00.000Z");

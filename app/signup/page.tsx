@@ -20,7 +20,7 @@ export default function SignupPage() {
     }
   }, [step]);
   const [form, setForm] = useState({
-    name: "", email: "", phone: "", password: "", companyName: "",
+    name: "", email: "", phone: "", password: "", companyName: "", companyNumber: "",
     planType: "individual", fleetVehicleCount: "1", isSoleTrader: false,
     country: "", currency: "", referralCode: "", testerCode: "",
     termsAccepted: false, marketResearch: {
@@ -57,16 +57,16 @@ export default function SignupPage() {
     setForm((current) => ({ ...current, [key]: value }));
   }
   function changeCountry(country: string) {
-    setForm((current) => ({ ...current, country, currency: currencyForCountry(country), referralCode: "", testerCode: "" }));
+    setForm((current) => ({ ...current, country, currency: currencyForCountry(country), companyNumber: "", referralCode: "", testerCode: "" }));
   }
   function canAdvance() {
     if (step === 0 && !form.country) return "Choose your market to continue.";
-    if (step === 0 && !form.isSoleTrader && !form.companyName.trim()) return "Enter your registered company name, or select sole trader.";
+    if (!isIndia && step === 0 && !form.isSoleTrader && !form.companyName.trim()) return "Enter your registered company name, or select sole trader.";
     if (step === 1 && (!Number.isInteger(vehicleCount) || vehicleCount < 1 || vehicleCount > 55)) return "Enter a vehicle count from 1 to 55. Fleets with 56+ vehicles need custom pricing.";
     if (step === 2) {
-      if (!form.name.trim() || !form.email.trim() || !form.phone.trim() || form.password.length < 8) return "Complete all account fields. Password must contain at least 8 characters.";
+      if (!form.name.trim() || (!isIndia && !form.email.trim()) || !form.phone.trim() || form.password.length < 8) return "Complete all required account fields. Password must contain at least 8 characters.";
       if (new TextEncoder().encode(form.password).byteLength > 72) return "Password must be no more than 72 UTF-8 bytes.";
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) return "Enter a valid email address.";
+      if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) return "Enter a valid email address.";
     }
     return "";
   }
@@ -82,7 +82,7 @@ export default function SignupPage() {
         ...form,
         planType: selectedPlan,
         fleetVehicleCount: String(vehicleCount),
-        companyName: form.companyName.trim() || (form.isSoleTrader ? form.name.trim() : ""),
+        companyName: isIndia ? form.name.trim() : form.companyName.trim() || (form.isSoleTrader ? form.name.trim() : ""),
         termsVersion: TERMS_VERSION,
         marketResearch: isIndia ? form.marketResearch : undefined,
       };
@@ -141,20 +141,20 @@ export default function SignupPage() {
 
       {step === 0 && <div className="signup-fields">
         <label>Choose your market<select required value={form.country} onChange={(e) => changeCountry(e.target.value)}><option value="" disabled>Choose a country</option>{COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}</select><small>This determines your marketplace, currency and local time zone. Cross-market matching is disabled.</small></label>
-        <label>Account type<select value={form.isSoleTrader ? "sole" : "company"} onChange={(e) => update("isSoleTrader", e.target.value === "sole")}><option value="company">Registered business</option><option value="sole">Sole trader / individual operator</option></select></label>
-        <label>{form.isSoleTrader ? "Trading name (optional)" : "Registered company name"}<input value={form.companyName} onChange={(e) => update("companyName", e.target.value)} required={!form.isSoleTrader} maxLength={120} placeholder={form.isSoleTrader ? "You can use your own name" : "Name registered to your business"} /></label>
+        {!isIndia && <><label>Account type<select value={form.isSoleTrader ? "sole" : "company"} onChange={(e) => update("isSoleTrader", e.target.value === "sole")}><option value="company">Registered business</option><option value="sole">Sole trader / individual operator</option></select></label>
+        <label>{form.isSoleTrader ? "Trading name (optional)" : "Registered company name"}<input value={form.companyName} onChange={(e) => update("companyName", e.target.value)} required={!form.isSoleTrader} maxLength={120} placeholder={form.isSoleTrader ? "You can use your own name" : "Name registered to your business"} /></label>{!form.isSoleTrader && <label>{form.country === "GB" ? "Company registration number (if applicable)" : "Country-specific company / business registration ID (if applicable)"}<input value={form.companyNumber} onChange={(e) => update("companyNumber", e.target.value)} maxLength={80} placeholder="Identifier used by the relevant authority" /><small>Use the identifier applicable to your business type and selected country. Leave blank if not applicable; requirements are assessed under local rules.</small></label>}</>}
         <div className="signup-note"><strong>{form.country ? `${marketLabel} marketplace` : "Select a market"}</strong><p>{!form.country ? "Choose a country to see the correct marketplace, currency and access options." : isIndia ? "Browse India-only delivery opportunities using INR. A short optional market-research step helps shape the experience." : isUk ? "Use this country's marketplace with GBP pricing. Market-specific access and promotion rules are shown before you commit." : "Use this country's separate marketplace with local-currency pricing. The configured access model and promotions available in your country are shown before you commit."}</p></div>
       </div>}
 
       {step === 1 && <div className="signup-fields">
         <label>How many vehicles will use this account?<input type="number" min="1" max="55" step="1" required value={form.fleetVehicleCount} onChange={(e) => { const v = e.target.value; setForm((current) => ({ ...current, fleetVehicleCount: v, planType: Number(v) === 1 ? "individual" : "fleet" })); }} /></label>
-        <div className="signup-plan-card"><span className="signup-plan-label">YOUR PLAN TYPE</span><h3>{selectedPlan === "individual" ? "Individual · 1 vehicle" : "Fleet · 2–55 vehicles"}</h3>{hasWeeklyPricing ? <><p className="signup-plan-price">{formatMarketPrice(selectedPlan === "individual" ? 9.99 : vehicleCount <= 5 ? 16.99 : vehicleCount <= 15 ? 24.99 : vehicleCount <= 30 ? 36.99 : 49.99)} / 7 days</p><small>Prices shown for your selected market. Unlimited legitimate marketplace activity; no per-job charges. No payment is taken at signup and checkout is not yet connected.</small></> : <><p>{isIndia ? "India pricing will be confirmed before any paid plan becomes available." : `Pricing for ${marketLabel} will be confirmed before any paid plan becomes available.`}</p><small>Creating an account does not charge you.</small></>}</div>
+        <div className="signup-plan-card"><span className="signup-plan-label">YOUR PLAN TYPE</span><h3>{selectedPlan === "individual" ? "Individual · 1 vehicle" : "Fleet · 2–55 vehicles"}</h3>{isIndia ? <><p className="signup-plan-price">Free · ₹0</p><small>India accounts get free access after phone OTP verification. No person or company verification is required.</small></> : hasWeeklyPricing ? <><p className="signup-plan-price">{formatMarketPrice(selectedPlan === "individual" ? 9.99 : vehicleCount <= 5 ? 16.99 : vehicleCount <= 15 ? 24.99 : vehicleCount <= 30 ? 36.99 : 49.99)} / 7 days</p><small>Prices shown for your selected market. Unlimited legitimate marketplace activity; no per-job charges. No payment is taken at signup and checkout is not yet connected.</small></> : <><p>{`Pricing for ${marketLabel} will be confirmed before any paid plan becomes available.`}</p><small>Creating an account does not charge you.</small></>}</div>
         <p className="signup-muted">One account supports both posting and fulfilling jobs. Vehicle count determines the account plan—not whether you are a driver or a business posting deliveries. Fleets above 55 vehicles require custom pricing.</p>
       </div>}
 
       {step === 2 && <div className="signup-fields">
         <label>Your full name<input required autoComplete="name" maxLength={100} value={form.name} onChange={(e) => update("name", e.target.value)} /></label>
-        <label>Email address<input required type="email" autoComplete="email" maxLength={254} value={form.email} onChange={(e) => update("email", e.target.value)} /></label>
+        <label>Email address{isIndia ? " (optional in India)" : ""}<input required={!isIndia} type="email" autoComplete="email" maxLength={254} value={form.email} onChange={(e) => update("email", e.target.value)} />{isIndia && <small>If you leave this blank, password recovery may require support until phone recovery is available.</small>}</label>
         <label>Phone number<input required type="tel" autoComplete="tel" maxLength={50} placeholder={`${selectedCountry?.dialingCode ?? "+"} …`} value={form.phone} onChange={(e) => update("phone", e.target.value)} /></label>
         <label>Password<input required type="password" minLength={8} maxLength={72} autoComplete="new-password" value={form.password} onChange={(e) => update("password", e.target.value)} /><small>Use at least 8 characters and no more than 72 UTF-8 bytes. Never reuse a password from another service.</small></label>
         {isUk && <div className="signup-fields"><label>Personal tester invitation code (optional)<input type="password" autoComplete="off" maxLength={100} value={form.testerCode} onChange={(e) => setForm((current) => ({ ...current, testerCode: e.target.value, referralCode: e.target.value ? "" : current.referralCode }))} placeholder="Provided directly by Post2Drive" /></label>{!form.testerCode && <label>Referral code (optional)<input maxLength={32} value={form.referralCode} onChange={(e) => setForm((current) => ({ ...current, referralCode: e.target.value, testerCode: e.target.value ? "" : current.testerCode }))} /></label>}</div>}
@@ -169,7 +169,7 @@ export default function SignupPage() {
       </div>}
 
       {step === steps.length - 1 && <div className="signup-fields">
-        <div className="signup-review-grid"><div><span>MARKET</span><strong>{marketDisplay}</strong></div><div><span>BUSINESS</span><strong>{form.isSoleTrader ? (form.companyName.trim() || form.name || "Sole trader") : form.companyName}</strong></div><div><span>ACCOUNT PLAN</span><strong>{selectedPlan === "individual" ? "Individual · 1 vehicle" : `Fleet · ${form.fleetVehicleCount} vehicles`}</strong></div><div><span>EMAIL</span><strong>{form.email}</strong></div></div>
+        <div className="signup-review-grid"><div><span>MARKET</span><strong>{marketDisplay}</strong></div><div><span>BUSINESS</span><strong>{form.isSoleTrader ? (form.companyName.trim() || form.name || "Sole trader") : form.companyName}</strong></div><div><span>ACCOUNT PLAN</span><strong>{selectedPlan === "individual" ? "Individual · 1 vehicle" : `Fleet · ${form.fleetVehicleCount} vehicles`}</strong></div><div><span>EMAIL</span><strong>{form.email || (isIndia ? "Not provided" : "—")}</strong></div></div>
         {isUk && <div className="signup-note"><strong>Promotion is not guaranteed</strong><p>Entering an invitation code creates a tester application. Access and any promotional trial begin only after approval. Paid subscription checkout is not activated by this signup.</p></div>}
         <label className="signup-checkbox"><input type="checkbox" checked={form.termsAccepted} onChange={(e) => update("termsAccepted", e.target.checked)} /><span>I agree to the <a href="/terms" target="_blank" rel="noreferrer">Terms of Service</a> and acknowledge the <a href="/privacy" target="_blank" rel="noreferrer">Privacy Notice</a>.</span></label>
         <p className="signup-muted">Your account will be created in {isIndia ? "the India marketplace with INR" : `the ${marketLabel} marketplace with ${form.currency}`}. Each country market keeps public job listings separate.</p>
