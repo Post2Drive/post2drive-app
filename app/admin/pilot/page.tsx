@@ -35,10 +35,10 @@ export default async function StudentPilotAdminPage() {
   return (
     <main style={{ width: "100%", maxWidth: 1180, boxSizing: "border-box", margin: "0 auto", padding: "24px 16px 80px" }}>
       <p><a className="button-link button-link-secondary" href="/dashboard">← Back to dashboard</a></p>
-      <h1>UK student pilot</h1>
-      <p>This admin-only page is visible only when the staging QA safety gate is active. Use the cohort code for invited UK students; do not use it for production or real deliveries.</p>
+      <h1>UK-market QA cohort</h1>
+      <p>This admin-only page is available only when the staging QA safety gate is active. Use individual codes for Indian student volunteers testing the GB/GBP market configuration. This is separate from the UK commercial launch pilot and does not simulate physical UK location, network conditions or local compliance. Never use tester accounts for real deliveries.</p>
       <PilotCodeGenerator />
-      <h2>Latest student feedback</h2>
+      <h2>Latest QA feedback</h2>
       <p>Feedback is stored against the tester account's public display ID. It includes only the allow-listed diagnostics shown to the student at submission; no screenshot, password, email address or document image is uploaded by this form.</p>
       {rows.length === 0 ? <p>No feedback submitted yet.</p> : (
         <div style={{ overflowX: "auto", border: "1px solid var(--color-border)", borderRadius: 10 }}>
