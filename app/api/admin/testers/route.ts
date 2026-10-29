@@ -6,7 +6,7 @@ import { authOptions } from "@/lib/auth";
 import { readBoundedJson } from "@/lib/requestBody";
 import { prisma } from "@/lib/prisma";
 import { isTesterAdmin } from "@/lib/testerAdmin";
-import { getPromotion, calculatePromotionalEnd } from "@/lib/promotion";
+
 import { emailVerificationEnabled } from "@/lib/emailVerification";
 
 async function GETHandler() {
@@ -108,10 +108,6 @@ async function POSTHandler(req: Request) {
     return NextResponse.json({ success: true, decision: "rejected" });
   }
 
-  if (account.vehicles.length === 0) {
-    return NextResponse.json({ error: "The applicant must submit at least one vehicle before tester approval." }, { status: 409 });
-  }
-
   if (emailVerificationEnabled() && account.users.some((user) => !user.emailVerifiedAt)) {
     return NextResponse.json({ error: "The tester must verify their email before approval." }, { status: 409 });
   }
@@ -120,21 +116,9 @@ async function POSTHandler(req: Request) {
     return NextResponse.json({ error: "Tester approval is only available for GB + GBP accounts." }, { status: 400 });
   }
 
-  const promotion = await getPromotion();
   const now = new Date();
-  if (!promotion.active || now < promotion.startAt || now > promotion.endAt) {
-    return NextResponse.json({ error: "The UK promotion is not active, so a tester trial cannot be started." }, { status: 409 });
-  }
-  const freeEndsAt = await calculatePromotionalEnd({
-    country: account.country,
-    currency: account.currency,
-    planType: account.planType,
-    trialStartedAt: now,
-    freeMonthsEarned: 0,
-  });
-  if (!freeEndsAt) {
-    return NextResponse.json({ error: "Unable to calculate the promotional end date." }, { status: 500 });
-  }
+  // Tester access is a time-limited pilot entitlement, independent of public promotions.
+  const freeEndsAt = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
 
   const updated = await prisma.account.updateMany({
     where: { id: accountId, testerApprovalStatus: "pending", isTester: false },

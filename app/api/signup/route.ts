@@ -5,7 +5,6 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { generateDisplayId } from "@/lib/displayId";
 import { isUkAccount } from "@/lib/uk";
-import { getPromotion } from "@/lib/promotion";
 import { createEmailVerificationToken, emailDeliveryConfigured, emailVerificationEnabled, sendVerificationEmail } from "@/lib/emailVerification";
 import { marketForAccount } from "@/lib/market";
 import { enforceRateLimit } from "@/lib/rateLimit";
@@ -148,14 +147,6 @@ async function POSTHandler(
       if (referralCode?.trim()) return NextResponse.json({ error: "A tester code cannot be combined with a referral code." }, { status: 400 });
       testerCodeHash = createHash("sha256").update(suppliedTesterCode).digest("hex");
     }
-    if (testerCodeHash) {
-      const promotion = await getPromotion();
-      const now = new Date();
-      if (!promotion.active || now < promotion.startAt || now > promotion.endAt) {
-        return NextResponse.json({ error: "Tester applications are only accepted while the UK promotional programme is active." }, { status: 400 });
-      }
-    }
-
     const selectedPlan = planType || "individual";
     const parsedFleetVehicleCount = Number(fleetVehicleCount);
     const normalizedCompanyName = (typeof companyName === "string" ? companyName.trim() : "") || (isSoleTrader ? name.trim() : "");
