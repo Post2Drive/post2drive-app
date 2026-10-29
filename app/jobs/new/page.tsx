@@ -146,7 +146,8 @@ export default function NewJobPage() {
     if (step === 1) {
       if (!(VEHICLE_TYPES as readonly string[]).includes(form.vehicleType)) return "Choose a supported vehicle type.";
       const price = Number(form.price);
-      if (!form.price.trim() || !Number.isFinite(price) || price <= 0) return "Enter a price greater than zero.";
+      if (country !== "IN" && (!form.price.trim() || !Number.isFinite(price) || price <= 0)) return "Enter a price greater than zero.";
+      if (country === "IN" && form.price.trim() && (!Number.isFinite(price) || price <= 0)) return "Enter a valid optional fixed price.";
       if (form.priceMode !== "fixed" && form.priceMode !== "bid") return "Choose fixed pricing or open bidding.";
       if (country === "IN" && form.priceMode !== "fixed") return "Open bidding is not available in this market. Use fixed quote pricing.";
       if (form.weightKg.trim() && (!Number.isFinite(Number(form.weightKg)) || Number(form.weightKg) < 0)) return `Enter a valid weight in ${marketProfile?.weightUnit ?? "kg"}.`;
