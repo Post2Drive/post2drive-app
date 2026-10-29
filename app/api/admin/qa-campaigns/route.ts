@@ -11,7 +11,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const ALLOWED_COUNTRIES = new Set(["GB","IN","AT","BE","BG","HR","CY","EE","FI","FR","DE","GR","IE","IT","LV","LT","LU","MT","NL","PT","SK","SI","ES","AD","MC","SM","VA","XK","ME","CZ","DK","HU","IS","NO","PL","RO","SE","CH","TR","US","CA","AU","NZ"]);
-const ALLOWED_SUITES = new Set(["provisioning","api","workflow","regression","localization","failure"]);
+const ALLOWED_SUITES = new Set(["provisioning","api","workflow"]);
 const MAX_VARIATIONS = 20;
 
 function int(value: unknown, min: number, max: number) {

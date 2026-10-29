@@ -151,7 +151,7 @@ try {
     });
     const page = await context.newPage();
     page.setDefaultTimeout(10_000);
-    page.on("pageerror", error => failures.push(`[${viewport.label}] browser exception: ${error.message}`));
+    page.on("pageerror", error => failures.push(`[${viewport.label}] browser exception on ${new URL(page.url()).pathname}: ${error.message}`));
 
     for (const route of publicRoutes) await scanRoute(page, route, viewport);
 
