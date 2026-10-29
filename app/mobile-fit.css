@@ -29,15 +29,19 @@ main pre, main code, main td, main th, main a {
   word-break: normal;
 }
 main table {
-  display: block;
-  width: 100%;
   max-width: 100%;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
 }
 main input, main select, main textarea { max-width: 100%; }
 @media (max-width: 700px) {
   body { padding-bottom: calc(68px + env(safe-area-inset-bottom)); }
+
+  main table {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
   .mobile-bottom-nav {
     padding-left: max(4px, env(safe-area-inset-left));
     padding-right: max(4px, env(safe-area-inset-right));
