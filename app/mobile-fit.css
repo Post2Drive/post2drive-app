@@ -377,3 +377,38 @@ button[aria-pressed="true"] *,
   color: #FFFFFF;
   -webkit-text-fill-color: #FFFFFF;
 }
+
+/* Rendered-browser audit fix: keep active mobile navigation labels distinct
+   from their surfaces. Legacy global rules paint active nav blue; pair that
+   with a pale-blue surface rather than overriding the foreground alone. */
+@media (max-width: 700px) {
+  .mobile-bottom-nav .mobile-nav-link[aria-current="page"],
+  .mobile-bottom-nav .mobile-nav-link[aria-current="page"] *,
+  .mobile-bottom-nav .mobile-more-link[aria-current="page"],
+  .mobile-bottom-nav .mobile-more-link[aria-current="page"] * {
+    color: #173FA8 !important;
+    -webkit-text-fill-color: #173FA8 !important;
+    background-color: #EAF0FF !important;
+    border-color: #2457D6 !important;
+  }
+
+  .mobile-bottom-nav .mobile-nav-more,
+  .mobile-bottom-nav .mobile-nav-more > span {
+    color: #30343B !important;
+    -webkit-text-fill-color: #30343B !important;
+    background-color: #FFFFFF !important;
+  }
+
+  .mobile-bottom-nav .mobile-nav-more.is-active,
+  .mobile-bottom-nav .mobile-nav-more.is-active > span {
+    color: #173FA8 !important;
+    -webkit-text-fill-color: #173FA8 !important;
+    background-color: #EAF0FF !important;
+  }
+
+  .mobile-bottom-nav .mobile-more-menu {
+    color: #172B4D !important;
+    background-color: #FFFFFF !important;
+  }
+}
+
