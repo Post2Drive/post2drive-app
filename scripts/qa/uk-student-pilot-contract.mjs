@@ -9,6 +9,7 @@ const signupPage = read("../../app/signup/page.tsx");
 const testerAdmin = read("../../app/api/admin/testers/route.ts");
 const bid = read("../../app/api/jobs/[id]/bid/route.ts");
 const directAccept = read("../../app/api/jobs/[id]/accept/route.ts");
+const opportunities = read("../../lib/opportunities.ts");
 const feedback = read("../../app/api/pilot/feedback/route.ts");
 const diagnostics = read("../../lib/pilotDiagnostics.ts");
 const launcher = read("../../app/components/pilot-feedback-launcher.tsx");
@@ -54,6 +55,9 @@ assert.match(directAccept, /const stagingQaTester = Boolean/);
 assert.match(directAccept, /!stagingQaTester && account\.type !== "driver"/);
 assert.match(directAccept, /currentDriverStagingQaTester = Boolean/);
 assert.match(directAccept, /!currentDriverStagingQaTester/);
+assert.match(opportunities, /isQaRunnerEnabled\(\)/);
+assert.match(opportunities, /const stagingQaTester = Boolean/);
+assert.match(opportunities, /!stagingQaTester/);
 
 assert.match(feedback, /if \(!isQaRunnerEnabled\(\)\)/);
 assert.match(feedback, /!account\.isTester \|\| !isUkAccount\(account\)/);
