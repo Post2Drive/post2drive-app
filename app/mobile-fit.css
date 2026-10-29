@@ -272,3 +272,57 @@ textarea {
     border-color: #2457D6 !important;
   }
 }
+
+
+/* Keep marketplace status-filter labels readable despite legacy global button
+   colour overrides that force white text on inline-styled buttons. */
+.marketplace-job-tabs button,
+.marketplace-job-tabs button:visited,
+.marketplace-job-tabs button > *,
+.marketplace-job-tabs button > * > * {
+  color: #172B4D !important;
+  -webkit-text-fill-color: #172B4D !important;
+}
+
+.marketplace-job-tabs button[aria-pressed="true"],
+.marketplace-job-tabs button[aria-pressed="true"] > *,
+.marketplace-job-tabs button[aria-pressed="true"] > * > * {
+  color: #173FA8 !important;
+  -webkit-text-fill-color: #173FA8 !important;
+  background-color: #EAF0FF !important;
+  border-bottom-color: #2457D6 !important;
+}
+
+.marketplace-job-tabs button:focus-visible {
+  outline: 3px solid #2457D6 !important;
+  outline-offset: 2px;
+}
+
+/* The homepage hero CTAs need the same contrast on desktop and mobile. */
+.home-button.home-button-primary,
+.home-button.home-button-primary:visited,
+.home-button.home-button-primary > *,
+.home-button.home-button-primary > * > * {
+  background-color: #2457D6 !important;
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+  border-color: #2457D6 !important;
+}
+
+.home-button.home-button-primary:hover,
+.home-button.home-button-primary:focus-visible {
+  background-color: #173FA8 !important;
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+  border-color: #173FA8 !important;
+}
+
+.home-button.home-button-secondary,
+.home-button.home-button-secondary:visited,
+.home-button.home-button-secondary > *,
+.home-button.home-button-secondary > * > * {
+  background-color: #FFFFFF !important;
+  color: #2457D6 !important;
+  -webkit-text-fill-color: #2457D6 !important;
+  border-color: #2457D6 !important;
+}
