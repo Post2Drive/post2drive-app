@@ -336,6 +336,49 @@ td.bad{background:#FFFFFF!important;color:#D62828!important}
 .chart .gridline{stroke:#D7DCE4}
 .source-tools input{background:#FFFFFF!important;color:#171717!important;border-color:#AEB6C2}
 .source-tools input::placeholder{color:#555D69!important}
+
+/* Analytics dashboard contrast contract: explicit secondary controls stay
+   dark/blue on white; primary actions stay white on blue. */
+.section-nav a,
+.section-nav a:visited,
+.section-nav a:hover,
+.section-nav a:focus-visible {
+  color: #171717 !important;
+  -webkit-text-fill-color: #171717 !important;
+}
+.section-nav a:hover,
+.section-nav a:focus-visible {
+  background: #F2C300 !important;
+  border-color: #171717 !important;
+}
+.header-signout button,
+.filter-panel-actions button:not(.primary),
+.filter-drawer > summary,
+.filter-drawer > summary::after {
+  background: #FFFFFF !important;
+  color: #2457D6 !important;
+  -webkit-text-fill-color: #2457D6 !important;
+  border-color: #2457D6 !important;
+}
+button.primary,
+button.primary *,
+#refresh.primary,
+#refresh.primary *,
+.filter-panel-actions button.primary,
+.filter-panel-actions button.primary * {
+  background-color: #2457D6 !important;
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+}
+button:disabled,
+button:disabled *,
+input:disabled,
+select:disabled,
+textarea:disabled {
+  color: #30343B !important;
+  -webkit-text-fill-color: #30343B !important;
+  opacity: 1;
+}
 </style>
 <header class='app-header'><div class='brand-block'><div class='brand'>POST2DRIVE / ADMIN DASHBOARD</div><div class='sub'>Operations · marketplace analytics · country logistics signals</div></div><div class='header-actions'><details id='filterDrawer' class='filter-drawer'><summary id='filterSummary'>Filters · Global · 7 days</summary><div class='filter-panel'><label for='country'>Market<select id='country'><option value='ALL'>🌐 Global · all markets</option>${markets.map(m=>`<option value='${m.code}'>${m.name} · ${m.currency}</option>`).join('')}</select></label><label for='compare'>Compare market<select id='compare'><option value=''>No comparison</option>${markets.map(m=>`<option value='${m.code}'>${m.name}</option>`).join('')}</select></label><label for='days'>Time window<select id='days'><option value='1'>24 hours</option><option value='7' selected>7 days</option><option value='30'>30 days</option><option value='90'>90 days</option></select></label><p class='filter-hint'>Filters only change reporting. Nothing in the marketplace is modified.</p><div class='filter-panel-actions'><button id='resetFilters' type='button'>Reset &amp; apply</button><button id='applyFilters' class='primary' type='button'>Apply filters</button></div></div></details><button id='refresh' class='primary' type='button'>↻ Refresh data</button><form method="post" action="/logout" class="header-signout"><button type='submit'>Sign out</button></form></div></header><nav class="section-nav" aria-label="Admin sections"><a href="#overview">Command Centre</a><a href="#marketplace">Marketplace</a><a href="#people">Trust & Operations</a><a href="#quality">QA & Engineering</a><a href="#countries">Countries & Research</a><a href="#audit">Admin & Audit</a><a href="#catalogue-section">Data Catalogue</a></nav><main><div id="overview" class="section"><div><h1 id="title">Global operations overview</h1><p id="subtitle">Loading country-aware metrics…</p></div><div class="status" id="updated">Connecting to reporting database…</div></div><div id="warning"></div>
 <div class="grid kpis" id="kpis"></div><div class="section"><div><h2>Needs attention</h2><p>Prioritized operational exceptions; recommendations are advisory and do not perform changes.</p></div><div class="status" id="attentionCount">Building queue…</div></div><section class="panel"><div class="scroll" id="attentionQueue"></div></section>
