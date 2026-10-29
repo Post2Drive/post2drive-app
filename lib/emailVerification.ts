@@ -53,7 +53,7 @@ function escapeHtml(value: string) {
 
 export async function sendVerificationEmail(email: string, name: string, token: string) {
   const configuredBaseUrl = process.env.NEXTAUTH_URL?.trim();
-  const baseUrl = (configuredBaseUrl || "").replace(/\\/+$/, "");
+  const baseUrl = (configuredBaseUrl || "").replace(/\/+$/, "");
 
   if (!baseUrl) {
     throw new Error("Email delivery is not configured.");
