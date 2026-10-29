@@ -412,3 +412,25 @@ button[aria-pressed="true"] *,
   }
 }
 
+/* The mobile navigation can remain visible at tablet breakpoints. Keep this
+   contrast pairing independent of viewport media queries and defeat legacy
+   active-state rules that force a blue background behind blue text. */
+.mobile-bottom-nav .mobile-nav-link[aria-current="page"],
+.mobile-bottom-nav .mobile-nav-link[aria-current="page"] *,
+.mobile-bottom-nav .mobile-more-link[aria-current="page"],
+.mobile-bottom-nav .mobile-more-link[aria-current="page"] * {
+  color: #173FA8 !important;
+  -webkit-text-fill-color: #173FA8 !important;
+  background: #EAF0FF !important;
+  background-color: #EAF0FF !important;
+  border-color: #2457D6 !important;
+}
+
+.mobile-bottom-nav .mobile-nav-more.is-active,
+.mobile-bottom-nav .mobile-nav-more.is-active > span {
+  color: #173FA8 !important;
+  -webkit-text-fill-color: #173FA8 !important;
+  background: #EAF0FF !important;
+  background-color: #EAF0FF !important;
+}
+
