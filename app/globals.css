@@ -2632,3 +2632,66 @@ main textarea {
     scroll-behavior: auto;
   }
 }
+
+
+
+/* Dashboard actions: outrank legacy global button-colour overrides. */
+.ops-theme-dashboard button.dashboard-action-button:not(:disabled) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 10px 16px;
+  color: #FFFFFF !important;
+  background: #2457D6 !important;
+  border: 1px solid #2457D6 !important;
+  border-radius: 8px;
+  font-weight: 750;
+  line-height: 1.25;
+  opacity: 1;
+  text-shadow: none;
+}
+
+.ops-theme-dashboard button.dashboard-action-button:not(:disabled):hover {
+  color: #FFFFFF !important;
+  background: #173FA8 !important;
+  border-color: #173FA8 !important;
+}
+
+.ops-theme-dashboard button.dashboard-action-button:not(:disabled):active {
+  color: #FFFFFF !important;
+  background: #123783 !important;
+  border-color: #123783 !important;
+}
+
+.ops-theme-dashboard button.dashboard-action-button:disabled {
+  color: #30343B !important;
+  background: #E8EBF0 !important;
+  border-color: #9299A5 !important;
+  cursor: not-allowed;
+  box-shadow: none !important;
+  opacity: 1;
+}
+
+.ops-theme-dashboard button.dashboard-action-button:focus-visible {
+  outline: 3px solid #F2C300 !important;
+  outline-offset: 3px;
+}
+
+@media (max-width: 700px) {
+  .ops-theme-dashboard > div:first-child {
+    align-items: flex-start !important;
+    gap: 12px !important;
+    padding: 16px !important;
+  }
+
+  .ops-theme-dashboard > div:first-child h1 {
+    font-size: clamp(26px, 6vw, 34px);
+    overflow-wrap: anywhere;
+  }
+
+  .ops-theme-dashboard button.dashboard-action-button {
+    min-width: 104px;
+    min-height: 44px;
+  }
+}
