@@ -8,6 +8,11 @@ export function emailVerificationEnabled() {
   return process.env.EMAIL_VERIFICATION_ENABLED?.trim().toLowerCase() === "true";
 }
 
+/** India is the sole market where email is optional and must not gate access. */
+export function emailVerificationRequiredForCountry(country: unknown) {
+  return country !== "IN" && emailVerificationEnabled();
+}
+
 export function emailDeliveryConfigured() {
   return Boolean(
     process.env.RESEND_API_KEY?.trim() &&
