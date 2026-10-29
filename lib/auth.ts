@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { emailVerificationRequiredForCountry } from "@/lib/emailVerification";
 import { checkRateLimit, clientNetworkIdentity } from "@/lib/rateLimit";
 import { isAuthorizedQaRunId } from "@/lib/qaRunAuthorization";
+import { isQaRunnerEnabled } from "@/lib/qaRunnerGuard";
 
 export const authOptions: NextAuthOptions = {
   session: { strategy: "jwt" },
@@ -79,10 +80,17 @@ export const authOptions: NextAuthOptions = {
 
         // Tester applicants can sign in to add the vehicle details needed for admin review.
         // All other new accounts must verify email when the feature is enabled.
+        const allowedStagingPilotLogin =
+          isQaRunnerEnabled() &&
+          user.account.isTester &&
+          user.account.country === "GB" &&
+          user.account.currency === "GBP";
+
         if (
           emailVerificationRequiredForCountry(user.account.country) &&
           !user.emailVerifiedAt &&
-          user.account.testerApprovalStatus !== "pending"
+          user.account.testerApprovalStatus !== "pending" &&
+          !allowedStagingPilotLogin
         ) {
           return null;
         }
