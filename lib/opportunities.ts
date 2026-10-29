@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { zoneMates } from "@/lib/zones";
+import { isQaRunnerEnabled } from "@/lib/qaRunnerGuard";
+import { isIndiaPhoneVerifiedAccount } from "@/lib/eligibility";
 
 /**
  * Determines whether a job can reasonably be considered available
@@ -63,11 +65,18 @@ export async function isJobSuitableForDriver(
     return false;
   }
 
-  if (driver.type !== "driver" && driver.companyVerificationStatus !== "verified") {
+  const stagingQaTester = Boolean(
+    isQaRunnerEnabled() &&
+    driver.isTester &&
+    driver.country === "GB" &&
+    driver.currency === "GBP"
+  );
+  const indiaPhoneVerified = isIndiaPhoneVerifiedAccount(driver);
+  if (driver.type !== "driver" && driver.companyVerificationStatus !== "verified" && !stagingQaTester && !indiaPhoneVerified) {
     return false;
   }
 
-  if (driver.verificationStatus !== "verified" && !driver.isTester) {
+  if (driver.verificationStatus !== "verified" && !driver.isTester && !indiaPhoneVerified) {
     return false;
   }
 
@@ -81,7 +90,7 @@ export async function isJobSuitableForDriver(
     driver.vehicles.some(
       (vehicle) =>
         vehicle.vehicleType === job.vehicleType &&
-        (driver.isTester ||
+        (driver.isTester || indiaPhoneVerified ||
           (vehicle.verificationStatus === "verified" &&
             vehicle.motValidUntil !== null &&
             vehicle.motValidUntil > now &&

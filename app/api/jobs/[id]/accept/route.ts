@@ -11,6 +11,7 @@ import { recordAcceptedJobUsage } from "@/lib/usage";
 import { getLocalisationProfile } from "@/lib/localisation";
 import { marketDateKey } from "@/lib/vehicleDates";
 import { isIndiaPhoneVerifiedAccount } from "@/lib/eligibility";
+import { isQaRunnerEnabled } from "@/lib/qaRunnerGuard";
 
 async function POSTHandler(
   req: Request,
@@ -107,11 +108,12 @@ async function POSTHandler(
       },
     });
 
-  if (account && !isIndiaPhoneVerifiedAccount(account) && account.type !== "driver" && account.companyVerificationStatus !== "verified") {
+  const stagingQaTester = Boolean(isQaRunnerEnabled() && account?.isTester && account.country === "GB" && account.currency === "GBP");
+  if (account && !isIndiaPhoneVerifiedAccount(account) && !stagingQaTester && account.type !== "driver" && account.companyVerificationStatus !== "verified") {
     return NextResponse.json({ error: "Company approval is required for this account before accepting jobs." }, { status: 403 });
   }
 
-  if (!account || (!isIndiaPhoneVerifiedAccount(account) && account.verificationStatus !== "verified" && !account.isTester)) {
+  if (!account || (!isIndiaPhoneVerifiedAccount(account) && !stagingQaTester && account.verificationStatus !== "verified" && !account.isTester)) {
     return NextResponse.json(
       {
         error:
@@ -121,7 +123,7 @@ async function POSTHandler(
     );
   }
 
-  if (account && !account.isTester && !isIndiaPhoneVerifiedAccount(account)) {
+  if (account && !account.isTester && !isIndiaPhoneVerifiedAccount(account) && !stagingQaTester) {
     const driverMarket = getLocalisationProfile({ country: account.country, currency: account.currency });
     const marketToday = marketDateKey(new Date(), driverMarket?.timeZone ?? "UTC");
     const dateCutoff = new Date(marketToday + "T00:00:00.000Z");
@@ -164,10 +166,11 @@ async function POSTHandler(
             where: { id: accountId },
             select: { type: true, verificationStatus: true, companyVerificationStatus: true, isTester: true, country: true, currency: true, phoneVerifiedAt: true },
           });
-          if (!currentDriver || (!isIndiaPhoneVerifiedAccount(currentDriver) && ((currentDriver.type !== "driver" && currentDriver.companyVerificationStatus !== "verified") || (currentDriver.verificationStatus !== "verified" && !currentDriver.isTester)))) {
+          const currentDriverStagingQaTester = Boolean(isQaRunnerEnabled() && currentDriver?.isTester && currentDriver.country === "GB" && currentDriver.currency === "GBP");
+          if (!currentDriver || (!isIndiaPhoneVerifiedAccount(currentDriver) && !currentDriverStagingQaTester && ((currentDriver.type !== "driver" && currentDriver.companyVerificationStatus !== "verified") || (currentDriver.verificationStatus !== "verified" && !currentDriver.isTester)))) {
             throw new Error("DRIVER_NOT_VERIFIED");
           }
-          if (!currentDriver.isTester && !isIndiaPhoneVerifiedAccount(currentDriver)) {
+          if (!currentDriver.isTester && !isIndiaPhoneVerifiedAccount(currentDriver) && !currentDriverStagingQaTester) {
             const driverMarket = getLocalisationProfile({ country: currentDriver.country, currency: currentDriver.currency });
             const marketToday = marketDateKey(new Date(), driverMarket?.timeZone ?? "UTC");
             const dateCutoff = new Date(marketToday + "T00:00:00.000Z");

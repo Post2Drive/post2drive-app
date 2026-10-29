@@ -20,7 +20,7 @@ function isActive(pathname: string, href: string) {
     (href === "/jobs" && pathname.startsWith("/jobs/") && pathname !== "/jobs/new");
 }
 
-export default function MainNav({ showQaCampaigns = false }: { showQaCampaigns?: boolean }) {
+export default function MainNav({ showQaCampaigns = false, showStudentPilot = false }: { showQaCampaigns?: boolean; showStudentPilot?: boolean }) {
   const pathname = usePathname();
   const { data: session, status } = useSession();
   const [moreOpen, setMoreOpen] = useState(false);
@@ -29,9 +29,11 @@ export default function MainNav({ showQaCampaigns = false }: { showQaCampaigns?:
   const marketLinks = country === "IN"
     ? [...baseLinks.slice(0, 2), { href: "/requirements", label: "My Requirements" }, ...baseLinks.slice(2)]
     : baseLinks;
-  const links = showQaCampaigns
-    ? [...marketLinks, { href: "/admin/qa-campaigns", label: "QA Campaigns" }]
-    : marketLinks;
+  const links = [
+    ...marketLinks,
+    ...(showQaCampaigns ? [{ href: "/admin/qa-campaigns", label: "QA Campaigns" }] : []),
+    ...(showStudentPilot ? [{ href: "/admin/pilot", label: "UK Market QA" }] : []),
+  ];
   const mobilePrimary = links.filter((link) =>
     ["/dashboard", "/jobs", "/jobs/new", "/vehicles"].includes(link.href)
   );

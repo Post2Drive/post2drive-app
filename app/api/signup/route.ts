@@ -1,6 +1,9 @@
 import { withApiMetrics } from "@/lib/apiMetrics";
 import { NextResponse } from "next/server";
 import { createHash } from "crypto";
+import { getPromotion } from "@/lib/promotion";
+import { hashPilotAccessCode, isPilotTesterCode, PILOT_ACCESS_CODE_TTL_MS } from "@/lib/pilotAccess";
+import { isQaRunnerEnabled } from "@/lib/qaRunnerGuard";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { generateDisplayId } from "@/lib/displayId";
@@ -90,7 +93,7 @@ async function POSTHandler(
       (country !== "IN" && !String(email || "").trim()) ||
       !phone ||
       !password ||
-      (!isSoleTrader && !String(companyName || "").trim()) ||
+      (!isSoleTrader && country !== "IN" && !String(companyName || "").trim()) ||
       !country ||
       !currency ||
       termsAccepted !== true ||
@@ -138,20 +141,32 @@ async function POSTHandler(
     }
 
     const verificationRequired = emailVerificationRequiredForCountry(country);
-    if (verificationRequired && !emailDeliveryConfigured()) {
-      return NextResponse.json(
-        { error: "Email verification is being configured. Please try again later." },
-        { status: 503 }
-      );
-    }
-
     const suppliedTesterCode = typeof testerCode === "string" ? testerCode.trim().toUpperCase() : "";
     let testerCodeHash: string | null = null;
+    let isPilotAccess = false;
     if (suppliedTesterCode) {
       if (!isUkAccount({ country, currency })) return NextResponse.json({ error: "Tester access is only available for GB accounts using GBP." }, { status: 400 });
-      if (referralCode?.trim()) return NextResponse.json({ error: "A tester code cannot be combined with a referral code." }, { status: 400 });
-      testerCodeHash = createHash("sha256").update(suppliedTesterCode).digest("hex");
+      if (typeof referralCode === "string" && referralCode.trim()) return NextResponse.json({ error: "A tester code cannot be combined with a referral code." }, { status: 400 });
+      const looksLikePilotCode = /^P2D-UKQA-/i.test(suppliedTesterCode);
+      const validPilotCodeFormat = isPilotTesterCode(suppliedTesterCode);
+      if (looksLikePilotCode && !validPilotCodeFormat) return NextResponse.json({ error: "The UK-market QA code is invalid. Check the code and try again." }, { status: 400 });
+      if (validPilotCodeFormat) {
+        if (!isQaRunnerEnabled()) return NextResponse.json({ error: "UK-market QA codes can only be redeemed in the explicitly allow-listed staging environment." }, { status: 400 });
+        isPilotAccess = true;
+      }
+      testerCodeHash = isPilotAccess ? hashPilotAccessCode(suppliedTesterCode) : createHash("sha256").update(suppliedTesterCode).digest("hex");
     }
+    if (testerCodeHash && !isPilotAccess) {
+      const promotion = await getPromotion();
+      const now = new Date();
+      if (!promotion.active || now < promotion.startAt || now > promotion.endAt) {
+        return NextResponse.json({ error: "Tester applications are only accepted while the UK promotional programme is active." }, { status: 400 });
+      }
+    }
+    if (verificationRequired && !emailDeliveryConfigured() && !isPilotAccess) {
+      return NextResponse.json({ error: "Email verification is being configured. Please try again later." }, { status: 503 });
+    }
+
     const selectedPlan = planType || "individual";
     const parsedFleetVehicleCount = Number(fleetVehicleCount);
     const normalizedCompanyName = (typeof companyName === "string" ? companyName.trim() : "") || (country === "IN" || isSoleTrader ? name.trim() : "");
@@ -270,6 +285,13 @@ async function POSTHandler(
         referrer.id;
     }
 
+    let pilotTrialStartedAt: Date | undefined;
+    let pilotFreeEndsAt: Date | undefined;
+    if (isPilotAccess) {
+      pilotTrialStartedAt = new Date();
+      pilotFreeEndsAt = new Date(pilotTrialStartedAt.getTime() + 90 * 24 * 60 * 60 * 1000);
+    }
+
     const passwordHash =
       await bcrypt.hash(
         password,
@@ -323,8 +345,16 @@ async function POSTHandler(
                 currency,
 
                 displayId,
-                isTester: false,
-                testerApprovalStatus: testerCodeHash ? "pending" : undefined,
+                isTester: isPilotAccess,
+                testerApprovalStatus: isPilotAccess ? "approved" : testerCodeHash ? "pending" : undefined,
+                promotionParticipant: isPilotAccess,
+                trialStartedAt: pilotTrialStartedAt,
+                trialEndsAt: pilotFreeEndsAt,
+                freeEndsAt: pilotFreeEndsAt,
+                freeMonthsEarned: isPilotAccess ? 0 : undefined,
+                extensionCount: isPilotAccess ? 0 : undefined,
+                subscriptionStatus: isPilotAccess ? "promotional" : undefined,
+                lastActivityAt: pilotTrialStartedAt,
 
                 users: {
                   create: {
@@ -338,7 +368,7 @@ async function POSTHandler(
 
                     passwordHash,
 
-                    emailVerifiedAt: verificationRequired ? null : (country !== "IN" && normalizedEmail ? new Date() : null),
+                    emailVerifiedAt: isPilotAccess || verificationRequired ? null : (country !== "IN" && normalizedEmail ? new Date() : null),
 
                     role:
                       "owner",
@@ -348,9 +378,13 @@ async function POSTHandler(
               },
             });
 
+          if (isPilotAccess) {
+            await tx.qaTestAccount.create({ data: { runId: "uk-market-student-qa", accountId: createdAccount.id } });
+          }
+
           if (testerCodeHash) {
             const accessCode = await tx.testerAccessCode.findUnique({ where: { codeHash: testerCodeHash } });
-            if (!accessCode || accessCode.claimedAt || accessCode.claimedByAccountId) {
+            if (!accessCode || accessCode.claimedAt || accessCode.claimedByAccountId || (isPilotAccess && Date.now() - accessCode.createdAt.getTime() > PILOT_ACCESS_CODE_TTL_MS)) {
               throw new Error("TESTER_CODE_INVALID_OR_USED");
             }
             const claim = await tx.testerAccessCode.updateMany({
@@ -426,7 +460,7 @@ async function POSTHandler(
     }
 
 let verificationEmailSent = false;
-if (verificationRequired && normalizedEmail) {
+if (verificationRequired && normalizedEmail && !isPilotAccess) {
   const createdUser = await prisma.user.findUnique({
     where: { email: normalizedEmail },
     select: { id: true, email: true, name: true },
@@ -447,8 +481,10 @@ return NextResponse.json({
   success: true,
   accountId: account.id,
   referralRecorded: Boolean(referrerId),
-  testerApplicationPending: Boolean(testerCodeHash),
-  emailVerificationPending: verificationRequired,
+  testerApplicationPending: Boolean(testerCodeHash) && !isPilotAccess,
+  pilotAccessEnabled: isPilotAccess,
+  pilotTrialEndsAt: pilotFreeEndsAt?.toISOString() ?? null,
+  emailVerificationPending: verificationRequired && !isPilotAccess,
   verificationEmailSent,
 }, { status: 201 });
   } catch (error) {
