@@ -11,6 +11,7 @@ export async function getAccountAccess(accountId: string) {
       country: true,
       currency: true,
       verificationStatus: true,
+      phoneVerifiedAt: true,
       isTester: true,
       promotionParticipant: true,
       trialStartedAt: true,
@@ -75,6 +76,15 @@ export async function getAccountAccess(accountId: string) {
         account: null,
       };
     }
+  }
+
+  // India has no paid access tier or person/company verification gate.
+  // A valid phone OTP is the sole platform-access prerequisite.
+  if (account.country === "IN" && account.currency === "INR") {
+    if (!account.phoneVerifiedAt) {
+      return { allowed: false, reason: "verification_required" as const, account };
+    }
+    return { allowed: true, reason: "india_free" as const, account };
   }
 
   if (!isWeeklyPricingEligible(account)) {
