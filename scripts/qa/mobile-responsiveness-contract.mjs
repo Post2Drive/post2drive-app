@@ -27,6 +27,8 @@ assert.ok(css.includes("@media (hover: none) and (pointer: coarse)") && css.incl
 assert.ok(css.includes("@media (prefers-reduced-motion: reduce)") && css.includes("transition: none !important"), "Touch feedback must respect reduced-motion preference");
 assert.ok(css.includes("-webkit-text-size-adjust: 100%") && css.includes("font-size: 16px"), "Mobile form text must avoid iOS focus zoom and preserve legibility");
 assert.ok(css.includes("overflow-wrap: anywhere") && css.includes("max-width: 100%"), "Long content and media must not widen narrow viewports");
+assert.ok(css.includes("main.home-page") && css.includes("grid-template-columns: minmax(0, 1fr)") && css.includes(".home-route-panel"), "Homepage hero and route panel must collapse to a bounded single column on phones");
+assert.ok(css.includes("input,\nselect,\ntextarea") && css.includes("min-width: 0;"), "Form controls must shrink inside narrow flex and grid columns");
 assert.ok(css.includes("main table") && css.includes("overflow-x: auto"), "Wide tables must scroll within the viewport rather than widen the page");
 assert.ok(css.includes('[style*="minmax(280px"]') && css.includes("grid-template-columns: minmax(0, 1fr) !important"), "Wide inline grids must collapse to one column on phones");
 assert.ok(css.includes(".ops-theme-dashboard .dashboard-stat-link") && css.includes("min-width: 0 !important"), "Dashboard KPI cards must not enforce widths that overflow narrow screens");
