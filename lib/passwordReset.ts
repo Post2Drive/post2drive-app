@@ -90,7 +90,7 @@ export async function sendPasswordResetEmail(email: string, name: string, token:
     to: email,
     subject: "Reset your Post2Drive password",
     html,
-    text: `Hello ${name || "there"},\\n\\nReset your Post2Drive password using this link:\\n${resetUrl}\\n\\nThis link expires in one hour and can only be used once. If you did not request a reset, ignore this email.`,
+    text: `Hello ${name || "there"},\n\nReset your Post2Drive password using this link:\n${resetUrl}\n\nThis link expires in one hour and can only be used once. If you did not request a reset, ignore this email.`,
   });
   if (!result.accepted) {
     throw new Error(result.reason === "not_configured"
