@@ -56,6 +56,7 @@ export async function getAccountAccess(accountId: string) {
         country: true,
         currency: true,
         verificationStatus: true,
+        phoneVerifiedAt: true,
         isTester: true,
         promotionParticipant: true,
         trialStartedAt: true,
