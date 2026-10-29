@@ -64,9 +64,9 @@ export default function SignupPage() {
     if (step === 0 && !form.isSoleTrader && !form.companyName.trim()) return "Enter your registered company name, or select sole trader.";
     if (step === 1 && (!Number.isInteger(vehicleCount) || vehicleCount < 1 || vehicleCount > 55)) return "Enter a vehicle count from 1 to 55. Fleets with 56+ vehicles need custom pricing.";
     if (step === 2) {
-      if (!form.name.trim() || !form.email.trim() || !form.phone.trim() || form.password.length < 8) return "Complete all account fields. Password must contain at least 8 characters.";
+      if (!form.name.trim() || (!isIndia && !form.email.trim()) || !form.phone.trim() || form.password.length < 8) return "Complete all required account fields. Password must contain at least 8 characters.";
       if (new TextEncoder().encode(form.password).byteLength > 72) return "Password must be no more than 72 UTF-8 bytes.";
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) return "Enter a valid email address.";
+      if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) return "Enter a valid email address.";
     }
     return "";
   }
@@ -154,7 +154,7 @@ export default function SignupPage() {
 
       {step === 2 && <div className="signup-fields">
         <label>Your full name<input required autoComplete="name" maxLength={100} value={form.name} onChange={(e) => update("name", e.target.value)} /></label>
-        <label>Email address<input required type="email" autoComplete="email" maxLength={254} value={form.email} onChange={(e) => update("email", e.target.value)} /></label>
+        <label>Email address{isIndia ? " (optional in India)" : ""}<input required={!isIndia} type="email" autoComplete="email" maxLength={254} value={form.email} onChange={(e) => update("email", e.target.value)} /></label>
         <label>Phone number<input required type="tel" autoComplete="tel" maxLength={50} placeholder={`${selectedCountry?.dialingCode ?? "+"} …`} value={form.phone} onChange={(e) => update("phone", e.target.value)} /></label>
         <label>Password<input required type="password" minLength={8} maxLength={72} autoComplete="new-password" value={form.password} onChange={(e) => update("password", e.target.value)} /><small>Use at least 8 characters and no more than 72 UTF-8 bytes. Never reuse a password from another service.</small></label>
         {isUk && <div className="signup-fields"><label>Personal tester invitation code (optional)<input type="password" autoComplete="off" maxLength={100} value={form.testerCode} onChange={(e) => setForm((current) => ({ ...current, testerCode: e.target.value, referralCode: e.target.value ? "" : current.referralCode }))} placeholder="Provided directly by Post2Drive" /></label>{!form.testerCode && <label>Referral code (optional)<input maxLength={32} value={form.referralCode} onChange={(e) => setForm((current) => ({ ...current, referralCode: e.target.value, testerCode: e.target.value ? "" : current.testerCode }))} /></label>}</div>}
@@ -169,7 +169,7 @@ export default function SignupPage() {
       </div>}
 
       {step === steps.length - 1 && <div className="signup-fields">
-        <div className="signup-review-grid"><div><span>MARKET</span><strong>{marketDisplay}</strong></div><div><span>BUSINESS</span><strong>{form.isSoleTrader ? (form.companyName.trim() || form.name || "Sole trader") : form.companyName}</strong></div><div><span>ACCOUNT PLAN</span><strong>{selectedPlan === "individual" ? "Individual · 1 vehicle" : `Fleet · ${form.fleetVehicleCount} vehicles`}</strong></div><div><span>EMAIL</span><strong>{form.email}</strong></div></div>
+        <div className="signup-review-grid"><div><span>MARKET</span><strong>{marketDisplay}</strong></div><div><span>BUSINESS</span><strong>{form.isSoleTrader ? (form.companyName.trim() || form.name || "Sole trader") : form.companyName}</strong></div><div><span>ACCOUNT PLAN</span><strong>{selectedPlan === "individual" ? "Individual · 1 vehicle" : `Fleet · ${form.fleetVehicleCount} vehicles`}</strong></div><div><span>EMAIL</span><strong>{form.email || (isIndia ? "Not provided" : "—")}</strong></div></div>
         {isUk && <div className="signup-note"><strong>Promotion is not guaranteed</strong><p>Entering an invitation code creates a tester application. Access and any promotional trial begin only after approval. Paid subscription checkout is not activated by this signup.</p></div>}
         <label className="signup-checkbox"><input type="checkbox" checked={form.termsAccepted} onChange={(e) => update("termsAccepted", e.target.checked)} /><span>I agree to the <a href="/terms" target="_blank" rel="noreferrer">Terms of Service</a> and acknowledge the <a href="/privacy" target="_blank" rel="noreferrer">Privacy Notice</a>.</span></label>
         <p className="signup-muted">Your account will be created in {isIndia ? "the India marketplace with INR" : `the ${marketLabel} marketplace with ${form.currency}`}. Each country market keeps public job listings separate.</p>
