@@ -51,6 +51,20 @@ function diagnosticsOnly(value: unknown): Record<string, string | number | boole
   return output;
 }
 
+async function GETHandler() {
+  if (!isQaRunnerEnabled()) return NextResponse.json({ enabled: false }, { status: 404, headers: { "Cache-Control": "no-store" } });
+  const session = await getServerSession(authOptions);
+  const accountId = (session?.user as any)?.accountId as string | undefined;
+  if (!accountId) return NextResponse.json({ enabled: false }, { status: 404, headers: { "Cache-Control": "no-store" } });
+  const account = await prisma.account.findUnique({
+    where: { id: accountId, deletionRequestedAt: null },
+    select: { displayId: true, country: true, currency: true, isTester: true },
+  });
+  if (!account || !account.isTester || !isUkAccount(account)) {
+    return NextResponse.json({ enabled: false }, { status: 404, headers: { "Cache-Control": "no-store" } });
+  }
+  return NextResponse.json({ enabled: true, participantId: account.displayId }, { headers: { "Cache-Control": "no-store" } });
+}
 async function POSTHandler(req: Request) {
   if (!isQaRunnerEnabled()) return NextResponse.json({ error: "Student pilot feedback is only enabled in the explicitly allow-listed staging environment." }, { status: 404 });
   const session = await getServerSession(authOptions);
@@ -104,4 +118,5 @@ async function POSTHandler(req: Request) {
   return NextResponse.json({ success: true, referenceId }, { status: 201 });
 }
 
+export const GET = withApiMetrics("/api/pilot/feedback", GETHandler);
 export const POST = withApiMetrics("/api/pilot/feedback", POSTHandler);

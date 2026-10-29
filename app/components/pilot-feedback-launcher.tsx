@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { collectPilotDiagnostics, PILOT_DIAGNOSTICS_STORAGE_KEY } from "@/lib/pilotDiagnostics";
@@ -8,8 +9,22 @@ export default function PilotFeedbackLauncher() {
   const pathname = usePathname();
   const router = useRouter();
   const { status } = useSession();
+  const [pilotEnabled, setPilotEnabled] = useState(false);
 
-  if (status !== "authenticated" || pathname === "/pilot-feedback" || pathname.startsWith("/admin/pilot")) return null;
+  useEffect(() => {
+    let active = true;
+    if (status !== "authenticated") {
+      setPilotEnabled(false);
+      return () => { active = false; };
+    }
+    fetch("/api/pilot/feedback", { method: "GET", cache: "no-store" })
+      .then(async response => response.ok ? response.json() : null)
+      .then(data => { if (active && data?.enabled === true) setPilotEnabled(true); })
+      .catch(() => { if (active) setPilotEnabled(false); });
+    return () => { active = false; };
+  }, [status]);
+
+  if (status !== "authenticated" || !pilotEnabled || pathname === "/pilot-feedback" || pathname.startsWith("/admin/pilot")) return null;
 
   function reportIssue() {
     try {
