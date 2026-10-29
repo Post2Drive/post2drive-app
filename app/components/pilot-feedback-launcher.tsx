@@ -24,7 +24,7 @@ export default function PilotFeedbackLauncher() {
     <button
       type="button"
       onClick={reportIssue}
-      aria-label="Report a student pilot issue from this screen"
+      aria-label="Report a UK-market QA issue from this screen"
       title="Report an issue and capture this screen's layout diagnostics"
       style={{
         position: "fixed",
