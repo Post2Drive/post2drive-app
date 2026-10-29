@@ -2,7 +2,6 @@ import { createHmac, randomBytes } from "crypto";
 import { prisma } from "@/lib/prisma";
 
 const TOKEN_LIFETIME_MS = 60 * 60 * 1000;
-const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
 export function passwordResetTokenHash(token: string) {
   // Reset tokens contain 256 bits of cryptographic randomness, so they are not
