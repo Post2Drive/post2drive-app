@@ -15,9 +15,6 @@ const SUITE_TYPES: Record<string, "synthetic-accounts" | "api-load" | "workflow-
   provisioning: "synthetic-accounts",
   api: "api-load",
   workflow: "workflow-e2e",
-  regression: "workflow-e2e",
-  localization: "workflow-e2e",
-  failure: "workflow-e2e",
 };
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {

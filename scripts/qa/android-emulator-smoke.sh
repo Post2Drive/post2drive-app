@@ -16,44 +16,29 @@ if [ -z "${APK:-}" ] || [ ! -s "$APK" ]; then
   exit 1
 fi
 
-echo "Waiting for Android boot and package manager readiness."
-booted=0
-for attempt in $(seq 1 60); do
-  if [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\\r')" = "1" ] && \
-     adb shell service check package 2>/dev/null | grep -qi "found"; then
-    booted=1
-    break
-  fi
-  sleep 2
-done
-if [ "$booted" -ne 1 ]; then
-  echo "Android emulator did not become ready for package installation."
-  adb shell getprop sys.boot_completed || true
-  adb shell service check package || true
-  exit 1
-fi
-
 echo "Installing APK: $APK"
-installed=0
-for attempt in 1 2 3; do
-  if adb install -r "$APK"; then
-    installed=1
-    break
-  fi
-  echo "APK installation attempt $attempt failed; reconnecting to the emulator before retry."
-  adb reconnect || true
+if ! adb install -r "$APK"; then
+  echo "Initial APK install failed; checking emulator services and retrying once."
   adb wait-for-device
-  sleep $((attempt * 3))
-done
-if [ "$installed" -ne 1 ]; then
-  echo "Could not install the debug APK after 3 attempts."
-  adb logcat -d -t 200 || true
-  exit 1
+  for attempt in $(seq 1 15); do
+    booted="$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)"
+    if [ "$booted" = "1" ] && adb shell pm list packages >/dev/null 2>&1; then
+      break
+    fi
+    sleep 2
+  done
+  # Retry only after checking Android's package manager is responding. A second
+  # failure remains fatal; this does not convert an app/install failure to pass.
+  adb install -r "$APK"
 fi
 adb logcat -c
 adb shell am force-stop com.post2drive.app
-adb shell monkey -p com.post2drive.app 1
-sleep 20
+# Launch the activity directly instead of using monkey. On cold GitHub-hosted
+# emulator boots, monkey can trigger unrelated Android system-service ANRs before
+# delivering even one event; that makes this smoke test flaky without exercising
+# the app. We still verify the app activity and WebView loading logs below.
+adb shell am start -W -n com.post2drive.app/.MainActivity
+sleep 15
 
 adb shell dumpsys activity activities | grep -F "com.post2drive.app/.MainActivity"
 if adb logcat -d | grep -E "chromium.*(net::ERR_|Failed to load resource)|Capacitor.*(WebView.*error|Failed to load)"; then

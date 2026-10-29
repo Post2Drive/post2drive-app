@@ -151,7 +151,7 @@ try {
     });
     const page = await context.newPage();
     page.setDefaultTimeout(10_000);
-    page.on("pageerror", error => failures.push(`[${viewport.label}] browser exception: ${error.message}`));
+    page.on("pageerror", error => failures.push(`[${viewport.label}] browser exception on ${new URL(page.url()).pathname}: ${error.message}`));
 
     for (const route of publicRoutes) await scanRoute(page, route, viewport);
 
@@ -169,7 +169,7 @@ try {
     await page.goto(new URL("/login", baseURL).toString(), { waitUntil: "domcontentloaded" });
     // The fixture is an India-market account, whose identifier label explicitly
     // permits email or phone; non-India accounts keep the email-only label.
-    await page.getByLabel(/Email or phone number \(India accounts\)/).fill(email);
+    await page.getByLabel(/Email or phone number \\(India accounts\\)/).fill(email);
     await page.getByLabel("Password", { exact: true }).fill(password);
     await page.getByRole("button", { name: "Log in" }).click();
     await page.waitForURL(url => url.pathname === "/dashboard", { timeout: 15_000 });
