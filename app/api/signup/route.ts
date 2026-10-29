@@ -141,7 +141,11 @@ async function POSTHandler(
     if (suppliedTesterCode) {
       if (!isUkAccount({ country, currency })) return NextResponse.json({ error: "Tester access is only available for GB accounts using GBP." }, { status: 400 });
       if (referralCode?.trim()) return NextResponse.json({ error: "A tester code cannot be combined with a referral code." }, { status: 400 });
+      const looksLikeSharedPilotCode = /^P2D-PILOT-/i.test(suppliedTesterCode);
       isPilotAccess = await validateSharedUkPilotCode(suppliedTesterCode, { country, currency });
+      if (looksLikeSharedPilotCode && !isPilotAccess) {
+        return NextResponse.json({ error: "The UK student-pilot code is invalid, expired, or is not available in this staging environment." }, { status: 400 });
+      }
       if (!isPilotAccess) testerCodeHash = createHash("sha256").update(suppliedTesterCode).digest("hex");
     }
     if (testerCodeHash || isPilotAccess) {
