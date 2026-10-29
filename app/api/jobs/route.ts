@@ -392,7 +392,7 @@ async function POSTHandler(req: Request) {
 
   const account = await prisma.account.findUnique({
     where: { id: accountId },
-    select: { country: true, currency: true, verificationStatus: true, companyVerificationStatus: true, isTester: true },
+    select: { country: true, currency: true, verificationStatus: true, companyVerificationStatus: true, phoneVerifiedAt: true, isTester: true },
   });
   if (!account || !isSupportedMarket(account)) {
     return NextResponse.json({ error: "Your account market is not supported." }, { status: 403 });
