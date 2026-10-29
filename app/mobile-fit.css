@@ -79,3 +79,32 @@ main input, main select, main textarea { max-width: 100%; }
 @media (prefers-reduced-motion: reduce) {
   html:focus-within { scroll-behavior: auto; }
 }
+
+/* Emil design-engineering: tactile feedback only on touch pointers, with a
+   short interruptible transform transition; avoid sticky hover on touchscreens. */
+@media (hover: none) and (pointer: coarse) {
+  main button:not(:disabled),
+  main .button-link,
+  .mobile-nav-link {
+    transition: transform 120ms var(--ease-out);
+  }
+
+  main button:not(:disabled):active,
+  main .button-link:active,
+  .mobile-nav-link:active {
+    transform: scale(0.98);
+  }
+}
+@media (hover: hover) and (pointer: fine) {
+  main button:not(:disabled):hover,
+  main .button-link:hover {
+    transition: background-color 150ms ease, border-color 150ms ease;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  main button,
+  main .button-link,
+  .mobile-nav-link {
+    transition: none !important;
+  }
+}
