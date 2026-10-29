@@ -154,7 +154,7 @@ async function POSTHandler(
     }
     const selectedPlan = planType || "individual";
     const parsedFleetVehicleCount = Number(fleetVehicleCount);
-    const normalizedCompanyName = (typeof companyName === "string" ? companyName.trim() : "") || (isSoleTrader ? name.trim() : "");
+    const normalizedCompanyName = (typeof companyName === "string" ? companyName.trim() : "") || (country === "IN" || isSoleTrader ? name.trim() : "");
 
     if (selectedPlan !== "individual" && selectedPlan !== "fleet") {
       return NextResponse.json(
