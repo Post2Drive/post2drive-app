@@ -20,7 +20,7 @@ export default function SignupPage() {
     }
   }, [step]);
   const [form, setForm] = useState({
-    name: "", email: "", phone: "", password: "", companyName: "",
+    name: "", email: "", phone: "", password: "", companyName: "", companyNumber: "",
     planType: "individual", fleetVehicleCount: "1", isSoleTrader: false,
     country: "", currency: "", referralCode: "", testerCode: "",
     termsAccepted: false, marketResearch: {
@@ -57,7 +57,7 @@ export default function SignupPage() {
     setForm((current) => ({ ...current, [key]: value }));
   }
   function changeCountry(country: string) {
-    setForm((current) => ({ ...current, country, currency: currencyForCountry(country), referralCode: "", testerCode: "" }));
+    setForm((current) => ({ ...current, country, currency: currencyForCountry(country), companyNumber: "", referralCode: "", testerCode: "" }));
   }
   function canAdvance() {
     if (step === 0 && !form.country) return "Choose your market to continue.";
@@ -142,7 +142,7 @@ export default function SignupPage() {
       {step === 0 && <div className="signup-fields">
         <label>Choose your market<select required value={form.country} onChange={(e) => changeCountry(e.target.value)}><option value="" disabled>Choose a country</option>{COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}</select><small>This determines your marketplace, currency and local time zone. Cross-market matching is disabled.</small></label>
         <label>Account type<select value={form.isSoleTrader ? "sole" : "company"} onChange={(e) => update("isSoleTrader", e.target.value === "sole")}><option value="company">Registered business</option><option value="sole">Sole trader / individual operator</option></select></label>
-        <label>{form.isSoleTrader ? "Trading name (optional)" : "Registered company name"}<input value={form.companyName} onChange={(e) => update("companyName", e.target.value)} required={!form.isSoleTrader} maxLength={120} placeholder={form.isSoleTrader ? "You can use your own name" : "Name registered to your business"} /></label>
+        <label>{form.isSoleTrader ? "Trading name (optional)" : "Registered company name"}<input value={form.companyName} onChange={(e) => update("companyName", e.target.value)} required={!form.isSoleTrader} maxLength={120} placeholder={form.isSoleTrader ? "You can use your own name" : "Name registered to your business"} /></label>{!form.isSoleTrader && <label>{form.country === "GB" ? "Company registration number (if applicable)" : form.country === "IN" ? "Business registration ID (if applicable)" : "Country-specific company / business registration ID (if applicable)"}<input value={form.companyNumber} onChange={(e) => update("companyNumber", e.target.value)} maxLength={80} placeholder="Identifier used by the relevant authority" /><small>Use the identifier applicable to your business type and selected country. Leave blank if not applicable; requirements are assessed under local rules.</small></label>}
         <div className="signup-note"><strong>{form.country ? `${marketLabel} marketplace` : "Select a market"}</strong><p>{!form.country ? "Choose a country to see the correct marketplace, currency and access options." : isIndia ? "Browse India-only delivery opportunities using INR. A short optional market-research step helps shape the experience." : isUk ? "Use this country's marketplace with GBP pricing. Market-specific access and promotion rules are shown before you commit." : "Use this country's separate marketplace with local-currency pricing. The configured access model and promotions available in your country are shown before you commit."}</p></div>
       </div>}
 
