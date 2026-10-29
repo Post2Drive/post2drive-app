@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { zoneMates } from "@/lib/zones";
+import { isQaRunnerEnabled } from "@/lib/qaRunnerGuard";
 
 /**
  * Determines whether a job can reasonably be considered available
@@ -63,7 +64,13 @@ export async function isJobSuitableForDriver(
     return false;
   }
 
-  if (driver.type !== "driver" && driver.companyVerificationStatus !== "verified" && !driver.isTester) {
+  const stagingQaTester = Boolean(
+    isQaRunnerEnabled() &&
+    driver.isTester &&
+    driver.country === "GB" &&
+    driver.currency === "GBP"
+  );
+  if (driver.type !== "driver" && driver.companyVerificationStatus !== "verified" && !stagingQaTester) {
     return false;
   }
 
