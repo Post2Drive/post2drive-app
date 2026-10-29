@@ -22,6 +22,9 @@ assert.ok(css.includes("overflow-x: auto") && css.includes(".mobile-bottom-nav")
 assert.ok(css.includes("min-height: 48px !important"), "Mobile navigation links must provide 48px touch targets");
 assert.ok(css.includes("min-height: 44px;") && css.includes("touch-action: manipulation"), "Controls must use touch-friendly target sizing");
 assert.ok(css.includes("env(safe-area-inset-bottom)") && css.includes("env(safe-area-inset-left)"), "Mobile layout must respect device safe areas");
+assert.ok(readFileSync("app/layout.tsx", "utf8").includes('viewportFit: "cover"'), "Viewport metadata must expose safe-area insets on notched devices");
+assert.ok(css.includes("@media (hover: none) and (pointer: coarse)") && css.includes("scale(0.98)"), "Touch interactions must have restrained press feedback without sticky hover");
+assert.ok(css.includes("@media (prefers-reduced-motion: reduce)") && css.includes("transition: none !important"), "Touch feedback must respect reduced-motion preference");
 assert.ok(css.includes("-webkit-text-size-adjust: 100%") && css.includes("font-size: 16px"), "Mobile form text must avoid iOS focus zoom and preserve legibility");
 assert.ok(css.includes("overflow-wrap: anywhere") && css.includes("max-width: 100%"), "Long content and media must not widen narrow viewports");
 assert.ok(css.includes("main table") && css.includes("overflow-x: auto"), "Wide tables must scroll within the viewport rather than widen the page");
