@@ -69,7 +69,7 @@ export default function LoginPage() {
       <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <label>
           Email or phone number (India accounts)
-          <input type="text" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} />
+          <input type="text" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
         </label>
         <label>
           Password
