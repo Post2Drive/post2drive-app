@@ -5,7 +5,9 @@
 India is the only market exception. Every other configured market follows the shared international baseline currently piloted with the UK.
 
 - Every account requires a phone number.
-- India may omit email entirely and may sign in with its phone number.
+- India signup does not require email, person verification, company verification, company registration IDs, or a paid plan. The account name is a profile label only.
+- India's sole platform verification gate is phone OTP. After OTP verification, users may view marketplace details, post jobs, and accept fixed-quote jobs without person/company verification or subscription expiry checks.
+- India access is free by default. No India verification fee or subscription is charged.
 - Every non-India market requires an email address. Where the existing email-verification feature flag is enabled, email verification is enforced for every non-India account.
 - Email and phone verification are separate signals; one must never imply the other.
 - Marketplace country/currency is selected independently from the phone number's calling code. A person in India can test the GB + GBP marketplace using a +91 number.
@@ -27,6 +29,12 @@ The platform should share common account and vehicle workflows, while choosing c
 - Inspection and document requirements must be scoped by country, subnational jurisdiction and vehicle class, with exemptions and "not applicable" supported where appropriate. Do not apply UK V5C/MOT requirements globally.
 - Existing schema fields such as `Account.companyNumber`, `Vehicle.regPlate`, `Vehicle.v5cDocumentUrl` and `Vehicle.motValidUntil` are legacy/generalisation work in progress. Keep existing GB records compatible while introducing jurisdiction-neutral fields and safe migration/backfill.
 - Country-specific compliance cannot be declared complete solely because the UI label is localised. Validate rules against authoritative local sources before enabling requirements in production.
+
+## India phone-only verification and access
+
+The schema records `Account.phoneVerifiedAt`. Access helpers and posting/acceptance guards treat India + INR as free after this timestamp is set, and do not require person/company verification or verified vehicle status. The timestamp must only be set by a successful, single-use OTP redemption. Never set it during signup or based on a provider label.
+
+The OTP delivery/verification endpoints and a real India SMS provider adapter are not yet integrated. Until that flow exists and is tested end-to-end, India accounts cannot complete the intended verification path. Do not deploy the policy change as a complete India launch.
 
 ## India email and account recovery
 
