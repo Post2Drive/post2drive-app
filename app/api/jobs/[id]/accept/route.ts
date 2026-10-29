@@ -105,7 +105,7 @@ async function POSTHandler(
       },
     });
 
-  if (account && account.type !== "driver" && account.companyVerificationStatus !== "verified") {
+  if (account && account.type !== "driver" && account.companyVerificationStatus !== "verified" && !account.isTester) {
     return NextResponse.json({ error: "Company approval is required for this account before accepting jobs." }, { status: 403 });
   }
 
