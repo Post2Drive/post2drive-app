@@ -384,6 +384,14 @@ async function POSTHandler(
               },
             });
 
+          if (isPilotAccess) {
+            // Keep pilot marketplace records excluded from ordinary marketplace and admin analytics.
+            // This maps to the existing QA account table; no schema change is needed.
+            await tx.qaTestAccount.create({
+              data: { runId: "uk-student-pilot", accountId: createdAccount.id },
+            });
+          }
+
           if (testerCodeHash && !isPilotAccess) {
             const accessCode = await tx.testerAccessCode.findUnique({ where: { codeHash: testerCodeHash } });
             if (!accessCode || accessCode.claimedAt || accessCode.claimedByAccountId) {
