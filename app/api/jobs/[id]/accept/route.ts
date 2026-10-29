@@ -109,7 +109,7 @@ async function POSTHandler(
       },
     });
 
-  const isPilotQaAccount = Boolean(account?.isTester && account.country === "GB" && account.currency === "GBP" && account.qaTestAccounts.some((entry) => entry.runId === "uk-market-student-qa"));
+  const isPilotQaAccount = Boolean(account?.isTester && account.country === "GB" && account.currency === "GBP" && Array.isArray(account.qaTestAccounts) && account.qaTestAccounts.some((entry) => entry.runId === "uk-market-student-qa"));
   const stagingQaTester = Boolean(isQaRunnerEnabled() && isPilotQaAccount);
   if (account && !isIndiaPhoneVerifiedAccount(account) && !stagingQaTester && account.type !== "driver" && account.companyVerificationStatus !== "verified") {
     return NextResponse.json({ error: "Company approval is required for this account before accepting jobs." }, { status: 403 });
@@ -168,7 +168,7 @@ async function POSTHandler(
             where: { id: accountId },
             select: { type: true, verificationStatus: true, companyVerificationStatus: true, isTester: true, country: true, currency: true, phoneVerifiedAt: true, qaTestAccounts: { select: { runId: true } } },
           });
-          const currentDriverIsPilotQaAccount = Boolean(currentDriver?.isTester && currentDriver.country === "GB" && currentDriver.currency === "GBP" && currentDriver.qaTestAccounts.some((entry) => entry.runId === "uk-market-student-qa"));
+          const currentDriverIsPilotQaAccount = Boolean(currentDriver?.isTester && currentDriver.country === "GB" && currentDriver.currency === "GBP" && Array.isArray(currentDriver.qaTestAccounts) && currentDriver.qaTestAccounts.some((entry) => entry.runId === "uk-market-student-qa"));
           const currentDriverStagingQaTester = Boolean(isQaRunnerEnabled() && currentDriverIsPilotQaAccount);
           if (!currentDriver || (!isIndiaPhoneVerifiedAccount(currentDriver) && !currentDriverStagingQaTester && ((currentDriver.type !== "driver" && currentDriver.companyVerificationStatus !== "verified") || (currentDriver.verificationStatus !== "verified" && (!currentDriver.isTester || currentDriverIsPilotQaAccount))))) {
             throw new Error("DRIVER_NOT_VERIFIED");

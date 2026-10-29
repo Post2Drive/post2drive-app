@@ -68,7 +68,7 @@ export async function isJobSuitableForDriver(
 
   const isPilotQaAccount = Boolean(
     driver.isTester && driver.country === "GB" && driver.currency === "GBP" &&
-    driver.qaTestAccounts.some((entry) => entry.runId === "uk-market-student-qa")
+    Array.isArray(driver.qaTestAccounts) && driver.qaTestAccounts.some((entry) => entry.runId === "uk-market-student-qa")
   );
   const stagingQaTester = Boolean(isQaRunnerEnabled() && isPilotQaAccount);
   const indiaPhoneVerified = isIndiaPhoneVerifiedAccount(driver);

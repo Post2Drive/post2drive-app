@@ -50,7 +50,7 @@ async function POSTHandler(
   }
   const isPilotQaAccount = Boolean(
     bidderAccount?.isTester && bidderAccount.country === "GB" && bidderAccount.currency === "GBP" &&
-    bidderAccount.qaTestAccounts.some((entry) => entry.runId === "uk-market-student-qa")
+    Array.isArray(bidderAccount.qaTestAccounts) && bidderAccount.qaTestAccounts.some((entry) => entry.runId === "uk-market-student-qa")
   );
   const stagingQaTester = Boolean(isQaRunnerEnabled() && isPilotQaAccount);
   if (bidderAccount && !stagingQaTester && bidderAccount.type !== "driver" && bidderAccount.companyVerificationStatus !== "verified") {
