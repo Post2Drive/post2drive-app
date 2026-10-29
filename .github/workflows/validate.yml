@@ -58,6 +58,8 @@ jobs:
         run: npm run qa:campaign-builder-contract
       - name: Validate company verification gates
         run: node scripts/qa/company-verification-contract.mjs
+      - name: Validate UK student pilot access and diagnostics boundaries
+        run: npm run qa:uk-student-pilot-contract
       - name: Validate lifecycle, incident, and market-guard contracts
         run: npm run qa:lifecycle-contract
       - name: Validate signup display ID collision retries
