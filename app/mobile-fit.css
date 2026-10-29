@@ -218,3 +218,57 @@ textarea {
     outline-offset: 2px;
   }
 }
+
+
+/* Small-screen target-size guardrails: ensure icon-only and compact buttons
+   remain usable at 320px viewports and keep neighbouring nav targets separated. */
+@media (max-width: 700px) {
+  button,
+  input[type="button"],
+  input[type="submit"],
+  input[type="reset"],
+  [role="button"],
+  .home-button,
+  .button-link {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .mobile-bottom-nav {
+    gap: 6px;
+  }
+
+  .mobile-bottom-nav .mobile-nav-link,
+  .mobile-bottom-nav .mobile-nav-more {
+    flex: 1 1 44px;
+    min-width: 44px;
+    min-height: 48px;
+    margin-inline: 1px;
+  }
+
+  /* The hero CTAs use their own classes and sit outside the shared button theme. */
+  .home-button.home-button-primary,
+  .home-button.home-button-primary:visited,
+  .home-button.home-button-primary > *,
+  .home-button.home-button-primary > * > * {
+    background-color: #2457D6 !important;
+    color: #FFFFFF !important;
+    border-color: #2457D6 !important;
+  }
+
+  .home-button.home-button-primary:hover,
+  .home-button.home-button-primary:focus-visible {
+    background-color: #173FA8 !important;
+    color: #FFFFFF !important;
+    border-color: #173FA8 !important;
+  }
+
+  .home-button.home-button-secondary,
+  .home-button.home-button-secondary:visited,
+  .home-button.home-button-secondary > *,
+  .home-button.home-button-secondary > * > * {
+    background-color: #FFFFFF !important;
+    color: #2457D6 !important;
+    border-color: #2457D6 !important;
+  }
+}
