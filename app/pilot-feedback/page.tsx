@@ -79,8 +79,8 @@ export default function PilotFeedbackPage() {
   return (
     <main style={{ width: "100%", maxWidth: 760, boxSizing: "border-box", margin: "0 auto", padding: "24px 16px 100px" }}>
       <p><Link href="/jobs" className="button-link button-link-secondary">← Back to marketplace</Link></p>
-      <h1>Student pilot feedback</h1>
-      <p>Report what happened on the screen you were using. When you opened this form with the floating Report issue button, layout and device information was captured from that previous screen.</p>
+      <h1>UK-market QA feedback</h1>
+      <p>Report what happened on the screen you were using. When you opened this form with the floating Report issue button, layout and device information was captured from that previous screen. This report helps validate the GB/GBP app configuration; it does not establish UK geolocation or local network behaviour.</p>
       {reference ? (
         <section role="status" style={{ border: "1px solid var(--color-border)", borderRadius: 12, padding: 18 }}>
           <h2>Feedback received</h2>
