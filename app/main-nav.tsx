@@ -32,7 +32,7 @@ export default function MainNav({ showQaCampaigns = false, showStudentPilot = fa
   const links = [
     ...marketLinks,
     ...(showQaCampaigns ? [{ href: "/admin/qa-campaigns", label: "QA Campaigns" }] : []),
-    ...(showStudentPilot ? [{ href: "/admin/pilot", label: "Student Pilot" }] : []),
+    ...(showStudentPilot ? [{ href: "/admin/pilot", label: "UK Market QA" }] : []),
   ];
   const mobilePrimary = links.filter((link) =>
     ["/dashboard", "/jobs", "/jobs/new", "/vehicles"].includes(link.href)
