@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 const read = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
 const pilotAccess = read("../../lib/pilotAccess.ts");
 const signup = read("../../app/api/signup/route.ts");
+const signupPage = read("../../app/signup/page.tsx");
 const testerAdmin = read("../../app/api/admin/testers/route.ts");
 const bid = read("../../app/api/jobs/[id]/bid/route.ts");
 const directAccept = read("../../app/api/jobs/[id]/accept/route.ts");
@@ -35,6 +36,8 @@ assert.match(signup, /if \(testerCodeHash && !isPilotAccess\)/);
 assert.match(signup, /emailVerificationPending: verificationRequired && !isPilotAccess/);
 assert.doesNotMatch(signup, /verificationStatus:\s*"verified"/);
 
+assert.match(signupPage, /UK student pilot \/ tester code/);
+assert.match(signupPage, /Tester mode skips real identity, company and vehicle eligibility checks/);
 assert.match(bid, /!bidderAccount\.isTester && bidderAccount\.type !== "driver"/);
 assert.match(directAccept, /!account\.isTester && account\.type !== "driver"/);
 
