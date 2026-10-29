@@ -1,0 +1,274 @@
+/* Mobile viewport-fit guardrails. Keep the product layout intact while preventing
+   narrow-screen overflow and respecting device safe areas. */
+html {
+  width: 100%;
+  min-width: 0;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  scroll-padding-top: max(12px, env(safe-area-inset-top));
+  scroll-padding-bottom: max(12px, env(safe-area-inset-bottom));
+}
+body {
+  width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+#main-content,
+#main-content > main,
+main,
+main > section,
+main > article,
+main form,
+main fieldset {
+  min-width: 0;
+  max-width: 100%;
+}
+img, video, canvas, svg, iframe { max-width: 100%; }
+main pre, main code, main td, main th, main a {
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+main table {
+  display: table;
+  width: auto;
+  max-width: 100%;
+  overflow-x: visible;
+  -webkit-overflow-scrolling: auto;
+}
+main input, main select, main textarea { max-width: 100%; }
+@media (max-width: 700px) {
+  body { padding-bottom: calc(68px + env(safe-area-inset-bottom)); }
+
+  main table {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .mobile-bottom-nav {
+    padding-left: max(4px, env(safe-area-inset-left));
+    padding-right: max(4px, env(safe-area-inset-right));
+    padding-bottom: max(6px, env(safe-area-inset-bottom));
+  }
+  .mobile-nav-link {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 48px;
+    padding-inline: 3px;
+    font-size: 12px;
+    line-height: 1.2;
+    text-align: center;
+    overflow-wrap: anywhere;
+  }
+  main input, main select, main textarea,
+  .auth-page input, .auth-page select, .auth-page textarea { font-size: 16px; }
+  main button, main .button-link, .auth-page button {
+    min-height: 44px;
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    touch-action: manipulation;
+  }
+  main [style*="grid-template-columns"],
+  main [style*="gridTemplateColumns"] { min-width: 0; max-width: 100%; }
+}
+@media (max-width: 380px) {
+  .auth-page { padding-left: 12px; padding-right: 12px; }
+  .auth-page form { padding: 18px 14px; }
+  .mobile-nav-link { font-size: 11px; }
+}
+@supports (padding: max(0px)) {
+  .mobile-bottom-nav {
+    padding-left: max(4px, env(safe-area-inset-left));
+    padding-right: max(4px, env(safe-area-inset-right));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html:focus-within { scroll-behavior: auto; }
+}
+
+/* Emil design-engineering: tactile feedback only on touch pointers, with a
+   short interruptible transform transition; avoid sticky hover on touchscreens. */
+@media (hover: none) and (pointer: coarse) {
+  main button:not(:disabled),
+  main .button-link,
+  .mobile-nav-link {
+    transition: transform 120ms var(--ease-out);
+  }
+
+  main button:not(:disabled):active,
+  main .button-link:active,
+  .mobile-nav-link:active {
+    transform: scale(0.98);
+  }
+}
+@media (hover: hover) and (pointer: fine) {
+  main button:not(:disabled):hover,
+  main .button-link:hover {
+    transition: background-color 150ms ease, border-color 150ms ease;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  main button,
+  main .button-link,
+  .mobile-nav-link {
+    transition: none !important;
+  }
+}
+
+
+/* Keep the public homepage hero and route panel from retaining desktop grid
+   minimums when gutters are added on small phones. */
+@media (max-width: 760px) {
+  main.home-page {
+    width: 100%;
+    max-width: 100%;
+    padding: 20px 12px 24px;
+  }
+
+  .home-hero {
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+    padding: clamp(18px, 5vw, 28px);
+    border-radius: 18px;
+  }
+
+  .home-hero > *,
+  .home-hero-copy,
+  .home-route-panel {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .home-hero h1 {
+    font-size: clamp(28px, 8vw, 40px);
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (max-width: 380px) {
+  main.home-page {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .home-hero {
+    padding: 16px 12px;
+  }
+}
+
+/* Form controls must be allowed to shrink inside flex/grid columns. */
+input,
+select,
+textarea {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.auth-page {
+  width: 100%;
+  min-width: 0;
+}
+
+.auth-page > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+
+/* The shared navigation sets nowrap for desktop. On compact bottom navigation,
+   allow labels to wrap within each equal-width target instead of overflowing. */
+@media (max-width: 700px) {
+  .mobile-nav-link,
+  .mobile-nav-more {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}
+
+
+/* Keep compact navigation labels readable even when global active-state
+   styling changes button or child text colors. */
+@media (max-width: 700px) {
+  .mobile-nav-more,
+  .mobile-nav-more > span {
+    color: #30343B !important;
+  }
+}
+
+
+/* Keep the compact More control readable against the fixed white nav surface.
+   The control sits outside main, so main button theme rules do not protect it. */
+@media (max-width: 700px) {
+  .mobile-bottom-nav .mobile-nav-more {
+    color: #30343B !important;
+    background: #FFFFFF !important;
+    border: 1px solid #D7DCE4 !important;
+  }
+
+  .mobile-bottom-nav .mobile-nav-more > span,
+  .mobile-bottom-nav .mobile-nav-more.is-active > span {
+    color: #30343B !important;
+  }
+
+  .mobile-bottom-nav .mobile-nav-more:focus-visible {
+    outline: 3px solid #2457D6;
+    outline-offset: 2px;
+  }
+}
+
+
+/* Small-screen target-size guardrails: ensure icon-only and compact buttons
+   remain usable at 320px viewports and keep neighbouring nav targets separated. */
+@media (max-width: 700px) {
+  button,
+  input[type="button"],
+  input[type="submit"],
+  input[type="reset"],
+  [role="button"],
+  .home-button,
+  .button-link {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .mobile-bottom-nav {
+    gap: 6px;
+  }
+
+  .mobile-bottom-nav .mobile-nav-link,
+  .mobile-bottom-nav .mobile-nav-more {
+    flex: 1 1 44px;
+    min-width: 44px;
+    min-height: 48px;
+    margin-inline: 1px;
+  }
+
+  /* The hero CTAs use their own classes and sit outside the shared button theme. */
+  .home-button.home-button-primary,
+  .home-button.home-button-primary:visited,
+  .home-button.home-button-primary > *,
+  .home-button.home-button-primary > * > * {
+    background-color: #2457D6 !important;
+    color: #FFFFFF !important;
+    border-color: #2457D6 !important;
+  }
+
+  .home-button.home-button-primary:hover,
+  .home-button.home-button-primary:focus-visible {
+    background-color: #173FA8 !important;
+    color: #FFFFFF !important;
+    border-color: #173FA8 !important;
+  }
+
+  .home-button.home-button-secondary,
+  .home-button.home-button-secondary:visited,
+  .home-button.home-button-secondary > *,
+  .home-button.home-button-secondary > * > * {
+    background-color: #FFFFFF !important;
+    color: #2457D6 !important;
+    border-color: #2457D6 !important;
+  }
+}

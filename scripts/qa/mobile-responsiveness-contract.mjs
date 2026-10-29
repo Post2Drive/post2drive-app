@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-const css = readFileSync("app/globals.css", "utf8");
+const css = readFileSync("app/globals.css", "utf8") + "\n" + readFileSync("app/mobile-fit.css", "utf8");
+const mobileCss = css.split("@media (max-width: 700px)").slice(1).join("@media (max-width: 700px)");
 const nav = readFileSync("app/main-nav.tsx", "utf8");
 const marketplace = readFileSync("app/jobs/page.tsx", "utf8");
 const createJob = readFileSync("app/jobs/new/page.tsx", "utf8");
@@ -21,7 +22,16 @@ assert.ok(css.includes(".desktop-nav") && css.includes("display: none !important
 assert.ok(css.includes("overflow-x: auto") && css.includes(".mobile-bottom-nav"), "Mobile navigation must be horizontally scrollable when all routes do not fit");
 assert.ok(css.includes("min-height: 48px !important"), "Mobile navigation links must provide 48px touch targets");
 assert.ok(css.includes("min-height: 44px;") && css.includes("touch-action: manipulation"), "Controls must use touch-friendly target sizing");
-assert.ok(css.includes("main table") && css.includes("overflow-x: auto"), "Wide tables must scroll within the viewport rather than widen the page");
+assert.ok(css.includes("env(safe-area-inset-bottom)") && css.includes("env(safe-area-inset-left)"), "Mobile layout must respect device safe areas");
+assert.ok(readFileSync("app/layout.tsx", "utf8").includes('viewportFit: "cover"'), "Viewport metadata must expose safe-area insets on notched devices");
+assert.ok(css.includes("@media (hover: none) and (pointer: coarse)") && css.includes("scale(0.98)"), "Touch interactions must have restrained press feedback without sticky hover");
+assert.ok(css.includes("@media (prefers-reduced-motion: reduce)") && css.includes("transition: none !important"), "Touch feedback must respect reduced-motion preference");
+assert.ok(css.includes("-webkit-text-size-adjust: 100%") && css.includes("font-size: 16px"), "Mobile form text must avoid iOS focus zoom and preserve legibility");
+assert.ok(css.includes("overflow-wrap: anywhere") && css.includes("max-width: 100%"), "Long content and media must not widen narrow viewports");
+assert.ok(css.includes("main.home-page") && css.includes("grid-template-columns: minmax(0, 1fr)") && css.includes(".home-route-panel"), "Homepage hero and route panel must collapse to a bounded single column on phones");
+assert.ok(css.includes(".mobile-nav-link,\n  .mobile-nav-more") && css.includes("white-space: normal"), "Compact bottom-navigation labels must wrap instead of overflowing their touch targets");
+assert.ok(css.includes("input,\nselect,\ntextarea") && css.includes("min-width: 0;"), "Form controls must shrink inside narrow flex and grid columns");
+assert.ok(css.includes("main table") && mobileCss.includes("main table") && mobileCss.includes("overflow-x: auto"), "Wide tables must scroll within the viewport on mobile without changing desktop table layout");
 assert.ok(css.includes('[style*="minmax(280px"]') && css.includes("grid-template-columns: minmax(0, 1fr) !important"), "Wide inline grids must collapse to one column on phones");
 assert.ok(css.includes(".ops-theme-dashboard .dashboard-stat-link") && css.includes("min-width: 0 !important"), "Dashboard KPI cards must not enforce widths that overflow narrow screens");
 assert.ok(css.includes("nav[aria-label=\"Job posting progress\"]") && css.includes("repeat(2, minmax(0, 1fr))"), "Job-posting progress must reflow on narrow phones");
