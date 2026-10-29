@@ -82,3 +82,9 @@ assert.ok(marketplacePage.includes('className="marketplace-page"'), "Marketplace
 assert.ok(css.includes(".account-settings-page label input:not([type=\"checkbox\"])"), "Account settings fields must have their own legible stacked layout");
 assert.ok(css.includes(".marketplace-header-actions"), "Marketplace header actions must wrap rather than push the title off-screen");
 console.log("PASS responsive wrappers and account form layout.");
+
+assert.ok(readFileSync("app/mobile-fit.css", "utf8").includes('button[aria-pressed="true"]'), "Selected button labels must override legacy forced-white text");
+assert.ok(readFileSync("app/mobile-fit.css", "utf8").includes('.main-nav-link[aria-current="page"]'), "Active app navigation links must remain readable");
+assert.ok(ops.includes('/* Analytics dashboard contrast contract: explicit secondary controls stay'), "Analytics dashboard must include explicit contrast guardrails");
+assert.ok(ops.includes('filter-panel-actions button:not(.primary)'), "Analytics secondary filter actions must remain readable");
+console.log("PASS selected-state, app navigation, and analytics dashboard contrast regressions.");
