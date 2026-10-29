@@ -47,7 +47,7 @@ async function POSTHandler(
   if (bidderAccount?.country === "IN" && bidderAccount?.currency === "INR") {
     return NextResponse.json({ error: "Bidding is not available in India. Contact the poster about the fixed quote." }, { status: 403 });
   }
-  if (bidderAccount && bidderAccount.type !== "driver" && bidderAccount.companyVerificationStatus !== "verified") {
+  if (bidderAccount && !bidderAccount.isTester && bidderAccount.type !== "driver" && bidderAccount.companyVerificationStatus !== "verified") {
     return NextResponse.json({ error: "Company approval is required for this account before placing bids." }, { status: 403 });
   }
   if (bidderAccount?.verificationStatus !== "verified" && !bidderAccount?.isTester) {
