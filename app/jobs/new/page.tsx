@@ -146,7 +146,8 @@ export default function NewJobPage() {
     if (step === 1) {
       if (!(VEHICLE_TYPES as readonly string[]).includes(form.vehicleType)) return "Choose a supported vehicle type.";
       const price = Number(form.price);
-      if (!form.price.trim() || !Number.isFinite(price) || price <= 0) return "Enter a price greater than zero.";
+      if (country !== "IN" && (!form.price.trim() || !Number.isFinite(price) || price <= 0)) return "Enter a price greater than zero.";
+      if (country === "IN" && form.price.trim() && (!Number.isFinite(price) || price <= 0)) return "Enter a valid optional fixed price.";
       if (form.priceMode !== "fixed" && form.priceMode !== "bid") return "Choose fixed pricing or open bidding.";
       if (country === "IN" && form.priceMode !== "fixed") return "Open bidding is not available in this market. Use fixed quote pricing.";
       if (form.weightKg.trim() && (!Number.isFinite(Number(form.weightKg)) || Number(form.weightKg) < 0)) return `Enter a valid weight in ${marketProfile?.weightUnit ?? "kg"}.`;
@@ -411,7 +412,7 @@ export default function NewJobPage() {
             <label>Dimensions<input maxLength={150} value={form.dimensions} onChange={(e) => update("dimensions", e.target.value)} placeholder={country === "US" ? "e.g. 14 ft × 7 ft × 8 ft" : "e.g. 4.2 m × 2.1 m × 2.4 m"} /></label>
           </div>
           <label>How will you set the price? *<select value={form.priceMode} onChange={(e) => update("priceMode", e.target.value)}><option value="fixed">{country === "IN" ? "Fixed quote — the amount shown is the offer" : "Fixed price — the amount shown is the offer"}</option>{country !== "IN" && <option value="bid">Open to bids — drivers can submit offers</option>}</select></label>
-          <label>{form.priceMode === "bid" ? `Guide price (${symbol.trim()}) *` : `Total job price (${symbol.trim()}) *`}<input required inputMode="decimal" type="number" min={1 / currencyMinorUnitScale(currency)} max="100000000" step={1 / currencyMinorUnitScale(currency)} value={form.price} onChange={(e) => update("price", e.target.value)} placeholder={country === "IN" ? "e.g. 2500" : "e.g. 85.00"} /><small>Currency is fixed to {currency}; jobs are not shared between markets.</small></label>
+          <label>{form.priceMode === "bid" ? `Guide price (${symbol.trim()}) *` : `Total job price (${symbol.trim()})${country === "IN" ? " (optional)" : " *"}`}<input required={country !== "IN"} inputMode="decimal" type="number" min={1 / currencyMinorUnitScale(currency)} max="100000000" step={1 / currencyMinorUnitScale(currency)} value={form.price} onChange={(e) => update("price", e.target.value)} placeholder={country === "IN" ? "Leave blank to negotiate directly" : "e.g. 85.00"} /><small>{country === "IN" ? "Optional fixed quote in INR. Leave blank to agree the price directly." : `Currency is fixed to ${currency}; jobs are not shared between markets.`}</small></label>
           {form.priceMode === "bid" && <p style={{ margin: 0, borderRadius: 10, padding: 12, background: "var(--color-primary-soft)", fontSize: 13 }}>This is a guide price, not a guaranteed final payment. You'll review driver bids before accepting one.</p>}
         </section>}
 

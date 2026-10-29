@@ -45,7 +45,17 @@ export async function hasEligibleVehicleForJob(accountId: string, market: Vehicl
   return vehicle !== null;
 }
 
-/** Posting and awarding a bid require both verified identity and approved company status. */
-export function canPostJobs(account: { verificationStatus: string; companyVerificationStatus: string }) {
+/** India uses verified phone ownership as its sole platform verification gate. */
+export function isIndiaPhoneVerifiedAccount(account: {
+  country?: string | null;
+  currency?: string | null;
+  phoneVerifiedAt?: Date | string | null;
+}) {
+  return account.country === "IN" && account.currency === "INR" && Boolean(account.phoneVerifiedAt);
+}
+
+/** Posting and awarding a bid require the market's applicable verification policy. */
+export function canPostJobs(account: { verificationStatus: string; companyVerificationStatus: string; country?: string | null; currency?: string | null; phoneVerifiedAt?: Date | string | null }) {
+  if (isIndiaPhoneVerifiedAccount(account)) return true;
   return account.verificationStatus === "verified" && account.companyVerificationStatus === "verified";
 }

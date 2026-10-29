@@ -946,7 +946,7 @@ export default function JobsPage() {
                   <span>{vehicleTypeLabel(job.vehicleType, accountCountry)}</span>
                   <span>·</span>
                   <strong>
-                    {formatMarketCurrency(job.price, { country: accountCountry || "GB", currency: job.currency })}
+                    {accountCountry === "IN" && job.price <= 0 ? "Price negotiable — contact poster" : formatMarketCurrency(job.price, { country: accountCountry || "GB", currency: job.currency })}
                   </strong>
 
                   {job.pricePerMile && (

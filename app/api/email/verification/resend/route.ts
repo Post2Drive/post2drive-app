@@ -48,7 +48,7 @@ async function POSTHandler(req: Request) {
     where: { email },
     select: { id: true, name: true, email: true, emailVerifiedAt: true },
   });
-  if (!user || user.emailVerifiedAt) return NextResponse.json(genericResponse);
+  if (!user || !user.email || user.emailVerifiedAt) return NextResponse.json(genericResponse);
 
   const cooldownSince = new Date(Date.now() - 60 * 1000);
   const recentlySent = await prisma.emailVerificationToken.findFirst({

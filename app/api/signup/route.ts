@@ -5,7 +5,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { generateDisplayId } from "@/lib/displayId";
 import { isUkAccount } from "@/lib/uk";
-import { createEmailVerificationToken, emailDeliveryConfigured, emailVerificationEnabled, sendVerificationEmail } from "@/lib/emailVerification";
+import { createEmailVerificationToken, emailDeliveryConfigured, emailVerificationRequiredForCountry, sendVerificationEmail } from "@/lib/emailVerification";
 import { marketForAccount } from "@/lib/market";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { readBoundedJson } from "@/lib/requestBody";
@@ -53,6 +53,7 @@ async function POSTHandler(
       phone?: unknown;
       password?: unknown;
       companyName?: unknown;
+      companyNumber?: unknown;
       planType?: unknown;
       fleetVehicleCount?: unknown;
       isSoleTrader?: unknown;
@@ -71,6 +72,7 @@ async function POSTHandler(
       phone,
       password,
       companyName,
+      companyNumber,
       planType,
       fleetVehicleCount,
       isSoleTrader,
@@ -85,7 +87,7 @@ async function POSTHandler(
 
     if (
       !name ||
-      !email ||
+      (country !== "IN" && !String(email || "").trim()) ||
       !phone ||
       !password ||
       (!isSoleTrader && !String(companyName || "").trim()) ||
@@ -112,6 +114,8 @@ async function POSTHandler(
       typeof currency !== "string" ||
       (companyName !== undefined && companyName !== null && typeof companyName !== "string") ||
       (typeof companyName === "string" && companyName.length > 160) ||
+      (companyNumber !== undefined && companyNumber !== null && typeof companyNumber !== "string") ||
+      (typeof companyNumber === "string" && companyNumber.length > 80) ||
       (planType !== undefined && typeof planType !== "string") ||
       (fleetVehicleCount !== undefined && typeof fleetVehicleCount !== "string" && typeof fleetVehicleCount !== "number") ||
       (referralCode !== undefined && (typeof referralCode !== "string" || referralCode.length > 32)) ||
@@ -126,13 +130,14 @@ async function POSTHandler(
     }
 
     if (typeof name !== "string" || name.trim().length < 2 || name.trim().length > 100 ||
-        typeof email !== "string" || email.trim().length > 254 ||
+        (email !== undefined && email !== null && typeof email !== "string") ||
+        (typeof email === "string" && email.trim().length > 254) ||
         typeof phone !== "string" || phone.trim().length < 5 || phone.trim().length > 50 ||
         typeof password !== "string" || password.length < 8 || password.length > 128 || Buffer.byteLength(password, "utf8") > 72) {
       return NextResponse.json({ error: "Check your name, email, phone number and password. Passwords must be 8–72 UTF-8 bytes (and no more than 128 characters)." }, { status: 400 });
     }
 
-    const verificationRequired = emailVerificationEnabled();
+    const verificationRequired = emailVerificationRequiredForCountry(country);
     if (verificationRequired && !emailDeliveryConfigured()) {
       return NextResponse.json(
         { error: "Email verification is being configured. Please try again later." },
@@ -149,7 +154,7 @@ async function POSTHandler(
     }
     const selectedPlan = planType || "individual";
     const parsedFleetVehicleCount = Number(fleetVehicleCount);
-    const normalizedCompanyName = (typeof companyName === "string" ? companyName.trim() : "") || (isSoleTrader ? name.trim() : "");
+    const normalizedCompanyName = (typeof companyName === "string" ? companyName.trim() : "") || (country === "IN" || isSoleTrader ? name.trim() : "");
 
     if (selectedPlan !== "individual" && selectedPlan !== "fleet") {
       return NextResponse.json(
@@ -175,20 +180,16 @@ async function POSTHandler(
       );
     }
 
-    const normalizedEmail = email.trim().toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+    const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+    if (normalizedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
       return NextResponse.json({ error: "Enter a valid email address." }, { status: 400 });
     }
-    const emailLimit = await enforceRateLimit(req, { scope: "signup-email", identity: normalizedEmail, limit: 5, windowMs: 60 * 60 * 1000 });
-    if (emailLimit) return emailLimit;
+    if (normalizedEmail) {
+      const emailLimit = await enforceRateLimit(req, { scope: "signup-email", identity: normalizedEmail, limit: 5, windowMs: 60 * 60 * 1000 });
+      if (emailLimit) return emailLimit;
+    }
 
-    const existing =
-      await prisma.user.findUnique({
-        where: {
-          email:
-            normalizedEmail,
-        },
-      });
+    const existing = normalizedEmail ? await prisma.user.findUnique({ where: { email: normalizedEmail } }) : null;
 
     if (existing) {
       return NextResponse.json(
@@ -307,6 +308,7 @@ async function POSTHandler(
                     : null,
 
                 companyName: normalizedCompanyName,
+                companyNumber: typeof companyNumber === "string" && companyNumber.trim() ? companyNumber.trim() : null,
                 termsAcceptedAt: new Date(),
                 termsVersion: "2026-10-16",
                 marketResearch: country === "IN" ? normalizeMarketResearch(marketResearch) : undefined,
@@ -329,15 +331,14 @@ async function POSTHandler(
                     name:
                       name.trim(),
 
-                    email:
-                      normalizedEmail,
+                    email: normalizedEmail || null,
 
                     phone:
                       phone.trim(),
 
                     passwordHash,
 
-                    emailVerifiedAt: verificationRequired ? null : new Date(),
+                    emailVerifiedAt: verificationRequired ? null : (country !== "IN" && normalizedEmail ? new Date() : null),
 
                     role:
                       "owner",
@@ -425,12 +426,12 @@ async function POSTHandler(
     }
 
 let verificationEmailSent = false;
-if (verificationRequired) {
+if (verificationRequired && normalizedEmail) {
   const createdUser = await prisma.user.findUnique({
     where: { email: normalizedEmail },
     select: { id: true, email: true, name: true },
   });
-  if (createdUser) {
+  if (createdUser?.email) {
     try {
       const { token } = await createEmailVerificationToken(createdUser.id);
       await sendVerificationEmail(createdUser.email, createdUser.name, token);

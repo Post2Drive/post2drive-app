@@ -51,7 +51,7 @@ async function POSTHandler(req: Request) {
       account: { select: { deletionRequestedAt: true } },
     },
   });
-  if (!user || user.account.deletionRequestedAt) return NextResponse.json(genericResponse);
+  if (!user || !user.email || user.account.deletionRequestedAt) return NextResponse.json(genericResponse);
 
   let reset: Awaited<ReturnType<typeof createPasswordResetToken>> = null;
   try {
