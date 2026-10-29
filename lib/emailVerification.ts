@@ -77,7 +77,7 @@ export async function sendVerificationEmail(email: string, name: string, token: 
     to: email,
     subject: "Verify your Post2Drive email",
     html,
-    text: `Hello ${name || "there"},\\n\\nVerify your Post2Drive email using this link:\\n${verificationUrl}\\n\\nThis link expires in 24 hours and can only be used once. If you did not create an account, ignore this email.`,
+    text: `Hello ${name || "there"},\n\nVerify your Post2Drive email using this link:\n${verificationUrl}\n\nThis link expires in 24 hours and can only be used once. If you did not create an account, ignore this email.`,
   });
   if (!result.accepted) {
     throw new Error(result.reason === "not_configured"
