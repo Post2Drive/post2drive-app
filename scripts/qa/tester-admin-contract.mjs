@@ -20,7 +20,7 @@ assert.ok(bridge.includes('action: "tester_application_approved"') && bridge.inc
 assert.ok(signup.includes("claimedAt: null, claimedByAccountId: null") && signup.includes("claim.count !== 1"), "tester codes must remain single-use under concurrent claims");
 assert.ok(signup.includes('isTester: isPilotAccess') && signup.includes('testerApprovalStatus: isPilotAccess ? "approved" : testerCodeHash ? "pending" : undefined') && signup.includes("if (validPilotCodeFormat)") && signup.includes("if (!isQaRunnerEnabled())"), "only staging-gated UK QA pilot codes may activate tester privileges; ordinary codes remain pending");
 assert.ok(jobRoute.includes("if (!account.isTester && !canPostJobs(account))"), "tester-specific posting exemption must remain explicit");
-assert.ok(bidRoute.includes("bidderAccount?.verificationStatus !== \"verified\" && !bidderAccount?.isTester"), "tester-specific bidding exemption must remain explicit");
+assert.ok(bidRoute.includes('bidderAccount?.verificationStatus !== "verified" && (!bidderAccount?.isTester || isPilotQaAccount) && !stagingQaTester'), "only tagged UK QA pilot accounts may use the staging-only bidding verification bypass");
 assert.ok(!directAdmin.includes('verificationStatus: "verified"') && !directAdmin.includes('companyVerificationStatus: "verified"'), "tester approval must never forge identity, company or vehicle verification");
 
 console.log(JSON.stringify({
