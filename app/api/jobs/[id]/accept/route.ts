@@ -11,6 +11,7 @@ import { recordAcceptedJobUsage } from "@/lib/usage";
 import { getLocalisationProfile } from "@/lib/localisation";
 import { marketDateKey } from "@/lib/vehicleDates";
 import { isIndiaPhoneVerifiedAccount } from "@/lib/eligibility";
+import { isQaRunnerEnabled } from "@/lib/qaRunnerGuard";
 
 async function POSTHandler(
   req: Request,
@@ -104,14 +105,17 @@ async function POSTHandler(
         country: true,
         currency: true,
         phoneVerifiedAt: true,
+        qaTestAccounts: { select: { runId: true } },
       },
     });
 
-  if (account && !isIndiaPhoneVerifiedAccount(account) && account.type !== "driver" && account.companyVerificationStatus !== "verified") {
+  const isPilotQaAccount = Boolean(account?.isTester && account.country === "GB" && account.currency === "GBP" && Array.isArray(account.qaTestAccounts) && account.qaTestAccounts.some((entry) => entry.runId === "uk-market-student-qa"));
+  const stagingQaTester = Boolean(isQaRunnerEnabled() && isPilotQaAccount);
+  if (account && !isIndiaPhoneVerifiedAccount(account) && !stagingQaTester && account.type !== "driver" && account.companyVerificationStatus !== "verified") {
     return NextResponse.json({ error: "Company approval is required for this account before accepting jobs." }, { status: 403 });
   }
 
-  if (!account || (!isIndiaPhoneVerifiedAccount(account) && account.verificationStatus !== "verified" && !account.isTester)) {
+  if (!account || (!isIndiaPhoneVerifiedAccount(account) && !stagingQaTester && account.verificationStatus !== "verified" && (!account.isTester || isPilotQaAccount))) {
     return NextResponse.json(
       {
         error:
@@ -121,7 +125,7 @@ async function POSTHandler(
     );
   }
 
-  if (account && !account.isTester && !isIndiaPhoneVerifiedAccount(account)) {
+  if (account && (!account.isTester || isPilotQaAccount) && !isIndiaPhoneVerifiedAccount(account) && !stagingQaTester) {
     const driverMarket = getLocalisationProfile({ country: account.country, currency: account.currency });
     const marketToday = marketDateKey(new Date(), driverMarket?.timeZone ?? "UTC");
     const dateCutoff = new Date(marketToday + "T00:00:00.000Z");
@@ -162,12 +166,14 @@ async function POSTHandler(
 
           const currentDriver = await tx.account.findUnique({
             where: { id: accountId },
-            select: { type: true, verificationStatus: true, companyVerificationStatus: true, isTester: true, country: true, currency: true, phoneVerifiedAt: true },
+            select: { type: true, verificationStatus: true, companyVerificationStatus: true, isTester: true, country: true, currency: true, phoneVerifiedAt: true, qaTestAccounts: { select: { runId: true } } },
           });
-          if (!currentDriver || (!isIndiaPhoneVerifiedAccount(currentDriver) && ((currentDriver.type !== "driver" && currentDriver.companyVerificationStatus !== "verified") || (currentDriver.verificationStatus !== "verified" && !currentDriver.isTester)))) {
+          const currentDriverIsPilotQaAccount = Boolean(currentDriver?.isTester && currentDriver.country === "GB" && currentDriver.currency === "GBP" && Array.isArray(currentDriver.qaTestAccounts) && currentDriver.qaTestAccounts.some((entry) => entry.runId === "uk-market-student-qa"));
+          const currentDriverStagingQaTester = Boolean(isQaRunnerEnabled() && currentDriverIsPilotQaAccount);
+          if (!currentDriver || (!isIndiaPhoneVerifiedAccount(currentDriver) && !currentDriverStagingQaTester && ((currentDriver.type !== "driver" && currentDriver.companyVerificationStatus !== "verified") || (currentDriver.verificationStatus !== "verified" && (!currentDriver.isTester || currentDriverIsPilotQaAccount))))) {
             throw new Error("DRIVER_NOT_VERIFIED");
           }
-          if (!currentDriver.isTester && !isIndiaPhoneVerifiedAccount(currentDriver)) {
+          if ((!currentDriver.isTester || currentDriverIsPilotQaAccount) && !isIndiaPhoneVerifiedAccount(currentDriver) && !currentDriverStagingQaTester) {
             const driverMarket = getLocalisationProfile({ country: currentDriver.country, currency: currentDriver.currency });
             const marketToday = marketDateKey(new Date(), driverMarket?.timeZone ?? "UTC");
             const dateCutoff = new Date(marketToday + "T00:00:00.000Z");

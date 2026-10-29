@@ -114,6 +114,7 @@ const authModule = loadTypeScriptModule("lib/auth.ts", {
   "@/lib/emailVerification": { emailVerificationEnabled: () => false },
   "@/lib/rateLimit": { checkRateLimit: async () => ({ allowed: true }), clientNetworkIdentity: () => "fixture" },
   "@/lib/qaRunAuthorization": { isAuthorizedQaRunId: async () => false },
+  "@/lib/qaRunnerGuard": { isQaRunnerEnabled: () => false },
   "@/lib/eligibility": { isIndiaPhoneVerifiedAccount: () => false },
 });
 const callbacks = authModule.authOptions.callbacks;
@@ -648,6 +649,7 @@ const acceptRoute = loadTypeScriptModule("app/api/jobs/[id]/accept/route.ts", {
   "@/lib/localisation": { getLocalisationProfile: () => ({ timeZone: "Europe/London", inspectionRequiredAtCountryLevel: false }) },
   "@/lib/vehicleDates": { marketDateKey: () => "2026-11-01" },
   "@/lib/eligibility": { isIndiaPhoneVerifiedAccount: () => false },
+  "@/lib/qaRunnerGuard": { isQaRunnerEnabled: () => false },
 });
 const acceptRequest = () => acceptRoute.POST(
   new Request("https://fixture.invalid/api/jobs/job-accept-race/accept", { method: "POST" }),

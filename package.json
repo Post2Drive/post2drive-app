@@ -43,7 +43,8 @@
     "qa:password-reset-url": "node scripts/qa/password-reset-url-contract.mjs",
     "qa:csp-report-contract": "node scripts/qa/csp-report-contract.mjs",
     "qa:phone-verification-contract": "node scripts/qa/phone-verification-contract.mjs",
-    "qa:india-email-optional-contract": "node scripts/qa/india-email-optional-contract.mjs"
+    "qa:india-email-optional-contract": "node scripts/qa/india-email-optional-contract.mjs",
+    "qa:uk-student-pilot-contract": "node scripts/qa/uk-student-pilot-contract.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.3",

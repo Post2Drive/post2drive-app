@@ -11,6 +11,7 @@ import { prisma } from "@/lib/prisma";
 import { markDriverOpportunityBid } from "@/lib/opportunities";
 import { getLocalisationProfile } from "@/lib/localisation";
 import { marketDateKey } from "@/lib/vehicleDates";
+import { isQaRunnerEnabled } from "@/lib/qaRunnerGuard";
 
 async function POSTHandler(
   req: Request,
@@ -42,15 +43,20 @@ async function POSTHandler(
 
   const bidderAccount = await prisma.account.findUnique({
     where: { id: accountId },
-    select: { type: true, verificationStatus: true, companyVerificationStatus: true, isTester: true, country: true, currency: true },
+    select: { type: true, verificationStatus: true, companyVerificationStatus: true, isTester: true, country: true, currency: true, qaTestAccounts: { select: { runId: true } } },
   });
   if (bidderAccount?.country === "IN" && bidderAccount?.currency === "INR") {
     return NextResponse.json({ error: "Bidding is not available in India. Contact the poster about the fixed quote." }, { status: 403 });
   }
-  if (bidderAccount && bidderAccount.type !== "driver" && bidderAccount.companyVerificationStatus !== "verified") {
+  const isPilotQaAccount = Boolean(
+    bidderAccount?.isTester && bidderAccount.country === "GB" && bidderAccount.currency === "GBP" &&
+    Array.isArray(bidderAccount.qaTestAccounts) && bidderAccount.qaTestAccounts.some((entry) => entry.runId === "uk-market-student-qa")
+  );
+  const stagingQaTester = Boolean(isQaRunnerEnabled() && isPilotQaAccount);
+  if (bidderAccount && !stagingQaTester && bidderAccount.type !== "driver" && bidderAccount.companyVerificationStatus !== "verified") {
     return NextResponse.json({ error: "Company approval is required for this account before placing bids." }, { status: 403 });
   }
-  if (bidderAccount?.verificationStatus !== "verified" && !bidderAccount?.isTester) {
+  if (bidderAccount?.verificationStatus !== "verified" && (!bidderAccount?.isTester || isPilotQaAccount) && !stagingQaTester) {
     return NextResponse.json(
       { error: "Your account must be verified before placing bids." },
       { status: 403 }
@@ -138,7 +144,7 @@ async function POSTHandler(
     );
   }
 
-  if (!bidderAccount?.isTester) {
+  if (bidderAccount && (!bidderAccount.isTester || (isPilotQaAccount && !stagingQaTester))) {
     const bidderMarket = getLocalisationProfile({ country: bidderAccount.country, currency: bidderAccount.currency });
     const marketToday = marketDateKey(new Date(), bidderMarket?.timeZone ?? "UTC");
     const dateCutoff = new Date(marketToday + "T00:00:00.000Z");

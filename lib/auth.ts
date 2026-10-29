@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { emailVerificationRequiredForCountry } from "@/lib/emailVerification";
 import { checkRateLimit, clientNetworkIdentity } from "@/lib/rateLimit";
 import { isAuthorizedQaRunId } from "@/lib/qaRunAuthorization";
+import { isQaRunnerEnabled } from "@/lib/qaRunnerGuard";
 
 export const authOptions: NextAuthOptions = {
   session: { strategy: "jwt" },
@@ -59,7 +60,7 @@ export const authOptions: NextAuthOptions = {
 
         const looksLikeEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail);
         let user = looksLikeEmail
-          ? await prisma.user.findUnique({ where: { email: normalizedEmail }, include: { account: true } })
+          ? await prisma.user.findUnique({ where: { email: normalizedEmail }, include: { account: { include: { qaTestAccounts: { select: { runId: true } } } } } })
           : null;
 
         // India accounts may register without email. Phone sign-in is India-only
@@ -67,7 +68,7 @@ export const authOptions: NextAuthOptions = {
         if (!looksLikeEmail) {
           const phoneMatches = await prisma.user.findMany({
             where: { phone: identifier, account: { country: "IN" } },
-            include: { account: true },
+            include: { account: { include: { qaTestAccounts: { select: { runId: true } } } } },
             take: 2,
           });
           if (phoneMatches.length === 1) user = phoneMatches[0];
@@ -79,10 +80,19 @@ export const authOptions: NextAuthOptions = {
 
         // Tester applicants can sign in to add the vehicle details needed for admin review.
         // All other new accounts must verify email when the feature is enabled.
+        const allowedStagingPilotLogin =
+          isQaRunnerEnabled() &&
+          user.account.isTester &&
+          user.account.country === "GB" &&
+          user.account.currency === "GBP" &&
+          Array.isArray(user.account.qaTestAccounts) &&
+          user.account.qaTestAccounts.some((entry) => entry.runId === "uk-market-student-qa");
+
         if (
           emailVerificationRequiredForCountry(user.account.country) &&
           !user.emailVerifiedAt &&
-          user.account.testerApprovalStatus !== "pending"
+          user.account.testerApprovalStatus !== "pending" &&
+          !allowedStagingPilotLogin
         ) {
           return null;
         }

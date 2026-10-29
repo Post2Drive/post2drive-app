@@ -18,9 +18,9 @@ assert.ok(directAdmin.includes("market: account.country"), "tester review audit 
 assert.ok(directAdmin.includes("plaintextStored: false"), "code audit must record only metadata, never the raw access code");
 assert.ok(bridge.includes('action: "tester_application_approved"') && bridge.includes('action: "tester_application_rejected"'), "standalone admin bridge must retain approval/rejection audit events");
 assert.ok(signup.includes("claimedAt: null, claimedByAccountId: null") && signup.includes("claim.count !== 1"), "tester codes must remain single-use under concurrent claims");
-assert.ok(signup.includes('isTester: false') && signup.includes('testerApprovalStatus: testerCodeHash ? "pending" : undefined'), "code redemption must not grant tester privileges before approval");
+assert.ok(signup.includes("isTester: isPilotAccess") && signup.includes('testerApprovalStatus: isPilotAccess ? "approved" : testerCodeHash ? "pending" : undefined'), "only guarded UK QA codes may grant pilot tester status; ordinary tester codes must remain pending approval");
 assert.ok(jobRoute.includes("if (!account.isTester && !canPostJobs(account))"), "tester-specific posting exemption must remain explicit");
-assert.ok(bidRoute.includes("bidderAccount?.verificationStatus !== \"verified\" && !bidderAccount?.isTester"), "tester-specific bidding exemption must remain explicit");
+assert.ok(bidRoute.includes("bidderAccount?.verificationStatus !== \"verified\" && (!bidderAccount?.isTester || isPilotQaAccount) && !stagingQaTester") && bidRoute.includes("isPilotQaAccount && !stagingQaTester"), "legacy tester exemption must remain explicit and the UK QA exemption must fail closed when the staging guard is off");
 assert.ok(!directAdmin.includes('verificationStatus: "verified"') && !directAdmin.includes('companyVerificationStatus: "verified"'), "tester approval must never forge identity, company or vehicle verification");
 
 console.log(JSON.stringify({
