@@ -44,19 +44,24 @@ assert.match(testerAdmin, /hashPilotAccessCode\(code\)/);
 assert.match(testerAdmin, /plaintextStored: false/);
 
 assert.match(auth, /allowedStagingPilotLogin/);
+assert.match(auth, /qaTestAccounts\.some\(\(entry\) => entry\.runId === "uk-market-student-qa"\)/, "email-verification bypass must be limited to explicitly tagged pilot accounts");
 assert.match(auth, /isQaRunnerEnabled/);
 assert.match(signupPage, /UK-market QA \/ tester code/);
 assert.match(signupPage, /Tester mode skips real identity, company and vehicle eligibility checks/);
 assert.match(bid, /isQaRunnerEnabled\(\)/);
 assert.match(bid, /const stagingQaTester = Boolean/);
+assert.match(bid, /qaTestAccounts: \{ select: \{ runId: true \} \}/, "bid route must identify the pilot cohort explicitly");
+assert.match(bid, /isPilotQaAccount && !stagingQaTester/, "pilot vehicle bypass must stop when the staging guard is off");
 assert.match(bid, /!stagingQaTester && bidderAccount\.type !== "driver"/);
 assert.match(directAccept, /isQaRunnerEnabled\(\)/);
 assert.match(directAccept, /const stagingQaTester = Boolean/);
+assert.match(directAccept, /currentDriverIsPilotQaAccount/, "acceptance transaction must recheck the tagged pilot cohort");
 assert.match(directAccept, /!stagingQaTester && account\.type !== "driver"/);
 assert.match(directAccept, /currentDriverStagingQaTester = Boolean/);
 assert.match(directAccept, /!currentDriverStagingQaTester/);
 assert.match(opportunities, /isQaRunnerEnabled\(\)/);
 assert.match(opportunities, /const stagingQaTester = Boolean/);
+assert.match(opportunities, /isPilotQaAccount/, "opportunity matching must limit pilot bypass to the tagged cohort");
 assert.match(opportunities, /!stagingQaTester/);
 
 assert.match(feedback, /if \(!isQaRunnerEnabled\(\)\)/);

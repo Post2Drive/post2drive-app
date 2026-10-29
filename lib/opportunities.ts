@@ -38,6 +38,7 @@ export async function isJobSuitableForDriver(
     prisma.account.findUnique({
       where: { id: driverId },
       include: {
+        qaTestAccounts: { select: { runId: true } },
         vehicles: {
           select: {
             vehicleType: true,
@@ -65,18 +66,17 @@ export async function isJobSuitableForDriver(
     return false;
   }
 
-  const stagingQaTester = Boolean(
-    isQaRunnerEnabled() &&
-    driver.isTester &&
-    driver.country === "GB" &&
-    driver.currency === "GBP"
+  const isPilotQaAccount = Boolean(
+    driver.isTester && driver.country === "GB" && driver.currency === "GBP" &&
+    driver.qaTestAccounts.some((entry) => entry.runId === "uk-market-student-qa")
   );
+  const stagingQaTester = Boolean(isQaRunnerEnabled() && isPilotQaAccount);
   const indiaPhoneVerified = isIndiaPhoneVerifiedAccount(driver);
   if (driver.type !== "driver" && driver.companyVerificationStatus !== "verified" && !stagingQaTester && !indiaPhoneVerified) {
     return false;
   }
 
-  if (driver.verificationStatus !== "verified" && !driver.isTester && !indiaPhoneVerified) {
+  if (driver.verificationStatus !== "verified" && (!driver.isTester || isPilotQaAccount) && !indiaPhoneVerified && !stagingQaTester) {
     return false;
   }
 
@@ -90,7 +90,7 @@ export async function isJobSuitableForDriver(
     driver.vehicles.some(
       (vehicle) =>
         vehicle.vehicleType === job.vehicleType &&
-        (driver.isTester || indiaPhoneVerified ||
+        ((driver.isTester && !isPilotQaAccount) || stagingQaTester || indiaPhoneVerified ||
           (vehicle.verificationStatus === "verified" &&
             vehicle.motValidUntil !== null &&
             vehicle.motValidUntil > now &&
