@@ -1,6 +1,5 @@
 import { withApiMetrics } from "@/lib/apiMetrics";
 import { NextResponse } from "next/server";
-import { createHash } from "crypto";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { generateDisplayId } from "@/lib/displayId";
