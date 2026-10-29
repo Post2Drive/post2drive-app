@@ -10,6 +10,7 @@ import { markDriverOpportunityAccepted } from "@/lib/opportunities";
 import { recordAcceptedJobUsage } from "@/lib/usage";
 import { getLocalisationProfile } from "@/lib/localisation";
 import { marketDateKey } from "@/lib/vehicleDates";
+import { isIndiaPhoneVerifiedAccount } from "@/lib/eligibility";
 
 async function POSTHandler(
   req: Request,
