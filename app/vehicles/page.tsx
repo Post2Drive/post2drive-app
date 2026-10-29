@@ -197,7 +197,7 @@ export default function VehiclesPage() {
         {field(marketProfile?.inspectionLabel ?? "Inspection valid until (if required)", "motValidUntil", "date", !expiryDatesOptional && Boolean(marketProfile?.inspectionRequiredAtCountryLevel))}
         <small>{marketProfile?.inspectionHelp}</small>
         <small>Relevant authority: {getJurisdictionAuthority(market.country, form.registrationRegion, market.currency)}.</small>
-        {field("Insurance valid until", "insuranceValidUntil", "date", !expiryDatesOptional)}
+        {field("Insurance valid until", "insuranceValidUntil", "date", market.country !== "IN" && !expiryDatesOptional)}
 
         <button type="submit" disabled={saving} style={{ padding: "11px 18px", minHeight: 44, borderRadius: 8, fontWeight: 650, cursor: saving ? "wait" : "pointer" }}>
           {saving ? "Submitting…" : "Register vehicle"}
