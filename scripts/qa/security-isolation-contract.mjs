@@ -647,6 +647,7 @@ const acceptRoute = loadTypeScriptModule("app/api/jobs/[id]/accept/route.ts", {
   "@/lib/usage": { recordAcceptedJobUsage: async () => {} },
   "@/lib/localisation": { getLocalisationProfile: () => ({ timeZone: "Europe/London", inspectionRequiredAtCountryLevel: false }) },
   "@/lib/vehicleDates": { marketDateKey: () => "2026-11-01" },
+  "@/lib/qaRunnerGuard": { isQaRunnerEnabled: () => false },
 });
 const acceptRequest = () => acceptRoute.POST(
   new Request("https://fixture.invalid/api/jobs/job-accept-race/accept", { method: "POST" }),
