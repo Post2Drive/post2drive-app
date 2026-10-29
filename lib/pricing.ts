@@ -22,6 +22,9 @@ export const INDIVIDUAL_PRICE_GBP = 9.99;
 export const INDIVIDUAL_PRICE_EUR = 9.99;
 export const INDIVIDUAL_ACCESS_DAYS = 7;
 
+/** India has free marketplace access after phone OTP verification. */
+export const INDIA_MARKETPLACE_IS_FREE = true;
+
 export const FLEET_PRICES_GBP = {
   "2-5": 16.99,
   "6-15": 24.99,
