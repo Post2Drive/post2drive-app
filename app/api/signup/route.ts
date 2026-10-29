@@ -374,7 +374,7 @@ async function POSTHandler(
 
                     passwordHash,
 
-                    emailVerifiedAt: verificationRequired && !isPilotAccess ? null : new Date(),
+                    emailVerifiedAt: isPilotAccess || verificationRequired ? null : new Date(),
 
                     role:
                       "owner",
