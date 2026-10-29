@@ -5,7 +5,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { generateDisplayId } from "@/lib/displayId";
 import { isUkAccount } from "@/lib/uk";
-import { createEmailVerificationToken, emailDeliveryConfigured, emailVerificationRequiredForCountry, sendVerificationEmail } from "@/lib/emailVerification.ts";
+import { createEmailVerificationToken, emailDeliveryConfigured, emailVerificationRequiredForCountry, sendVerificationEmail } from "@/lib/emailVerification";
 import { marketForAccount } from "@/lib/market";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { readBoundedJson } from "@/lib/requestBody";
