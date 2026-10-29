@@ -2,7 +2,7 @@
 
 ## Scope
 
-Post2Drive will integrate UK SMS first while keeping an independent India provider slot ready for later. Phone country is determined from a validated E.164 phone number, not IP address or selected marketplace. Marketplace identity (for example GB + GBP) remains independent, so Indian student testers can test the UK marketplace from India using their own +91 numbers.
+Provider integrations are deliberately on hold across all markets until separately approved: this includes UK email delivery/verification and UK, India, and global SMS/phone verification. Do not select providers, add credentials, enable delivery, or claim verification is live as part of the current app-readiness work. Existing integration code may remain dormant; provider setup and end-to-end delivery are a separate future task. Phone country is determined from a validated E.164 phone number, not IP address or selected marketplace. Marketplace identity (for example GB + GBP) remains independent, so Indian student testers can test the UK marketplace from India using their own +91 numbers.
 
 ## Current implementation status
 
@@ -12,7 +12,7 @@ Post2Drive will integrate UK SMS first while keeping an independent India provid
 - Unknown calling codes and malformed phone numbers fail closed.
 - Staging test mode is only eligible when `POST2DRIVE_STAGING_TEST_PHONE_VERIFICATION=true` and the existing isolated staging QA guard passes. This helper does not verify a user or bypass authentication by itself.
 
-## Required next steps
+## Deferred provider work — do not start until approved
 
 1. Select a UK SMS provider and confirm UK delivery, sender/brand rules, pricing, rate limits, delivery callbacks, data processing terms and test/sandbox support.
 2. Implement the provider adapter server-side, with secrets only in the environment secret store.
