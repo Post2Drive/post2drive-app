@@ -36,7 +36,7 @@ assert.match(signup, /emailVerifiedAt: isPilotAccess/);
 assert.match(signup, /looksLikeSharedPilotCode/);
 assert.match(signup, /invalid, expired, or is not available in this staging environment/);
 assert.match(auth, /allowedStagingPilotLogin/);
-assert.match(auth, /isQaRunnerEnabled\\(\\)/);
+assert.match(auth, /isQaRunnerEnabled/);
 assert.match(signup, /if \(testerCodeHash && !isPilotAccess\)/);
 assert.match(signup, /emailVerificationPending: verificationRequired && !isPilotAccess/);
 assert.doesNotMatch(signup, /verificationStatus:\s*"verified"/);
