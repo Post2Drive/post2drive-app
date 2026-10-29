@@ -81,7 +81,7 @@ async function POSTHandler(req: Request) {
   if (!parsedBody.value || typeof parsedBody.value !== "object" || Array.isArray(parsedBody.value)) {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
   }
-  const body = parsedBody.value as { action?: unknown; accountId?: unknown; decision?: unknown };
+  const body = parsedBody.value as { action?: unknown; accountId?: unknown; decision?: unknown; count?: unknown };
 
   if (body.action === "generate-pilot-codes") {
     if (!isQaRunnerEnabled()) {
