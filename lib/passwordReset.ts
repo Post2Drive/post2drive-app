@@ -2,7 +2,6 @@ import { createHmac, randomBytes } from "crypto";
 import { prisma } from "@/lib/prisma";
 
 const TOKEN_LIFETIME_MS = 60 * 60 * 1000;
-const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
 export function passwordResetTokenHash(token: string) {
   // Reset tokens contain 256 bits of cryptographic randomness, so they are not
@@ -69,11 +68,9 @@ export async function createPasswordResetToken(userId: string, accountId: string
 
 export async function sendPasswordResetEmail(email: string, name: string, token: string) {
   const tokenHash = passwordResetTokenHash(token);
-  const apiKey = process.env.RESEND_API_KEY?.trim();
-  const from = process.env.EMAIL_FROM?.trim();
   let baseUrl = process.env.NEXTAUTH_URL?.trim() || "";
   while (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
-  if (!apiKey || !from || !baseUrl) throw new Error("Password reset email delivery is not configured.");
+  if (!baseUrl) throw new Error("Password reset email delivery is not configured.");
 
   const resetUrl = `${baseUrl}/reset-password?token=${encodeURIComponent(token)}`;
   const greeting = escapeHtml(name || "there");
@@ -88,18 +85,17 @@ export async function sendPasswordResetEmail(email: string, name: string, token:
     </div>
   `;
 
-  const response = await fetch(RESEND_ENDPOINT, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      from, to: [email], subject: "Reset your Post2Drive password", html,
-      text: `Hello ${name || "there"},\n\nReset your Post2Drive password using this link:\n${resetUrl}\n\nThis link expires in one hour and can only be used once. If you did not request a reset, ignore this email.`,
-    }),
+  const { deliverTransactionalEmail } = await import("@/lib/emailProvider");
+  const result = await deliverTransactionalEmail({
+    to: email,
+    subject: "Reset your Post2Drive password",
+    html,
+    text: `Hello ${name || "there"},\n\nReset your Post2Drive password using this link:\n${resetUrl}\n\nThis link expires in one hour and can only be used once. If you did not request a reset, ignore this email.`,
   });
-  if (!response.ok) {
-    const responseText = await response.text().catch(() => "");
-    console.error("Password reset email delivery failed:", response.status, responseText.slice(0, 300));
-    throw new Error("Could not send password reset email.");
+  if (!result.accepted) {
+    throw new Error(result.reason === "not_configured"
+      ? "Password reset email delivery is not configured."
+      : "Could not send password reset email.");
   }
 
   await prisma.passwordResetToken.updateMany({
