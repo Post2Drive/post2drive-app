@@ -10,6 +10,7 @@ import { isUkAccount } from "@/lib/uk";
 import { withApiMetrics } from "@/lib/apiMetrics";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 const CATEGORIES = new Set(["layout", "navigation", "registration", "jobs", "bids", "lifecycle", "accessibility", "performance", "other"]);
 const SEVERITIES = new Set(["blocker", "major", "minor", "suggestion"]);
