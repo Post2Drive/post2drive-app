@@ -2672,3 +2672,45 @@ table {
     transition-duration: 0.01ms !important;
   }
 }
+
+
+/* Fix known fixed-minimum grid on the public homepage: 320px cards overflow
+   common 360px-and-under phones once page gutters are included. */
+@media (max-width: 760px) {
+  main.home-page {
+    width: 100%;
+    max-width: 100%;
+    padding: 20px 12px 24px;
+  }
+
+  .home-hero {
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+    padding: clamp(18px, 5vw, 28px);
+    border-radius: 18px;
+  }
+
+  .home-hero > *,
+  .home-hero-copy,
+  .home-route-panel {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .home-hero h1 {
+    font-size: clamp(28px, 8vw, 40px);
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (max-width: 380px) {
+  main.home-page {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .home-hero {
+    padding: 16px 12px;
+  }
+}
