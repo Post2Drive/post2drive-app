@@ -114,6 +114,7 @@ const authModule = loadTypeScriptModule("lib/auth.ts", {
   "@/lib/emailVerification": { emailVerificationEnabled: () => false },
   "@/lib/rateLimit": { checkRateLimit: async () => ({ allowed: true }), clientNetworkIdentity: () => "fixture" },
   "@/lib/qaRunAuthorization": { isAuthorizedQaRunId: async () => false },
+  "@/lib/eligibility": { isIndiaPhoneVerifiedAccount: () => false },
 });
 const callbacks = authModule.authOptions.callbacks;
 
