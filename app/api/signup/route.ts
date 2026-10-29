@@ -8,7 +8,8 @@ import { isUkAccount } from "@/lib/uk";
 import { calculatePromotionalEnd, getPromotion } from "@/lib/promotion";
 import { createEmailVerificationToken, emailDeliveryConfigured, emailVerificationEnabled, sendVerificationEmail } from "@/lib/emailVerification";
 import { marketForAccount } from "@/lib/market";
-import { validateSharedUkPilotCode } from "@/lib/pilotAccess";
+import { hashPilotAccessCode, isPilotTesterCode } from "@/lib/pilotAccess";
+import { isQaRunnerEnabled } from "@/lib/qaRunnerGuard";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { readBoundedJson } from "@/lib/requestBody";
 
@@ -141,14 +142,23 @@ async function POSTHandler(
     if (suppliedTesterCode) {
       if (!isUkAccount({ country, currency })) return NextResponse.json({ error: "Tester access is only available for GB accounts using GBP." }, { status: 400 });
       if (referralCode?.trim()) return NextResponse.json({ error: "A tester code cannot be combined with a referral code." }, { status: 400 });
-      const looksLikeSharedPilotCode = /^P2D-PILOT-/i.test(suppliedTesterCode);
-      isPilotAccess = await validateSharedUkPilotCode(suppliedTesterCode, { country, currency });
-      if (looksLikeSharedPilotCode && !isPilotAccess) {
-        return NextResponse.json({ error: "The UK student-pilot code is invalid, expired, or is not available in this staging environment." }, { status: 400 });
+      const looksLikePilotCode = /^P2D-UKQA-/i.test(suppliedTesterCode);
+      const validPilotCodeFormat = isPilotTesterCode(suppliedTesterCode);
+      if (looksLikePilotCode && !validPilotCodeFormat) {
+        return NextResponse.json({ error: "The UK-market QA code is invalid. Check the code and try again." }, { status: 400 });
       }
-      if (!isPilotAccess) testerCodeHash = createHash("sha256").update(suppliedTesterCode).digest("hex");
+      if (validPilotCodeFormat) {
+        if (!isQaRunnerEnabled()) {
+          return NextResponse.json({ error: "UK-market QA codes can only be redeemed in the explicitly allow-listed staging environment." }, { status: 400 });
+        }
+        isPilotAccess = true;
+      }
+      testerCodeHash = hashPilotAccessCode(suppliedTesterCode);
     }
-    if (testerCodeHash || isPilotAccess) {
+    // Ordinary one-time tester invitations retain the existing active-promotion
+    // requirement. UK-market QA codes are staging-only and must work independently
+    // of the public launch promotion schedule.
+    if (testerCodeHash && !isPilotAccess) {
       const promotion = await getPromotion();
       const now = new Date();
       if (!promotion.active || now < promotion.startAt || now > promotion.endAt) {
@@ -392,11 +402,11 @@ async function POSTHandler(
             // Keep pilot marketplace records excluded from ordinary marketplace and admin analytics.
             // This maps to the existing QA account table; no schema change is needed.
             await tx.qaTestAccount.create({
-              data: { runId: "uk-student-pilot", accountId: createdAccount.id },
+              data: { runId: "uk-market-student-qa", accountId: createdAccount.id },
             });
           }
 
-          if (testerCodeHash && !isPilotAccess) {
+          if (testerCodeHash) {
             const accessCode = await tx.testerAccessCode.findUnique({ where: { codeHash: testerCodeHash } });
             if (!accessCode || accessCode.claimedAt || accessCode.claimedByAccountId) {
               throw new Error("TESTER_CODE_INVALID_OR_USED");
