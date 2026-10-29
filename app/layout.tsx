@@ -6,6 +6,12 @@ import { isTesterAdmin } from "@/lib/testerAdmin";
 import { isQaRunnerEnabled } from "@/lib/qaRunnerGuard";
 import PilotFeedbackLauncher from "@/app/components/pilot-feedback-launcher";
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
+
 export const metadata = {
   title: "Post2Drive",
   description: "Freight and courier marketplace for businesses, fleets and independent drivers",
