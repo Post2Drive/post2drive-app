@@ -158,7 +158,8 @@ try {
     if (viewport.width === 320) {
       await page.goto(new URL("/signup", baseURL).toString(), { waitUntil: "domcontentloaded" });
       await page.getByLabel("Choose your market").selectOption("IN");
-      await page.getByLabel("Registered company name").fill("QA accessibility fixture business");
+      // India intentionally has no registered-company-name field. Exercise its
+      // market-specific first step without relying on UK/international fields.
       await page.getByRole("button", { name: "Continue" }).click();
       await page.waitForFunction(() => document.activeElement?.textContent?.trim() === "Vehicles & capacity");
       await page.getByRole("button", { name: "Back" }).click();
