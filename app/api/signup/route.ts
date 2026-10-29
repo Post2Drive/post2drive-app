@@ -53,6 +53,7 @@ async function POSTHandler(
       phone?: unknown;
       password?: unknown;
       companyName?: unknown;
+      companyNumber?: unknown;
       planType?: unknown;
       fleetVehicleCount?: unknown;
       isSoleTrader?: unknown;
@@ -71,6 +72,7 @@ async function POSTHandler(
       phone,
       password,
       companyName,
+      companyNumber,
       planType,
       fleetVehicleCount,
       isSoleTrader,
@@ -112,6 +114,8 @@ async function POSTHandler(
       typeof currency !== "string" ||
       (companyName !== undefined && companyName !== null && typeof companyName !== "string") ||
       (typeof companyName === "string" && companyName.length > 160) ||
+      (companyNumber !== undefined && companyNumber !== null && typeof companyNumber !== "string") ||
+      (typeof companyNumber === "string" && companyNumber.length > 80) ||
       (planType !== undefined && typeof planType !== "string") ||
       (fleetVehicleCount !== undefined && typeof fleetVehicleCount !== "string" && typeof fleetVehicleCount !== "number") ||
       (referralCode !== undefined && (typeof referralCode !== "string" || referralCode.length > 32)) ||
@@ -304,6 +308,7 @@ async function POSTHandler(
                     : null,
 
                 companyName: normalizedCompanyName,
+                companyNumber: typeof companyNumber === "string" && companyNumber.trim() ? companyNumber.trim() : null,
                 termsAcceptedAt: new Date(),
                 termsVersion: "2026-10-16",
                 marketResearch: country === "IN" ? normalizeMarketResearch(marketResearch) : undefined,
