@@ -5,6 +5,7 @@ const schema = readFileSync("prisma/schema.prisma", "utf8");
 const signup = readFileSync("app/api/signup/route.ts", "utf8");
 const auth = readFileSync("lib/auth.ts", "utf8");
 const signupUi = readFileSync("app/signup/page.tsx", "utf8");
+const localisation = readFileSync("lib/localisation.ts", "utf8");
 const loginUi = readFileSync("app/login/page.tsx", "utf8");
 const emailPolicy = readFileSync("lib/emailVerification.ts", "utf8");
 const migration = readFileSync("prisma/migrations/20261029140000_india_optional_email/migration.sql", "utf8");
@@ -21,5 +22,8 @@ assert.match(auth, /phoneMatches\.length === 1/, "phone login must fail closed f
 assert.match(auth, /emailVerificationRequiredForCountry\(user\.account\.country\)/, "login enforcement must use market-aware email policy");
 assert.match(loginUi, /Email or phone number \(India accounts\)/, "login UI must explain India phone sign-in");
 assert.match(phone, /POST2DRIVE_SMS_GLOBAL_PROVIDER/, "other configured markets must have a global SMS provider slot");
+assert.match(signup, /companyNumber: typeof companyNumber === "string"/, "signup API must persist a country-scoped company ID");
+assert.match(signupUi, /Country-specific company \/ business registration ID/, "signup must request the relevant company ID outside the UK and India");
+assert.match(localisation, /registrationDocumentLabel/, "vehicle registration terminology must remain market-aware");
 
 console.log(JSON.stringify({ status: "passed", checks: 11 }, null, 2));
