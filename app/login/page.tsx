@@ -35,7 +35,7 @@ export default function LoginPage() {
     setLoading(false);
 
     if (res?.error) {
-      setError("Invalid email or password. If you recently signed up, you may need to verify your email.");
+      setError("Invalid email/phone or password. If you recently signed up outside India, you may need to verify your email.");
       return;
     }
 
@@ -68,8 +68,8 @@ export default function LoginPage() {
       {notice && <p role="status" aria-live="polite">{notice}</p>}
       <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <label>
-          Email
-          <input type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+          Email or phone number (India accounts)
+          <input type="text" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} />
         </label>
         <label>
           Password
