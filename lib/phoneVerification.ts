@@ -1,4 +1,5 @@
 import { isQaRunnerEnabled } from "@/lib/qaRunnerGuard";
+import { MARKETS } from "@/lib/market";
 
 /**
  * Provider-independent phone/SMS routing.
@@ -10,8 +11,8 @@ import { isQaRunnerEnabled } from "@/lib/qaRunnerGuard";
  * This module does not send SMS. A provider adapter must be integrated and
  * tested before a route can be marked ready.
  */
-export type PhoneCountry = "GB" | "IN";
-export type SmsProviderSlot = "uk" | "india";
+export type PhoneCountry = "GB" | "IN" | "GLOBAL";
+export type SmsProviderSlot = "uk" | "india" | "global";
 
 export type PhoneRouteResult =
   | {
@@ -56,6 +57,13 @@ export function resolvePhoneRoute(value: unknown): PhoneRouteResult {
     country = "IN";
     providerSlot = "india";
     providerName = process.env.POST2DRIVE_SMS_INDIA_PROVIDER?.trim() || null;
+  } else if (Object.values(MARKETS).some((market) => phone.startsWith(market.dialingCode))) {
+    // The international slot covers every other configured market. Shared
+    // calling codes (for example +1) intentionally do not imply a specific
+    // marketplace country; they only choose the global SMS adapter.
+    country = "GLOBAL";
+    providerSlot = "global";
+    providerName = process.env.POST2DRIVE_SMS_GLOBAL_PROVIDER?.trim() || null;
   } else {
     return { supported: false, country: null, providerSlot: null, providerName: null, ready: false, reason: "unsupported-country" };
   }
