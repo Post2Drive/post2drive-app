@@ -9,8 +9,12 @@ const executionMigration = readFileSync("prisma/migrations/20261019120000_qa_cam
 const startRoute = readFileSync("app/api/admin/qa-campaigns/[id]/start/route.ts", "utf8");
 const worker = readFileSync("scripts/qa/worker.ts", "utf8");
 const runner = readFileSync("lib/qaRunner.ts", "utf8");
+const opsDashboard = readFileSync("ops-dashboard/server.mjs", "utf8");
 
 assert.ok(route.includes("getServerSession(authOptions)") && route.includes("isTesterAdmin()"), "campaign API must require an authenticated allow-listed tester admin");
+assert.ok(route.includes('new Set(["provisioning","api","workflow"])'), "campaign API must only advertise independently implemented suite types");
+assert.ok(!startRoute.includes("regression:") && !startRoute.includes("localization:") && !startRoute.includes("failure:"), "unimplemented regression/localization/failure suites must not alias the broad workflow runner");
+assert.ok(opsDashboard.includes("Dedicated regression, localization and failure-recovery suites are disabled until they have independent test logic and evidence."), "Ops Dashboard must explain why unimplemented suites are disabled");
 assert.ok(route.includes("target_environment text NOT NULL DEFAULT 'staging'") || migration.includes("target_environment text NOT NULL DEFAULT 'staging'"), "campaign metadata must be staging-scoped");
 assert.ok(migration.includes("CHECK (target_environment = 'staging')"), "database must reject non-staging campaign targets");
 assert.ok(migration.includes("CHECK (execution_mode = 'preview_only')") && executionMigration.includes("staging_sequential"), "campaign execution mode must be explicitly migrated to sequential staging runs");
