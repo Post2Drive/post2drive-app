@@ -17,7 +17,20 @@ if [ -z "${APK:-}" ] || [ ! -s "$APK" ]; then
 fi
 
 echo "Installing APK: $APK"
-adb install -r "$APK"
+if ! adb install -r "$APK"; then
+  echo "Initial APK install failed; checking emulator services and retrying once."
+  adb wait-for-device
+  for attempt in $(seq 1 15); do
+    booted="$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)"
+    if [ "$booted" = "1" ] && adb shell pm list packages >/dev/null 2>&1; then
+      break
+    fi
+    sleep 2
+  done
+  # Retry only after checking Android's package manager is responding. A second
+  # failure remains fatal; this does not convert an app/install failure to pass.
+  adb install -r "$APK"
+fi
 adb logcat -c
 adb shell am force-stop com.post2drive.app
 # Launch the activity directly instead of using monkey. On cold GitHub-hosted
