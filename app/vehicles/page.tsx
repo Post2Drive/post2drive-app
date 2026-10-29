@@ -191,13 +191,15 @@ export default function VehiclesPage() {
         {field("Make", "make")}
         {field("Model", "model")}
         {field(marketProfile?.vehicleMassLabel ?? "Maximum vehicle weight", "mamKg", "number")}
-        {field(`${marketProfile?.registrationDocumentLabel ?? "Vehicle registration document"} URL (optional)`, "v5cDocumentUrl", "url")}
-        {field("Insurance document URL (optional)", "insuranceDocumentUrl", "url")}
-        {field("Operator licence number (if applicable)", "operatorLicenceNo")}
-        {field(marketProfile?.inspectionLabel ?? "Inspection valid until (if required)", "motValidUntil", "date", !expiryDatesOptional && Boolean(marketProfile?.inspectionRequiredAtCountryLevel))}
-        <small>{marketProfile?.inspectionHelp}</small>
-        <small>Relevant authority: {getJurisdictionAuthority(market.country, form.registrationRegion, market.currency)}.</small>
-        {field("Insurance valid until", "insuranceValidUntil", "date", market.country !== "IN" && !expiryDatesOptional)}
+        {market.country !== "IN" && <>
+          {field(`${marketProfile?.registrationDocumentLabel ?? "Vehicle registration document"} URL (optional)`, "v5cDocumentUrl", "url")}
+          {field("Insurance document URL (optional)", "insuranceDocumentUrl", "url")}
+          {field("Operator licence number (if applicable)", "operatorLicenceNo")}
+          {field(marketProfile?.inspectionLabel ?? "Inspection valid until (if required)", "motValidUntil", "date", !expiryDatesOptional && Boolean(marketProfile?.inspectionRequiredAtCountryLevel))}
+          <small>{marketProfile?.inspectionHelp}</small>
+          <small>Relevant authority: {getJurisdictionAuthority(market.country, form.registrationRegion, market.currency)}.</small>
+          {field("Insurance valid until", "insuranceValidUntil", "date", !expiryDatesOptional)}
+        </>}
 
         <button type="submit" disabled={saving} style={{ padding: "11px 18px", minHeight: 44, borderRadius: 8, fontWeight: 650, cursor: saving ? "wait" : "pointer" }}>
           {saving ? "Submitting…" : "Register vehicle"}
