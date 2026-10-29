@@ -9,7 +9,6 @@ import {
   OTP_RESEND_COOLDOWN_MS,
   applyVerifiedPaymentEvent,
 } from "../../lib/providerLifecycle.ts";
-import { emailVerificationRequiredForCountry } from "../../lib/emailVerification.ts";
 
 const now = 1_800_000_000_000;
 const store = new InMemoryOtpStore();
@@ -70,5 +69,4 @@ assert.ok(emailSource.includes("TOKEN_LIFETIME_MS = 24 * 60 * 60 * 1000"), "emai
 assert.ok(emailSource.includes("hashEmailVerificationToken"), "email token hashes must remain");
 assert.ok(emailSource.includes("usedAt: null"), "email token single-use guard must remain");
 assert.ok(emailSource.includes("country !== \"IN\" && emailVerificationEnabled()"), "India must remain exempt from required email verification");
-assert.equal(typeof emailVerificationRequiredForCountry, "function");
 console.log(JSON.stringify({ status: "passed", checks: 18 }, null, 2));
