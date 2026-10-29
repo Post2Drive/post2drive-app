@@ -6,7 +6,7 @@ Post2Drive will integrate UK SMS first while keeping an independent India provid
 
 ## Current implementation status
 
-- `lib/phoneVerification.ts` validates E.164-shaped input and routes +44 to the UK provider slot and +91 to the India provider slot.
+- `lib/phoneVerification.ts` validates E.164-shaped input and routes +44 to the UK slot, +91 to the India slot, and other configured market calling codes to a global slot.
 - `POST2DRIVE_SMS_UK_PROVIDER` and `POST2DRIVE_SMS_INDIA_PROVIDER` are provider identifiers only. Setting either variable does not enable delivery or make the route ready.
 - No SMS provider adapter is integrated. Both routes intentionally report not ready until an adapter is implemented and tested.
 - Unknown calling codes and malformed phone numbers fail closed.
@@ -24,8 +24,9 @@ Post2Drive will integrate UK SMS first while keeping an independent India provid
 
 ## Environment configuration
 
-- `POST2DRIVE_SMS_UK_PROVIDER`: provider identifier after selection; not a secret.
-- `POST2DRIVE_SMS_INDIA_PROVIDER`: future provider identifier; leave unset until selected.
+- `POST2DRIVE_SMS_UK_PROVIDER`: UK provider identifier; not a secret.
+- `POST2DRIVE_SMS_INDIA_PROVIDER`: India provider identifier; leave unset until selected.
+- `POST2DRIVE_SMS_GLOBAL_PROVIDER`: provider identifier for all other configured market calling codes; it does not imply delivery is ready.
 - `POST2DRIVE_STAGING_TEST_PHONE_VERIFICATION`: staging-only opt-in; ineffective unless every existing QA environment/database/URL guard passes.
 - Provider API credentials must be separate environment secrets and must never be committed.
 
