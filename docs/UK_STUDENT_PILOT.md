@@ -10,7 +10,7 @@ This pilot is for usability and marketplace workflow validation with real studen
 - Code generation and redemption both require `isQaRunnerEnabled()`: the explicitly allow-listed staging environment, matching Railway environment ID, HTTPS staging host, and declared isolated QA database.
 - The code is high entropy, expires after 14 days, is stored as a hash, and is shown only once. Generating a replacement invalidates the previous code.
 - Each student still creates their own account with unique credentials. The cohort code avoids individual one-time codes, waiting for tester approval, and the email-verification step so the cohort can go straight into workflow testing.
-- Accounts made with the shared code are marked `isTester`, given staging promotional access, and have an `approved` tester status. They are **not** marked as identity-, company-, or vehicle-verified. Tester-mode bypasses are for staging workflows only and must not be used for real deliveries.
+- Accounts made with the shared code are marked `isTester`, given staging promotional access, and have an `approved` tester status. They are **not** marked as identity-, company-, or vehicle-verified. Tester-mode bypasses are for staging workflows only and must not be used for real deliveries. They are also mapped to the existing `qa_test_accounts` table so their jobs are kept out of the ordinary marketplace and real-market analytics.
 - Do not use real identity documents, real vehicle documents, payment information, private addresses, or real delivery jobs. Use synthetic job notes and test locations.
 - No database schema/migration or Railway variable changes are required by this feature. Do not deploy the branch before code review and checks.
 
