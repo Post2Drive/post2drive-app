@@ -29,7 +29,11 @@ main pre, main code, main td, main th, main a {
   word-break: normal;
 }
 main table {
+  display: table;
+  width: auto;
   max-width: 100%;
+  overflow-x: visible;
+  -webkit-overflow-scrolling: auto;
 }
 main input, main select, main textarea { max-width: 100%; }
 @media (max-width: 700px) {
