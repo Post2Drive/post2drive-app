@@ -10,6 +10,7 @@ import { markDriverOpportunityAccepted } from "@/lib/opportunities";
 import { recordAcceptedJobUsage } from "@/lib/usage";
 import { getLocalisationProfile } from "@/lib/localisation";
 import { marketDateKey } from "@/lib/vehicleDates";
+import { isQaRunnerEnabled } from "@/lib/qaRunnerGuard";
 
 async function POSTHandler(
   req: Request,
@@ -105,7 +106,13 @@ async function POSTHandler(
       },
     });
 
-  if (account && !account.isTester && account.type !== "driver" && account.companyVerificationStatus !== "verified") {
+  const stagingQaTester = Boolean(
+    isQaRunnerEnabled() &&
+    account?.isTester &&
+    account.country === "GB" &&
+    account.currency === "GBP"
+  );
+  if (account && !stagingQaTester && account.type !== "driver" && account.companyVerificationStatus !== "verified") {
     return NextResponse.json({ error: "Company approval is required for this account before accepting jobs." }, { status: 403 });
   }
 
@@ -162,7 +169,15 @@ async function POSTHandler(
             where: { id: accountId },
             select: { type: true, verificationStatus: true, companyVerificationStatus: true, isTester: true, country: true, currency: true },
           });
-          if (!currentDriver || (currentDriver.type !== "driver" && currentDriver.companyVerificationStatus !== "verified") || (currentDriver.verificationStatus !== "verified" && !currentDriver.isTester)) {
+          const currentDriverStagingQaTester = Boolean(
+            isQaRunnerEnabled() &&
+            currentDriver?.isTester &&
+            currentDriver.country === "GB" &&
+            currentDriver.currency === "GBP"
+          );
+          if (!currentDriver ||
+              (currentDriver.type !== "driver" && currentDriver.companyVerificationStatus !== "verified" && !currentDriverStagingQaTester) ||
+              (currentDriver.verificationStatus !== "verified" && !currentDriver.isTester)) {
             throw new Error("DRIVER_NOT_VERIFIED");
           }
           if (!currentDriver.isTester) {
