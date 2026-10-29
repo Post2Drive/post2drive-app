@@ -2497,3 +2497,138 @@ main.home-page .home-route-panel .home-steps li,
 main.home-page .home-route-panel .home-route-footer {
   border-color: #D7DCE4 !important;
 }
+
+/* Mobile viewport-fit guardrails: keep content inside the visible device width,
+   respect notches/home indicators, and prevent iOS form focus from auto-zooming. */
+html {
+  width: 100%;
+  min-width: 0;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  scroll-padding-top: max(12px, env(safe-area-inset-top));
+  scroll-padding-bottom: max(12px, env(safe-area-inset-bottom));
+}
+
+body {
+  width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+#main-content,
+#main-content > main,
+main,
+main > section,
+main > article,
+main form,
+main fieldset {
+  min-width: 0;
+  max-width: 100%;
+}
+
+img,
+video,
+canvas,
+svg,
+iframe {
+  max-width: 100%;
+}
+
+main pre,
+main code,
+main td,
+main th,
+main a {
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+main table {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+main input,
+main select,
+main textarea {
+  max-width: 100%;
+}
+
+@media (max-width: 700px) {
+  body {
+    padding-bottom: calc(68px + env(safe-area-inset-bottom));
+  }
+
+  .mobile-bottom-nav {
+    padding-left: max(4px, env(safe-area-inset-left));
+    padding-right: max(4px, env(safe-area-inset-right));
+    padding-bottom: max(6px, env(safe-area-inset-bottom));
+  }
+
+  .mobile-nav-link {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 48px;
+    padding-inline: 3px;
+    font-size: 12px;
+    line-height: 1.2;
+    text-align: center;
+    overflow-wrap: anywhere;
+  }
+
+  main input,
+  main select,
+  main textarea,
+  .auth-page input,
+  .auth-page select,
+  .auth-page textarea {
+    font-size: 16px;
+  }
+
+  main button,
+  main .button-link,
+  .auth-page button {
+    min-height: 44px;
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    touch-action: manipulation;
+  }
+
+  main [style*="grid-template-columns"],
+  main [style*="gridTemplateColumns"] {
+    min-width: 0;
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 380px) {
+  .auth-page {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .auth-page form {
+    padding: 18px 14px;
+  }
+
+  .mobile-nav-link {
+    font-size: 11px;
+  }
+}
+
+@supports (padding: max(0px)) {
+  .mobile-bottom-nav {
+    padding-left: max(4px, env(safe-area-inset-left));
+    padding-right: max(4px, env(safe-area-inset-right));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html:focus-within {
+    scroll-behavior: auto;
+  }
+}
