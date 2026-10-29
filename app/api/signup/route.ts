@@ -5,9 +5,10 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { generateDisplayId } from "@/lib/displayId";
 import { isUkAccount } from "@/lib/uk";
-import { getPromotion } from "@/lib/promotion";
+import { calculatePromotionalEnd, getPromotion } from "@/lib/promotion";
 import { createEmailVerificationToken, emailDeliveryConfigured, emailVerificationEnabled, sendVerificationEmail } from "@/lib/emailVerification";
 import { marketForAccount } from "@/lib/market";
+import { validateSharedUkPilotCode } from "@/lib/pilotAccess";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { readBoundedJson } from "@/lib/requestBody";
 
@@ -134,26 +135,30 @@ async function POSTHandler(
     }
 
     const verificationRequired = emailVerificationEnabled();
-    if (verificationRequired && !emailDeliveryConfigured()) {
-      return NextResponse.json(
-        { error: "Email verification is being configured. Please try again later." },
-        { status: 503 }
-      );
-    }
-
     const suppliedTesterCode = typeof testerCode === "string" ? testerCode.trim().toUpperCase() : "";
     let testerCodeHash: string | null = null;
+    let isPilotAccess = false;
     if (suppliedTesterCode) {
       if (!isUkAccount({ country, currency })) return NextResponse.json({ error: "Tester access is only available for GB accounts using GBP." }, { status: 400 });
       if (referralCode?.trim()) return NextResponse.json({ error: "A tester code cannot be combined with a referral code." }, { status: 400 });
-      testerCodeHash = createHash("sha256").update(suppliedTesterCode).digest("hex");
+      isPilotAccess = await validateSharedUkPilotCode(suppliedTesterCode, { country, currency });
+      if (!isPilotAccess) testerCodeHash = createHash("sha256").update(suppliedTesterCode).digest("hex");
     }
-    if (testerCodeHash) {
+    if (testerCodeHash || isPilotAccess) {
       const promotion = await getPromotion();
       const now = new Date();
       if (!promotion.active || now < promotion.startAt || now > promotion.endAt) {
         return NextResponse.json({ error: "Tester applications are only accepted while the UK promotional programme is active." }, { status: 400 });
       }
+    }
+    // The shared cohort code bypasses email-verification delivery only inside
+    // the guarded staging pilot. Ordinary accounts and one-time tester codes
+    // keep the existing email-verification requirements.
+    if (verificationRequired && !emailDeliveryConfigured() && !isPilotAccess) {
+      return NextResponse.json(
+        { error: "Email verification is being configured. Please try again later." },
+        { status: 503 }
+      );
     }
 
     const selectedPlan = planType || "individual";
@@ -182,6 +187,23 @@ async function POSTHandler(
         { error: "Fleet signup supports 2–55 vehicles. Fleets with 56+ vehicles require custom pricing." },
         { status: 400 }
       );
+    }
+
+    let pilotTrialStartedAt: Date | undefined;
+    let pilotFreeEndsAt: Date | undefined;
+    if (isPilotAccess) {
+      pilotTrialStartedAt = new Date();
+      const calculatedEnd = await calculatePromotionalEnd({
+        country,
+        currency,
+        planType: selectedPlan,
+        trialStartedAt: pilotTrialStartedAt,
+        freeMonthsEarned: 0,
+      });
+      if (!calculatedEnd) {
+        return NextResponse.json({ error: "Unable to start the UK staging pilot access window." }, { status: 503 });
+      }
+      pilotFreeEndsAt = calculatedEnd;
     }
 
     const normalizedEmail = email.trim().toLowerCase();
@@ -330,8 +352,14 @@ async function POSTHandler(
                 currency,
 
                 displayId,
-                isTester: false,
-                testerApprovalStatus: testerCodeHash ? "pending" : undefined,
+                isTester: isPilotAccess,
+                testerApprovalStatus: isPilotAccess ? "approved" : testerCodeHash ? "pending" : undefined,
+                promotionParticipant: isPilotAccess,
+                trialStartedAt: pilotTrialStartedAt,
+                trialEndsAt: pilotFreeEndsAt,
+                freeEndsAt: pilotFreeEndsAt,
+                subscriptionStatus: isPilotAccess ? "promotional" : undefined,
+                lastActivityAt: pilotTrialStartedAt,
 
                 users: {
                   create: {
@@ -346,7 +374,7 @@ async function POSTHandler(
 
                     passwordHash,
 
-                    emailVerifiedAt: verificationRequired ? null : new Date(),
+                    emailVerifiedAt: verificationRequired && !isPilotAccess ? null : new Date(),
 
                     role:
                       "owner",
@@ -356,7 +384,7 @@ async function POSTHandler(
               },
             });
 
-          if (testerCodeHash) {
+          if (testerCodeHash && !isPilotAccess) {
             const accessCode = await tx.testerAccessCode.findUnique({ where: { codeHash: testerCodeHash } });
             if (!accessCode || accessCode.claimedAt || accessCode.claimedByAccountId) {
               throw new Error("TESTER_CODE_INVALID_OR_USED");
@@ -434,7 +462,7 @@ async function POSTHandler(
     }
 
 let verificationEmailSent = false;
-if (verificationRequired) {
+if (verificationRequired && !isPilotAccess) {
   const createdUser = await prisma.user.findUnique({
     where: { email: normalizedEmail },
     select: { id: true, email: true, name: true },
@@ -455,8 +483,10 @@ return NextResponse.json({
   success: true,
   accountId: account.id,
   referralRecorded: Boolean(referrerId),
-  testerApplicationPending: Boolean(testerCodeHash),
-  emailVerificationPending: verificationRequired,
+  testerApplicationPending: Boolean(testerCodeHash) && !isPilotAccess,
+  pilotAccessEnabled: isPilotAccess,
+  pilotTrialEndsAt: pilotFreeEndsAt?.toISOString() ?? null,
+  emailVerificationPending: verificationRequired && !isPilotAccess,
   verificationEmailSent,
 }, { status: 201 });
   } catch (error) {
