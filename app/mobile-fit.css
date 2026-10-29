@@ -326,3 +326,54 @@ textarea {
   -webkit-text-fill-color: #2457D6 !important;
   border-color: #2457D6 !important;
 }
+
+
+/* Product-wide selected-control contrast guardrails.
+   Inline-style colour declarations are otherwise overridden by legacy global
+   rules that assume every button has a saturated primary background. */
+button[aria-pressed],
+button[aria-pressed] *,
+[role="tab"],
+[role="tab"] *,
+[role="tab"][aria-selected="true"],
+[role="tab"][aria-selected="true"] * {
+  -webkit-text-fill-color: currentColor;
+}
+
+button[aria-pressed="true"],
+button[aria-pressed="true"] *,
+[role="tab"][aria-selected="true"],
+[role="tab"][aria-selected="true"] * {
+  color: #173FA8 !important;
+  -webkit-text-fill-color: #173FA8 !important;
+}
+
+.main-nav-link[aria-current="page"],
+.mobile-nav-link[aria-current="page"],
+.mobile-more-link[aria-current="page"] {
+  color: #173FA8 !important;
+  -webkit-text-fill-color: #173FA8 !important;
+}
+
+.main-nav-link[aria-current="page"] {
+  background-color: #EAF0FF !important;
+  border-radius: 8px;
+}
+
+/* The separate operations analytics dashboard uses its own stylesheet. Keep
+   secondary/filter actions readable on white, including disabled controls. */
+.ops-theme-dashboard button:not(.primary),
+.ops-theme-dashboard button:not(.primary) *,
+.ops-theme-dashboard .button-secondary,
+.ops-theme-dashboard .button-secondary * {
+  color: #2457D6;
+  -webkit-text-fill-color: #2457D6;
+}
+
+.ops-theme-dashboard button.primary,
+.ops-theme-dashboard button.primary *,
+.ops-theme-dashboard button.primary:disabled,
+.ops-theme-dashboard button.primary:disabled * {
+  color: #FFFFFF;
+  -webkit-text-fill-color: #FFFFFF;
+}
