@@ -88,6 +88,15 @@ export function getPlanDisplay(
   planKey: PricingPlan | null,
   account?: PricingAccount,
 ) {
+  if (account?.country === "IN" && account?.currency === "INR") {
+    return {
+      key: planKey,
+      name: "India Free",
+      price: 0,
+      currency: "INR",
+      description: "Free marketplace access after phone OTP verification. No person or company verification fee.",
+    };
+  }
   const prices = pricesFor(account);
   if (!prices) {
     return {
