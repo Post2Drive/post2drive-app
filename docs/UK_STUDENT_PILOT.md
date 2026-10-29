@@ -1,39 +1,38 @@
-# UK Student Pilot — Staging Runbook
+# UK-Market Student QA Cohort — Staging Runbook
 
 ## Purpose
 
-This pilot is for usability and marketplace workflow validation with real students in the UK. It is not a test of the full identity-verification provider, company review, genuine vehicle-document checks, email delivery, or payment settlement.
+This is a low-cost product-testing cohort for Indian student volunteers who will test Post2Drive with the **GB / GBP market configuration**. It is separate from the genuine UK commercial launch pilot, whose purpose is to acquire real posters and drivers in two UK cities.
 
-## Safety boundary
+The volunteers may be physically in India. The test can validate market configuration, app workflows, mobile responsiveness and usability, but it does **not** simulate being physically in the UK, UK mobile-network conditions, location-based matching from UK coordinates, local vehicle compliance, real identity verification, email delivery or payment settlement.
 
-- The shared pilot access code is generated from the in-app **Student Pilot** admin page.
-- Code generation and redemption both require `isQaRunnerEnabled()`: the explicitly allow-listed staging environment, matching Railway environment ID, HTTPS staging host, and declared isolated QA database.
-- The code is high entropy, expires after 14 days, is stored as a hash, and is shown only once. Generating a replacement invalidates the previous code.
-- Each student still creates their own account with unique credentials. The cohort code avoids individual one-time codes, waiting for tester approval, and the email-verification step so the cohort can go straight into workflow testing.
-- Accounts made with the shared code are marked `isTester`, given staging promotional access, and have an `approved` tester status. They are **not** marked as identity-, company-, or vehicle-verified. Tester-mode bypasses are for staging workflows only and must not be used for real deliveries. They are also mapped to the existing `qa_test_accounts` table so their jobs are kept out of the ordinary marketplace and real-market analytics.
-- Do not use real identity documents, real vehicle documents, payment information, private addresses, or real delivery jobs. Use synthetic job notes and test locations.
-- No database schema/migration or Railway variable changes are required by this feature. Do not deploy the branch before code review and checks.
+## Access and safety boundary
 
-## Issue reporting and device diagnostics
+- A tester admin generates a batch of one-time codes from **UK Market QA** in the main app's admin navigation.
+- The codes reuse the existing `TesterAccessCode` table and single-use claim flow. The database stores SHA-256 hashes, not the plaintext codes. Each code can create one account and should be privately given to only one volunteer. Copy the generated list before closing the page; plaintext is not saved or retrievable.
+- Code generation and redemption both require `isQaRunnerEnabled()`: the explicitly allow-listed staging environment, matching Railway environment ID, HTTPS staging host and declared isolated QA database. If the staging safety gate is unavailable, do not weaken it; investigate the staging setup separately.
+- Codes are specifically prefixed for the QA cohort and only work for accounts selecting **GB + GBP**. Ordinary signup and ordinary one-time tester invitations keep their existing approval and email-verification requirements.
+- An approved QA-code signup skips manual tester approval and email-verification delivery in the guarded staging environment. Its account is marked as a tester, **not** identity-, company- or vehicle-verified. Tester-mode eligibility bypasses are for controlled workflow testing only; never use these accounts for real deliveries.
+- QA accounts are mapped to the existing `qa_test_accounts` table so their test marketplace activity is excluded from ordinary analytics. No schema or migration changes are required.
+- Use synthetic jobs and test locations only. Do not enter real identity/vehicle documents, payment information, private addresses or real customer details. Do not run load tests with this cohort.
 
-The floating **Report issue** button appears in the guarded staging environment for signed-in users. It captures a snapshot from the screen where the button was tapped and then opens the feedback form.
+## Suggested student test plan
 
-The snapshot includes CSS viewport and document dimensions, screen dimensions, device pixel ratio, orientation, horizontal overflow, safe-area insets, visual viewport information, browser/WebView user agent, language, time zone, online state, standalone/native-shell hints, color scheme, and reduced-motion preference. The dynamic route is anonymised by replacing long ID-like path segments.
+1. Ask each volunteer to use their own one-time code, email/password and device. Do not share accounts or passwords.
+2. Confirm signup uses **United Kingdom (GB) and GBP**, even though the student is testing from India.
+3. Test login/logout, dashboard navigation, profile and vehicle screens, posting a synthetic job, searching/discovering jobs, bidding, selecting a bid, accepting a fixed-price job, pickup/delivery state transitions, cancellation-before-pickup and notifications where available.
+4. Test multiple screen sizes and orientations: small Android phones, larger phones, tablets and desktop browsers. Note clipped controls, horizontal scrolling, text overflow, keyboard overlap, safe-area problems and broken navigation.
+5. Tap **Report issue** on the screen where the problem occurs. The form captures a layout/device snapshot and requires explicit consent before submitting it. Record the returned reference ID with the reproduction steps.
+6. For visual issues, take a screenshot manually and share it separately with the organiser after checking that it contains no sensitive information. The app does not automatically take or upload screenshots.
+7. Verify account/market isolation and negative permissions with dedicated tests. A successful tester workflow does not prove identity, company or vehicle-verification controls work for ordinary accounts.
+8. Before any UK commercial pilot, separately validate UK-dependent behaviour with appropriately located testers and real UK conditions where needed.
 
-Students can submit a category, impact level, title and reproduction steps. Submission requires consent and is rate-limited. The feedback is associated with the tester account's public display ID to help follow up. It is stored as an `AdminAuditEvent` record, avoiding a new table/migration. No screenshot is automatically uploaded; screenshot sharing should happen separately through the pilot organiser's agreed private channel after checking the image contains no sensitive information.
+## Diagnostics and privacy
 
-Admins can generate the cohort code and review feedback at **Student Pilot** in the main app's admin navigation, only while the staging guard is active.
+The feedback report can include CSS viewport/document dimensions, physical screen dimensions, device pixel ratio, orientation, horizontal overflow, safe-area insets, visual viewport, browser/WebView user-agent information, platform, language, time zone, online state, standalone/native-shell hints, colour scheme and reduced-motion preference. The student can inspect the report and must consent before sending it.
 
-## Suggested manual run
+Reports are associated with the tester account's public display ID and stored as an `AdminAuditEvent` record to avoid a schema change. The form does not upload screenshots. Do not enter passwords, personal identity numbers, real documents, payment details or another person's personal information in feedback.
 
-1. Run one student through registration/login first and confirm they enter UK/GBP with the current cohort code.
-2. Give each of the participating students their own account and device. Do not share passwords.
-3. Have multiple students cross-test posting, search/discovery, bidding, bid selection, pickup, in-transit, delivery marking, other-party confirmation, cancellation before pickup, and notifications.
-4. Ask them to use **Report issue** while still on the screen with the problem, so the diagnostic snapshot matches that screen.
-5. For each bug, record the feedback reference ID and reproduction steps. For a visual issue, ask for a screenshot separately in the private pilot channel.
-6. Verify account/market isolation and negative permissions with dedicated tests. Tester mode bypasses identity/company/vehicle eligibility, so a successful tester workflow does not prove those controls work for ordinary accounts.
-7. Do not run load tests with the student cohort. Use the separate controlled QA runner for that.
+## What this testing can establish
 
-## What the pilot can and cannot establish
-
-It can provide evidence about APK installation, device/layout compatibility, navigation, usability, multi-user workflow, state transitions, basic account isolation and app-reported errors. It does not establish identity-provider correctness, real UK vehicle compliance, production email delivery, payment settlement, high-load capacity, or production readiness.
+It can provide evidence about GB/GBP product configuration, installation and navigation, mobile responsiveness, usability, multi-account workflows, state transitions and app-reported errors. It cannot establish production readiness, UK physical location behaviour, genuine verification/compliance, live email/payment integration or performance under heavy load.
