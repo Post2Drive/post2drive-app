@@ -27,6 +27,8 @@ assert.match(testerAdmin, /plaintextStored: false/);
 
 assert.match(signup, /validateSharedUkPilotCode\(suppliedTesterCode, \{ country, currency \}\)/);
 assert.match(signup, /isTester: isPilotAccess/);
+assert.match(signup, /tx\\.qaTestAccount\\.create/);
+assert.match(signup, /runId: "uk-student-pilot"/);
 assert.match(signup, /testerApprovalStatus: isPilotAccess \? "approved"/);
 assert.match(signup, /emailVerifiedAt: verificationRequired && !isPilotAccess/);
 assert.match(signup, /if \(testerCodeHash && !isPilotAccess\)/);
