@@ -80,14 +80,34 @@ async function handler(req: Request) {
   const action = typeof body?.action === "string" ? body.action : "";
 
   if (action === "tester-generate-code") {
-    const rawCode = "P2D-" + randomBytes(2).toString("hex").toUpperCase() + "-" + randomBytes(2).toString("hex").toUpperCase() + "-" + randomBytes(2).toString("hex").toUpperCase();
-    const codeHash = createHash("sha256").update(rawCode).digest("hex");
-    const created = await prisma.$transaction(async tx => {
-      const code = await tx.testerAccessCode.create({ data: { codeHash } });
-      await tx.adminAuditEvent.create({ data: { actor, action: "tester_access_code_generated", entityType: "tester_access_code", entityId: code.id, details: { codePrefix: "P2D", plaintextStored: false } } });
-      return code;
+    const requestedCount = body?.count === undefined ? 1 : Number(body.count);
+    if (!Number.isInteger(requestedCount) || requestedCount < 1 || requestedCount > 100) {
+      return NextResponse.json({ error: "Generate between 1 and 100 one-time tester codes." }, { status: 400 });
+    }
+    const codes = Array.from({ length: requestedCount }, () =>
+      "P2D-" + randomBytes(2).toString("hex").toUpperCase() + "-" + randomBytes(2).toString("hex").toUpperCase() + "-" + randomBytes(2).toString("hex").toUpperCase()
+    );
+    const createdAt = new Date();
+    await prisma.$transaction(async tx => {
+      await tx.testerAccessCode.createMany({
+        data: codes.map(rawCode => ({ codeHash: createHash("sha256").update(rawCode).digest("hex") })),
+      });
+      await tx.adminAuditEvent.create({
+        data: {
+          actor,
+          action: "tester_access_codes_generated",
+          entityType: "tester_access_code_batch",
+          details: { codePrefix: "P2D", count: requestedCount, plaintextStored: false },
+        },
+      });
     });
-    return NextResponse.json({ success: true, code: rawCode, createdAt: created.createdAt.toISOString() }, { status: 201 });
+    return NextResponse.json({
+      success: true,
+      count: codes.length,
+      code: codes[0],
+      codes,
+      createdAt: createdAt.toISOString(),
+    }, { status: 201 });
   }
 
   if (action === "tester-approve" || action === "tester-reject") {
