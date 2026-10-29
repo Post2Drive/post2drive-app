@@ -14,34 +14,34 @@ const diagnostics = read("../../lib/pilotDiagnostics.ts");
 const launcher = read("../../app/components/pilot-feedback-launcher.tsx");
 const feedbackPage = read("../../app/pilot-feedback/page.tsx");
 const adminPage = read("../../app/admin/pilot/page.tsx");
+const docs = read("../../docs/UK_STUDENT_PILOT.md");
 
-assert.match(pilotAccess, /isQaRunnerEnabled\(\)/);
-assert.match(pilotAccess, /isUkAccount\(market\)/);
-assert.match(pilotAccess, /P2D-PILOT-\[A-F0-9\]\{24\}/);
-assert.match(pilotAccess, /timingSafeEqual/);
-assert.match(pilotAccess, /expiresAt <= Date\.now\(\)/);
-assert.match(pilotAccess, /orderBy: \{ createdAt: "desc" \}/);
-
-assert.match(testerAdmin, /body\.action === "generate-pilot-code"/);
-assert.match(testerAdmin, /if \(!isQaRunnerEnabled\(\)\)/);
-assert.match(testerAdmin, /codeHash: hashPilotAccessCode\(rawCode\)/);
-assert.match(testerAdmin, /plaintextStored: false/);
-
-assert.match(signup, /validateSharedUkPilotCode\(suppliedTesterCode, \{ country, currency \}\)/);
-assert.match(signup, /isTester: isPilotAccess/);
-assert.match(signup, /tx\.qaTestAccount\.create/);
-assert.match(signup, /runId: "uk-student-pilot"/);
-assert.match(signup, /testerApprovalStatus: isPilotAccess \? "approved"/);
-assert.match(signup, /emailVerifiedAt: isPilotAccess/);
-assert.match(signup, /looksLikeSharedPilotCode/);
-assert.match(signup, /invalid, expired, or is not available in this staging environment/);
-assert.match(auth, /allowedStagingPilotLogin/);
-assert.match(auth, /isQaRunnerEnabled/);
+assert.match(pilotAccess, /P2D-UKQA-\[A-F0-9\]\{24\}/);
+assert.match(pilotAccess, /createHash\("sha256"\)/);
+assert.match(signup, /isPilotTesterCode\(suppliedTesterCode\)/);
+assert.match(signup, /isQaRunnerEnabled\(\)/);
+assert.match(signup, /hashPilotAccessCode\(suppliedTesterCode\)/);
 assert.match(signup, /if \(testerCodeHash && !isPilotAccess\)/);
-assert.match(signup, /emailVerificationPending: verificationRequired && !isPilotAccess/);
+assert.match(signup, /isTester: isPilotAccess/);
+assert.match(signup, /testerApprovalStatus: isPilotAccess \? "approved"/);
+assert.match(signup, /tx\.qaTestAccount\.create/);
+assert.match(signup, /runId: "uk-market-student-qa"/);
+assert.match(signup, /emailVerifiedAt: isPilotAccess/);
+assert.match(signup, /tx\.testerAccessCode\.updateMany/);
+assert.match(signup, /if \(testerCodeHash\) \{/);
+assert.match(signup, /testerApplicationPending: Boolean\(testerCodeHash\) && !isPilotAccess/);
 assert.doesNotMatch(signup, /verificationStatus:\s*"verified"/);
 
-assert.match(signupPage, /UK student pilot \/ tester code/);
+assert.match(testerAdmin, /body\.action === "generate-pilot-codes"/);
+assert.match(testerAdmin, /if \(!isQaRunnerEnabled\(\)\)/);
+assert.match(testerAdmin, /requestedCount > 100/);
+assert.match(testerAdmin, /tx\.testerAccessCode\.createMany/);
+assert.match(testerAdmin, /hashPilotAccessCode\(code\)/);
+assert.match(testerAdmin, /plaintextStored: false/);
+
+assert.match(auth, /allowedStagingPilotLogin/);
+assert.match(auth, /isQaRunnerEnabled/);
+assert.match(signupPage, /UK-market QA \/ tester code/);
 assert.match(signupPage, /Tester mode skips real identity, company and vehicle eligibility checks/);
 assert.match(bid, /!bidderAccount\.isTester && bidderAccount\.type !== "driver"/);
 assert.match(directAccept, /!account\.isTester && account\.type !== "driver"/);
@@ -62,5 +62,9 @@ assert.match(feedbackPage, /I agree to send this report and the technical diagno
 assert.match(feedbackPage, /does not upload screenshots/);
 assert.match(adminPage, /!isQaRunnerEnabled\(\)/);
 assert.match(adminPage, /pilot_feedback_submitted/);
+assert.match(docs, /Indian student volunteers/);
+assert.match(docs, /separate from the genuine UK commercial launch pilot/);
+assert.match(docs, /TesterAccessCode/);
+assert.match(docs, /does \*\*not\*\* simulate being physically in the UK/);
 
-console.log("UK student pilot access, bypass boundaries, privacy and layout-diagnostics contract passed.");
+console.log("UK-market student QA access, single-use code, bypass boundaries, privacy and layout-diagnostics contract passed.");
