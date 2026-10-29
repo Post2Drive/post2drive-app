@@ -57,7 +57,7 @@ export const authOptions: NextAuthOptions = {
           if (!networkLimit.allowed || !emailLimit.allowed) return null;
         }
 
-        const looksLikeEmail = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(normalizedEmail);
+        const looksLikeEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail);
         let user = looksLikeEmail
           ? await prisma.user.findUnique({ where: { email: normalizedEmail }, include: { account: true } })
           : null;
