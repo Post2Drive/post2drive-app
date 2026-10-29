@@ -61,12 +61,12 @@ export default function SignupPage() {
   }
   function canAdvance() {
     if (step === 0 && !form.country) return "Choose your market to continue.";
-    if (step === 0 && !form.isSoleTrader && !form.companyName.trim()) return "Enter your registered company name, or select sole trader.";
+    if (step === 0 && !isIndia && !form.isSoleTrader && !form.companyName.trim()) return "Enter your registered company name, or select sole trader.";
     if (step === 1 && (!Number.isInteger(vehicleCount) || vehicleCount < 1 || vehicleCount > 55)) return "Enter a vehicle count from 1 to 55. Fleets with 56+ vehicles need custom pricing.";
     if (step === 2) {
-      if (!form.name.trim() || !form.email.trim() || !form.phone.trim() || form.password.length < 8) return "Complete all account fields. Password must contain at least 8 characters.";
+      if (!form.name.trim() || (!isIndia && !form.email.trim()) || !form.phone.trim() || form.password.length < 8) return "Complete all account fields. Password must contain at least 8 characters.";
       if (new TextEncoder().encode(form.password).byteLength > 72) return "Password must be no more than 72 UTF-8 bytes.";
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) return "Enter a valid email address.";
+      if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) return "Enter a valid email address.";
     }
     return "";
   }
@@ -82,7 +82,7 @@ export default function SignupPage() {
         ...form,
         planType: selectedPlan,
         fleetVehicleCount: String(vehicleCount),
-        companyName: form.companyName.trim() || (form.isSoleTrader ? form.name.trim() : ""),
+        companyName: isIndia ? form.name.trim() : form.companyName.trim() || (form.isSoleTrader ? form.name.trim() : ""),
         termsVersion: TERMS_VERSION,
         marketResearch: isIndia ? form.marketResearch : undefined,
       };
@@ -141,8 +141,8 @@ export default function SignupPage() {
 
       {step === 0 && <div className="signup-fields">
         <label>Choose your market<select required value={form.country} onChange={(e) => changeCountry(e.target.value)}><option value="" disabled>Choose a country</option>{COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}</select><small>This determines your marketplace, currency and local time zone. Cross-market matching is disabled.</small></label>
-        <label>Account type<select value={form.isSoleTrader ? "sole" : "company"} onChange={(e) => update("isSoleTrader", e.target.value === "sole")}><option value="company">Registered business</option><option value="sole">Sole trader / individual operator</option></select></label>
-        <label>{form.isSoleTrader ? "Trading name (optional)" : "Registered company name"}<input value={form.companyName} onChange={(e) => update("companyName", e.target.value)} required={!form.isSoleTrader} maxLength={120} placeholder={form.isSoleTrader ? "You can use your own name" : "Name registered to your business"} /></label>
+        {!isIndia && <><label>Account type<select value={form.isSoleTrader ? "sole" : "company"} onChange={(e) => update("isSoleTrader", e.target.value === "sole")}><option value="company">Registered business</option><option value="sole">Sole trader / individual operator</option></select></label>
+        <label>{form.isSoleTrader ? "Trading name (optional)" : "Registered company name"}<input value={form.companyName} onChange={(e) => update("companyName", e.target.value)} required={!form.isSoleTrader} maxLength={120} placeholder={form.isSoleTrader ? "You can use your own name" : "Name registered to your business"} /></label></>}
         <div className="signup-note"><strong>{form.country ? `${marketLabel} marketplace` : "Select a market"}</strong><p>{!form.country ? "Choose a country to see the correct marketplace, currency and access options." : isIndia ? "Browse India-only delivery opportunities using INR. A short optional market-research step helps shape the experience." : isUk ? "Use this country's marketplace with GBP pricing. Market-specific access and promotion rules are shown before you commit." : "Use this country's separate marketplace with local-currency pricing. The configured access model and promotions available in your country are shown before you commit."}</p></div>
       </div>}
 
@@ -154,7 +154,7 @@ export default function SignupPage() {
 
       {step === 2 && <div className="signup-fields">
         <label>Your full name<input required autoComplete="name" maxLength={100} value={form.name} onChange={(e) => update("name", e.target.value)} /></label>
-        <label>Email address<input required type="email" autoComplete="email" maxLength={254} value={form.email} onChange={(e) => update("email", e.target.value)} /></label>
+        <label>Email address{isIndia ? " (optional)" : ""}<input required={!isIndia} type="email" autoComplete="email" maxLength={254} value={form.email} onChange={(e) => update("email", e.target.value)} /></label>
         <label>Phone number<input required type="tel" autoComplete="tel" maxLength={50} placeholder={`${selectedCountry?.dialingCode ?? "+"} …`} value={form.phone} onChange={(e) => update("phone", e.target.value)} /></label>
         <label>Password<input required type="password" minLength={8} maxLength={72} autoComplete="new-password" value={form.password} onChange={(e) => update("password", e.target.value)} /><small>Use at least 8 characters and no more than 72 UTF-8 bytes. Never reuse a password from another service.</small></label>
         {isUk && <div className="signup-fields"><label>UK-market QA / tester code (optional)<input type="password" autoComplete="off" maxLength={100} value={form.testerCode} onChange={(e) => setForm((current) => ({ ...current, testerCode: e.target.value, referralCode: e.target.value ? "" : current.referralCode }))} placeholder="Enter the code from your pilot organiser" /><small>For invited QA volunteers testing the GB/GBP market. A UK-market QA code works only in the approved staging environment and does not verify your identity, company or vehicle.</small></label>{!form.testerCode && <label>Referral code (optional)<input maxLength={32} value={form.referralCode} onChange={(e) => setForm((current) => ({ ...current, referralCode: e.target.value, testerCode: e.target.value ? "" : current.testerCode }))} /></label>}</div>}

@@ -93,7 +93,7 @@ async function POSTHandler(
       (country !== "IN" && !String(email || "").trim()) ||
       !phone ||
       !password ||
-      (!isSoleTrader && !String(companyName || "").trim()) ||
+      (!isSoleTrader && country !== "IN" && !String(companyName || "").trim()) ||
       !country ||
       !currency ||
       termsAccepted !== true ||
@@ -141,13 +141,6 @@ async function POSTHandler(
     }
 
     const verificationRequired = emailVerificationRequiredForCountry(country);
-    if (verificationRequired && !emailDeliveryConfigured()) {
-      return NextResponse.json(
-        { error: "Email verification is being configured. Please try again later." },
-        { status: 503 }
-      );
-    }
-
     const suppliedTesterCode = typeof testerCode === "string" ? testerCode.trim().toUpperCase() : "";
     let testerCodeHash: string | null = null;
     let isPilotAccess = false;
