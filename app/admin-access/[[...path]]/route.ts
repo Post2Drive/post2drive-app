@@ -58,7 +58,15 @@ async function proxy(request: NextRequest, context: RouteContext): Promise<Respo
   const isAdminAction = request.method === "POST" && path.join("/") === "api/admin-action";
   if (isAdminAction) {
     const originHeader = request.headers.get("origin");
-    const requestOrigin = request.nextUrl.origin;
+    // Railway terminates public TLS before forwarding requests to Next.js.
+    // Validate against the externally visible authority when forwarded headers
+    // are present, otherwise fall back to the request URL. Compare exact origins;
+    // never accept a missing or cross-origin browser Origin.
+    const forwardedHost = request.headers.get("x-forwarded-host")?.split(",")[0]?.trim();
+    const forwardedProto = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
+    const publicHost = forwardedHost || request.nextUrl.host;
+    const publicProto = forwardedProto || request.nextUrl.protocol.replace(":", "");
+    const requestOrigin = `${publicProto}://${publicHost}`;
     if (!originHeader || originHeader !== requestOrigin) {
       return Response.json({ error: "Same-origin admin request required" }, {
         status: 403,
@@ -74,7 +82,11 @@ async function proxy(request: NextRequest, context: RouteContext): Promise<Respo
   }
   // The public request's origin is checked above. The embedded service then
   // receives a trusted internal same-origin value for its own CSRF guard.
-  if (isAdminAction) headers.set("origin", "https://127.0.0.1:3101");
+  if (isAdminAction) {
+    // The public Origin was checked against the externally visible origin above.
+    // The embedded service then receives its own internal origin for its CSRF guard.
+    headers.set("origin", "https://127.0.0.1:3101");
+  }
   else {
     const origin = request.headers.get("origin");
     if (origin) headers.set("origin", origin);
