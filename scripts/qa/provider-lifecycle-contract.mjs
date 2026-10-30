@@ -64,6 +64,13 @@ assert.equal(await applyVerifiedPaymentEvent(paymentStore, { ...payment, eventId
 assert.equal(await applyVerifiedPaymentEvent(paymentStore, { ...payment, eventId: "evt-3", receivedAmountMinorUnits: 1 }), "rejected", "amount mismatch must fail closed");
 assert.equal(await applyVerifiedPaymentEvent(paymentStore, { ...payment, eventId: "evt-4", receivedCurrency: "INR" }), "rejected", "currency mismatch must fail closed");
 
+const verificationLifecycle = readFileSync("lib/verification.ts", "utf8");
+assert.match(verificationLifecycle, /status:\s*\{\s*in:\s*\["awaiting_payment", "pending", "correction", "manual_review"\]\s*\}/);
+assert.match(verificationLifecycle, /if \(attempt\.status === "successful"\)/, "successful webhook retries must be idempotent");
+assert.match(verificationLifecycle, /Verification attempt is no longer eligible for completion/);
+assert.match(verificationLifecycle, /Verification attempt is no longer eligible for failure processing/);
+assert.match(verificationLifecycle, /Account is no longer eligible for verification/);
+
 const emailSource = readFileSync("lib/emailVerification.ts", "utf8");
 assert.ok(emailSource.includes("TOKEN_LIFETIME_MS = 24 * 60 * 60 * 1000"), "email verification lifetime must remain 24 hours");
 assert.ok(emailSource.includes("hashEmailVerificationToken"), "email token hashes must remain");
