@@ -15,133 +15,110 @@ async function GETHandler() {
     const session = await getServerSession(authOptions);
 
     if (!session) {
-      return NextResponse.json(
-        { error: "Not logged in." },
-        { status: 401 },
-      );
+      return NextResponse.json({ error: "Not logged in." }, { status: 401 });
     }
 
-    const accountId = (session.user as any).accountId as
-      | string
-      | undefined;
-
+    const accountId = (session.user as any).accountId as string | undefined;
     if (!accountId) {
-      return NextResponse.json(
-        { error: "Account not found." },
-        { status: 401 },
-      );
+      return NextResponse.json({ error: "Account not found." }, { status: 401 });
     }
 
     const account = await prisma.account.findUnique({
       where: { id: accountId },
       select: { country: true, currency: true },
     });
-    if (!account) return NextResponse.json({ error: "Account not found." }, { status: 404 });
+    if (!account) {
+      return NextResponse.json({ error: "Account not found." }, { status: 404 });
+    }
+    if (!account.country || !account.currency) {
+      return NextResponse.json({ error: "Account market is unavailable." }, { status: 403 });
+    }
+
+    // Payment tracking is a marketplace view, not a payment-provider ledger.
+    // Scope both roles to the caller's market and return only fields rendered by
+    // the payments page; never serialize complete Job or Account records here.
+    const marketJobWhere = {
+      status: "completed" as const,
+      currency: account.currency,
+      crossBorder: false,
+      poster: {
+        is: {
+          country: account.country,
+          currency: account.currency,
+        },
+      },
+    };
+
+    const paymentJobSelect = {
+      id: true,
+      pickup: true,
+      dropoff: true,
+      price: true,
+      currency: true,
+      createdAt: true,
+      paidMarkedAt: true,
+      receivedConfirmedAt: true,
+    } as const;
 
     const [asPoster, asDriver] = await Promise.all([
       prisma.job.findMany({
-        where: {
-          posterId: accountId,
-          status: "completed",
-        },
-        include: {
+        where: { ...marketJobWhere, posterId: accountId },
+        select: {
+          ...paymentJobSelect,
           acceptedBy: {
-            select: {
-              companyName: true,
-              displayId: true,
-            },
+            select: { companyName: true, displayId: true },
           },
         },
-        orderBy: {
-          createdAt: "desc",
-        },
+        orderBy: { createdAt: "desc" },
       }),
-
       prisma.job.findMany({
-        where: {
-          acceptedById: accountId,
-          status: "completed",
-        },
-        include: {
+        where: { ...marketJobWhere, acceptedById: accountId },
+        select: {
+          ...paymentJobSelect,
           poster: {
-            select: {
-              companyName: true,
-              displayId: true,
-            },
+            select: { companyName: true, displayId: true },
           },
         },
-        orderBy: {
-          createdAt: "desc",
-        },
+        orderBy: { createdAt: "desc" },
       }),
     ]);
 
-    const posterTotal = asPoster.reduce(
-      (sum, job) => sum + job.price,
-      0,
-    );
-
+    const posterTotal = asPoster.reduce((sum, job) => sum + job.price, 0);
     const posterPaid = asPoster
       .filter((job) => Boolean(job.paidMarkedAt))
       .reduce((sum, job) => sum + job.price, 0);
-
     const posterPending = asPoster
       .filter((job) => !job.paidMarkedAt)
       .reduce((sum, job) => sum + job.price, 0);
-
     const posterReceiptConfirmed = asPoster
       .filter((job) => Boolean(job.receivedConfirmedAt))
       .reduce((sum, job) => sum + job.price, 0);
 
-    const driverTotal = asDriver.reduce(
-      (sum, job) => sum + job.price,
-      0,
-    );
-
+    const driverTotal = asDriver.reduce((sum, job) => sum + job.price, 0);
     const driverPaid = asDriver
       .filter((job) => Boolean(job.paidMarkedAt))
       .reduce((sum, job) => sum + job.price, 0);
-
     const driverReceived = asDriver
       .filter((job) => Boolean(job.receivedConfirmedAt))
       .reduce((sum, job) => sum + job.price, 0);
-
     const driverPendingPayment = asDriver
       .filter((job) => !job.paidMarkedAt)
       .reduce((sum, job) => sum + job.price, 0);
-
     const driverPendingReceipt = asDriver
-      .filter(
-        (job) =>
-          Boolean(job.paidMarkedAt) &&
-          !job.receivedConfirmedAt,
-      )
+      .filter((job) => Boolean(job.paidMarkedAt) && !job.receivedConfirmedAt)
       .reduce((sum, job) => sum + job.price, 0);
 
-    const jobsPaid = asPoster.filter(
-      (job) => Boolean(job.paidMarkedAt),
-    ).length;
-
-    const jobsPaymentPending = asPoster.filter(
-      (job) => !job.paidMarkedAt,
-    ).length;
-
-    const jobsReceived = asDriver.filter(
-      (job) => Boolean(job.receivedConfirmedAt),
-    ).length;
-
-    const jobsAwaitingReceipt = asDriver.filter(
-      (job) =>
-        Boolean(job.paidMarkedAt) &&
-        !job.receivedConfirmedAt,
-    ).length;
+    const jobsPaid = asPoster.filter((job) => Boolean(job.paidMarkedAt)).length;
+    const jobsPaymentPending = asPoster.filter((job) => !job.paidMarkedAt).length;
+    const jobsReceived = asDriver.filter((job) => Boolean(job.receivedConfirmedAt)).length;
+    const jobsAwaitingReceipt = asDriver
+      .filter((job) => Boolean(job.paidMarkedAt) && !job.receivedConfirmedAt).length;
 
     return NextResponse.json({
       currency: account.currency,
       country: account.country,
       asPoster,
       asDriver,
-
       posterSummary: {
         jobsDone: asPoster.length,
         totalValue: round(posterTotal),
@@ -151,27 +128,26 @@ async function GETHandler() {
         jobsPaid,
         jobsPaymentPending,
       },
-
       driverSummary: {
         jobsDone: asDriver.length,
         totalReceivable: round(driverTotal),
         markedPaidByPoster: round(driverPaid),
         confirmedReceived: round(driverReceived),
         awaitingPaymentFromPoster: round(driverPendingPayment),
-        awaitingReceiptConfirmation: round(
-          driverPendingReceipt,
-        ),
+        awaitingReceiptConfirmation: round(driverPendingReceipt),
         jobsReceived,
         jobsAwaitingReceipt,
       },
+    }, {
+      headers: { "Cache-Control": "private, no-store" },
     });
   } catch (error) {
-    console.error("payments GET error:", error);
-
+    console.error("payments GET error:", error instanceof Error ? error.name : "UnknownError");
     return NextResponse.json(
       { error: "Failed to load payment information." },
-      { status: 500 },
+      { status: 500, headers: { "Cache-Control": "private, no-store" } },
     );
   }
 }
+
 export const GET = withApiMetrics("/api/payments", GETHandler);
