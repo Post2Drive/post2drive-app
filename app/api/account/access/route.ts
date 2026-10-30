@@ -65,7 +65,7 @@ async function GETHandler() {
     subscriptionStatus: access.account.subscriptionStatus,
     subscriptionEndsAt: access.account.subscriptionEndsAt,
     subscriptionPlanKey: access.account.subscriptionPlanKey,
-    endsAt: access.endsAt ?? null,
+    endsAt: "endsAt" in access ? access.endsAt : null,
     price,
     currency: access.account.currency,
     marketLabel: market?.label ?? "Marketplace",
