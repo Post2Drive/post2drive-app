@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import vm from "node:vm";
+import ts from "typescript";
 import { getSuspendedAccountAccess } from "../../lib/accessPolicy.ts";
 
 const suspendedIndia = {
@@ -63,5 +65,53 @@ assert.ok(jobSuspensionGuard >= 0 && jobSuspensionGuard < jobDeletionGuard && jo
   "job-market routes must reject suspension before deletion and supported-market checks");
 assert.match(jobMarketSource, /code:\s*"ACCOUNT_SUSPENDED"/,
   "job-market APIs must return a stable suspended-account denial");
+
+// Execute the real shared job-market guard with isolated Prisma and market
+// dependencies. This verifies the actual denial response, not just its source.
+const compiledJobMarket = ts.transpileModule(jobMarketSource, {
+  compilerOptions: {
+    module: ts.ModuleKind.CommonJS,
+    target: ts.ScriptTarget.ES2022,
+    esModuleInterop: true,
+  },
+  fileName: "lib/jobMarket.ts",
+}).outputText;
+let actorFixture = { ...suspendedIndia, deletionRequestedAt: null };
+const fakePrisma = {
+  account: { findUnique: async () => actorFixture },
+  job: {
+    findUnique: async () => ({
+      currency: "INR",
+      crossBorder: false,
+      poster: { country: "IN", currency: "INR" },
+    }),
+  },
+};
+const module = { exports: {} };
+const mockRequire = (name) => {
+  if (name === "@/lib/prisma") return { prisma: fakePrisma };
+  if (name === "next/server") return { NextResponse: { json: (body, init = {}) => ({ body, status: init.status ?? 200 }) } };
+  if (name === "@/lib/market") return {
+    isSupportedMarket: () => true,
+    marketTimeZone: () => "Asia/Kolkata",
+    sameMarket: () => true,
+  };
+  if (name === "@/lib/accessPolicy") return { getSuspendedAccountAccess };
+  throw new Error("Unexpected job-market test dependency: " + name);
+};
+vm.runInNewContext(compiledJobMarket, {
+  module,
+  exports: module.exports,
+  require: mockRequire,
+  Promise,
+}, { filename: "lib/jobMarket.ts" });
+const { checkJobMarket } = module.exports;
+const suspendedJobCheck = await checkJobMarket("india-suspended", "fixture-job");
+assert.equal(suspendedJobCheck.ok, false, "suspended account must fail the real job-market guard");
+assert.equal(suspendedJobCheck.status, 403, "suspended account must receive HTTP 403");
+assert.equal(suspendedJobCheck.code, "ACCOUNT_SUSPENDED", "suspended account must receive stable denial code");
+actorFixture = { ...activeIndia, deletionRequestedAt: null };
+const activeJobCheck = await checkJobMarket("india-active", "fixture-job");
+assert.equal(activeJobCheck.ok, true, "active India account must retain job-market access");
 
 console.log("Suspension access contract passed: suspended India, UK tester, and subscribed non-weekly accounts are denied; active accounts retain their normal market rules.");
