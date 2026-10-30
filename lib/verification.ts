@@ -164,170 +164,128 @@ export async function markVerificationSuccessful(
   attemptId: string,
   providerReference?: string
 ) {
-  const attempt =
-    await prisma.verificationAttempt.findUnique(
-      {
-        where: {
-          id: attemptId,
-        },
-        include: {
-          account: true,
-        },
-      }
-    );
+  const account = await prisma.$transaction(async (tx) => {
+    const attempt = await tx.verificationAttempt.findUnique({
+      where: { id: attemptId },
+      include: { account: true },
+    });
 
-  if (!attempt) {
-    throw new Error(
-      "Verification attempt not found."
-    );
-  }
-
-  const account =
-    attempt.account;
-
-  const updated =
-    await prisma.$transaction(
-      async (tx) => {
-        await tx.verificationAttempt.update({
-          where: {
-            id: attemptId,
-          },
-          data: {
-            status:
-              "successful",
-            completedAt:
-              new Date(),
-            notes:
-              providerReference
-                ? `Provider reference: ${providerReference}`
-                : undefined,
-          },
-        });
-
-        return tx.account.update({
-          where: {
-            id: account.id,
-          },
-          data: {
-            verificationStatus:
-              "verified",
-            verifiedAt:
-              new Date(),
-            lastActivityAt:
-              new Date(),
-            inactiveSince:
-              null,
-          },
-        });
-      }
-    );
-
-  /*
-   * Start the UK promotion and mark referral verification
-   * independently after successful identity verification.
-   */
-  if (isUkAccount(updated)) {
-    try {
-      await startPromotionForVerifiedAccount(
-        updated.id
-      );
-    } catch (error) {
-      console.error(
-        "Promotion startup error:",
-        error
-      );
+    if (!attempt) {
+      throw new Error("Verification attempt not found.");
     }
 
-    try {
-      await markReferralVerified(updated.id);
-    } catch (error) {
-      console.error(
-        "Referral verification error:",
-        error
-      );
-      throw error;
+    // Webhook retries are idempotent. A late success must never resurrect
+    // an expired/terminal attempt or overwrite a newer account state.
+    if (attempt.status === "successful") {
+      return attempt.account;
     }
+
+    const claimed = await tx.verificationAttempt.updateMany({
+      where: {
+        id: attemptId,
+        status: { in: ["awaiting_payment", "pending", "correction", "manual_review"] },
+      },
+      data: {
+        status: "successful",
+        completedAt: new Date(),
+        notes: providerReference
+          ? `Provider reference: ${providerReference}`
+          : undefined,
+      },
+    });
+
+    if (claimed.count !== 1) {
+      throw new Error("Verification attempt is no longer eligible for completion.");
+    }
+
+    const accountUpdate = await tx.account.updateMany({
+      where: {
+        id: attempt.accountId,
+        verificationStatus: { in: ["payment_pending", "pending", "failed", "manual_review"] },
+      },
+      data: {
+        verificationStatus: "verified",
+        verifiedAt: new Date(),
+        lastActivityAt: new Date(),
+        inactiveSince: null,
+      },
+    });
+
+    if (accountUpdate.count !== 1) {
+      throw new Error("Account is no longer eligible for verification.");
+    }
+
+    return tx.account.findUniqueOrThrow({
+      where: { id: attempt.accountId },
+    });
+  });
+
+  // Keep these side effects retryable and outside the DB transaction.
+  // Their own helpers must remain idempotent.
+  if (isUkAccount(account)) {
+    try {
+      await startPromotionForVerifiedAccount(account.id);
+    } catch (error) {
+      console.error("Promotion startup error:", {
+        errorName: error instanceof Error ? error.name : "UnknownError",
+      });
+    }
+
+    await markReferralVerified(account.id);
   }
 
-  return updated;
+  return account;
 }
 
 export async function markVerificationFailed(
   attemptId: string,
   failureReasons?: unknown
 ) {
-  const attempt =
-    await prisma.verificationAttempt.findUnique(
-      {
-        where: {
-          id: attemptId,
-        },
-        include: {
-          account: true,
-        },
-      }
-    );
+  return prisma.$transaction(async (tx) => {
+    const attempt = await tx.verificationAttempt.findUnique({
+      where: { id: attemptId },
+    });
 
-  if (!attempt) {
-    throw new Error(
-      "Verification attempt not found."
-    );
-  }
+    if (!attempt) {
+      throw new Error("Verification attempt not found.");
+    }
 
-  const now =
-    new Date();
+    // A delayed failure event must not downgrade a completed verification.
+    if (attempt.status === "successful") {
+      return { status: "successful", deadline: null };
+    }
 
-  const nextDeadline =
-    attempt.attemptNumber === 1
-      ? addWorkingDays(
-          now,
-          14
-        )
-      : addWorkingDays(
-          now,
-          7
-        );
+    const now = new Date();
+    const nextDeadline = addWorkingDays(now, attempt.attemptNumber === 1 ? 14 : 7);
+    const status = attempt.attemptNumber >= 2 ? "manual_review" : "correction";
 
-  const status =
-    attempt.attemptNumber >= 2
-      ? "manual_review"
-      : "correction";
+    const changed = await tx.verificationAttempt.updateMany({
+      where: {
+        id: attemptId,
+        status: { in: ["awaiting_payment", "pending", "correction", "manual_review"] },
+      },
+      data: {
+        status,
+        failedAt: now,
+        correctionDeadline: attempt.attemptNumber === 1 ? nextDeadline : null,
+        finalEvidenceDeadline: attempt.attemptNumber >= 2 ? nextDeadline : null,
+        failureReasons: failureReasons || undefined,
+      },
+    });
 
-  await prisma.verificationAttempt.update({
-    where: {
-      id: attemptId,
-    },
-    data: {
-      status,
-      failedAt: now,
-      correctionDeadline:
-        attempt.attemptNumber === 1
-          ? nextDeadline
-          : null,
-      finalEvidenceDeadline:
-        attempt.attemptNumber >= 2
-          ? nextDeadline
-          : null,
-      failureReasons:
-        failureReasons || undefined,
-    },
+    if (changed.count !== 1) {
+      throw new Error("Verification attempt is no longer eligible for failure processing.");
+    }
+
+    const accountStatus = attempt.attemptNumber >= 2 ? "manual_review" : "failed";
+    await tx.account.updateMany({
+      where: {
+        id: attempt.accountId,
+        verificationStatus: { in: ["payment_pending", "pending", "failed", "manual_review"] },
+      },
+      data: { verificationStatus: accountStatus },
+    });
+
+    return { status, deadline: nextDeadline };
   });
-
-  await prisma.account.update({
-    where: {
-      id: attempt.accountId,
-    },
-    data: {
-      verificationStatus:
-        attempt.attemptNumber >= 2
-          ? "manual_review"
-          : "failed",
-    },
-  });
-
-  return {
-    status,
-    deadline:
-      nextDeadline,
-  };
 }
