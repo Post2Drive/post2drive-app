@@ -17,6 +17,12 @@ const workerId = `${hostname()}-${process.pid}-${randomUUID()}`;
 let stopping = false;
 let activeJob = false;
 
+function safeErrorName(error: unknown): string {
+  return error instanceof Error && /^[A-Za-z][A-Za-z0-9_]{0,63}$/.test(error.name)
+    ? error.name
+    : "UnknownError";
+}
+
 process.on("SIGTERM", () => { stopping = true; console.log("QA worker received SIGTERM; no new jobs will be claimed."); });
 process.on("SIGINT", () => { stopping = true; console.log("QA worker received SIGINT; no new jobs will be claimed."); });
 
@@ -74,7 +80,7 @@ function startHeartbeat(runId: string) {
       );
       if (Number(count) === 0) console.error("QA worker lost its active-run lease marker for run " + runId);
     } catch (error) {
-      console.error("QA worker heartbeat update failed for run " + runId, error instanceof Error ? error.message : String(error));
+      console.error("QA worker heartbeat update failed for run " + runId, safeErrorName(error));
     } finally {
       busy = false;
     }
@@ -171,7 +177,7 @@ async function advanceCampaign(runId: string) {
 async function executeRun(job: { id: string; summary: unknown; target_url: string; target_accounts: number }) {
   if (job.target_url !== (process.env.QA_BASE_URL || "").replace(/\/+$/, "") || job.target_accounts < 500 || job.target_accounts > 10000) {
     await markWorkerFailure(job.id);
-    await advanceCampaign(job.id).catch(error => console.error("QA campaign could not advance after target rejection", error instanceof Error ? error.message : String(error)));
+    await advanceCampaign(job.id).catch(error => console.error("QA campaign could not advance after target rejection", safeErrorName(error)));
     throw new Error("Claimed QA run did not match worker target/count.");
   }
   const summary = (job.summary && typeof job.summary === "object") ? job.summary as Record<string, unknown> : {};
@@ -198,13 +204,13 @@ async function executeRun(job: { id: string; summary: unknown; target_url: strin
       job.id, workerId, String((result as any)?.status || "unknown"),
     );
   } catch (error) {
-    await markWorkerFailure(job.id).catch(markError => console.error("QA worker could not persist failure for run " + job.id, markError));
-    console.error("QA worker execution failed for run " + job.id, error instanceof Error ? error.message : String(error));
+    await markWorkerFailure(job.id).catch(markError => console.error("QA worker could not persist failure for run " + job.id, safeErrorName(markError)));
+    console.error("QA worker execution failed for run " + job.id, safeErrorName(error));
   }
   try {
     await advanceCampaign(job.id);
   } catch (error) {
-    console.error("QA campaign could not advance after run " + job.id, error instanceof Error ? error.message : String(error));
+    console.error("QA campaign could not advance after run " + job.id, safeErrorName(error));
   } finally {
     stopHeartbeat();
     activeJob = false;
@@ -222,7 +228,7 @@ async function main() {
         continue;
       }
     } catch (error) {
-      console.error("QA worker poll/claim failed", error instanceof Error ? error.message : String(error));
+      console.error("QA worker poll/claim failed", safeErrorName(error));
     }
     await sleep(POLL_MS);
   }
@@ -233,7 +239,7 @@ async function main() {
 }
 
 main().catch(async error => {
-  console.error("QA worker failed to start", error instanceof Error ? error.message : String(error));
+  console.error("QA worker failed to start", safeErrorName(error));
   await prisma.$disconnect().catch(() => {});
   process.exitCode = 1;
 });
