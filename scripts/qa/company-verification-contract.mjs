@@ -51,4 +51,10 @@ assert.equal((pilotFeedback.match(/account\.verificationStatus === "suspended"/g
 assert.match(publicProfile, /verificationStatus: true/);
 assert.match(publicProfile, /viewer\.verificationStatus === "suspended"/);
 
+
+const adminCompanyVerification = read("../../app/api/admin/company-verification/route.ts");
+assert.match(adminCompanyVerification, /where: \{ country: "GB", currency: "GBP", companyVerificationStatus: \{ in: \["pending", "manual_review"\] \} \}/);
+assert.match(adminCompanyVerification, /account\.country !== "GB" \|\| account\.currency !== "GBP"/,
+  "admin review must reject legacy or tampered non-UK company-verification records");
+
 console.log("Company verification and account-route boundary contract passed.");
