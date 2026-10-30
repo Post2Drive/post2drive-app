@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { readBoundedJson } from "@/lib/requestBody";
 import { prisma } from "@/lib/prisma";
+import { requireJobMarketAccess } from "@/lib/jobMarket";
 
 // POST /api/ratings — rate the other party on a job you were matched on.
 // Ratings are allowed regardless of the job's final status.
@@ -45,6 +46,9 @@ async function POSTHandler(req: Request) {
   if (comment != null && (typeof comment !== "string" || comment.length > 1000)) {
     return NextResponse.json({ error: "Comments must be 1,000 characters or fewer." }, { status: 400 });
   }
+
+  const marketAccessError = await requireJobMarketAccess(accountId, jobId);
+  if (marketAccessError) return marketAccessError;
 
   const job = await prisma.job.findUnique({
     where: { id: jobId },
