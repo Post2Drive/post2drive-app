@@ -10,5 +10,5 @@ const dashboardActionStyle: React.CSSProperties = {
 };
 
 export default function SignOutButton() {
-  return <button className="dashboard-action-button" style={dashboardActionStyle} onClick={() => signOut({ callbackUrl: "/login" })}>Log out</button>;
+  return <button className="dashboard-action-button primary" style={dashboardActionStyle} onClick={() => signOut({ callbackUrl: "/login" })}>Log out</button>;
 }
