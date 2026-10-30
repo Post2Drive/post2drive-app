@@ -74,7 +74,7 @@ async function POSTHandler(req: Request) {
 
   const account = await prisma.account.findUnique({
     where: { id: accountId },
-    select: { displayId: true, country: true, currency: true, isTester: true, qaTestAccounts: { select: { runId: true } } },
+    select: { displayId: true, country: true, currency: true, isTester: true, verificationStatus: true, qaTestAccounts: { select: { runId: true } } },
   });
   if (!account || account.verificationStatus === "suspended") {
     return NextResponse.json({ error: "Suspended accounts cannot access the student pilot feedback service." }, { status: 403 });
