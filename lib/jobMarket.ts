@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { isSupportedMarket, marketTimeZone, sameMarket } from "@/lib/market";
+import { getSuspendedAccountAccess } from "@/lib/accessPolicy";
 
 export type JobMarketCheck =
   | { ok: true; country: string; currency: string; timeZone: string }
@@ -11,7 +12,7 @@ export async function checkJobMarket(accountId: string, jobId: string): Promise<
   const [actor, job] = await Promise.all([
     prisma.account.findUnique({
       where: { id: accountId },
-      select: { country: true, currency: true, deletionRequestedAt: true },
+      select: { country: true, currency: true, deletionRequestedAt: true, verificationStatus: true },
     }),
     prisma.job.findUnique({
       where: { id: jobId },
@@ -24,6 +25,7 @@ export async function checkJobMarket(accountId: string, jobId: string): Promise<
   ]);
 
   if (!actor || !job) return { ok: false, status: 404, code: "JOB_NOT_FOUND", error: "Job not found." };
+  if (getSuspendedAccountAccess(actor)) return { ok: false, status: 403, code: "ACCOUNT_SUSPENDED", error: "This account is suspended and cannot perform marketplace actions." };
   if (actor.deletionRequestedAt) return { ok: false, status: 403, code: "ACCOUNT_DELETION_REQUESTED", error: "This account is pending deletion and cannot perform marketplace actions." };
   if (!isSupportedMarket(actor)) return { ok: false, status: 403, code: "UNSUPPORTED_MARKET", error: "Your account's country and currency are not supported." };
   if (job.crossBorder || !sameMarket(actor, job.poster) || actor.currency !== job.currency) {

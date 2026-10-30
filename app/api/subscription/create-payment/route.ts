@@ -8,6 +8,7 @@ const SAFE_CLIENT_ERRORS = new Set([
   "Paid weekly access is available to supported non-India markets.",
   "Account must be successfully verified before purchasing access.",
   "This account does not have a valid weekly subscription price.",
+  "Account is suspended.",
 ]);
 
 async function POSTHandler() {

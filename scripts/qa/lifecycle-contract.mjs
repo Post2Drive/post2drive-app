@@ -235,6 +235,7 @@ for (const path of [
   "app/api/jobs/[id]/incidents/updates/route.ts",
   "app/api/jobs/[id]/incidents/[incidentId]/evidence/route.ts",
   "app/api/jobs/[id]/incidents/[incidentId]/evidence/[evidenceId]/route.ts",
+  "app/api/ratings/route.ts",
 ]) {
   contains(path, ["requireJobMarketAccess"]);
 }

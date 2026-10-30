@@ -42,6 +42,7 @@ export async function createPendingSubscriptionPayment(accountId: string) {
   const account = await prisma.account.findUnique({ where: { id: accountId } });
 
   if (!account) throw new Error("Account not found.");
+  if (account.verificationStatus === "suspended") throw new Error("Account is suspended.");
   if (!isWeeklyPricingEligible(account)) {
     throw new Error("Paid weekly access is available to supported non-India markets.");
   }
@@ -83,6 +84,7 @@ export async function confirmSubscriptionPayment(
     if (!payment) throw new Error("Subscription payment not found.");
     if (payment.status === "paid") return payment;
     if (payment.status !== "pending") throw new Error("Subscription payment is not payable.");
+    if (payment.account.verificationStatus === "suspended") throw new Error("Account is suspended.");
     if (payment.currency !== payment.account.currency) {
       throw new Error("Payment currency does not match the account market.");
     }

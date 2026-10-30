@@ -108,6 +108,8 @@ jobs:
         run: npx prisma migrate deploy --schema=prisma/schema.prisma
       - name: Validate account lifecycle concurrency and session revocation
         run: npm run qa:security-isolation-contract
+      - name: Validate suspended account access across markets
+        run: npm run qa:suspension-access-contract
       - name: Validate authenticated lifecycle authorization matrix
         run: node scripts/qa/lifecycle-auth-matrix.mjs
       - name: Validate account deletion and PATCH concurrency against local PostgreSQL
