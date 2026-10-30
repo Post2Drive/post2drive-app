@@ -100,28 +100,72 @@ async function POSTHandler(req: Request) {
       return NextResponse.json({ error: "Enter a valid vehicle weight using the unit shown in the form." }, { status: 400 });
     }
 
-    const created = await prisma.vehicle.create({
-      data: {
-        accountId: account.id,
-        vehicleType,
-        regPlate,
-        registrationRegion: registrationRegion || null,
-        ownershipType,
-        make: make || null,
-        model: model || null,
-        mamKg,
-        operatorLicenceNo: operatorLicenceNo || null,
-        v5cDocumentUrl: v5cDocumentUrl || null,
-        insuranceDocumentUrl: insuranceDocumentUrl || null,
-        motValidUntil,
-        insuranceValidUntil,
-      },
-    });
+    for (const [name, value] of [[marketProfile?.registrationDocumentLabel ?? "Vehicle registration document", v5cDocumentUrl], ["Insurance document", insuranceDocumentUrl]] as const) {
+      if (value) {
+        try {
+          const url = new URL(value);
+          if (url.protocol !== "https:" && url.protocol !== "http:") throw new Error();
+        } catch {
+          return NextResponse.json({ error: `${name} must be a valid HTTP or HTTPS URL.` }, { status: 400 });
+        }
+      }
+    }
 
-    return NextResponse.json({ success: true, vehicle: created }, { status: 201 });
+    const now = new Date();
+    const todayInMarket = marketDateKey(now, marketProfile?.timeZone ?? "UTC");
+    if (account.country !== "IN" && !account.isTester && account.testerApprovalStatus !== "pending") {
+      // Date inputs represent whole local calendar days. Treat today's expiry as valid
+      // through the end of that market day instead of rejecting it at midnight UTC.
+      if (!insuranceValidUntil || !insuranceDate.dateKey || insuranceDate.dateKey < todayInMarket) {
+        return NextResponse.json({ error: "Enter an insurance expiry date that has not passed." }, { status: 400 });
+      }
+      if (marketProfile?.inspectionRequiredAtCountryLevel && (!motValidUntil || !motDate.dateKey || motDate.dateKey < todayInMarket)) {
+        return NextResponse.json({ error: `Enter a valid current or future ${marketProfile.inspectionLabel} date. If the vehicle is exempt, contact support for review.` }, { status: 400 });
+      }
+    }
+
+    // Serialize registrations for this account so simultaneous duplicate
+    // submissions cannot both pass the preflight duplicate check.
+    const vehicle = await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw<Array<{ id: string }>>`SELECT "id" FROM "Account" WHERE "id" = ${account.id} FOR UPDATE`;
+      const duplicate = await tx.vehicle.findFirst({
+        where: { regPlate, accountId: account.id },
+        select: { id: true },
+      });
+      if (duplicate) return null;
+
+      return tx.vehicle.create({
+        data: {
+          accountId: account.id,
+          vehicleType,
+          regPlate,
+          registrationRegion: registrationRegion || null,
+          ownershipType,
+          make: make || null,
+          model: model || null,
+          mamKg,
+          v5cDocumentUrl: v5cDocumentUrl || null,
+          insuranceDocumentUrl: insuranceDocumentUrl || null,
+          operatorLicenceNo: operatorLicenceNo || null,
+          motValidUntil,
+          insuranceValidUntil,
+          verificationStatus: "pending",
+          verifiedAt: null,
+        },
+      });
+    });
+    if (!vehicle) {
+      return NextResponse.json({ error: "This registration is already on your account." }, { status: 409 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      vehicle,
+      message: account.isTester ? "Tester access enabled. This vehicle remains pending and is not marked verified." : account.testerApprovalStatus === "pending" ? "Vehicle details submitted for tester review. This vehicle remains unverified and access is not enabled until an administrator approves the application." : "Vehicle submitted for verification. It cannot qualify for jobs until approved.",
+    }, { status: 201 });
   } catch (error) {
-    console.error("Vehicle creation error:", error);
-    return NextResponse.json({ error: "Could not save vehicle details." }, { status: 500 });
+    console.error("Vehicle registration error:", error);
+    return NextResponse.json({ error: "Could not register vehicle." }, { status: 500 });
   }
 }
 
