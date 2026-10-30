@@ -43,6 +43,10 @@ async function POSTHandler(req: Request) {
       return NextResponse.json({ error: "Authentication required." }, { status: 401 });
     }
 
+    if (account.verificationStatus === "suspended") {
+      return NextResponse.json({ error: "Suspended accounts cannot register vehicles." }, { status: 403 });
+    }
+
     if (account.type !== "driver" && account.type !== "both") {
       return NextResponse.json({ error: "Your account is not registered for driving." }, { status: 403 });
     }
@@ -51,12 +55,12 @@ async function POSTHandler(req: Request) {
     const parsedBody = await readBoundedJson(req, 16 * 1024);
     if (!parsedBody.ok) {
       return NextResponse.json(
-        { error: parsedBody.status === 413 ? "Request body is too large." : "Request body must be valid JSON." },
+        { error: parsedBody.status === 413 ? "Request body is too large." : "Invalid request body." },
         { status: parsedBody.status },
       );
     }
     if (!parsedBody.value || typeof parsedBody.value !== "object" || Array.isArray(parsedBody.value)) {
-      return NextResponse.json({ error: "Vehicle details must be sent as a JSON object." }, { status: 400 });
+      return NextResponse.json({ error: "Request body must be valid JSON." }, { status: 400 });
     }
     const body = parsedBody.value as Record<string, unknown>;
     const vehicleType = String(body.vehicleType ?? "").trim();

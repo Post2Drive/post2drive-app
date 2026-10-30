@@ -59,9 +59,9 @@ async function GETHandler() {
   if (!accountId) return NextResponse.json({ enabled: false }, { status: 404, headers: { "Cache-Control": "no-store" } });
   const account = await prisma.account.findUnique({
     where: { id: accountId, deletionRequestedAt: null },
-    select: { displayId: true, country: true, currency: true, isTester: true, qaTestAccounts: { select: { runId: true } } },
+    select: { displayId: true, country: true, currency: true, isTester: true, verificationStatus: true, qaTestAccounts: { select: { runId: true } } },
   });
-  if (!account || !account.isTester || !isUkAccount(account) || !account.qaTestAccounts.some((entry) => entry.runId === "uk-market-student-qa")) {
+  if (!account || account.verificationStatus === "suspended" || !account.isTester || !isUkAccount(account) || !account.qaTestAccounts.some((entry) => entry.runId === "uk-market-student-qa")) {
     return NextResponse.json({ enabled: false }, { status: 404, headers: { "Cache-Control": "no-store" } });
   }
   return NextResponse.json({ enabled: true, participantId: account.displayId }, { headers: { "Cache-Control": "no-store" } });
@@ -74,9 +74,12 @@ async function POSTHandler(req: Request) {
 
   const account = await prisma.account.findUnique({
     where: { id: accountId },
-    select: { displayId: true, country: true, currency: true, isTester: true, qaTestAccounts: { select: { runId: true } } },
+    select: { displayId: true, country: true, currency: true, isTester: true, verificationStatus: true, qaTestAccounts: { select: { runId: true } } },
   });
-  if (!account || !account.isTester || !isUkAccount(account) || !account.qaTestAccounts.some((entry) => entry.runId === "uk-market-student-qa")) {
+  if (!account || account.verificationStatus === "suspended") {
+    return NextResponse.json({ error: "Suspended accounts cannot access the student pilot feedback service." }, { status: 403 });
+  }
+  if (!account.isTester || !isUkAccount(account) || !account.qaTestAccounts.some((entry) => entry.runId === "uk-market-student-qa")) {
     return NextResponse.json({ error: "This feedback form is restricted to approved UK student-pilot accounts." }, { status: 403 });
   }
   const limit = await enforceRateLimit(req, { scope: "pilot-feedback", identity: accountId, limit: 20, windowMs: 60 * 60 * 1000 });
