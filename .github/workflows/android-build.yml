@@ -66,8 +66,8 @@ jobs:
       - name: Run Capacitor WebView smoke test on Android emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 34
-          target: default
+          api-level: 35
+          target: google_apis
           arch: x86_64
           profile: pixel_2
           cores: 4
