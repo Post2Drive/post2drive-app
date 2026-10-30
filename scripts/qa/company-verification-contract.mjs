@@ -60,6 +60,23 @@ assert.doesNotMatch(verificationRoute, /error:\s*error\.message/,
 assert.doesNotMatch(verificationRoute, /console\.error\([\s\S]*?,\s*error\s*\)/,
   "verification start must not log raw exception objects");
 
+const successfulWebhook = verificationSource.slice(
+  verificationSource.indexOf("export async function markVerificationSuccessful"),
+  verificationSource.indexOf("export async function markVerificationFailed"),
+);
+const failedWebhook = verificationSource.slice(
+  verificationSource.indexOf("export async function markVerificationFailed"),
+);
+for (const [name, source] of [["success", successfulWebhook], ["failure", failedWebhook]]) {
+  assert.match(source, /if \(!isUkAccount\(attempt\.account\)\)/,
+    name + " verification webhook must reject legacy/non-UK attempts");
+  assert.match(source, /attempt\.account\.verificationStatus === "suspended"/,
+    name + " verification webhook must not process suspended accounts");
+}
+assert.match(successfulWebhook, /include: \{ account: true \}/);
+assert.match(failedWebhook, /include: \{ account: true \}/);
+
+// Run the actual create-attempt helper against isolated Prisma fixtures.
 let accountFixture;
 let attemptReads = 0;
 let attemptCreates = 0;
