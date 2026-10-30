@@ -53,4 +53,15 @@ const secondGuard = accessSource.indexOf("getSuspendedAccountAccess(account)", f
 assert.ok(refreshAccount >= 0 && secondGuard > refreshAccount,
   "suspension must be rechecked after refreshing account state following trial-cycle evaluation");
 
+const jobMarketSource = readFileSync("lib/jobMarket.ts", "utf8");
+assert.match(jobMarketSource, /verificationStatus:\s*true/,
+  "job-market guard must load the account suspension state");
+const jobSuspensionGuard = jobMarketSource.indexOf("getSuspendedAccountAccess(actor)");
+const jobDeletionGuard = jobMarketSource.indexOf("if (actor.deletionRequestedAt)");
+const supportedMarketGuard = jobMarketSource.indexOf("if (!isSupportedMarket(actor))");
+assert.ok(jobSuspensionGuard >= 0 && jobSuspensionGuard < jobDeletionGuard && jobSuspensionGuard < supportedMarketGuard,
+  "job-market routes must reject suspension before deletion and supported-market checks");
+assert.match(jobMarketSource, /code:\s*"ACCOUNT_SUSPENDED"/,
+  "job-market APIs must return a stable suspended-account denial");
+
 console.log("Suspension access contract passed: suspended India, UK tester, and subscribed non-weekly accounts are denied; active accounts retain their normal market rules.");
