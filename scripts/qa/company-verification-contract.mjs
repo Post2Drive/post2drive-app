@@ -26,4 +26,29 @@ assert.match(awardBid, /canPostJobs\(currentPoster\)/);
 assert.match(opportunities, /driver\.type !== "driver".*driver\.companyVerificationStatus !== "verified"/s);
 assert.match(opportunities, /driver\.type !== "driver"/);
 
-console.log("Company verification contract passed.");
+
+const pilotFeedback = read("../../app/api/pilot/feedback/route.ts");
+const publicProfile = read("../../app/api/profile/[id]/route.ts");
+
+// Company verification is a UK-only workflow; India must remain free of
+// person/company verification gates. Suspended accounts cannot submit it.
+assert.match(submit, /import \{ isUkAccount \} from "@\/lib\/uk"/);
+assert.match(submit, /select: \{ country: true, currency: true, verificationStatus: true, companyVerificationStatus: true \}/);
+assert.match(submit, /verificationStatus === "suspended"/);
+assert.match(submit, /if \(!isUkAccount\(account\)\)/);
+assert.ok(submit.indexOf('verificationStatus === "suspended"') < submit.indexOf("isUkAccount(account)"),
+  "suspension must be denied before company-verification market processing");
+
+// Pilot feedback is restricted to the allow-listed UK tester cohort and
+// suspended accounts must not read the pilot flag or submit feedback.
+assert.equal((pilotFeedback.match(/verificationStatus: true/g) || []).length, 2,
+  "both pilot feedback methods must load the persisted suspension state");
+assert.equal((pilotFeedback.match(/account\.verificationStatus === "suspended"/g) || []).length, 2,
+  "both pilot feedback methods must deny suspended accounts");
+
+// A suspended account may retain account-status/appeal access, but cannot
+// inspect other marketplace profiles through the public profile API.
+assert.match(publicProfile, /verificationStatus: true/);
+assert.match(publicProfile, /viewer\.verificationStatus === "suspended"/);
+
+console.log("Company verification and account-route boundary contract passed.");
