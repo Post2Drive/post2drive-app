@@ -23,3 +23,11 @@ assert.ok(page.includes("job.currentUserPreviouslyBackedOut"));
 assert.ok(page.includes('href={`/profile/${job.poster.displayId}`}'), "profile links must use the public display ID expected by the profile API");
 assert.ok(page.includes("job.hasPreviousDrivers"));
 console.log("Job response data-minimization contract passed.");
+
+const payments = read("../../app/api/payments/route.ts");
+assert.ok(payments.includes("crossBorder: false"), "payment history must exclude cross-border jobs");
+assert.ok(payments.includes("country: account.country") && payments.includes("currency: account.currency"), "payment history must be scoped to the caller's market");
+assert.ok(payments.includes("select: {") && payments.includes("paymentJobSelect"), "payment history must use an explicit response field allowlist");
+assert.ok(!payments.includes("include: {"), "payment history must not serialize complete related records");
+assert.ok(payments.includes('"Cache-Control": "private, no-store"'), "payment history must not be cached by shared intermediaries");
+console.log("Payment history market isolation and data-minimization contract passed.");

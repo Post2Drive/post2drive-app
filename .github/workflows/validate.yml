@@ -130,6 +130,8 @@ jobs:
           grep -q "(0 rows)" /tmp/qa-inventory.txt
       - name: Validate account API privacy and request validation
         run: npm run qa:account-api-security
+      - name: Validate job and payment response data minimization
+        run: npm run qa:job-response-data-minimization
       - name: Validate accessible design contracts
         run: npm run qa:design-accessibility
       - name: Type-check TypeScript
