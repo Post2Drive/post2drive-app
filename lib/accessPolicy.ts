@@ -1,6 +1,5 @@
 export type SuspensionAccessAccount = {
   verificationStatus: string;
-  [key: string]: unknown;
 };
 
 /**
