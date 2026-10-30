@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { isUkAccount } from "@/lib/uk";
 import { isWeeklyPricingEligible } from "@/lib/pricing";
 import { getTrialCycleStatus } from "@/lib/trialCycles";
+import { getSuspendedAccountAccess } from "@/lib/accessPolicy";
 
 export async function getAccountAccess(accountId: string) {
   let account = await prisma.account.findUnique({
@@ -38,6 +39,11 @@ export async function getAccountAccess(accountId: string) {
     return { allowed: false, reason: "account_deletion_requested" as const, account };
   }
 
+  // Suspension is a hard account-wide denial. It must be checked before any
+  // market-specific phone, tester, promotion, or subscription exemption.
+  const suspensionAccess = getSuspendedAccountAccess(account);
+  if (suspensionAccess) return suspensionAccess;
+
   // When a trial or grace window has expired, evaluate the persisted cycle
   // before denying access. This makes extensions/grace decisions idempotent
   // and ensures access cannot be extended merely by referral counts alone.
@@ -67,7 +73,7 @@ export async function getAccountAccess(accountId: string) {
         subscriptionPlanKey: true,
         planType: true,
         fleetVehicleCount: true,
-      deletionRequestedAt: true,
+        deletionRequestedAt: true,
       },
     });
     if (!account) {
@@ -77,6 +83,11 @@ export async function getAccountAccess(accountId: string) {
         account: null,
       };
     }
+
+    // Recheck after the refresh so a suspension committed during trial-cycle
+    // evaluation cannot pass through the remaining market-specific branches.
+    const refreshedSuspensionAccess = getSuspendedAccountAccess(account);
+    if (refreshedSuspensionAccess) return refreshedSuspensionAccess;
   }
 
   // India has no paid access tier or person/company verification gate.
