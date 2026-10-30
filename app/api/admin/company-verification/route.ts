@@ -12,7 +12,7 @@ async function GETHandler() {
   if (!(await isTesterAdmin())) return NextResponse.json({ error: "Administrator access required." }, { status: 403 });
 
   const companies = await prisma.account.findMany({
-    where: { companyVerificationStatus: { in: ["pending", "manual_review"] } },
+    where: { country: "GB", currency: "GBP", companyVerificationStatus: { in: ["pending", "manual_review"] } },
     select: {
       id: true, companyName: true, companyNumber: true, isSoleTrader: true,
       country: true, currency: true, verificationStatus: true,
@@ -44,9 +44,12 @@ async function POSTHandler(req: Request) {
 
   const account = await prisma.account.findUnique({
     where: { id: accountId },
-    select: { id: true, companyVerificationStatus: true, country: true },
+    select: { id: true, companyVerificationStatus: true, country: true, currency: true },
   });
   if (!account) return NextResponse.json({ error: "Account not found." }, { status: 404 });
+  if (account.country !== "GB" || account.currency !== "GBP") {
+    return NextResponse.json({ error: "Company verification review is only available for GB + GBP accounts." }, { status: 403 });
+  }
   if (!["pending", "manual_review"].includes(account.companyVerificationStatus)) {
     return NextResponse.json({ error: "Only pending company verification submissions can be reviewed." }, { status: 409 });
   }
