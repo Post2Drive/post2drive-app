@@ -90,6 +90,16 @@ assert.ok(jobSuspensionGuard >= 0 && jobSuspensionGuard < jobDeletionGuard && jo
 assert.match(jobMarketSource, /code:\s*"ACCOUNT_SUSPENDED"/,
   "job-market APIs must return a stable suspended-account denial");
 
+// Vehicle GET remains available to the owner for account/status purposes, but
+// a suspended account cannot register a new vehicle or enter the driver pool.
+const vehicleRoute = readFileSync("app/api/vehicles/route.ts", "utf8");
+const vehiclePost = vehicleRoute.slice(vehicleRoute.indexOf("async function POSTHandler"));
+const vehicleSuspensionGuard = vehiclePost.indexOf('account.verificationStatus === "suspended"');
+const vehicleMutation = vehiclePost.indexOf("prisma.$transaction");
+assert.ok(vehicleSuspensionGuard >= 0 && vehicleSuspensionGuard < vehicleMutation,
+  "vehicle registration must reject suspension before any vehicle mutation");
+assert.match(vehiclePost, /Suspended accounts cannot register vehicles/);
+
 // Execute the real shared job-market guard with isolated Prisma and market
 // dependencies. This verifies the actual denial response, not just its source.
 const compiledJobMarket = ts.transpileModule(jobMarketSource, {
@@ -138,4 +148,4 @@ actorFixture = { ...activeIndia, deletionRequestedAt: null };
 const activeJobCheck = await checkJobMarket("india-active", "fixture-job");
 assert.equal(activeJobCheck.ok, true, "active India account must retain job-market access");
 
-console.log("Suspension access contract passed: suspended India, UK tester, and subscribed non-weekly accounts are denied; active accounts retain their normal market rules.");
+console.log("Suspension access contract passed: suspended India, UK tester, and subscribed non-weekly accounts are denied; active accounts retain their normal market rules; vehicle registration is blocked.");
