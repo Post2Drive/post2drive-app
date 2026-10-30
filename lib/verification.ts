@@ -73,6 +73,15 @@ export async function createVerificationAttempt(
     );
   }
 
+  // Person verification is a UK GB + GBP workflow only. India is an open
+  // marketplace and must never be routed into person/company verification.
+  if (account.verificationStatus === "suspended") {
+    throw new Error("Account is suspended.");
+  }
+  if (!isUkAccount(account)) {
+    throw new Error("Person verification is only available to GB + GBP accounts.");
+  }
+
   if (
     account.verificationStatus ===
     "verified"
