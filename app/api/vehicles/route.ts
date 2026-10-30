@@ -60,7 +60,7 @@ async function POSTHandler(req: Request) {
       );
     }
     if (!parsedBody.value || typeof parsedBody.value !== "object" || Array.isArray(parsedBody.value)) {
-      return NextResponse.json({ error: "Vehicle details must be sent as a JSON object." }, { status: 400 });
+      return NextResponse.json({ error: "Request body must be valid JSON." }, { status: 400 });
     }
     const body = parsedBody.value as Record<string, unknown>;
     const vehicleType = String(body.vehicleType ?? "").trim();
