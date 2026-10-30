@@ -55,6 +55,30 @@ const secondGuard = accessSource.indexOf("getSuspendedAccountAccess(account)", f
 assert.ok(refreshAccount >= 0 && secondGuard > refreshAccount,
   "suspension must be rechecked after refreshing account state following trial-cycle evaluation");
 
+const subscriptionSource = readFileSync("lib/subscription.ts", "utf8");
+const createPaymentSource = subscriptionSource.slice(
+  subscriptionSource.indexOf("export async function createPendingSubscriptionPayment"),
+  subscriptionSource.indexOf("export async function confirmSubscriptionPayment"),
+);
+const confirmPaymentSource = subscriptionSource.slice(
+  subscriptionSource.indexOf("export async function confirmSubscriptionPayment"),
+);
+assert.match(createPaymentSource, /verificationStatus === "suspended"/,
+  "suspended accounts must not create new subscription payment requests, including tester accounts");
+assert.ok(
+  createPaymentSource.indexOf('verificationStatus === "suspended"') < createPaymentSource.indexOf("isWeeklyPricingEligible(account)"),
+  "subscription creation must check suspension before market or tester eligibility",
+);
+assert.match(confirmPaymentSource, /payment\.account\.verificationStatus === "suspended"/,
+  "a delayed payment webhook must not activate a subscription for a suspended account");
+assert.ok(
+  confirmPaymentSource.indexOf('payment.account.verificationStatus === "suspended"') < confirmPaymentSource.indexOf("tx.account.update"),
+  "subscription confirmation must check suspension before granting paid access",
+);
+const createPaymentRoute = readFileSync("app/api/subscription/create-payment/route.ts", "utf8");
+assert.match(createPaymentRoute, /"Account is suspended\."/,
+  "subscription API must expose a controlled suspended-account denial");
+
 const jobMarketSource = readFileSync("lib/jobMarket.ts", "utf8");
 assert.match(jobMarketSource, /verificationStatus:\s*true/,
   "job-market guard must load the account suspension state");
