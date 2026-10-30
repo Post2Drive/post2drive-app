@@ -278,13 +278,17 @@ export async function markVerificationFailed(
     }
 
     const accountStatus = attempt.attemptNumber >= 2 ? "manual_review" : "failed";
-    await tx.account.updateMany({
+    const accountChanged = await tx.account.updateMany({
       where: {
         id: attempt.accountId,
         verificationStatus: { in: ["payment_pending", "pending", "failed", "manual_review"] },
       },
       data: { verificationStatus: accountStatus },
     });
+
+    if (accountChanged.count !== 1) {
+      throw new Error("Account is no longer eligible for failure processing.");
+    }
 
     return { status, deadline: nextDeadline };
   });
