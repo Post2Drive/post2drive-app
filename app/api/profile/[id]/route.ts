@@ -23,10 +23,14 @@ async function GETHandler(
 
     const viewer = await prisma.account.findUnique({
       where: { id: viewerAccountId },
-      select: { country: true, currency: true, deletionRequestedAt: true },
+      select: { country: true, currency: true, deletionRequestedAt: true, verificationStatus: true },
     });
     if (!viewer || viewer.deletionRequestedAt) {
       return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+    }
+
+    if (viewer.verificationStatus === "suspended") {
+      return NextResponse.json({ error: "Suspended accounts cannot access marketplace profiles." }, { status: 403 });
     }
 
     const { id: displayId } = await params;
