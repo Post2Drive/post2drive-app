@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { readBoundedJson } from "@/lib/requestBody";
 import { enforceRateLimit } from "@/lib/rateLimit";
+import { isUkAccount } from "@/lib/uk";
 import { withApiMetrics } from "@/lib/apiMetrics";
 
 async function POSTHandler(req: Request) {
@@ -11,6 +12,20 @@ async function POSTHandler(req: Request) {
   if (!session) return NextResponse.json({ error: "Not logged in." }, { status: 401 });
   const accountId = (session.user as any).accountId as string | undefined;
   if (!accountId) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+
+  const account = await prisma.account.findUnique({
+    where: { id: accountId, deletionRequestedAt: null },
+    select: { country: true, currency: true, verificationStatus: true, companyVerificationStatus: true },
+  });
+  if (!account) return NextResponse.json({ error: "Account not found." }, { status: 404 });
+  if (account.verificationStatus === "suspended") {
+    return NextResponse.json({ error: "Suspended accounts cannot submit company verification." }, { status: 403 });
+  }
+  // Company verification is a UK marketplace requirement only. India remains
+  // an open marketplace and must never be forced through person/company checks.
+  if (!isUkAccount(account)) {
+    return NextResponse.json({ error: "Company verification is only available to GB + GBP accounts." }, { status: 403 });
+  }
 
   const limit = await enforceRateLimit(req, { scope: "company-verification-submit", identity: accountId, limit: 5, windowMs: 60 * 60 * 1000 });
   if (limit) return limit;
@@ -29,8 +44,6 @@ async function POSTHandler(req: Request) {
     return NextResponse.json({ error: "Enter a valid company or trading name and a company number no longer than 80 characters." }, { status: 400 });
   }
 
-  const account = await prisma.account.findUnique({ where: { id: accountId }, select: { companyVerificationStatus: true } });
-  if (!account) return NextResponse.json({ error: "Account not found." }, { status: 404 });
   if (account.companyVerificationStatus === "verified") {
     return NextResponse.json({ error: "This company is already verified." }, { status: 409 });
   }
