@@ -20,8 +20,8 @@ assert.match(worker, /workerHeartbeatAt/,"worker must persist liveness evidence"
 assert.match(worker, /runQaWorker\(job\.id, country, workerId, testType, config\)/,"worker must execute the shared QA runner with the claim owner ID");
 assert.doesNotMatch(worker, /UPDATE qa_test_runs\s+SET status\s*=\s*'queued'/,"worker must never automatically requeue a potentially live run");
 assert.match(worker, /function safeErrorName\(error: unknown\)/,"worker logs must use a safe error-name formatter");
-assert.doesNotMatch(worker, /error\\.message|String\\(error\\)/,"worker must not log raw exception messages");
-assert.doesNotMatch(worker, /console\\.error\\([^\\n]*,\\s*error\\s*\\)/,"worker must not pass raw caught errors to the logger");
+assert.doesNotMatch(worker, /error\.message|String\(error\)/,"worker must not log raw exception messages");
+assert.doesNotMatch(worker, /console\.error\([^\n]*,\s*error\s*\)/,"worker must not pass raw caught errors to the logger");
 
 assert.match(runner, /QA_ACCOUNT_COUNT !== "10000"/,"runner preflight must enforce 10k account target");
 assert.match(runner, /status='running' AND target_url=\$2 AND target_accounts=\$4 AND summary->>'workerId'=\$3/,"runner must verify the exact worker-owned row");
