@@ -332,8 +332,10 @@ try {
     pickupTimeZone: "Asia/Kolkata", dropoffTimeZone: "Asia/Kolkata",
     vehicleType: "Small van (SWB)", price: null, priceMode: "fixed", currency: "INR", crossBorder: false,
   });
-  assert.equal(indiaCreate.status, 201,
-    "India phone-verified account must post without person/company verification or a paid plan (got " + indiaCreate.status + "): " + await indiaCreate.text());
+  if (indiaCreate.status !== 201) {
+    throw new Error("India phone-verified account must post without person/company verification or a paid plan (got " +
+      indiaCreate.status + "): " + await indiaCreate.text());
+  }
   const indiaJobBody = await indiaCreate.json();
   indiaJob = indiaJobBody.job;
   assert.ok(indiaJob?.id, "India job creation must return a persistent job");
