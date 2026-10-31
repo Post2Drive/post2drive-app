@@ -97,7 +97,7 @@ export async function GET() {
     const steps = rawSteps.map(normalise);
     return NextResponse.json({ campaigns, runs, steps, executionEnabled: isQaRunnerEnabled() }, { headers: { "cache-control": "no-store" } });
   } catch (error) {
-    console.error("QA campaign history unavailable", error);
+    console.error("QA campaign history unavailable.", { errorName: error instanceof Error ? error.name : "UnknownError" });
     return NextResponse.json({ error: "Campaign storage is not available yet. Apply the reviewed QA campaign metadata migration to staging before using this page." }, { status: 503 });
   }
 }
@@ -130,7 +130,7 @@ export async function POST(request: Request) {
     );
     return NextResponse.json({ id, status: "draft", executionMode: "preview_only" }, { status: 201, headers: { "cache-control": "no-store" } });
   } catch (error) {
-    console.error("Could not save QA campaign draft", error);
+    console.error("Could not save QA campaign draft.", { errorName: error instanceof Error ? error.name : "UnknownError" });
     return NextResponse.json({ error: "Could not save the campaign draft. Confirm the campaign metadata migration is applied and the app database role has the required table permissions." }, { status: 503 });
   }
 }

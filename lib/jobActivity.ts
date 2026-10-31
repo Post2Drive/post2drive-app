@@ -31,10 +31,7 @@ export async function recordJobActivity({
       },
     });
   } catch (error) {
-    console.error(
-      "Failed to record job activity:",
-      error
-    );
+    console.error("Failed to record job activity.", { errorName: error instanceof Error ? error.name : "UnknownError" });
 
     return null;
   }

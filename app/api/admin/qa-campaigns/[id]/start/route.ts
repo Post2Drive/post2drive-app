@@ -138,7 +138,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     if ("error" in result) return NextResponse.json({ error: result.error }, { status: typeof result.status === "number" ? result.status : 400 });
     return NextResponse.json(result, { status: 202, headers: { "cache-control": "no-store" } });
   } catch (error) {
-    console.error("Could not start QA campaign", error);
+    console.error("Could not start QA campaign.", { errorName: error instanceof Error ? error.name : "UnknownError" });
     return NextResponse.json({ error: "Could not start the campaign. Verify the staging migration and isolated QA worker." }, { status: 503 });
   }
 }

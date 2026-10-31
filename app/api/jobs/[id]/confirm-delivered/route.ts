@@ -190,10 +190,7 @@ async function POSTHandler(
         break;
       }
     } catch (error) {
-      console.error(
-        "Referral qualification error:",
-        error
-      );
+      console.error("Referral qualification failed.", { errorName: error instanceof Error ? error.name : "UnknownError" });
     }
   }
 

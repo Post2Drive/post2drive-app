@@ -61,7 +61,7 @@ async function POSTHandler(req: Request) {
     const { token } = await createEmailVerificationToken(user.id);
     await sendVerificationEmail(user.email, user.name, token);
   } catch (error) {
-    console.error("Unable to resend email verification:", error);
+    console.error("Unable to resend email verification.", { errorName: error instanceof Error ? error.name : "UnknownError" });
   }
 
   return NextResponse.json(genericResponse);

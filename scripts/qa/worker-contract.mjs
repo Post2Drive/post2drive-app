@@ -6,6 +6,26 @@ const read = p => readFileSync(p, "utf8");
 const route = read("app/api/qa/run/route.ts");
 const runner = read("lib/qaRunner.ts");
 const worker = read("scripts/qa/worker.ts");
+const applicationLogSources = [
+  "lib/jobActivity.ts",
+  "app/api/admin/qa-campaigns/[id]/route.ts",
+  "app/api/admin/qa-campaigns/route.ts",
+  "app/api/profile/[id]/route.ts",
+  "app/api/vehicles/route.ts",
+  "app/api/jobs/route.ts",
+  "app/api/jobs/[id]/unassign/route.ts",
+  "app/api/jobs/[id]/cancel/route.ts",
+  "app/api/jobs/[id]/driver-cancel/route.ts",
+  "app/api/email/verification/resend/route.ts",
+  "app/api/jobs/[id]/bid/route.ts",
+  "app/api/jobs/[id]/accept/route.ts",
+  "app/api/jobs/[id]/confirm-delivered/route.ts",
+  "app/api/admin/qa-campaigns/[id]/start/route.ts",
+].map(path => [path, read(path)]);
+for (const [path, source] of applicationLogSources) {
+  assert.doesNotMatch(source, /console\.error\([\s\S]{0,180}?\berror\s*\)/,
+    path + " must not pass raw exception objects/messages to application logs");
+}
 
 assert.match(route, /pg_advisory_xact_lock/,"concurrent API enqueues must serialize at the database");
 assert.match(route, /status IN \('queued','running'\)/,"route must detect active durable runs");
@@ -19,6 +39,9 @@ assert.match(worker, /SET status = 'running'/,"claim must transition queued to r
 assert.match(worker, /workerHeartbeatAt/,"worker must persist liveness evidence");
 assert.match(worker, /runQaWorker\(job\.id, country, workerId, testType, config\)/,"worker must execute the shared QA runner with the claim owner ID");
 assert.doesNotMatch(worker, /UPDATE qa_test_runs\s+SET status\s*=\s*'queued'/,"worker must never automatically requeue a potentially live run");
+assert.match(worker, /function safeErrorName\(error: unknown\)/,"worker logs must use a safe error-name formatter");
+assert.doesNotMatch(worker, /error\.message|String\(error\)/,"worker must not log raw exception messages");
+assert.doesNotMatch(worker, /console\.error\([^\n]*,\s*error\s*\)/,"worker must not pass raw caught errors to the logger");
 
 assert.match(runner, /QA_ACCOUNT_COUNT !== "10000"/,"runner preflight must enforce 10k account target");
 assert.match(runner, /status='running' AND target_url=\$2 AND target_accounts=\$4 AND summary->>'workerId'=\$3/,"runner must verify the exact worker-owned row");

@@ -153,7 +153,7 @@ async function POSTHandler(
   try {
     await expireJobOpportunities(routeParams.id);
   } catch (error) {
-    console.error("Failed to expire opportunities after job cancellation:", error);
+    console.error("Failed to expire opportunities after job cancellation.", { errorName: error instanceof Error ? error.name : "UnknownError" });
   }
 
   return NextResponse.json({

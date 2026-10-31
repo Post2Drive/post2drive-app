@@ -31,7 +31,7 @@ async function GETHandler() {
 
     return NextResponse.json({ vehicles, isTester: account.isTester, testerApprovalStatus: account.testerApprovalStatus, market: { country: account.country, currency: account.currency } });
   } catch (error) {
-    console.error("Vehicle list error:", error);
+    console.error("Vehicle list failed.", { errorName: error instanceof Error ? error.name : "UnknownError" });
     return NextResponse.json({ error: "Could not load vehicles." }, { status: 500 });
   }
 }
@@ -164,7 +164,7 @@ async function POSTHandler(req: Request) {
       message: account.isTester ? "Tester access enabled. This vehicle remains pending and is not marked verified." : account.testerApprovalStatus === "pending" ? "Vehicle details submitted for tester review. This vehicle remains unverified and access is not enabled until an administrator approves the application." : "Vehicle submitted for verification. It cannot qualify for jobs until approved.",
     }, { status: 201 });
   } catch (error) {
-    console.error("Vehicle registration error:", error);
+    console.error("Vehicle registration failed.", { errorName: error instanceof Error ? error.name : "UnknownError" });
     return NextResponse.json({ error: "Could not register vehicle." }, { status: 500 });
   }
 }

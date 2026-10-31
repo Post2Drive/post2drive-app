@@ -126,7 +126,7 @@ async function POSTHandler(
   try {
     await reopenJobOpportunities(routeParams.id);
   } catch (error) {
-    console.error("Failed to reopen driver opportunities after unassignment:", error);
+    console.error("Failed to reopen driver opportunities after unassignment.", { errorName: error instanceof Error ? error.name : "UnknownError" });
   }
 
   return NextResponse.json({
