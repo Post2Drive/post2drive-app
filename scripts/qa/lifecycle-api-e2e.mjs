@@ -26,7 +26,6 @@ async function getAvailablePort() {
 const suffix = process.pid + "-" + Date.now();
 const accountIds = [];
 const jobIds = [];
-const notificationIds = [];
 let server;
 let serverOutput = "";
 let base = "";
@@ -258,7 +257,6 @@ try {
     accountId: driver.id, type: "job_update", title: "CI notification",
     body: "Private notification fixture", jobId: lifecycleJob.id, metadata: { ci: true },
   }});
-  notificationIds.push(notification.id);
   jobIds.push(lifecycleJob.id, bidJob.id);
   const baseFixtureJob = {
     posterId: poster.id,
