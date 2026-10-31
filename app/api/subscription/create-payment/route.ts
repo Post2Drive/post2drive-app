@@ -37,7 +37,9 @@ async function POSTHandler() {
     // Only known business-rule errors are safe to show to the caller.
     // Database/ORM failures must not leak schema, query, or infrastructure details.
     if (error instanceof Error && SAFE_CLIENT_ERRORS.has(error.message)) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+      // Suspension is an authorization denial, not invalid client input.
+      const status = error.message === "Account is suspended." ? 403 : 400;
+      return NextResponse.json({ error: error.message }, { status });
     }
 
     console.error("Unable to create subscription payment.", {
