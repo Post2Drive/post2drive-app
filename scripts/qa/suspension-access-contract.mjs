@@ -80,6 +80,10 @@ assert.match(confirmPaymentSource, /account\.deletionRequestedAt/,
 const createPaymentRoute = readFileSync("app/api/subscription/create-payment/route.ts", "utf8");
 assert.match(createPaymentRoute, /"Account is suspended\."/,
   "subscription API must expose a controlled suspended-account denial");
+assert.ok(createPaymentRoute.includes('"Account is pending deletion."'),
+  "subscription API must expose a controlled deletion-requested denial");
+assert.ok(createPaymentRoute.includes('["Account is suspended.", "Account is pending deletion."]'),
+  "suspended and deletion-requested access errors must map to HTTP 403");
 const promotionSource = readFileSync("lib/promotion.ts", "utf8");
 const promotionStartup = promotionSource.slice(
   promotionSource.indexOf("export async function startPromotionForVerifiedAccount"),
