@@ -1136,6 +1136,18 @@ try {
   assert.ok(ukPayments.asPoster.some(job => job.id === lifecycleJob.id),
     "UK poster must see its own completed payment-tracking record");
 
+  // Prepare pending provider callbacks for an account that is about to be
+  // deleted. A late provider event must not reactivate or verify an anonymised account.
+  await prisma.account.update({ where: { id: outsider.id }, data: { verificationStatus: "pending" } });
+  const deletedAccountPendingPayment = await prisma.subscriptionPayment.create({ data: {
+    accountId: outsider.id, planKey: "individual", amountMinorUnits: 1000,
+    currency: "GBP", status: "pending",
+  } });
+  const deletedAccountPendingAttempt = await prisma.verificationAttempt.create({ data: {
+    accountId: outsider.id, attemptNumber: 1, status: "pending",
+    feeMinorUnits: 0, feeCurrency: "GBP", feeStatus: "paid", submittedAt: new Date(),
+  } });
+
   // Reuse the same pre-existing session after deletion is requested.
   const deleteAccount = await api("/api/account", "DELETE", outsiderCookie, {
     currentPassword: "ci-e2e-password-reset-12345", confirm: "DELETE",
@@ -1169,7 +1181,40 @@ try {
   assert.equal(await prisma.vehicle.count({ where: { accountId: outsider.id } }), 0,
     "deletion-requested account must not create a vehicle");
 
-  console.log("PASS authenticated lifecycle HTTP E2E in isolated CI DB: 22 existing outsider object-route denials; GB↔IN job/profile/payment boundaries and market-tamper rejection; India phone-only posting; verification exclusion; suspension denial; notification privacy; rating ownership/idempotency; poster/driver pickup→delivery→payment flow; and session revocation.");
+  const deletedWebhookStateBefore = await snapshot();
+  const lateSubscriptionWebhook = await fetch(base + "/api/subscription/webhook", {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-post2drive-webhook-secret": "ci-only-subscription-webhook-secret" },
+    body: JSON.stringify({ paymentId: deletedAccountPendingPayment.id, provider: "ci-provider",
+      providerPaymentId: "ci-deleted-payment-" + suffix }), cache: "no-store",
+  });
+  assert.equal(lateSubscriptionWebhook.status, 409,
+    "a late subscription callback must not grant access after account deletion");
+  const lateVerificationSuccess = await verificationWebhookRequest({
+    attemptId: deletedAccountPendingAttempt.id, status: "successful", providerReference: "ci-deleted-verification-" + suffix,
+  });
+  assert.equal(lateVerificationSuccess.status, 409,
+    "a late verification success callback must not verify a deletion-requested account");
+  const lateVerificationFailure = await verificationWebhookRequest({
+    attemptId: deletedAccountPendingAttempt.id, status: "failed", failureReasons: ["late callback after deletion"],
+  });
+  assert.equal(lateVerificationFailure.status, 409,
+    "a late verification failure callback must not mutate a deletion-requested account");
+  assert.deepEqual(await snapshot(), deletedWebhookStateBefore,
+    "late provider callbacks after deletion must not mutate any fixture or operational state");
+  const deletedPendingPaymentAfter = await prisma.subscriptionPayment.findUnique({ where: { id: deletedAccountPendingPayment.id } });
+  const deletedPendingAttemptAfter = await prisma.verificationAttempt.findUnique({ where: { id: deletedAccountPendingAttempt.id } });
+  const deletedAccountAfterCallbacks = await prisma.account.findUnique({
+    where: { id: outsider.id }, select: { verificationStatus: true, subscriptionStatus: true, subscriptionEndsAt: true, deletionRequestedAt: true },
+  });
+  assert.equal(deletedPendingPaymentAfter.status, "pending");
+  assert.equal(deletedPendingAttemptAfter.status, "pending");
+  assert.equal(deletedAccountAfterCallbacks.verificationStatus, "pending");
+  assert.equal(deletedAccountAfterCallbacks.subscriptionStatus, "inactive");
+  assert.equal(deletedAccountAfterCallbacks.subscriptionEndsAt, null);
+  assert.ok(deletedAccountAfterCallbacks.deletionRequestedAt);
+
+  console.log("PASS authenticated lifecycle HTTP E2E in isolated CI DB: cross-account and cross-market ownership; UK/India policy boundaries and tampering; admin, bridge and webhook protection; concurrent payment/verification retries; deleted-account callback denial; suspension, notification, rating and evidence privacy; lifecycle state transitions; and session revocation.");
 } finally {
   if (server) {
     server.kill("SIGTERM");
