@@ -48,6 +48,8 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
+      - name: Validate complete API route and method access inventory
+        run: npm run qa:api-route-inventory
       - name: Audit dependencies for high and critical vulnerabilities
         run: npm audit --audit-level=high
       - name: Validate reliability confidence-bound calculations
