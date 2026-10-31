@@ -183,7 +183,7 @@ try {
     // The browser session must not be readable by client-side scripts and must
     // not accompany cross-site POST navigations/forms.
     const sessionCookie = (await context.cookies(baseURL)).find(cookie =>
-      /^(?:__Secure-)?next-auth\\.session-token$/.test(cookie.name)
+      /^(?:__Secure-)?next-auth\.session-token$/.test(cookie.name)
     );
     assert.ok(sessionCookie, "authenticated browser flow must receive a NextAuth session cookie");
     assert.equal(sessionCookie.httpOnly, true, "session cookie must be HttpOnly");
