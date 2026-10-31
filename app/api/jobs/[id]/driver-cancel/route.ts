@@ -129,7 +129,7 @@ async function POSTHandler(
   try {
     await reopenJobOpportunities(routeParams.id);
   } catch (error) {
-    console.error("Failed to reopen driver opportunities after withdrawal:", error);
+    console.error("Failed to reopen driver opportunities after withdrawal.", { errorName: error instanceof Error ? error.name : "UnknownError" });
   }
 
   return NextResponse.json({
