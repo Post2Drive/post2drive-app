@@ -26,13 +26,14 @@ async function getAvailablePort() {
 const suffix = process.pid + "-" + Date.now();
 const accountIds = [];
 const jobIds = [];
+const notificationIds = [];
 let server;
 let serverOutput = "";
 let base = "";
-let poster, driver, outsider, lifecycleJob, bidJob, bid, incident, evidence, posterVehicle, incidentJob, cancelJob, acceptJob, unassignJob, rejectJob;
+let poster, driver, outsider, indiaPoster, lifecycleJob, bidJob, bid, incident, evidence, posterVehicle, incidentJob, cancelJob, acceptJob, unassignJob, rejectJob, indiaJob, notification;
 
 async function snapshot() {
-  const [jobRows, jobCount, bidCount, activityCount, evidenceCount, vehicleCount, notificationCount] = await Promise.all([
+  const [jobRows, jobCount, bidCount, activityCount, evidenceCount, vehicleCount, notificationCount, notificationRows, ratingCount] = await Promise.all([
     prisma.job.findMany({
       where: { id: { in: jobIds } },
       select: { id: true, posterId: true, acceptedById: true, status: true, priceMode: true, deliveryMarkedById: true, paidMarkedAt: true, receivedConfirmedAt: true },
@@ -43,8 +44,13 @@ async function snapshot() {
     prisma.incidentEvidence.count({ where: { jobId: { in: jobIds } } }),
     prisma.vehicle.count({ where: { accountId: { in: accountIds } } }),
     prisma.notification.count({ where: { accountId: { in: accountIds } } }),
+    prisma.notification.findMany({
+      where: { id: { in: notificationIds } },
+      select: { id: true, accountId: true, readAt: true },
+    }),
+    prisma.rating.count({ where: { jobId: { in: jobIds } } }),
   ]);
-  return { jobRows, jobCount, bidCount, activityCount, evidenceCount, vehicleCount, notificationCount };
+  return { jobRows, jobCount, bidCount, activityCount, evidenceCount, vehicleCount, notificationCount, notificationRows, ratingCount };
 }
 const getSetCookies = (response) => {
   if (typeof response.headers.getSetCookie === "function") return response.headers.getSetCookie();
@@ -127,7 +133,13 @@ try {
     subscriptionStatus: "active", subscriptionPlanKey: "individual",
     subscriptionStartedAt: new Date(), subscriptionEndsAt: new Date("2035-12-31T00:00:00.000Z"),
   }});
-  accountIds.push(poster.id, driver.id, outsider.id);
+  // India follows phone-only access: no person/company verification or paid plan.
+  indiaPoster = await prisma.account.create({ data: {
+    type: "poster", companyName: "CI India poster", displayId: "CII-" + suffix,
+    country: "IN", currency: "INR", phoneVerifiedAt: new Date(),
+    verificationStatus: "not_started", companyVerificationStatus: "not_started",
+  }});
+  accountIds.push(poster.id, driver.id, outsider.id, indiaPoster.id);
   const passwordHash = await bcrypt.hash("ci-e2e-password-12345", 8);
   const posterUser = await prisma.user.create({ data: {
     accountId: poster.id, name: "CI Poster", email: "ci-poster-" + suffix + "@example.invalid",
@@ -140,6 +152,10 @@ try {
   const outsiderUser = await prisma.user.create({ data: {
     accountId: outsider.id, name: "CI Outsider", email: "ci-outsider-" + suffix + "@example.invalid",
     phone: "outsider-" + suffix, passwordHash, emailVerifiedAt: new Date(),
+  }});
+  const indiaUser = await prisma.user.create({ data: {
+    accountId: indiaPoster.id, name: "CI India Poster", email: "ci-india-" + suffix + "@example.invalid",
+    phone: "india-" + suffix, passwordHash, emailVerifiedAt: new Date(),
   }});
 
   lifecycleJob = await prisma.job.create({ data: {
@@ -156,6 +172,11 @@ try {
     pickupTimeZone: "Europe/London", dropoffTimeZone: "Europe/London",
     vehicleType: "Small van (SWB)", price: 100, currency: "GBP", crossBorder: false,
   }});
+  notification = await prisma.notification.create({ data: {
+    accountId: driver.id, type: "job_update", title: "CI notification",
+    body: "Private notification fixture", jobId: lifecycleJob.id, metadata: { ci: true },
+  }});
+  notificationIds.push(notification.id);
   jobIds.push(lifecycleJob.id, bidJob.id);
   const baseFixtureJob = {
     posterId: poster.id,
@@ -239,6 +260,7 @@ try {
   const secondOutsiderCookie = await signIn(outsiderUser.email);
   const posterCookie = await signIn(posterUser.email);
   const driverCookie = await signIn(driverUser.email);
+  const indiaCookie = await signIn(indiaUser.email);
 
   const oldSessionA = await api("/api/auth/session", "GET", firstOutsiderCookie);
   const oldSessionB = await api("/api/auth/session", "GET", secondOutsiderCookie);
@@ -301,6 +323,100 @@ try {
   assert.equal((await (await api("/api/auth/session", "GET", outsiderCookie)).json())?.user?.email, outsiderUser.email,
     "new password should create a valid session after reset");
 
+  // Product/Quality cross-market HTTP checks: country and currency come from
+  // the signed-in account, never from client-supplied request fields.
+  const indiaCreate = await api("/api/jobs", "POST", indiaCookie, {
+    pickup: "CI Hyderabad pickup", dropoff: "CI Vijayawada dropoff",
+    jobDate: new Date(Date.now() + 2 * 86_400_000).toISOString().slice(0, 10),
+    pickupTime: "10:00", dropoffTime: "14:00",
+    pickupTimeZone: "Asia/Kolkata", dropoffTimeZone: "Asia/Kolkata",
+    vehicleType: "Small van (SWB)", price: null, priceMode: "fixed", currency: "INR", crossBorder: false,
+  });
+  assert.equal(indiaCreate.status, 201,
+    "India phone-verified account must post without person/company verification or a paid plan (got " + indiaCreate.status + "): " + await indiaCreate.text());
+  const indiaJobBody = await indiaCreate.json();
+  indiaJob = indiaJobBody.job;
+  assert.ok(indiaJob?.id, "India job creation must return a persistent job");
+  jobIds.push(indiaJob.id);
+  const indiaAccountAfterPost = await prisma.account.findUnique({
+    where: { id: indiaPoster.id },
+    select: { country: true, currency: true, verificationStatus: true, companyVerificationStatus: true, phoneVerifiedAt: true, subscriptionStatus: true },
+  });
+  assert.equal(indiaAccountAfterPost.country, "IN");
+  assert.equal(indiaAccountAfterPost.currency, "INR");
+  assert.equal(indiaAccountAfterPost.verificationStatus, "not_started",
+    "India job posting must not require UK person verification");
+  assert.equal(indiaAccountAfterPost.companyVerificationStatus, "not_started",
+    "India job posting must not require company verification");
+  assert.ok(indiaAccountAfterPost.phoneVerifiedAt, "India posting fixture must prove phone verification");
+  assert.notEqual(indiaAccountAfterPost.subscriptionStatus, "active",
+    "India posting fixture must not rely on a paid subscription");
+
+  const indiaOwnJob = await api("/api/jobs/" + indiaJob.id, "GET", indiaCookie);
+  assert.equal(indiaOwnJob.status, 200, "India poster can read its own INR job");
+  const ukToIndiaBefore = await snapshot();
+  const ukToIndia = await api("/api/jobs/" + indiaJob.id, "GET", posterCookie);
+  assert.equal(ukToIndia.status, 403, "GB account must not read an INR job by ID");
+  assert.deepEqual(await snapshot(), ukToIndiaBefore, "GB cross-market read must not change state");
+  const indiaToUkBefore = await snapshot();
+  const indiaToUk = await api("/api/jobs/" + lifecycleJob.id, "GET", indiaCookie);
+  assert.equal(indiaToUk.status, 403, "IN account must not read a GBP job by ID");
+  assert.deepEqual(await snapshot(), indiaToUkBefore, "IN cross-market read must not change state");
+
+  const ukProfileLeak = await api("/api/profile/" + indiaPoster.displayId, "GET", posterCookie);
+  assert.equal(ukProfileLeak.status, 404, "foreign-market profile must be indistinguishable from missing");
+  const indiaOwnProfile = await api("/api/profile/" + indiaPoster.displayId, "GET", indiaCookie);
+  assert.equal(indiaOwnProfile.status, 200, "same-market India profile lookup should work");
+
+  const tamperedUkBrowse = await api("/api/jobs?country=IN&currency=INR", "GET", posterCookie);
+  assert.equal(tamperedUkBrowse.status, 200);
+  const tamperedUkBrowseBody = await tamperedUkBrowse.json();
+  assert.ok(tamperedUkBrowseBody.jobs.every(job => job.currency === "GBP"),
+    "client country/currency query tampering must not change the GB marketplace boundary");
+  assert.ok(!tamperedUkBrowseBody.jobs.some(job => job.id === indiaJob.id),
+    "GB marketplace listing must not expose an India job");
+
+  const jobsBeforeForgedMarket = await prisma.job.count({ where: { posterId: poster.id } });
+  const forgedMarketPost = await api("/api/jobs", "POST", posterCookie, {
+    pickup: "CI forged market pickup", dropoff: "CI forged market dropoff",
+    jobDate: new Date(Date.now() + 4 * 86_400_000).toISOString().slice(0, 10),
+    pickupTime: "10:00", dropoffTime: "14:00",
+    pickupTimeZone: "Europe/London", dropoffTimeZone: "Europe/London",
+    vehicleType: "Small van (SWB)", price: 100, priceMode: "fixed",
+    currency: "INR", country: "IN", crossBorder: false,
+  });
+  assert.equal(forgedMarketPost.status, 400,
+    "GB job creation must reject a client-supplied INR/India market");
+  assert.equal(await prisma.job.count({ where: { posterId: poster.id } }), jobsBeforeForgedMarket,
+    "rejected market tampering must not create a job");
+
+  const indiaPersonVerification = await api("/api/verification/start", "POST", indiaCookie, {});
+  assert.equal(indiaPersonVerification.status, 403,
+    "India must not enter the UK person-verification provider flow");
+  const indiaCompanyVerification = await api("/api/company-verification", "POST", indiaCookie, {
+    companyName: "CI India company", companyNumber: "", isSoleTrader: true,
+  });
+  assert.equal(indiaCompanyVerification.status, 403,
+    "India must not be forced into the UK company-verification workflow");
+  const indiaVerificationState = await prisma.account.findUnique({
+    where: { id: indiaPoster.id }, select: { verificationStatus: true, companyVerificationStatus: true },
+  });
+  assert.deepEqual(indiaVerificationState, { verificationStatus: "not_started", companyVerificationStatus: "not_started" },
+    "India verification denials must not mutate verification state");
+
+  const notificationReadBefore = await snapshot();
+  const outsiderNotifications = await (await api("/api/notifications", "GET", outsiderCookie)).json();
+  assert.ok(!outsiderNotifications.notifications.some(item => item.id === notification.id),
+    "notification collection must be scoped to the signed-in account");
+  const outsiderNotificationRead = await api("/api/notifications/" + notification.id + "/read", "POST", outsiderCookie, {});
+  assert.equal(outsiderNotificationRead.status, 404,
+    "one account must not mark another account's notification as read");
+  assert.deepEqual(await snapshot(), notificationReadBefore,
+    "foreign notification access must not change notification or protected lifecycle state");
+  const driverNotifications = await (await api("/api/notifications", "GET", driverCookie)).json();
+  assert.ok(driverNotifications.notifications.some(item => item.id === notification.id),
+    "notification owner must be able to read its notification");
+
   const posterJobRead = await api("/api/jobs/" + lifecycleJob.id, "GET", posterCookie);
   assert.equal(posterJobRead.status, 200, "poster may read their own job");
   const driverActivityRead = await api("/api/jobs/" + lifecycleJob.id + "/activity", "GET", driverCookie);
@@ -318,6 +434,19 @@ try {
   }
   assert.equal((await prisma.job.findUnique({ where: { id: bidJob.id } })).pickup, "Updated CI bid pickup",
     "authorized edit should persist the poster's updated pickup");
+  const beforeTamperedEdit = await prisma.job.findUnique({ where: { id: bidJob.id } });
+  const forgedMarketEdit = await api("/api/jobs/" + bidJob.id + "/edit", "PATCH", posterCookie, {
+    pickup: "Forged edit", dropoff: "CI bid dropoff",
+    jobDate: new Date(Date.now() + 2 * 86_400_000).toISOString().slice(0, 10),
+    pickupTime: "10:00", dropoffTime: "14:00",
+    pickupTimeZone: "Europe/London", dropoffTimeZone: "Europe/London",
+    vehicleType: "Small van (SWB)", price: 100, priceMode: "bid",
+    currency: "INR", country: "IN", crossBorder: false,
+  });
+  assert.equal(forgedMarketEdit.status, 400, "job edit must reject forged cross-market currency");
+  const afterTamperedEdit = await prisma.job.findUnique({ where: { id: bidJob.id } });
+  assert.equal(afterTamperedEdit.currency, beforeTamperedEdit.currency, "rejected edit must preserve the stored currency");
+  assert.equal(afterTamperedEdit.pickup, beforeTamperedEdit.pickup, "rejected edit must preserve the stored route");
 
   const placedBidResponse = await api("/api/jobs/" + bidJob.id + "/bid", "POST", driverCookie, { amount: 95 });
   if (![200, 201].includes(placedBidResponse.status)) {
@@ -383,6 +512,18 @@ try {
     const after = await snapshot();
     assert.deepEqual(after, before, method + " " + path + ": denied request changed lifecycle/ownership/evidence/vehicle/notification state");
   }
+
+  // A suspended user's existing session must not bypass job-market protection.
+  await prisma.account.update({ where: { id: indiaPoster.id }, data: { verificationStatus: "suspended" } });
+  const suspendedIndiaJobRead = await api("/api/jobs/" + indiaJob.id, "GET", indiaCookie);
+  assert.equal(suspendedIndiaJobRead.status, 403,
+    "a pre-existing India session must be denied protected job actions immediately after suspension");
+  const suspendedIndiaRating = await api("/api/ratings", "POST", indiaCookie, {
+    jobId: indiaJob.id, stars: 5, comment: "must not persist",
+  });
+  assert.equal(suspendedIndiaRating.status, 403,
+    "suspended India account must not submit ratings through the job-market guard");
+  await prisma.account.update({ where: { id: indiaPoster.id }, data: { verificationStatus: "not_started" } });
 
   // An authenticated poster may accept the driver's valid bid; the unrelated
   // account above must not be able to accept that same bid.
@@ -493,6 +634,36 @@ try {
   assert.ok(current.receivedConfirmedAt, "receipt confirmation should persist received timestamp");
   assert.equal(current.status, "completed", "payment confirmation must not change completed lifecycle state");
 
+  const validRating = await api("/api/ratings", "POST", driverCookie, {
+    jobId: lifecycleJob.id, stars: 5, comment: "CI authenticated rating",
+  });
+  assert.equal(validRating.status, 200, "matched driver may rate the completed job");
+  assert.equal(await prisma.rating.count({ where: { jobId: lifecycleJob.id, raterId: driver.id } }), 1,
+    "one rating must be persisted for the matched driver");
+  const duplicateRating = await api("/api/ratings", "POST", driverCookie, {
+    jobId: lifecycleJob.id, stars: 4, comment: "duplicate",
+  });
+  assert.equal(duplicateRating.status, 409, "a second rating by the same party must be rejected");
+  const ratingBeforeAttacks = await snapshot();
+  const outsiderRating = await api("/api/ratings", "POST", outsiderCookie, {
+    jobId: lifecycleJob.id, stars: 1, comment: "unrelated account",
+  });
+  assert.equal(outsiderRating.status, 403, "unrelated GB account must not rate a job");
+  const foreignMarketRating = await api("/api/ratings", "POST", indiaCookie, {
+    jobId: lifecycleJob.id, stars: 1, comment: "foreign market account",
+  });
+  assert.equal(foreignMarketRating.status, 403, "India account must not rate a UK job");
+  assert.deepEqual(await snapshot(), ratingBeforeAttacks,
+    "denied rating attempts must not write ratings or mutate protected state");
+
+  const indiaPayments = await (await api("/api/payments", "GET", indiaCookie)).json();
+  assert.ok(!indiaPayments.asPoster.some(job => job.id === lifecycleJob.id) &&
+    !indiaPayments.asDriver.some(job => job.id === lifecycleJob.id),
+    "India payment view must not expose the UK completed job");
+  const ukPayments = await (await api("/api/payments", "GET", posterCookie)).json();
+  assert.ok(ukPayments.asPoster.some(job => job.id === lifecycleJob.id),
+    "UK poster must see its own completed payment-tracking record");
+
   // Reuse the same pre-existing session after deletion is requested.
   await prisma.account.update({ where: { id: outsider.id }, data: { deletionRequestedAt: new Date() } });
   const deletedGet = await api("/api/vehicles", "GET", outsiderCookie);
@@ -504,7 +675,7 @@ try {
   assert.equal(await prisma.vehicle.count({ where: { accountId: outsider.id } }), 0,
     "deletion-requested account must not create a vehicle");
 
-  console.log("PASS authenticated lifecycle HTTP E2E in isolated CI DB: 22 outsider object-route denials with unchanged state, account-scoped vehicle reads, poster/driver pickup→delivery→payment flow, and pre-existing JWT revocation after deletion.");
+  console.log("PASS authenticated lifecycle HTTP E2E in isolated CI DB: 22 existing outsider object-route denials; GB↔IN job/profile/payment boundaries and market-tamper rejection; India phone-only posting; verification exclusion; suspension denial; notification privacy; rating ownership/idempotency; poster/driver pickup→delivery→payment flow; and session revocation.");
 } finally {
   if (server) {
     server.kill("SIGTERM");
@@ -514,6 +685,7 @@ try {
     await prisma.incidentEvidence.deleteMany({ where: { OR: [{ uploadedById: { in: accountIds } }, { jobId: { in: jobIds } }] } }).catch(() => {});
     await prisma.jobActivity.deleteMany({ where: { OR: [{ actorId: { in: accountIds } }, { jobId: { in: jobIds } }] } }).catch(() => {});
     await prisma.bid.deleteMany({ where: { OR: [{ bidderId: { in: accountIds } }, { jobId: { in: jobIds } }] } }).catch(() => {});
+    await prisma.rating.deleteMany({ where: { jobId: { in: jobIds } } }).catch(() => {});
     await prisma.vehicle.deleteMany({ where: { accountId: { in: accountIds } } }).catch(() => {});
     await prisma.notification.deleteMany({ where: { accountId: { in: accountIds } } }).catch(() => {});
     await prisma.job.deleteMany({ where: { OR: [{ id: { in: jobIds } }, { posterId: { in: accountIds } }] } }).catch(() => {});
