@@ -88,7 +88,7 @@ async function GETHandler(
       jobsCompleted,
     });
   } catch (error) {
-    console.error("public profile lookup failed:", error);
+    console.error("Public profile lookup failed.", { errorName: error instanceof Error ? error.name : "UnknownError" });
     return NextResponse.json({ error: "Could not load this profile. Try again." }, { status: 500 });
   }
 }
