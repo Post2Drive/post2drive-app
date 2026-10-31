@@ -30,11 +30,7 @@ export async function recordJobActivity({
         metadata,
       },
     });
-  } catch (error) {
-    console.error(
-      "Failed to record job activity:",
-      error
-    );
+  } catch (error) {    console.error("Failed to record job activity.", { errorName: error instanceof Error ? error.name : "UnknownError" });
 
     return null;
   }
