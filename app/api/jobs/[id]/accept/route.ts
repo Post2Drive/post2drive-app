@@ -409,10 +409,7 @@ async function POSTHandler(
       );
     }
 
-    console.error(
-      "Accept job error:",
-      error
-    );
+    console.error("Accept job failed.", { errorName: error instanceof Error ? error.name : "UnknownError" });
 
     return NextResponse.json(
       {
