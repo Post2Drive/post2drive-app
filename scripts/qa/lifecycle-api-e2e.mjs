@@ -46,6 +46,12 @@ async function snapshot() {
     ratingRows,
     subscriptionPaymentRows,
     verificationAttemptRows,
+    adminAuditRows,
+    testerAccessCodeRows,
+    qaRunRows,
+    qaAccountRows,
+    qaCampaignRows,
+    qaCampaignStepRows,
   ] = await Promise.all([
     prisma.account.findMany({
       where: { id: { in: accountIds } },
@@ -88,6 +94,12 @@ async function snapshot() {
       where: { accountId: { in: accountIds } },
       orderBy: { id: "asc" },
     }),
+    prisma.adminAuditEvent.findMany({ orderBy: { id: "asc" } }),
+    prisma.testerAccessCode.findMany({ orderBy: { id: "asc" } }),
+    prisma.$queryRawUnsafe('SELECT * FROM qa_test_runs ORDER BY id'),
+    prisma.$queryRawUnsafe('SELECT * FROM qa_test_accounts ORDER BY run_id,account_id'),
+    prisma.$queryRawUnsafe('SELECT * FROM qa_test_campaigns ORDER BY id'),
+    prisma.$queryRawUnsafe('SELECT * FROM qa_test_campaign_steps ORDER BY campaign_id,ordinal,id'),
   ]);
   return {
     accountRows,
@@ -101,6 +113,12 @@ async function snapshot() {
     ratingRows,
     subscriptionPaymentRows,
     verificationAttemptRows,
+    adminAuditRows,
+    testerAccessCodeRows,
+    qaRunRows,
+    qaAccountRows,
+    qaCampaignRows,
+    qaCampaignStepRows,
   };
 }
 
