@@ -47,7 +47,7 @@ async function recoverStaleRuns(): Promise<number> {
   // still wake up, so re-queueing could risk duplicate provisioning/workflows.
   return prisma.$transaction(async tx => {
     await tx.$queryRawUnsafe(
-      "SELECT pg_advisory_xact_lock(hashtext($1))",
+      "WITH queue_lock AS MATERIALIZED (SELECT pg_advisory_xact_lock(hashtext($1))) SELECT 1::int AS locked FROM queue_lock",
       "post2drive-qa-run-queue",
     );
     const staleRuns = await tx.$queryRawUnsafe<Array<{ id: string; summary: unknown }>>(
