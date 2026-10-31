@@ -1218,10 +1218,10 @@ try {
   });
   assert.equal(lateVerificationSuccess.status, 409,
     "a late verification success callback must not verify a deletion-requested account");
-  const lateVerificationFailure = await verificationWebhookRequest({
+  const lateVerificationFailureAfterDeletion = await verificationWebhookRequest({
     attemptId: deletedAccountPendingAttempt.id, status: "failed", failureReasons: ["late callback after deletion"],
   });
-  assert.equal(lateVerificationFailure.status, 409,
+  assert.equal(lateVerificationFailureAfterDeletion.status, 409,
     "a late verification failure callback must not mutate a deletion-requested account");
   assert.deepEqual(await snapshot(), deletedWebhookStateBefore,
     "late provider callbacks after deletion must not mutate any fixture or operational state");
