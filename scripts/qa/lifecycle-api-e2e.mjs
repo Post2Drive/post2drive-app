@@ -52,6 +52,7 @@ async function snapshot() {
     qaAccountRows,
     qaCampaignRows,
     qaCampaignStepRows,
+    referralRows,
   ] = await Promise.all([
     prisma.account.findMany({
       where: { id: { in: accountIds } },
@@ -100,6 +101,10 @@ async function snapshot() {
     prisma.$queryRawUnsafe('SELECT * FROM qa_test_accounts ORDER BY run_id,account_id'),
     prisma.$queryRawUnsafe('SELECT * FROM qa_test_campaigns ORDER BY id'),
     prisma.$queryRawUnsafe('SELECT * FROM qa_test_campaign_steps ORDER BY campaign_id,ordinal,id'),
+    prisma.referral.findMany({
+      where: { OR: [{ referrerId: { in: accountIds } }, { referredAccountId: { in: accountIds } }] },
+      orderBy: { id: "asc" },
+    }),
   ]);
   return {
     accountRows,
@@ -119,6 +124,7 @@ async function snapshot() {
     qaAccountRows,
     qaCampaignRows,
     qaCampaignStepRows,
+    referralRows,
   };
 }
 
@@ -663,6 +669,9 @@ try {
     accountId: verificationAccount.id, attemptNumber: 1, status: "pending",
     feeMinorUnits: 500, feeCurrency: "GBP", feeStatus: "paid", submittedAt: new Date(),
   } });
+  const verificationReferral = await prisma.referral.create({ data: {
+    referrerId: poster.id, referredAccountId: verificationAccount.id, status: "pending",
+  } });
   const verificationWebhookBody = {
     attemptId: verificationAttempt.id, status: "successful", providerReference: "ci-verification-" + suffix,
   };
@@ -690,9 +699,18 @@ try {
   const verifiedAccountAfter = await prisma.account.findUnique({
     where: { id: verificationAccount.id }, select: { verificationStatus: true },
   });
+  const referralAfterConcurrentCallbacks = await prisma.referral.findUnique({ where: { id: verificationReferral.id } });
   assert.equal(verificationAfter.status, "successful");
   assert.equal(verifiedAccountAfter.verificationStatus, "verified",
     "verification webhook must update only the account bound to its eligible GB attempt");
+  assert.ok(referralAfterConcurrentCallbacks.verifiedAt,
+    "a successful GB verification must mark its eligible referral as verified");
+  const firstReferralVerifiedAt = referralAfterConcurrentCallbacks.verifiedAt.toISOString();
+  const repeatedVerifiedWebhook = await verificationWebhookRequest();
+  assert.equal(repeatedVerifiedWebhook.status, 200, "additional verification retries must remain idempotent");
+  const referralAfterRepeatedCallback = await prisma.referral.findUnique({ where: { id: verificationReferral.id } });
+  assert.equal(referralAfterRepeatedCallback.verifiedAt.toISOString(), firstReferralVerifiedAt,
+    "verification webhook retries must preserve the first referral verification timestamp");
 
   // Product/Quality cross-market HTTP checks: country and currency come from
   // the signed-in account, never from client-supplied request fields.
