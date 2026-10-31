@@ -623,19 +623,31 @@ try {
     paymentId: secondPendingSubscription.id, provider: "ci-provider",
     providerPaymentId: "ci-payment-two-" + suffix, providerCheckoutId: "ci-checkout-two-" + suffix,
   };
+  const thirdPendingSubscription = await prisma.subscriptionPayment.create({ data: {
+    accountId: poster.id, planKey: "individual", amountMinorUnits: 1000,
+    currency: "GBP", status: "pending",
+  } });
+  const thirdPendingWebhookBody = {
+    paymentId: thirdPendingSubscription.id, provider: "ci-provider",
+    providerPaymentId: "ci-payment-three-" + suffix, providerCheckoutId: "ci-checkout-three-" + suffix,
+  };
   const differentPaymentResponses = await Promise.all([
-    subscriptionWebhookRequest(),
     fetch(base + "/api/subscription/webhook", {
       method: "POST",
       headers: { "content-type": "application/json", "x-post2drive-webhook-secret": "ci-only-subscription-webhook-secret" },
       body: JSON.stringify(secondPendingWebhookBody), cache: "no-store",
     }),
+    fetch(base + "/api/subscription/webhook", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-post2drive-webhook-secret": "ci-only-subscription-webhook-secret" },
+      body: JSON.stringify(thirdPendingWebhookBody), cache: "no-store",
+    }),
   ]);
   assert.ok(differentPaymentResponses.every(response => response.status === 200),
     "different subscription payments for one account must both confirm successfully");
   const [firstPaymentRow, secondPaymentRow] = await Promise.all([
-    prisma.subscriptionPayment.findUnique({ where: { id: pendingSubscription.id } }),
     prisma.subscriptionPayment.findUnique({ where: { id: secondPendingSubscription.id } }),
+    prisma.subscriptionPayment.findUnique({ where: { id: thirdPendingSubscription.id } }),
   ]);
   const orderedPaymentRows = [firstPaymentRow, secondPaymentRow]
     .sort((left, right) => left.accessStartedAt.getTime() - right.accessStartedAt.getTime());
