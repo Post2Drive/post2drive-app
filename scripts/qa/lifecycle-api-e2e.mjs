@@ -430,6 +430,22 @@ try {
   assert.deepEqual(await prisma.account.findUnique({ where: { id: poster.id }, select: { country: true, currency: true } }),
     { country: "GB", currency: "GBP" }, "client accountId must not redirect settings mutation");
 
+  // The former in-app performance endpoint is a deliberately public
+  // tombstone: it returns no operational data and points clients to admin access.
+  // It is not a protected metrics endpoint, so both anonymous and normal
+  // authenticated clients must receive the same safe 410 response.
+  const performanceTombstoneBefore = await snapshot();
+  for (const [label, cookie] of [["anonymous", null], ["authenticated-non-admin", outsiderCookie]]) {
+    const response = await api("/api/admin/performance", "GET", cookie);
+    assert.equal(response.status, 410, label + " caller must receive the retired endpoint status");
+    assert.deepEqual(await response.json(), {
+      error: "This endpoint has been retired.",
+      replacement: "/admin-access",
+    }, label + " caller must receive only the safe tombstone response");
+    assert.deepEqual(await snapshot(), performanceTombstoneBefore,
+      label + " tombstone request must not read or mutate protected operational state");
+  }
+
   for (const path of [
     "/api/admin/company-verification", "/api/admin/incidents/resolve",
     "/api/admin/research", "/api/admin/testers", "/api/admin/qa-campaigns",
