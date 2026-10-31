@@ -16,6 +16,7 @@ const applicationLogSources = [
   "app/api/jobs/[id]/unassign/route.ts",
   "app/api/jobs/[id]/cancel/route.ts",
   "app/api/jobs/[id]/driver-cancel/route.ts",
+  "app/api/email/verification/resend/route.ts",
 ].map(path => [path, read(path)]);
 for (const [path, source] of applicationLogSources) {
   assert.doesNotMatch(source, /console\.error\([\s\S]{0,180}?\berror\s*\)/,
