@@ -69,12 +69,14 @@ assert.ok(
   createPaymentSource.indexOf('verificationStatus === "suspended"') < createPaymentSource.indexOf("isWeeklyPricingEligible(account)"),
   "subscription creation must check suspension before market or tester eligibility",
 );
-assert.match(confirmPaymentSource, /payment\.account\.verificationStatus === "suspended"/,
+assert.match(confirmPaymentSource, /account\.verificationStatus === "suspended"/,
   "a delayed payment webhook must not activate a subscription for a suspended account");
 assert.ok(
-  confirmPaymentSource.indexOf('payment.account.verificationStatus === "suspended"') < confirmPaymentSource.indexOf("tx.account.update"),
-  "subscription confirmation must check suspension before granting paid access",
+  confirmPaymentSource.indexOf('account.verificationStatus === "suspended"') < confirmPaymentSource.indexOf("tx.account.update"),
+  "subscription confirmation must check fresh locked account suspension state before granting paid access",
 );
+assert.match(confirmPaymentSource, /account\.deletionRequestedAt/,
+  "a delayed payment webhook must not activate a subscription for a deletion-requested account");
 const createPaymentRoute = readFileSync("app/api/subscription/create-payment/route.ts", "utf8");
 assert.match(createPaymentRoute, /"Account is suspended\."/,
   "subscription API must expose a controlled suspended-account denial");
