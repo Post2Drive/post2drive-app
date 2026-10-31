@@ -205,6 +205,7 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
   }
 
   async function finish(status: string, extra: Record<string, unknown> = {}) {
+    await assertWorkerOwnership();
     const passed = events.filter(e => e.passed).length;
     const failed = events.length - passed;
     const finalStatus = status === "completed" && (failed > 0 || routeMatrixExecuted !== routeMatrixTarget) ? "failed" : status;
