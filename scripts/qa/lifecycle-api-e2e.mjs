@@ -406,6 +406,72 @@ try {
   assert.equal(corsProbe.headers.get("access-control-allow-origin"), null,
     "authenticated APIs must not grant arbitrary cross-origin browser access");
 
+  // Actual provider HTTP lifecycle and replay checks against isolated CI rows.
+  const pendingSubscription = await prisma.subscriptionPayment.create({ data: {
+    accountId: poster.id, planKey: "individual", amountMinorUnits: 1000,
+    currency: "GBP", status: "pending",
+  } });
+  const subscriptionWebhookBody = { paymentId: pendingSubscription.id, provider: "ci-provider",
+    providerPaymentId: "ci-payment-" + suffix, providerCheckoutId: "ci-checkout-" + suffix };
+  const paidWebhook = await fetch(base + "/api/subscription/webhook", {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-post2drive-webhook-secret": "ci-only-subscription-webhook-secret" },
+    body: JSON.stringify(subscriptionWebhookBody), cache: "no-store",
+  });
+  assert.equal(paidWebhook.status, 200, "configured subscription webhook should confirm its matching pending payment");
+  const paidWebhookBody = await paidWebhook.json();
+  assert.equal(paidWebhookBody.status, "paid");
+  const subscriptionAfterFirst = await prisma.subscriptionPayment.findUnique({ where: { id: pendingSubscription.id } });
+  const accountAfterFirstPayment = await prisma.account.findUnique({
+    where: { id: poster.id }, select: { subscriptionEndsAt: true, subscriptionStatus: true },
+  });
+  const paidWebhookReplay = await fetch(base + "/api/subscription/webhook", {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-post2drive-webhook-secret": "ci-only-subscription-webhook-secret" },
+    body: JSON.stringify(subscriptionWebhookBody), cache: "no-store",
+  });
+  assert.equal(paidWebhookReplay.status, 200, "repeated subscription webhook should be idempotently acknowledged");
+  const subscriptionAfterReplay = await prisma.subscriptionPayment.findUnique({ where: { id: pendingSubscription.id } });
+  const accountAfterReplay = await prisma.account.findUnique({
+    where: { id: poster.id }, select: { subscriptionEndsAt: true, subscriptionStatus: true },
+  });
+  assert.equal(subscriptionAfterReplay.paidAt?.toISOString(), subscriptionAfterFirst.paidAt?.toISOString());
+  assert.equal(subscriptionAfterReplay.accessEndsAt?.toISOString(), subscriptionAfterFirst.accessEndsAt?.toISOString());
+  assert.deepEqual(accountAfterReplay, accountAfterFirstPayment,
+    "subscription webhook replay must not extend paid access a second time");
+
+  const verificationAccount = await prisma.account.create({ data: {
+    type: "both", companyName: "CI verification webhook", displayId: "CIV-" + suffix,
+    country: "GB", currency: "GBP", verificationStatus: "pending",
+  } });
+  accountIds.push(verificationAccount.id);
+  const verificationAttempt = await prisma.verificationAttempt.create({ data: {
+    accountId: verificationAccount.id, attemptNumber: 1, status: "pending",
+    feeMinorUnits: 500, feeCurrency: "GBP", feeStatus: "paid", submittedAt: new Date(),
+  } });
+  const verificationWebhookBody = {
+    attemptId: verificationAttempt.id, status: "successful", providerReference: "ci-verification-" + suffix,
+  };
+  const verifiedWebhook = await fetch(base + "/api/verification/start/webhook", {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-verification-webhook-secret": "ci-only-verification-webhook-secret" },
+    body: JSON.stringify(verificationWebhookBody), cache: "no-store",
+  });
+  assert.equal(verifiedWebhook.status, 200, "valid verification webhook must complete the eligible GB attempt");
+  const verifiedReplay = await fetch(base + "/api/verification/start/webhook", {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-verification-webhook-secret": "ci-only-verification-webhook-secret" },
+    body: JSON.stringify(verificationWebhookBody), cache: "no-store",
+  });
+  assert.equal(verifiedReplay.status, 200, "verification webhook retry must be idempotently acknowledged");
+  const verificationAfter = await prisma.verificationAttempt.findUnique({ where: { id: verificationAttempt.id } });
+  const verifiedAccountAfter = await prisma.account.findUnique({
+    where: { id: verificationAccount.id }, select: { verificationStatus: true },
+  });
+  assert.equal(verificationAfter.status, "successful");
+  assert.equal(verifiedAccountAfter.verificationStatus, "verified",
+    "verification webhook must update only the account bound to its eligible GB attempt");
+
   // Product/Quality cross-market HTTP checks: country and currency come from
   // the signed-in account, never from client-supplied request fields.
   const indiaCreate = await api("/api/jobs", "POST", indiaCookie, {
