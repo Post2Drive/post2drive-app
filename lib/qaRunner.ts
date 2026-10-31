@@ -28,10 +28,12 @@ class ApiClient {
   private readonly account: AccountFixture;
   private readonly base: string;
   private readonly runId: string;
-  constructor(account: AccountFixture, base: string, runId: string) {
+  private readonly assertOwnership: () => Promise<void>;
+  constructor(account: AccountFixture, base: string, runId: string, assertOwnership: () => Promise<void>) {
     this.account = account;
     this.base = base;
     this.runId = runId;
+    this.assertOwnership = assertOwnership;
   }
   private absorb(headers: Headers) {
     const h = headers as Headers & { getSetCookie?: () => string[] };
@@ -48,11 +50,13 @@ class ApiClient {
   }
   private cookie() { return [...this.cookies.entries()].map(([k, v]) => k + "=" + v).join("; "); }
   async login() {
+    await this.assertOwnership();
     const csrfResponse = await fetch(this.base + "/api/auth/csrf", { headers: { "x-post2drive-qa-run-id": this.runId }, redirect: "manual", signal: AbortSignal.timeout(15000) });
     this.absorb(csrfResponse.headers);
     const csrf = await csrfResponse.json();
     if (!csrf?.csrfToken) return { status: csrfResponse.status, ok: false };
     const form = new URLSearchParams({ csrfToken: csrf.csrfToken, email: this.account.email, password: this.account.password, callbackUrl: this.base + "/", json: "true" });
+    await this.assertOwnership();
     const login = await fetch(this.base + "/api/auth/callback/credentials", {
       method: "POST", redirect: "manual",
       headers: { "content-type": "application/x-www-form-urlencoded", cookie: this.cookie(), "x-post2drive-qa-run-id": this.runId },
@@ -60,6 +64,7 @@ class ApiClient {
       signal: AbortSignal.timeout(15000),
     });
     this.absorb(login.headers);
+    await this.assertOwnership();
     const sessionResponse = await fetch(this.base + "/api/auth/session", {
       headers: { cookie: this.cookie(), "x-post2drive-qa-run-id": this.runId }, redirect: "manual", signal: AbortSignal.timeout(15000),
     });
@@ -76,6 +81,7 @@ class ApiClient {
       headers["content-type"] = "application/json";
       init.body = JSON.stringify(body);
     }
+    await this.assertOwnership();
     const response = await fetch(this.base + path, init);
     this.absorb(response.headers);
     const text = await response.text();
@@ -113,9 +119,23 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
   const fixtures: AccountFixture[] = [];
   let accountPoolRunId: string | null = null;
 
+  // Revalidate the durable lease before every runner-owned network or database
+  // side effect. A stale worker whose row has been terminally recovered cannot
+  // resume provisioning, authentication, workflow mutations or audit writes.
+  async function assertWorkerOwnership() {
+    const rows = await prisma.$queryRawUnsafe<Array<{ id: string }>>(
+      "SELECT id FROM qa_test_runs WHERE id=$1 AND status='running' AND summary->>'workerId'=$2",
+      runId, workerId,
+    );
+    if (rows.length !== 1) {
+      throw new Error("QA worker lost run ownership; stopping further side effects.");
+    }
+  }
+
   async function record(e: { index?: number; accountId?: string; cohort?: string; scenario: string; action: string; method: string; path: string; expected: number[]; actual: number | null; duration: number; details?: Record<string, unknown> }) {
     const passed = e.actual !== null && e.expected.includes(e.actual);
     events.push({ path: e.path, duration: e.duration, passed });
+    await assertWorkerOwnership();
     await prisma.$executeRawUnsafe(
       'INSERT INTO qa_test_events(run_id,account_index,account_id,cohort,scenario,action,method,path,expected_statuses,actual_status,passed,duration_ms,details) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::jsonb)',
       runId, e.index ?? null, e.accountId ?? null, e.cohort ?? null, e.scenario, e.action, e.method, e.path, e.expected, e.actual, passed, e.duration, JSON.stringify({ marker, ...(e.details || {}) }),
@@ -138,6 +158,7 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
           headers["content-type"] = "application/json";
           init.body = JSON.stringify(body);
         }
+        await assertWorkerOwnership();
         const response = await fetch(base + path, init);
         status = response.status;
         const text = await response.text();
@@ -236,6 +257,7 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
       let status: number | null = null;
       let data: any = null;
       try {
+        await assertWorkerOwnership();
         const response = await fetch(base + "/api/signup", { method: "POST", headers: { "content-type": "application/json", accept: "application/json", "x-post2drive-qa-run-id": runId }, body: JSON.stringify(payload), redirect: "manual", signal: AbortSignal.timeout(15000) });
         status = response.status;
         data = await response.json().catch(() => null);
@@ -250,6 +272,7 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
       const accountId = String(data.accountId);
       const persistStarted = Date.now();
       try {
+        await assertWorkerOwnership();
         await prisma.$transaction(async tx => {
           const ukPromotion = selectedMarket.country === "GB" && i !== accountTarget - 1;
           const paidWeeklyMarket = selectedMarket.country !== "GB" && selectedMarket.country !== "IN" && i !== accountTarget - 1;
@@ -279,7 +302,8 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
       }
     });
 
-    await prisma.$executeRawUnsafe("UPDATE qa_test_runs SET created_accounts=$2 WHERE id=$1", runId, createdAccounts);
+    await assertWorkerOwnership();
+    await prisma.$executeRawUnsafe("UPDATE qa_test_runs SET created_accounts=$2 WHERE id=$1 AND status='running' AND summary->>'workerId'=$3", runId, createdAccounts, workerId);
     if (testType === "synthetic-accounts") {
       if (createdAccounts !== accountTarget) return await finish("aborted", { testType, reason: "Account provisioning did not create the configured account target.", expectedAccounts: accountTarget, createdAccounts });
       accountPoolRunId = runId;
@@ -308,7 +332,7 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
     })));
 
     await parallel(fixtures.filter(account => account.index < Math.min(499, accountTarget - 1) || account.index === accountTarget - 1), executionConcurrency, async account => {
-      const client = new ApiClient(account, base, runId);
+      const client = new ApiClient(account, base, runId, assertWorkerOwnership);
       const t = Date.now();
       let status = 401;
       let ok = false;
