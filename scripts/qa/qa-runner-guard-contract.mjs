@@ -117,7 +117,8 @@ try {
   assert.ok(qaRunner.includes("summary=COALESCE(summary,'{}'::jsonb) || $7::jsonb"), "run finalization must preserve worker metadata");
   assert.ok(qaRunner.includes("summary->>'workerId'=$8"), "only the claiming worker may finalize a run");
   assert.ok(qaRunner.includes("async function assertWorkerOwnership()"), "runner must have a durable worker-ownership fence");
-  assert.ok(qaRunner.includes("QA worker lost run ownership; stopping further side effects."), "runner must stop when a stale worker loses its lease");
+  assert.ok(qaRunner.includes("workerHeartbeatAt','')::timestamptz"), "runner must reject expired heartbeat leases before side effects");
+  assert.ok(qaRunner.includes("QA worker lost or expired run ownership; stopping further side effects."), "runner must stop when a stale worker loses its lease");
   assert.ok(qaRunner.includes("await assertWorkerOwnership();"), "runner must revalidate ownership before side effects");
   assert.ok(qaRunner.includes("new ApiClient(account, base, runId, assertWorkerOwnership)"), "authenticated API client must enforce the worker-ownership fence");
   assert.ok(!qaRunner.includes("INSERT INTO qa_test_runs"), "runner must not create duplicate run records");
