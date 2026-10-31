@@ -566,6 +566,11 @@ try {
     ["/api/account", posterCookie],
     ["/api/account/access", posterCookie],
     ["/api/jobs", posterCookie],
+    ["/api/jobs/" + lifecycleJob.id, posterCookie],
+    ["/api/jobs/" + lifecycleJob.id + "/activity", posterCookie],
+    ["/api/jobs/" + lifecycleJob.id + "/incidents", posterCookie],
+    ["/api/vehicles", posterCookie],
+    ["/api/profile/" + poster.displayId, posterCookie],
     ["/api/notifications", posterCookie],
     ["/api/payments", posterCookie],
   ];
