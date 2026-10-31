@@ -123,12 +123,20 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
   // side effect. A stale worker whose row has been terminally recovered cannot
   // resume provisioning, authentication, workflow mutations or audit writes.
   async function assertWorkerOwnership() {
+    const heartbeatMs = Number(process.env.QA_WORKER_HEARTBEAT_MS || 15_000);
+    const staleAfterMs = Number(process.env.QA_WORKER_STALE_AFTER_MS || Math.max(heartbeatMs * 4, 5 * 60 * 1000));
+    if (!Number.isSafeInteger(staleAfterMs) || staleAfterMs < heartbeatMs * 2) {
+      throw new Error("QA worker lease configuration is invalid; stopping further side effects.");
+    }
     const rows = await prisma.$queryRawUnsafe<Array<{ id: string }>>(
-      "SELECT id FROM qa_test_runs WHERE id=$1 AND status='running' AND summary->>'workerId'=$2",
-      runId, workerId,
+      `SELECT id FROM qa_test_runs
+       WHERE id=$1 AND status='running' AND summary->>'workerId'=$2
+         AND COALESCE(NULLIF(summary->>'workerHeartbeatAt','')::timestamptz,started_at)
+             >= now() - ($3::double precision * interval '1 millisecond')`,
+      runId, workerId, staleAfterMs,
     );
     if (rows.length !== 1) {
-      throw new Error("QA worker lost run ownership; stopping further side effects.");
+      throw new Error("QA worker lost or expired run ownership; stopping further side effects.");
     }
   }
 
