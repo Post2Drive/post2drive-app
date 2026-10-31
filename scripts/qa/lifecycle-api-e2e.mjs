@@ -674,6 +674,45 @@ try {
   });
   assert.equal(suspendedIndiaRating.status, 403,
     "suspended India account must not submit ratings through the job-market guard");
+
+  const suspendedJobCases = [
+    ["POST", "/api/jobs", {}],
+    ["POST", "/api/jobs/" + indiaJob.id + "/accept", {}],
+    ["GET", "/api/jobs/" + indiaJob.id + "/activity"],
+    ["POST", "/api/jobs/" + indiaJob.id + "/bid", { amount: 100 }],
+    ["GET", "/api/jobs/" + indiaJob.id + "/bids"],
+    ["POST", "/api/jobs/" + indiaJob.id + "/bids/ci-missing-bid/accept", {}],
+    ["POST", "/api/jobs/" + indiaJob.id + "/cancel", {}],
+    ["POST", "/api/jobs/" + indiaJob.id + "/confirm-delivered", {}],
+    ["POST", "/api/jobs/" + indiaJob.id + "/confirm-pickup", {}],
+    ["POST", "/api/jobs/" + indiaJob.id + "/driver-cancel", {}],
+    ["PATCH", "/api/jobs/" + indiaJob.id + "/edit", {}],
+    ["GET", "/api/jobs/" + indiaJob.id + "/incidents"],
+    ["POST", "/api/jobs/" + indiaJob.id + "/incidents", {}],
+    ["POST", "/api/jobs/" + indiaJob.id + "/incidents/terminate", {}],
+    ["POST", "/api/jobs/" + indiaJob.id + "/incidents/updates", {}],
+    ["POST", "/api/jobs/" + indiaJob.id + "/incidents/ci-missing-incident/evidence", {}],
+    ["GET", "/api/jobs/" + indiaJob.id + "/incidents/ci-missing-incident/evidence/ci-missing-evidence"],
+    ["POST", "/api/jobs/" + indiaJob.id + "/mark-delivered", {}],
+    ["POST", "/api/jobs/" + indiaJob.id + "/payment/confirm-received", {}],
+    ["POST", "/api/jobs/" + indiaJob.id + "/payment/mark-paid", {}],
+    ["POST", "/api/jobs/" + indiaJob.id + "/reject-delivered", {}],
+    ["POST", "/api/jobs/" + indiaJob.id + "/unassign", {}],
+  ];
+  const suspendedStateBefore = await snapshot();
+  for (const [method, path, body] of suspendedJobCases) {
+    const response = await api(path, method, indiaCookie, body);
+    assert.equal(response.status, 403,
+      "suspended account must be denied before protected job API action: " + method + " " + path +
+      " (got " + response.status + ")");
+  }
+  const suspendedVehicle = await api("/api/vehicles", "POST", indiaCookie, {});
+  assert.equal(suspendedVehicle.status, 403, "suspended account must not register a vehicle");
+  const suspendedSubscription = await api("/api/subscription/create-payment", "POST", indiaCookie, {});
+  assert.equal(suspendedSubscription.status, 403, "suspended/India account must not create subscription payments");
+  assert.deepEqual(await snapshot(), suspendedStateBefore,
+    "suspended account denials must leave protected jobs, bids, incidents, evidence, vehicles and ratings unchanged");
+
   await prisma.account.update({ where: { id: indiaPoster.id }, data: { verificationStatus: "not_started" } });
 
   // An authenticated poster may accept the driver's valid bid; the unrelated
