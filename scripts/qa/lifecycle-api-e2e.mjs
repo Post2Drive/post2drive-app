@@ -587,24 +587,23 @@ try {
   } });
   const subscriptionWebhookBody = { paymentId: pendingSubscription.id, provider: "ci-provider",
     providerPaymentId: "ci-payment-" + suffix, providerCheckoutId: "ci-checkout-" + suffix };
-  const paidWebhook = await fetch(base + "/api/subscription/webhook", {
+  const subscriptionWebhookRequest = () => fetch(base + "/api/subscription/webhook", {
     method: "POST",
     headers: { "content-type": "application/json", "x-post2drive-webhook-secret": "ci-only-subscription-webhook-secret" },
     body: JSON.stringify(subscriptionWebhookBody), cache: "no-store",
   });
-  assert.equal(paidWebhook.status, 200, "configured subscription webhook should confirm its matching pending payment");
-  const paidWebhookBody = await paidWebhook.json();
-  assert.equal(paidWebhookBody.status, "paid");
+  const concurrentPaidWebhooks = await Promise.all([subscriptionWebhookRequest(), subscriptionWebhookRequest()]);
+  assert.ok(concurrentPaidWebhooks.every(response => response.status === 200),
+    "concurrent duplicate subscription callbacks must both be safely acknowledged");
+  const concurrentPaidBodies = await Promise.all(concurrentPaidWebhooks.map(response => response.json()));
+  assert.ok(concurrentPaidBodies.every(body => body.status === "paid"),
+    "both concurrent subscription callbacks must observe the single paid result");
   const subscriptionAfterFirst = await prisma.subscriptionPayment.findUnique({ where: { id: pendingSubscription.id } });
   const accountAfterFirstPayment = await prisma.account.findUnique({
     where: { id: poster.id }, select: { subscriptionEndsAt: true, subscriptionStatus: true },
   });
-  const paidWebhookReplay = await fetch(base + "/api/subscription/webhook", {
-    method: "POST",
-    headers: { "content-type": "application/json", "x-post2drive-webhook-secret": "ci-only-subscription-webhook-secret" },
-    body: JSON.stringify(subscriptionWebhookBody), cache: "no-store",
-  });
-  assert.equal(paidWebhookReplay.status, 200, "repeated subscription webhook should be idempotently acknowledged");
+  const paidWebhookReplay = await subscriptionWebhookRequest();
+  assert.equal(paidWebhookReplay.status, 200, "later subscription webhook retry should be idempotently acknowledged");
   const subscriptionAfterReplay = await prisma.subscriptionPayment.findUnique({ where: { id: pendingSubscription.id } });
   const accountAfterReplay = await prisma.account.findUnique({
     where: { id: poster.id }, select: { subscriptionEndsAt: true, subscriptionStatus: true },
@@ -612,7 +611,36 @@ try {
   assert.equal(subscriptionAfterReplay.paidAt?.toISOString(), subscriptionAfterFirst.paidAt?.toISOString());
   assert.equal(subscriptionAfterReplay.accessEndsAt?.toISOString(), subscriptionAfterFirst.accessEndsAt?.toISOString());
   assert.deepEqual(accountAfterReplay, accountAfterFirstPayment,
-    "subscription webhook replay must not extend paid access a second time");
+    "concurrent and later subscription webhook retries must not extend the same payment more than once");
+
+  // Separate pending payments for one account must serialize their access
+  // extensions rather than calculate from the same stale subscription end.
+  const secondPendingSubscription = await prisma.subscriptionPayment.create({ data: {
+    accountId: poster.id, planKey: "individual", amountMinorUnits: 1000,
+    currency: "GBP", status: "pending",
+  } });
+  const secondPendingWebhookBody = {
+    paymentId: secondPendingSubscription.id, provider: "ci-provider",
+    providerPaymentId: "ci-payment-two-" + suffix, providerCheckoutId: "ci-checkout-two-" + suffix,
+  };
+  const differentPaymentResponses = await Promise.all([
+    subscriptionWebhookRequest(),
+    fetch(base + "/api/subscription/webhook", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-post2drive-webhook-secret": "ci-only-subscription-webhook-secret" },
+      body: JSON.stringify(secondPendingWebhookBody), cache: "no-store",
+    }),
+  ]);
+  assert.ok(differentPaymentResponses.every(response => response.status === 200),
+    "different subscription payments for one account must both confirm successfully");
+  const [firstPaymentRow, secondPaymentRow] = await Promise.all([
+    prisma.subscriptionPayment.findUnique({ where: { id: pendingSubscription.id } }),
+    prisma.subscriptionPayment.findUnique({ where: { id: secondPendingSubscription.id } }),
+  ]);
+  const orderedPaymentRows = [firstPaymentRow, secondPaymentRow]
+    .sort((left, right) => left.accessStartedAt.getTime() - right.accessStartedAt.getTime());
+  assert.equal(orderedPaymentRows[1].accessStartedAt.toISOString(), orderedPaymentRows[0].accessEndsAt.toISOString(),
+    "separate concurrent payments must extend from the latest committed access end without a lost update");
 
   const verificationAccount = await prisma.account.create({ data: {
     type: "both", companyName: "CI verification webhook", displayId: "CIV-" + suffix,
@@ -626,18 +654,26 @@ try {
   const verificationWebhookBody = {
     attemptId: verificationAttempt.id, status: "successful", providerReference: "ci-verification-" + suffix,
   };
-  const verifiedWebhook = await fetch(base + "/api/verification/start/webhook", {
+  const verificationWebhookRequest = (body = verificationWebhookBody) => fetch(base + "/api/verification/start/webhook", {
     method: "POST",
     headers: { "content-type": "application/json", "x-verification-webhook-secret": "ci-only-verification-webhook-secret" },
-    body: JSON.stringify(verificationWebhookBody), cache: "no-store",
+    body: JSON.stringify(body), cache: "no-store",
   });
-  assert.equal(verifiedWebhook.status, 200, "valid verification webhook must complete the eligible GB attempt");
-  const verifiedReplay = await fetch(base + "/api/verification/start/webhook", {
-    method: "POST",
-    headers: { "content-type": "application/json", "x-verification-webhook-secret": "ci-only-verification-webhook-secret" },
-    body: JSON.stringify(verificationWebhookBody), cache: "no-store",
+  const concurrentVerificationWebhooks = await Promise.all([
+    verificationWebhookRequest(), verificationWebhookRequest(),
+  ]);
+  assert.ok(concurrentVerificationWebhooks.every(response => response.status === 200),
+    "concurrent duplicate verification callbacks must both be safely acknowledged");
+  const concurrentVerificationBodies = await Promise.all(concurrentVerificationWebhooks.map(response => response.json()));
+  assert.ok(concurrentVerificationBodies.every(body => body.verificationStatus === "verified"),
+    "concurrent verification callbacks must observe the same verified account state");
+  const lateVerificationFailure = await verificationWebhookRequest({
+    attemptId: verificationAttempt.id, status: "failed", failureReasons: ["delayed provider failure"],
   });
-  assert.equal(verifiedReplay.status, 200, "verification webhook retry must be idempotently acknowledged");
+  assert.equal(lateVerificationFailure.status, 200,
+    "a delayed failure callback after success must be idempotently acknowledged");
+  assert.equal((await lateVerificationFailure.json()).status, "successful",
+    "a delayed failure callback must not downgrade a successful attempt");
   const verificationAfter = await prisma.verificationAttempt.findUnique({ where: { id: verificationAttempt.id } });
   const verifiedAccountAfter = await prisma.account.findUnique({
     where: { id: verificationAccount.id }, select: { verificationStatus: true },
