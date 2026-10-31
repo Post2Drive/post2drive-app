@@ -48,7 +48,7 @@ export async function DELETE(_request: Request, context: { params: Promise<{ id:
     }
     return NextResponse.json(result, { headers: { "cache-control": "no-store" } });
   } catch (error) {
-    console.error("Could not delete QA campaign draft", error);
+    console.error("Could not delete QA campaign draft.", { errorName: error instanceof Error ? error.name : "UnknownError" });
     return NextResponse.json({ error: "Could not delete the campaign draft. No QA history was intentionally removed." }, { status: 503 });
   }
 }
