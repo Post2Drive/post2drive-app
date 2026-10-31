@@ -30,7 +30,7 @@ const notificationIds = [];
 let server;
 let serverOutput = "";
 let base = "";
-let poster, driver, outsider, indiaPoster, suspendedGbPoster, suspendedGbUser, suspendedGbJob, lifecycleJob, bidJob, bid, incident, evidence, posterVehicle, incidentJob, cancelJob, acceptJob, unassignJob, rejectJob, indiaJob, notification;
+let poster, driver, outsider, indiaPoster, suspendedGbPoster, suspendedGbUser, suspendedGbJob, pendingCompanyAccount, lifecycleJob, bidJob, bid, incident, evidence, posterVehicle, incidentJob, cancelJob, acceptJob, unassignJob, rejectJob, indiaJob, notification;
 
 async function snapshot() {
   const [jobRows, jobCount, bidCount, activityCount, evidenceCount, vehicleCount, notificationCount, notificationRows, ratingCount] = await Promise.all([
@@ -149,7 +149,12 @@ try {
     subscriptionStatus: "active", subscriptionPlanKey: "individual",
     subscriptionStartedAt: new Date(), subscriptionEndsAt: new Date("2035-12-31T00:00:00.000Z"),
   } });
-  accountIds.push(poster.id, driver.id, outsider.id, indiaPoster.id, suspendedGbPoster.id);
+  pendingCompanyAccount = await prisma.account.create({ data: {
+    type: "poster", companyName: "CI pending company review", displayId: "CIPC-" + suffix,
+    country: "GB", currency: "GBP", verificationStatus: "verified",
+    companyVerificationStatus: "pending", companyVerificationSubmittedAt: new Date(),
+  } });
+  accountIds.push(poster.id, driver.id, outsider.id, indiaPoster.id, suspendedGbPoster.id, pendingCompanyAccount.id);
   const passwordHash = await bcrypt.hash("ci-e2e-password-12345", 8);
   const posterUser = await prisma.user.create({ data: {
     accountId: poster.id, name: "CI Poster", email: "ci-poster-" + suffix + "@example.invalid",
@@ -381,6 +386,43 @@ try {
     assert.equal((await api(path, "GET", outsiderCookie)).status, 403,
       path + " must deny a normal authenticated user");
   }
+
+  // Prove the same admin boundary protects mutating methods before they can
+  // validate attacker-supplied data, touch state, or create audit records.
+  const pendingCompanyBefore = await prisma.account.findUnique({
+    where: { id: pendingCompanyAccount.id },
+    select: { companyVerificationStatus: true, companyVerifiedAt: true },
+  });
+  const testerCodesBefore = await prisma.testerAccessCode.count();
+  const adminMutationsBefore = await snapshot();
+  const forbiddenAdminMutations = [
+    ["/api/admin/company-verification", "POST", {
+      accountId: pendingCompanyAccount.id, decision: "verified", notes: "unauthorised CI probe",
+    }],
+    ["/api/admin/incidents/resolve", "POST", {
+      jobId: lifecycleJob.id, incidentId: incident.id,
+      outcome: "no_further_action", notes: "unauthorised CI probe",
+    }],
+    ["/api/admin/testers", "POST", { action: "generate-pilot-codes", count: 1 }],
+    ["/api/admin/qa-campaigns", "POST", {}],
+    ["/api/admin/qa-campaigns/campaign-" + randomUUID(), "DELETE"],
+    ["/api/admin/qa-campaigns/campaign-" + randomUUID() + "/start", "POST", {
+      target: "staging", confirm: "RUN_QA_CAMPAIGN_ON_STAGING",
+    }],
+  ];
+  for (const [path, method, body] of forbiddenAdminMutations) {
+    const response = await api(path, method, outsiderCookie, body);
+    assert.equal(response.status, 403,
+      method + " " + path + " must deny a normal authenticated user before validation or resource access");
+  }
+  assert.deepEqual(await snapshot(), adminMutationsBefore,
+    "denied admin mutation probes must not alter jobs, activity, bids, evidence, vehicles, ratings or notifications");
+  assert.deepEqual(await prisma.account.findUnique({
+    where: { id: pendingCompanyAccount.id },
+    select: { companyVerificationStatus: true, companyVerifiedAt: true },
+  }), pendingCompanyBefore, "denied company review must not change verification state");
+  assert.equal(await prisma.testerAccessCode.count(), testerCodesBefore,
+    "denied tester code generation must not create access codes");
 
   const bridgeSecret = "ci-only-admin-bridge-secret-at-least-32-bytes";
   const bridgeBody = JSON.stringify({ action: "unsupported-ci-contract-action", actor: "qa-e2e" });
