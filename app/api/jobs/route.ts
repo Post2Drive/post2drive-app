@@ -140,6 +140,7 @@ async function GETHandler(req: Request) {
     poster: {
       country,
       currency,
+      verificationStatus: { not: "suspended" },
     },
     ...vehicleTypeFilter,
   };

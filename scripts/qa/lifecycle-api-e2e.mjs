@@ -30,7 +30,7 @@ const notificationIds = [];
 let server;
 let serverOutput = "";
 let base = "";
-let poster, driver, outsider, indiaPoster, lifecycleJob, bidJob, bid, incident, evidence, posterVehicle, incidentJob, cancelJob, acceptJob, unassignJob, rejectJob, indiaJob, notification;
+let poster, driver, outsider, indiaPoster, suspendedGbPoster, suspendedGbJob, lifecycleJob, bidJob, bid, incident, evidence, posterVehicle, incidentJob, cancelJob, acceptJob, unassignJob, rejectJob, indiaJob, notification;
 
 async function snapshot() {
   const [jobRows, jobCount, bidCount, activityCount, evidenceCount, vehicleCount, notificationCount, notificationRows, ratingCount] = await Promise.all([
@@ -142,7 +142,11 @@ try {
     country: "IN", currency: "INR", phoneVerifiedAt: new Date(),
     verificationStatus: "not_started", companyVerificationStatus: "not_started",
   }});
-  accountIds.push(poster.id, driver.id, outsider.id, indiaPoster.id);
+  suspendedGbPoster = await prisma.account.create({ data: {
+    type: "poster", companyName: "CI suspended GB poster", displayId: "CIS-" + suffix,
+    country: "GB", currency: "GBP", verificationStatus: "suspended",
+  } });
+  accountIds.push(poster.id, driver.id, outsider.id, indiaPoster.id, suspendedGbPoster.id);
   const passwordHash = await bcrypt.hash("ci-e2e-password-12345", 8);
   const posterUser = await prisma.user.create({ data: {
     accountId: poster.id, name: "CI Poster", email: "ci-poster-" + suffix + "@example.invalid",
@@ -160,6 +164,15 @@ try {
     accountId: indiaPoster.id, name: "CI India Poster", email: "ci-india-" + suffix + "@example.invalid",
     phone: "india-" + suffix, passwordHash, emailVerifiedAt: new Date(),
   }});
+
+  suspendedGbJob = await prisma.job.create({ data: {
+    posterId: suspendedGbPoster.id, status: "open", priceMode: "fixed",
+    pickup: "CI suspended poster pickup", dropoff: "CI suspended poster dropoff",
+    jobDate: new Date(Date.now() + 7 * 86_400_000), pickupTime: "12:00", dropoffTime: "13:00",
+    pickupTimeZone: "Europe/London", dropoffTimeZone: "Europe/London",
+    vehicleType: "Small van (SWB)", price: 100, currency: "GBP", crossBorder: false,
+  }});
+  jobIds.push(suspendedGbJob.id);
 
   lifecycleJob = await prisma.job.create({ data: {
     posterId: poster.id, acceptedById: driver.id, status: "accepted", priceMode: "fixed",
@@ -535,6 +548,18 @@ try {
   assert.equal(ukProfileLeak.status, 404, "foreign-market profile must be indistinguishable from missing");
   const indiaOwnProfile = await api("/api/profile/" + indiaPoster.displayId, "GET", indiaCookie);
   assert.equal(indiaOwnProfile.status, 200, "same-market India profile lookup should work");
+
+  // An active GB user must not discover a suspended GB poster or the poster's
+  // still-open job. Suspended users may retain their own history, but their
+  // public marketplace presence must be removed.
+  const gbBrowseWithSuspendedPoster = await api("/api/jobs", "GET", posterCookie);
+  assert.equal(gbBrowseWithSuspendedPoster.status, 200);
+  const gbBrowseBody = await gbBrowseWithSuspendedPoster.json();
+  assert.ok(!gbBrowseBody.jobs.some(item => item.id === suspendedGbJob.id),
+    "GB open marketplace must hide listings owned by suspended accounts");
+  const suspendedTargetProfile = await api("/api/profile/" + suspendedGbPoster.displayId, "GET", posterCookie);
+  assert.equal(suspendedTargetProfile.status, 404,
+    "a suspended account's profile must be indistinguishable from a missing marketplace profile");
 
   const tamperedUkBrowse = await api("/api/jobs?country=IN&currency=INR", "GET", posterCookie);
   assert.equal(tamperedUkBrowse.status, 200);

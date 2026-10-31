@@ -35,7 +35,7 @@ async function GETHandler(
 
     const { id: displayId } = await params;
     const target = await prisma.account.findFirst({
-      where: { displayId, deletionRequestedAt: null },
+      where: { displayId, deletionRequestedAt: null, verificationStatus: { not: "suspended" } },
       select: { id: true, country: true, currency: true },
     });
 
