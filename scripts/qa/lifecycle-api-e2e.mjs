@@ -700,13 +700,21 @@ try {
   assert.equal(afterTamperedEdit.currency, beforeTamperedEdit.currency, "rejected edit must preserve the stored currency");
   assert.equal(afterTamperedEdit.pickup, beforeTamperedEdit.pickup, "rejected edit must preserve the stored route");
 
-  const placedBidResponse = await api("/api/jobs/" + bidJob.id + "/bid", "POST", driverCookie, { amount: 95 });
-  if (![200, 201].includes(placedBidResponse.status)) {
-    throw new Error("eligible authenticated driver should place a bid (got " + placedBidResponse.status + "): " + await placedBidResponse.text());
-  }
-  const placedBidBody = await placedBidResponse.json();
+  const competingSameDriverBids = await Promise.all([
+    api("/api/jobs/" + bidJob.id + "/bid", "POST", driverCookie, { amount: 95 }),
+    api("/api/jobs/" + bidJob.id + "/bid", "POST", driverCookie, { amount: 96 }),
+  ]);
+  const createdBidResponses = competingSameDriverBids.filter(response => [200, 201].includes(response.status));
+  const duplicateBidResponses = competingSameDriverBids.filter(response => response.status === 409);
+  assert.equal(createdBidResponses.length, 1,
+    "two concurrent submissions from one driver must create exactly one active bid");
+  assert.equal(duplicateBidResponses.length, 1,
+    "the competing duplicate bid request must receive HTTP 409");
+  const placedBidBody = await createdBidResponses[0].json();
   assert.ok(placedBidBody.bid?.id, "successful bid response must return the created bid ID");
   bid = { id: placedBidBody.bid.id };
+  assert.equal(await prisma.bid.count({ where: { jobId: bidJob.id, bidderId: driver.id, status: "active" } }), 1,
+    "same-driver concurrent bid race must leave exactly one active bid in PostgreSQL");
   const posterBidsRead = await api("/api/jobs/" + bidJob.id + "/bids", "GET", posterCookie);
   assert.equal(posterBidsRead.status, 200, "poster may read bids for their own job");
 

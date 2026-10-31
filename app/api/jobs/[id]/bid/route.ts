@@ -218,6 +218,15 @@ async function POSTHandler(
         return null;
       }
 
+      // The job row lock serialises all bid submissions for this job. Check
+      // for an existing active bid inside that lock so double-clicks or two
+      // concurrent sessions cannot create duplicate active offers.
+      const existingActiveBid = await tx.bid.findFirst({
+        where: { jobId: routeParams.id, bidderId: accountId, status: "active" },
+        select: { id: true },
+      });
+      if (existingActiveBid) return "already_bid" as const;
+
       const createdBid = await tx.bid.create({
         data: {
           jobId: routeParams.id,
@@ -255,6 +264,10 @@ async function POSTHandler(
   } catch (error) {
     console.error("Place bid failed.", { errorName: error instanceof Error ? error.name : "UnknownError" });
     return NextResponse.json({ error: "Unable to place bid right now. Please retry." }, { status: 500 });
+  }
+
+  if (bid === "already_bid") {
+    return NextResponse.json({ error: "You already have an active bid on this job." }, { status: 409 });
   }
 
   if (!bid) {
