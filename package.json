@@ -46,7 +46,8 @@
     "qa:phone-verification-contract": "node scripts/qa/phone-verification-contract.mjs",
     "qa:provider-lifecycle-contract": "node --experimental-strip-types scripts/qa/provider-lifecycle-contract.mjs",
     "qa:india-email-optional-contract": "node scripts/qa/india-email-optional-contract.mjs",
-    "qa:uk-student-pilot-contract": "node scripts/qa/uk-student-pilot-contract.mjs"
+    "qa:uk-student-pilot-contract": "node scripts/qa/uk-student-pilot-contract.mjs",
+    "qa:security-log-redaction": "node scripts/qa/security-log-redaction-contract.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.3",

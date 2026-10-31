@@ -130,6 +130,8 @@ jobs:
         run: |
           psql "postgresql://postgres:postgres@localhost:5432/post2drive" -v run_id=ci-no-such-run -f scripts/qa/cleanup-inventory.sql > /tmp/qa-inventory.txt
           grep -q "(0 rows)" /tmp/qa-inventory.txt
+      - name: Validate privacy-safe application and QA diagnostics
+        run: npm run qa:security-log-redaction
       - name: Validate account API privacy and request validation
         run: npm run qa:account-api-security
       - name: Validate job and payment response data minimization

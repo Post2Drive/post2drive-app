@@ -37,6 +37,12 @@ const password = "QA-test-only-password-42!";
 async function scanRoute(page, route, viewport) {
   const response = await page.goto(new URL(route, baseURL).toString(), { waitUntil: "domcontentloaded" });
   assert.ok(response && response.status() < 400, `${route} should load successfully at ${viewport.label}`);
+  const responseHeaders = response.headers();
+  assert.equal(responseHeaders["x-content-type-options"], "nosniff", `${route} must send nosniff`);
+  assert.equal(responseHeaders["x-frame-options"], "DENY", `${route} must deny framing`);
+  assert.equal(responseHeaders["referrer-policy"], "strict-origin-when-cross-origin", `${route} must send a restrictive referrer policy`);
+  assert.ok(responseHeaders["content-security-policy-report-only"]?.includes("report-uri /api/security/csp-report"),
+    `${route} must retain the report-only CSP until violations are reviewed`);
   try {
     await page.locator("main h1").first().waitFor({ state: "visible" });
   } catch (error) {

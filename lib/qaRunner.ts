@@ -144,16 +144,21 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
         try { data = text ? JSON.parse(text) : null; } catch { data = {}; }
       }
     } catch (error) {
-      data = { networkError: error instanceof Error ? error.message : String(error) };
+      data = {
+        networkError: "Request failed before an HTTP response was received.",
+        networkErrorName: error instanceof Error ? error.name : "UnknownError",
+      };
     }
     const details: Record<string, unknown> = {};
     if (data && typeof data === "object") {
-      for (const key of ["success", "error", "reason", "jobId", "status", "allowed", "planType", "verificationStatus"]) {
+      for (const key of ["success", "reason", "jobId", "status", "allowed", "planType", "verificationStatus"]) {
         if (data[key] !== undefined) details[key] = data[key];
       }
+      if (data.error !== undefined) details.error = "The API returned a non-success response.";
       if (data.job?.id) details.jobId = data.job.id;
       if (data.bid?.id) details.bidId = data.bid.id;
-      if (data.networkError) details.networkError = String(data.networkError).slice(0, 250);
+      if (data.networkError) details.networkError = String(data.networkError).slice(0, 120);
+      if (data.networkErrorName) details.networkErrorName = String(data.networkErrorName).slice(0, 80);
     }
     const passed = await record({ index: account?.index, accountId: account?.accountId, cohort: account?.cohort, scenario, action, method, path, expected, actual: status, duration: Date.now() - t, details });
     return { status, data, passed };
@@ -234,8 +239,13 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
         const response = await fetch(base + "/api/signup", { method: "POST", headers: { "content-type": "application/json", accept: "application/json", "x-post2drive-qa-run-id": runId }, body: JSON.stringify(payload), redirect: "manual", signal: AbortSignal.timeout(15000) });
         status = response.status;
         data = await response.json().catch(() => null);
-      } catch (error) { data = { networkError: String(error) }; }
-      await record({ index: i, cohort, scenario: "account-provisioning", action: "signup", method: "POST", path: "/api/signup", expected: [201], actual: status, duration: Date.now() - t, details: { error: data?.error || data?.networkError } });
+      } catch (error) {
+        data = {
+          networkError: "Signup request failed before an HTTP response was received.",
+          networkErrorName: error instanceof Error ? error.name : "UnknownError",
+        };
+      }
+      await record({ index: i, cohort, scenario: "account-provisioning", action: "signup", method: "POST", path: "/api/signup", expected: [201], actual: status, duration: Date.now() - t, details: { error: status === 201 ? undefined : "Signup did not complete.", networkErrorName: data?.networkErrorName } });
       if (status !== 201 || !data?.accountId) return;
       const accountId = String(data.accountId);
       const persistStarted = Date.now();
@@ -264,7 +274,7 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
         createdAccounts++;
       } catch (error) {
         try {
-          await record({ index: i, accountId, cohort, scenario: "account-provisioning", action: "persist-synthetic-fixture", method: "DB", path: "qa_test_accounts", expected: [200], actual: 500, duration: Date.now() - persistStarted, details: { error: error instanceof Error ? error.message.slice(0, 250) : String(error).slice(0, 250) } });
+          await record({ index: i, accountId, cohort, scenario: "account-provisioning", action: "persist-synthetic-fixture", method: "DB", path: "qa_test_accounts", expected: [200], actual: 500, duration: Date.now() - persistStarted, details: { errorName: error instanceof Error ? error.name : "UnknownError" } });
         } catch {}
       }
     });
@@ -774,9 +784,12 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
     };
     return await finish("completed", { testType, successfulLogins: signed.length, accountPoolRunId, persistedDataSummary, limitations: ["Email delivery and real provider settlements were not attempted.", "This is API-driven lifecycle simulation, not browser-based usability testing.", "Route distances and prices are deterministic synthetic estimates, not live routing results or market quotes.", "Account deletion and cleanup were intentionally not run; synthetic data is retained."] });
   } catch (error) {
-    const failureMessage = error instanceof Error ? error.message : String(error);
-    console.error("Staging QA runner exception", error);
-    return await finish("failed", { exception: failureMessage.slice(0, 250) });
+    const errorName = error instanceof Error ? error.name : "UnknownError";
+    console.error("Staging QA runner exception.", { errorName });
+    return await finish("failed", {
+      exceptionName: errorName,
+      exception: "Unexpected internal QA runner failure. Inspect restricted CI/runtime diagnostics.",
+    });
   }
 }
 

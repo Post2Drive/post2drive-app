@@ -79,13 +79,17 @@ async function signIn(email, password = "ci-e2e-password-12345") {
     redirect: "manual",
     signal: AbortSignal.timeout(8000),
   });
-  const sessionCookies = getSetCookies(callback).filter((value) =>
+  const allCookies = getSetCookies(callback);
+  const sessionCookies = allCookies.filter((value) =>
     /^(?:__Secure-)?next-auth\.session-token=/.test(value)
   );
   if (!sessionCookies.length) {
     throw new Error("Real NextAuth credentials sign-in did not issue a session cookie (HTTP " +
       callback.status + "): " + (await callback.text()).slice(0, 500));
   }
+  assert.ok(sessionCookies.every(value => /HttpOnly/i.test(value)), "session cookie must be HttpOnly");
+  assert.ok(sessionCookies.every(value => /SameSite=Lax/i.test(value)), "session cookie must use SameSite=Lax");
+  assert.ok(sessionCookies.every(value => /Secure/i.test(value)), "production session cookie must be Secure");
   return sessionCookies.map((value) => value.split(";")[0]).join("; ");
 }
 async function api(path, method, cookie, body) {
@@ -237,7 +241,15 @@ try {
   const port = await getAvailablePort();
   base = "http://127.0.0.1:" + port;
   server = spawn(process.execPath, ["node_modules/next/dist/bin/next", "start", "--port", String(port)], {
-    env: { ...process.env, NEXTAUTH_URL: base, NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET || "ci-only-secret", NODE_ENV: "production" },
+    env: {
+      ...process.env,
+      NEXTAUTH_URL: base,
+      NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET || "ci-only-secret",
+      OPS_DASHBOARD_BRIDGE_SECRET: "ci-only-admin-bridge-secret-at-least-32-bytes",
+      SUBSCRIPTION_WEBHOOK_SECRET: "ci-only-subscription-webhook-secret",
+      VERIFICATION_WEBHOOK_SECRET: "ci-only-verification-webhook-secret",
+      NODE_ENV: "production",
+    },
     stdio: ["ignore", "pipe", "pipe"],
   });
   server.stdout.on("data", (b) => { serverOutput += b.toString(); });
@@ -322,6 +334,78 @@ try {
   const outsiderCookie = await signIn(outsiderUser.email, "ci-e2e-password-reset-12345");
   assert.equal((await (await api("/api/auth/session", "GET", outsiderCookie)).json())?.user?.email, outsiderUser.email,
     "new password should create a valid session after reset");
+
+  const accountRead = await api("/api/account", "GET", outsiderCookie);
+  assert.equal(accountRead.status, 200);
+  const accountReadBody = await accountRead.json();
+  assert.equal(accountReadBody.account.id, outsider.id);
+  assert.deepEqual(accountReadBody.account.users.map(user => user.id), [outsiderUser.id]);
+  for (const field of ["subscriptionStatus", "subscriptionPlanKey", "isTester", "verificationStatus", "deletionRequestedAt"]) {
+    assert.equal(Object.hasOwn(accountReadBody.account, field), false, "account API must not expose internal field " + field);
+  }
+  assert.equal(Object.hasOwn(accountReadBody.account.users[0], "passwordHash"), false);
+  const accountMarketAttack = await api("/api/account", "PATCH", outsiderCookie, {
+    accountId: poster.id, country: "IN", currency: "INR",
+  });
+  assert.equal(accountMarketAttack.status, 409, "account settings must reject immutable market changes");
+  assert.deepEqual(await prisma.account.findUnique({ where: { id: outsider.id }, select: { country: true, currency: true } }),
+    { country: "GB", currency: "GBP" });
+  assert.deepEqual(await prisma.account.findUnique({ where: { id: poster.id }, select: { country: true, currency: true } }),
+    { country: "GB", currency: "GBP" }, "client accountId must not redirect settings mutation");
+
+  for (const path of [
+    "/api/admin/company-verification", "/api/admin/incidents/resolve",
+    "/api/admin/research", "/api/admin/testers", "/api/admin/qa-campaigns",
+  ]) {
+    assert.equal((await api(path, "GET", outsiderCookie)).status, 403,
+      path + " must deny a normal authenticated user");
+  }
+
+  const bridgeSecret = "ci-only-admin-bridge-secret-at-least-32-bytes";
+  const bridgeBody = JSON.stringify({ action: "unsupported-ci-contract-action", actor: "qa-e2e" });
+  const bridgeNonce = randomUUID().replaceAll("-", "");
+  const bridgeTimestamp = String(Date.now());
+  const bridgeSignature = createHmac("sha256", bridgeSecret)
+    .update(bridgeTimestamp + "." + bridgeNonce + "." + bridgeBody).digest("hex");
+  const bridgeHeaders = {
+    "content-type": "application/json", "x-p2d-admin-timestamp": bridgeTimestamp,
+    "x-p2d-admin-nonce": bridgeNonce, "x-p2d-admin-signature": bridgeSignature,
+  };
+  const invalidBridge = await fetch(base + "/api/internal/admin-bridge", {
+    method: "POST", headers: { ...bridgeHeaders, "x-p2d-admin-signature": "00".repeat(32) },
+    body: bridgeBody, cache: "no-store",
+  });
+  assert.equal(invalidBridge.status, 401, "bridge must reject an invalid signature");
+  const staleBridge = await fetch(base + "/api/internal/admin-bridge", {
+    method: "POST", headers: { ...bridgeHeaders, "x-p2d-admin-timestamp": String(Date.now() - 5 * 60 * 1000) },
+    body: bridgeBody, cache: "no-store",
+  });
+  assert.equal(staleBridge.status, 401, "bridge must reject expired timestamps");
+  const validBridge = await fetch(base + "/api/internal/admin-bridge", {
+    method: "POST", headers: bridgeHeaders, body: bridgeBody, cache: "no-store",
+  });
+  assert.equal(validBridge.status, 400, "valid signed bridge request must reach action validation");
+  const replayBridge = await fetch(base + "/api/internal/admin-bridge", {
+    method: "POST", headers: bridgeHeaders, body: bridgeBody, cache: "no-store",
+  });
+  assert.equal(replayBridge.status, 409, "bridge must reject a replayed nonce");
+
+  for (const [path, header] of [
+    ["/api/subscription/webhook", "x-post2drive-webhook-secret"],
+    ["/api/verification/start/webhook", "x-verification-webhook-secret"],
+  ]) {
+    const noCredential = await fetch(base + path, { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
+    assert.equal(noCredential.status, 401, path + " must reject missing credentials");
+    const wrongCredential = await fetch(base + path, {
+      method: "POST", headers: { "content-type": "application/json", [header]: "wrong-secret" }, body: "{}",
+    });
+    assert.equal(wrongCredential.status, 401, path + " must reject incorrect credentials");
+  }
+  const corsProbe = await fetch(base + "/api/account", {
+    method: "GET", headers: { cookie: outsiderCookie, origin: "https://attacker.invalid" }, cache: "no-store",
+  });
+  assert.equal(corsProbe.headers.get("access-control-allow-origin"), null,
+    "authenticated APIs must not grant arbitrary cross-origin browser access");
 
   // Product/Quality cross-market HTTP checks: country and currency come from
   // the signed-in account, never from client-supplied request fields.
@@ -667,9 +751,31 @@ try {
     "UK poster must see its own completed payment-tracking record");
 
   // Reuse the same pre-existing session after deletion is requested.
-  await prisma.account.update({ where: { id: outsider.id }, data: { deletionRequestedAt: new Date() } });
+  const deleteAccount = await api("/api/account", "DELETE", outsiderCookie, {
+    currentPassword: "ci-e2e-password-reset-12345", confirm: "DELETE",
+  });
+  assert.equal(deleteAccount.status, 200, "account owner can request deletion and anonymisation");
+  const deletedAccount = await prisma.account.findUnique({
+    where: { id: outsider.id },
+    select: { companyName: true, deletionRequestedAt: true, marketingConsent: true, subscriptionStatus: true, isTester: true },
+  });
+  const deletedUser = await prisma.user.findUnique({
+    where: { id: outsiderUser.id },
+    select: { name: true, email: true, phone: true, emailVerifiedAt: true },
+  });
+  assert.ok(deletedAccount?.deletionRequestedAt);
+  assert.equal(deletedAccount.companyName, "Deleted account");
+  assert.equal(deletedAccount.marketingConsent, false);
+  assert.equal(deletedAccount.subscriptionStatus, "inactive");
+  assert.equal(deletedAccount.isTester, false);
+  assert.equal(deletedUser.name, "Deleted user");
+  assert.match(deletedUser.email, /^deleted\+.*@post2drive\.invalid$/);
+  assert.equal(deletedUser.phone, "");
+  assert.equal(deletedUser.emailVerifiedAt, null);
+  assert.equal(await (await api("/api/auth/session", "GET", outsiderCookie)).text(), "null",
+    "account deletion must revoke its pre-existing JWT");
   const deletedGet = await api("/api/vehicles", "GET", outsiderCookie);
-  assert.equal(deletedGet.status, 401, "pre-existing JWT must not read vehicles after deletion request");
+  assert.equal(deletedGet.status, 401, "pre-existing JWT must not read vehicles after account deletion");
   const deletedPost = await api("/api/vehicles", "POST", outsiderCookie, {
     vehicleType: "Small van (SWB)", regPlate: "DEL-" + suffix,
   });
