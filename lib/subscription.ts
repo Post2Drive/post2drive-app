@@ -39,32 +39,39 @@ export function calculatePaidAccessEnd(startAt: Date) {
 }
 
 export async function createPendingSubscriptionPayment(accountId: string) {
-  const account = await prisma.account.findUnique({ where: { id: accountId } });
+  return prisma.$transaction(async tx => {
+    // Serialize payment creation with account deletion and suspension changes.
+    const lockedAccounts = await tx.$queryRawUnsafe<Array<{ id: string }>>(
+      'SELECT "id" FROM "Account" WHERE "id" = $1 FOR UPDATE', accountId,
+    );
+    if (lockedAccounts.length !== 1) throw new Error("Account not found.");
 
-  if (!account) throw new Error("Account not found.");
-  if (account.deletionRequestedAt) throw new Error("Account is pending deletion.");
-  if (account.verificationStatus === "suspended") throw new Error("Account is suspended.");
-  if (!isWeeklyPricingEligible(account)) {
-    throw new Error("Paid weekly access is available to supported non-India markets.");
-  }
-  if (account.verificationStatus !== "verified" && !account.isTester) {
-    throw new Error("Account must be successfully verified before purchasing access.");
-  }
+    const account = await tx.account.findUnique({ where: { id: accountId } });
+    if (!account) throw new Error("Account not found.");
+    if (account.deletionRequestedAt) throw new Error("Account is pending deletion.");
+    if (account.verificationStatus === "suspended") throw new Error("Account is suspended.");
+    if (!isWeeklyPricingEligible(account)) {
+      throw new Error("Paid weekly access is available to supported non-India markets.");
+    }
+    if (account.verificationStatus !== "verified" && !account.isTester) {
+      throw new Error("Account must be successfully verified before purchasing access.");
+    }
 
-  const planKey = getPaidPlanKey(account);
-  const amountMinorUnits = getPaidPriceMinorUnits(account);
-  if (!planKey || amountMinorUnits === null) {
-    throw new Error("This account does not have a valid weekly subscription price.");
-  }
+    const planKey = getPaidPlanKey(account);
+    const amountMinorUnits = getPaidPriceMinorUnits(account);
+    if (!planKey || amountMinorUnits === null) {
+      throw new Error("This account does not have a valid weekly subscription price.");
+    }
 
-  return prisma.subscriptionPayment.create({
-    data: {
-      accountId,
-      planKey,
-      amountMinorUnits,
-      currency: account.currency,
-      status: "pending",
-    },
+    return tx.subscriptionPayment.create({
+      data: {
+        accountId,
+        planKey,
+        amountMinorUnits,
+        currency: account.currency,
+        status: "pending",
+      },
+    });
   });
 }
 
