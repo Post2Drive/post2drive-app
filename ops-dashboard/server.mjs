@@ -7,7 +7,10 @@ if (!dashboardDatabaseUrl) {
   console.error("OPS_DASHBOARD_DATABASE_URL is required; use a dedicated read-only database role, never application database credentials.");
   process.exit(1);
 }
-const prisma = new PrismaClient({ datasources: { db: { url: dashboardDatabaseUrl } }, log: ["error"] });
+const prisma = new PrismaClient({ datasources: { db: { url: dashboardDatabaseUrl } }, log: [{ emit: "event", level: "error" }] });
+prisma.$on("error", () => {
+  console.error("Ops dashboard database client error.", { errorName: "PrismaClientError" });
+});
 const PORT = Number(process.env.PORT || 8080);
 const USERNAME = process.env.OPS_DASHBOARD_USERNAME;
 const PASSWORD = process.env.OPS_DASHBOARD_PASSWORD;
@@ -420,8 +423,8 @@ textarea:disabled {
 <div id="audit" class="section"><div><h2>Admin & audit</h2><p>Durable signed-bridge action history, incident workflow events and notification records.</p></div><button id="exportAudit" type="button">Export audit CSV</button></div><div class="grid two"><section class="panel"><h2>Notification activity</h2><p class="muted">Created notifications, unread count and latest activity by type; not proof of external delivery.</p><div class="scroll" id="notificationHealth"></div></section><section class="panel"><h2>Recent incident audit events</h2><div class="scroll" id="auditEvents"></div></section><section class="panel"><h2>Administrative action audit log</h2><p class="muted">Latest 100 recorded actions; full records remain in the database.</p><div class="scroll" id="adminAuditEvents"></div></section></div><div id="catalogue-section" class="section"><div><h2>Data catalogue & limitations</h2><p>Definitions, source freshness and instrumentation gaps.</p></div></div><section class="panel"><div id="catalogue"></div></section>
 <div class="footer">Post2Drive Ops · Separate admin service · Times use browser locale unless noted · Market selection filters supported platform records; it does not change account country/currency. External logistics data remains pending source integration.</div></main>
 <script>
-window.addEventListener("error",event=>{console.error("Ops dashboard browser error:",event.message);const warning=document.getElementById("warning");if(warning){warning.className="notice";warning.textContent="Dashboard script error: "+String(event.message||"Unknown browser error");}});
-window.addEventListener("unhandledrejection",event=>{console.error("Ops dashboard unhandled promise:",event.reason);const warning=document.getElementById("warning");if(warning){warning.className="notice";warning.textContent="Dashboard error: "+String(event.reason?.message||event.reason||"Unknown error");}});
+window.addEventListener("error",event=>{console.error("Ops dashboard browser error.",{errorName:event.error instanceof Error?event.error.name:"UnknownError"});const warning=document.getElementById("warning");if(warning){warning.className="notice";warning.textContent="Dashboard script error. Refresh the page or contact an administrator.";}});
+window.addEventListener("unhandledrejection",event=>{console.error("Ops dashboard unhandled promise.",{errorName:event.reason instanceof Error?event.reason.name:"UnknownError"});const warning=document.getElementById("warning");if(warning){warning.className="notice";warning.textContent="Dashboard request failed. Refresh the page or contact an administrator.";}});
 const $=id=>document.getElementById(id);let current=null;const fmt=n=>Number(n||0).toLocaleString("en-GB");const pct=(n,d)=>d?((n/d)*100).toFixed(1)+"%":"—";const dur=n=>Number(n||0)>=1000?(Number(n)/1000).toFixed(2)+" s":Math.round(Number(n||0))+" ms";const safe=s=>String(s??"—").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));const codeName=c=>c==="ALL"?"Global":((markets.find(x=>x.code===c)||{}).name||c);function table(rows,cols){if(!rows||!rows.length)return '<div class="empty">No records available for this window.</div>';return '<table><thead><tr>'+cols.map(c=>'<th>'+safe(c[1])+'</th>').join("")+'</tr></thead><tbody>'+rows.map(r=>'<tr>'+cols.map(c=>'<td class="'+(c[2]&&c[2](r[c[0]],r)?"bad":"")+'">'+safe(c[3]?c[3](r[c[0]],r):r[c[0]])+'</td>').join("")+'</tr>').join("")+'</tbody></table>'}function barColour(label,index){const s=String(label||"").toLowerCase().replaceAll("_"," ");if(/cancel|fail|error|blocked|reject|critical|overdue/.test(s))return "#D62828";if(/complete|deliver|verified|success|paid|ready|healthy/.test(s))return "#18864B";if(/warn|review|pending|attention|not assessed|grace/.test(s))return "#F2C300";if(/accept|analytics|insight|research/.test(s))return "#6D28D9";if(/transit|active|promotion|operation/.test(s))return "#E87500";if(/open|new|request/.test(s))return "#2457D6";const colours=["#2457D6","#D62828","#18864B","#6D28D9","#E87500","#F2C300","#171717","#0096C7","#C0268D"];return colours[index%colours.length]}function bars(rows,label="label",value="count"){if(!rows||!rows.length)return '<div class="empty">No data yet.</div>';let max=Math.max(1,...rows.map(r=>Number(r[value]||0)));return '<div class="barlist">'+rows.map((r,index)=>{const rowLabel=String(r[label]||"Unknown").replaceAll("_"," ");const colour=barColour(rowLabel,index);return '<div class="barrow"><span>'+safe(rowLabel)+'</span><div class="bartrack"><div class="bar" style="width:'+Math.max(0,Math.min(100,Number(r[value]||0)/max*100))+'%;background:'+colour+'"></div></div><strong>'+fmt(r[value])+'</strong></div>'}).join("")+'</div>'}function kpi(label,value,hint){return '<div class="kpi"><label>'+safe(label)+'</label><strong>'+safe(value)+'</strong><small>'+safe(hint||"")+'</small></div>'}function lineChart(rows,label,value){if(!rows||rows.length<2)return '<div class="empty">Not enough observations yet to draw a trend.</div>';let w=700,h=200,p=28,vals=rows.map(r=>Number(r[value]||0)),max=Math.max(1,...vals),min=Math.min(0,...vals),pts=vals.map((v,i)=>(p+i*(w-p*2)/(vals.length-1))+','+(h-p-(v-min)/(max-min||1)*(h-p*2)));let grid=[0.25,0.5,0.75].map(q=>'<line class="gridline" x1="'+p+'" x2="'+(w-p)+'" y1="'+(p+(h-p*2)*q)+'" y2="'+(p+(h-p*2)*q)+'"/>').join("");return '<svg class="chart" viewBox="0 0 '+w+' '+h+'" role="img" aria-label="'+safe(label)+'">'+grid+'<polygon class="area" points="'+p+','+(h-p)+' '+pts.join(" ")+' '+(w-p)+','+(h-p)+'"/><polyline class="line" points="'+pts.join(" ")+'"/><text x="'+p+'" y="'+(h-5)+'">'+safe(String(rows[0][label]).slice(0,10))+'</text><text x="'+(w-p)+'" y="'+(h-5)+'" text-anchor="end">'+safe(String(rows[rows.length-1][label]).slice(0,10))+'</text><text x="'+p+'" y="15">'+fmt(max)+'</text></svg>'}async function getData(country,days,forceRefresh=false,signal){
   const params={country,days:String(days)};
   if(forceRefresh){params.refresh="1";params._ts=String(Date.now())}
@@ -697,8 +700,8 @@ try {
   $("resetFilters").addEventListener("click",()=>{$("country").value="ALL";$("compare").value="";$("days").value="7";$("filterDrawer").open=false;void load(false)});
   console.info("Post2Drive Ops dashboard script initialized");void load();
 } catch(error) {
-  console.error("Ops dashboard initialisation failed:",error);
-  const warning=document.getElementById("warning");if(warning){warning.className="notice";warning.textContent="Dashboard initialisation failed: "+String(error?.message||error);}
+  console.error("Ops dashboard initialisation failed.",{errorName:error instanceof Error?error.name:"UnknownError"});
+  const warning=document.getElementById("warning");if(warning){warning.className="notice";warning.textContent="Dashboard initialisation failed. Refresh the page or contact an administrator.";}
   const updated=document.getElementById("updated");if(updated)updated.textContent="Dashboard failed to initialise";
 }
 </script></html>`;
@@ -721,7 +724,7 @@ async function metricsUncached(url) {
   const warnings = [];
   const safeQuery = async (label, sql, ...args) => {
     try { return await prisma.$queryRawUnsafe(sql, ...args); }
-    catch (e) { warnings.push(label + " data unavailable: check migration/table permissions."); console.error("Ops metrics query failed:",label,e?.message); return []; }
+    catch (error) { warnings.push(label + " data unavailable: check migration/table permissions."); console.error("Ops metrics query failed.",{label,errorName:error instanceof Error?error.name:"UnknownError"}); return []; }
   };
   const [overviewRows, accountTypes, verificationStatuses, jobStatuses, growth, apiHourly, routes, recentErrors, qaRuns, qaFailures, paymentStatuses, activityRows, bidRows] = await Promise.all([
     safeQuery("Overview",`SELECT
@@ -950,7 +953,7 @@ const server = http.createServer(async (req,res) => {
     return send(res,404,"Not found","text/plain; charset=utf-8");
   } catch (e) {
     const status = e?.status || 500;
-    console.error("Ops dashboard request failed:",e);
+    console.error("Ops dashboard request failed.",{status,errorName:e instanceof Error?e.name:"UnknownError"});
     return send(res,status,JSON.stringify({error:status===400?e.message:"Internal dashboard error"}),"application/json");
   }
 });
@@ -1019,13 +1022,12 @@ async function startServer() {
     }
     if (problems.length) throw new Error(problems.join("; "));
 
-    console.log(`Ops dashboard read-only boundary verified for database ${identity.database} as ${identity.username} (${identity.readable_tables} readable/${identity.public_tables} public tables; writable tables=${identity.writable_tables}; sequence privileges=${identity.sequence_privileges}; role memberships=${identity.role_memberships}; public schema CREATE=${identity.can_create_in_public}; inherits roles=${identity.inherits_roles}).`);
+    console.log(`Ops dashboard read-only boundary verified (${identity.readable_tables} readable/${identity.public_tables} public tables; writable tables=${identity.writable_tables}; sequence privileges=${identity.sequence_privileges}; role memberships=${identity.role_memberships}; public schema CREATE=${identity.can_create_in_public}; inherits roles=${identity.inherits_roles}).`);
     server.listen(PORT, "0.0.0.0", () => console.log(`Post2Drive Ops Dashboard listening on ${PORT}`));
   } catch (error) {
-    console.error(
-      "Ops dashboard startup blocked: OPS_DASHBOARD_DATABASE_URL must use the restricted read-only role on the intended database.",
-      error instanceof Error ? error.message : "unknown error"
-    );
+    console.error("Ops dashboard startup blocked: restricted read-only database role verification failed.", {
+      errorName: error instanceof Error ? error.name : "UnknownError",
+    });
     await prisma.$disconnect().catch(() => {});
     process.exit(1);
   }

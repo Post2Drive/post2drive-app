@@ -1,6 +1,9 @@
 import { PrismaClient } from "@prisma/client";
 
-const prisma = new PrismaClient({ log: ["error"] });
+const prisma = new PrismaClient({ log: [{ emit: "event", level: "error" }] });
+prisma.$on("error", () => {
+  console.error("Read-only provisioning database client error.", { errorName: "PrismaClientError" });
+});
 const ROLE = "post2drive_ops_readonly";
 const PASSWORD = process.env.OPS_DASHBOARD_DB_PASSWORD;
 
@@ -96,7 +99,7 @@ try {
     writableTables: Number(privileges.writable_tables)
   }));
 } catch (error) {
-  console.error("Read-only database role provisioning failed:", error instanceof Error ? error.message : "unknown error");
+  console.error("Read-only database role provisioning failed.", { errorName: error instanceof Error ? error.name : "UnknownError" });
   process.exitCode = 1;
 } finally {
   await prisma.$disconnect();

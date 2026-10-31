@@ -96,6 +96,11 @@ export async function createVerificationAttempt(accountId: string) {
 
 export async function markVerificationSuccessful(attemptId: string, providerReference?: string) {
   const account = await prisma.$transaction(async (tx) => {
+    // Serialize provider retries for this attempt before reading its status.
+    const lockedAttempts = await tx.$queryRawUnsafe<Array<{ id: string }>>(
+      'SELECT "id" FROM "VerificationAttempt" WHERE "id" = $1 FOR UPDATE', attemptId,
+    );
+    if (lockedAttempts.length !== 1) throw new Error("Verification attempt not found.");
     const attempt = await tx.verificationAttempt.findUnique({
       where: { id: attemptId },
       include: { account: true },
@@ -106,6 +111,9 @@ export async function markVerificationSuccessful(attemptId: string, providerRefe
     // account, including for legacy attempts created before market guards.
     if (!isUkAccount(attempt.account)) {
       throw new Error("Person verification is only available to GB + GBP accounts.");
+    }
+    if (attempt.account.deletionRequestedAt) {
+      throw new Error("Account is pending deletion.");
     }
     if (attempt.account.verificationStatus === "suspended") {
       throw new Error("Account is suspended.");
@@ -131,6 +139,7 @@ export async function markVerificationSuccessful(attemptId: string, providerRefe
     const accountUpdate = await tx.account.updateMany({
       where: {
         id: attempt.accountId,
+        deletionRequestedAt: null,
         verificationStatus: { in: ["payment_pending", "pending", "failed", "manual_review"] },
       },
       data: {
@@ -162,6 +171,10 @@ export async function markVerificationSuccessful(attemptId: string, providerRefe
 
 export async function markVerificationFailed(attemptId: string, failureReasons?: unknown) {
   return prisma.$transaction(async (tx) => {
+    const lockedAttempts = await tx.$queryRawUnsafe<Array<{ id: string }>>(
+      'SELECT "id" FROM "VerificationAttempt" WHERE "id" = $1 FOR UPDATE', attemptId,
+    );
+    if (lockedAttempts.length !== 1) throw new Error("Verification attempt not found.");
     const attempt = await tx.verificationAttempt.findUnique({
       where: { id: attemptId },
       include: { account: true },
@@ -169,6 +182,9 @@ export async function markVerificationFailed(attemptId: string, failureReasons?:
     if (!attempt) throw new Error("Verification attempt not found.");
     if (!isUkAccount(attempt.account)) {
       throw new Error("Person verification is only available to GB + GBP accounts.");
+    }
+    if (attempt.account.deletionRequestedAt) {
+      throw new Error("Account is pending deletion.");
     }
     if (attempt.account.verificationStatus === "suspended") {
       throw new Error("Account is suspended.");
@@ -199,6 +215,7 @@ export async function markVerificationFailed(attemptId: string, failureReasons?:
     const accountChanged = await tx.account.updateMany({
       where: {
         id: attempt.accountId,
+        deletionRequestedAt: null,
         verificationStatus: { in: ["payment_pending", "pending", "failed", "manual_review"] },
       },
       data: { verificationStatus: accountStatus },

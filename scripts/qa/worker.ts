@@ -13,6 +13,9 @@ import { runQaWorker } from "../../lib/qaRunner.ts";
 
 const POLL_MS = Number(process.env.QA_WORKER_POLL_MS || 5000);
 const HEARTBEAT_MS = Number(process.env.QA_WORKER_HEARTBEAT_MS || 15000);
+// Use a conservative grace period. Stale work is failed, never re-queued,
+// because the old process may resume and still have side effects in flight.
+const STALE_AFTER_MS = Number(process.env.QA_WORKER_STALE_AFTER_MS || Math.max(HEARTBEAT_MS * 4, 5 * 60 * 1000));
 const workerId = `${hostname()}-${process.pid}-${randomUUID()}`;
 let stopping = false;
 let activeJob = false;
@@ -32,6 +35,66 @@ function validateWorkerConfig() {
       !process.env.DATABASE_URL || !process.env.QA_BASE_URL?.startsWith("https://")) {
     throw new Error("QA worker requires an isolated staging database, HTTPS target and QA_ACCOUNT_COUNT=10000.");
   }
+  if (!Number.isSafeInteger(HEARTBEAT_MS) || HEARTBEAT_MS < 250 ||
+      !Number.isSafeInteger(STALE_AFTER_MS) || STALE_AFTER_MS < HEARTBEAT_MS * 2) {
+    throw new Error("QA worker heartbeat/stale timeout configuration is invalid.");
+  }
+}
+
+async function recoverStaleRuns(): Promise<number> {
+  // Serialize recovery with campaign advancement. A stale row is terminally
+  // failed; it is deliberately NOT returned to the queue. An old process may
+  // still wake up, so re-queueing could risk duplicate provisioning/workflows.
+  return prisma.$transaction(async tx => {
+    await tx.$queryRawUnsafe(
+      "WITH queue_lock AS MATERIALIZED (SELECT pg_advisory_xact_lock(hashtext($1))) SELECT 1::int AS locked FROM queue_lock",
+      "post2drive-qa-run-queue",
+    );
+    const staleRuns = await tx.$queryRawUnsafe<Array<{ id: string; summary: unknown }>>(
+      `UPDATE qa_test_runs
+       SET status='failed',
+           finished_at=COALESCE(finished_at,now()),
+           duration_ms=COALESCE(duration_ms,GREATEST(0,(EXTRACT(EPOCH FROM (now()-started_at))*1000)::bigint)),
+           summary=COALESCE(summary,'{}'::jsonb) ||
+             jsonb_build_object(
+               'status','failed',
+               'phase','worker-stale',
+               'workerStaleAt',now(),
+               'workerFailureReason','stale-heartbeat',
+               'workerRecoveryOwner',$1,
+               'workerFailure','Worker heartbeat expired. The run was marked failed and was not re-queued to prevent duplicate execution.'
+             )
+       WHERE status='running'
+         AND COALESCE(NULLIF(summary->>'workerHeartbeatAt','')::timestamptz,started_at)
+             < now() - ($2::double precision * interval '1 millisecond')
+       RETURNING id,summary`,
+      workerId,
+      STALE_AFTER_MS,
+    );
+    for (const run of staleRuns) {
+      const summary = run.summary && typeof run.summary === "object"
+        ? run.summary as Record<string, unknown>
+        : {};
+      const campaignId = typeof summary.campaignId === "string" ? summary.campaignId : "";
+      const stepId = typeof summary.campaignStepId === "string" ? summary.campaignStepId : "";
+      if (!campaignId) continue;
+      if (stepId) {
+        await tx.$executeRawUnsafe(
+          "UPDATE qa_test_campaign_steps SET status='failed',finished_at=COALESCE(finished_at,now()) WHERE id=$1 AND campaign_id=$2 AND run_id=$3 AND status IN ('queued','running')",
+          stepId, campaignId, run.id,
+        );
+      }
+      await tx.$executeRawUnsafe(
+        "UPDATE qa_test_campaign_steps SET status='skipped',finished_at=now() WHERE campaign_id=$1 AND status='pending'",
+        campaignId,
+      );
+      await tx.$executeRawUnsafe(
+        "UPDATE qa_test_campaigns SET status='failed',updated_at=now() WHERE id=$1 AND status IN ('queued','running')",
+        campaignId,
+      );
+    }
+    return staleRuns.length;
+  }, { maxWait: 15000, timeout: 30000 });
 }
 
 async function claimNextRun() {
@@ -222,6 +285,10 @@ async function main() {
   console.log("Post2Drive staging QA worker started", JSON.stringify({ workerId, pollMs: POLL_MS, heartbeatMs: HEARTBEAT_MS }));
   while (!stopping) {
     try {
+      const recoveredCount = await recoverStaleRuns();
+      if (recoveredCount > 0) {
+        console.warn("Finalised stale QA worker runs without re-queueing.", { count: recoveredCount });
+      }
       const job = await claimNextRun();
       if (job) {
         await executeRun(job);

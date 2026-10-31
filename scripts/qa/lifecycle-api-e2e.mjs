@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { createServer } from "node:net";
 import { setTimeout as delay } from "node:timers/promises";
-import { createHmac } from "node:crypto";
+import { createHmac, randomUUID } from "node:crypto";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
@@ -29,23 +29,105 @@ const jobIds = [];
 let server;
 let serverOutput = "";
 let base = "";
-let poster, driver, outsider, lifecycleJob, bidJob, bid, incident, evidence, posterVehicle, incidentJob, cancelJob, acceptJob, unassignJob, rejectJob;
+let poster, driver, outsider, indiaPoster, suspendedGbPoster, suspendedGbUser, suspendedGbJob, pendingCompanyAccount, lifecycleJob, bidJob, bid, incident, evidence, posterVehicle, incidentJob, cancelJob, acceptJob, unassignJob, rejectJob, indiaJob, notification;
 
 async function snapshot() {
-  const [jobRows, jobCount, bidCount, activityCount, evidenceCount, vehicleCount, notificationCount] = await Promise.all([
+  // Compare complete isolated fixture rows rather than counts alone. A denied
+  // attacker edit can mutate an existing row without changing any row count.
+  const [
+    accountRows,
+    jobRows,
+    jobCount,
+    bidRows,
+    activityRows,
+    evidenceRows,
+    vehicleRows,
+    notificationRows,
+    ratingRows,
+    subscriptionPaymentRows,
+    verificationAttemptRows,
+    adminAuditRows,
+    testerAccessCodeRows,
+    qaRunRows,
+    qaAccountRows,
+    qaCampaignRows,
+    qaCampaignStepRows,
+    referralRows,
+  ] = await Promise.all([
+    prisma.account.findMany({
+      where: { id: { in: accountIds } },
+      orderBy: { id: "asc" },
+    }),
     prisma.job.findMany({
       where: { id: { in: jobIds } },
-      select: { id: true, posterId: true, acceptedById: true, status: true, priceMode: true, deliveryMarkedById: true, paidMarkedAt: true, receivedConfirmedAt: true },
+      orderBy: { id: "asc" },
     }),
     prisma.job.count({ where: { posterId: { in: accountIds } } }),
-    prisma.bid.count({ where: { jobId: { in: jobIds } } }),
-    prisma.jobActivity.count({ where: { jobId: { in: jobIds } } }),
-    prisma.incidentEvidence.count({ where: { jobId: { in: jobIds } } }),
-    prisma.vehicle.count({ where: { accountId: { in: accountIds } } }),
-    prisma.notification.count({ where: { accountId: { in: accountIds } } }),
+    prisma.bid.findMany({
+      where: { jobId: { in: jobIds } },
+      orderBy: { id: "asc" },
+    }),
+    prisma.jobActivity.findMany({
+      where: { jobId: { in: jobIds } },
+      orderBy: { id: "asc" },
+    }),
+    prisma.incidentEvidence.findMany({
+      where: { jobId: { in: jobIds } },
+      orderBy: { id: "asc" },
+    }),
+    prisma.vehicle.findMany({
+      where: { accountId: { in: accountIds } },
+      orderBy: { id: "asc" },
+    }),
+    prisma.notification.findMany({
+      where: { accountId: { in: accountIds } },
+      orderBy: { id: "asc" },
+    }),
+    prisma.rating.findMany({
+      where: { jobId: { in: jobIds } },
+      orderBy: { id: "asc" },
+    }),
+    prisma.subscriptionPayment.findMany({
+      where: { accountId: { in: accountIds } },
+      orderBy: { id: "asc" },
+    }),
+    prisma.verificationAttempt.findMany({
+      where: { accountId: { in: accountIds } },
+      orderBy: { id: "asc" },
+    }),
+    prisma.adminAuditEvent.findMany({ orderBy: { id: "asc" } }),
+    prisma.testerAccessCode.findMany({ orderBy: { id: "asc" } }),
+    prisma.$queryRawUnsafe('SELECT * FROM qa_test_runs ORDER BY id'),
+    prisma.$queryRawUnsafe('SELECT * FROM qa_test_accounts ORDER BY run_id,account_id'),
+    prisma.$queryRawUnsafe('SELECT * FROM qa_test_campaigns ORDER BY id'),
+    prisma.$queryRawUnsafe('SELECT * FROM qa_test_campaign_steps ORDER BY campaign_id,ordinal,id'),
+    prisma.referral.findMany({
+      where: { OR: [{ referrerId: { in: accountIds } }, { referredAccountId: { in: accountIds } }] },
+      orderBy: { id: "asc" },
+    }),
   ]);
-  return { jobRows, jobCount, bidCount, activityCount, evidenceCount, vehicleCount, notificationCount };
+  return {
+    accountRows,
+    jobRows,
+    jobCount,
+    bidRows,
+    activityRows,
+    evidenceRows,
+    vehicleRows,
+    notificationRows,
+    ratingRows,
+    subscriptionPaymentRows,
+    verificationAttemptRows,
+    adminAuditRows,
+    testerAccessCodeRows,
+    qaRunRows,
+    qaAccountRows,
+    qaCampaignRows,
+    qaCampaignStepRows,
+    referralRows,
+  };
 }
+
 const getSetCookies = (response) => {
   if (typeof response.headers.getSetCookie === "function") return response.headers.getSetCookie();
   const single = response.headers.get("set-cookie");
@@ -73,13 +155,16 @@ async function signIn(email, password = "ci-e2e-password-12345") {
     redirect: "manual",
     signal: AbortSignal.timeout(8000),
   });
-  const sessionCookies = getSetCookies(callback).filter((value) =>
+  const allCookies = getSetCookies(callback);
+  const sessionCookies = allCookies.filter((value) =>
     /^(?:__Secure-)?next-auth\.session-token=/.test(value)
   );
   if (!sessionCookies.length) {
     throw new Error("Real NextAuth credentials sign-in did not issue a session cookie (HTTP " +
       callback.status + "): " + (await callback.text()).slice(0, 500));
   }
+  assert.ok(sessionCookies.every(value => /HttpOnly/i.test(value)), "session cookie must be HttpOnly");
+  assert.ok(sessionCookies.every(value => /SameSite=Lax/i.test(value)), "session cookie must use SameSite=Lax");
   return sessionCookies.map((value) => value.split(";")[0]).join("; ");
 }
 async function api(path, method, cookie, body) {
@@ -127,7 +212,25 @@ try {
     subscriptionStatus: "active", subscriptionPlanKey: "individual",
     subscriptionStartedAt: new Date(), subscriptionEndsAt: new Date("2035-12-31T00:00:00.000Z"),
   }});
-  accountIds.push(poster.id, driver.id, outsider.id);
+  // India follows phone-only access: no person/company verification or paid plan.
+  indiaPoster = await prisma.account.create({ data: {
+    type: "poster", companyName: "CI India poster", displayId: "CII-" + suffix,
+    country: "IN", currency: "INR", phoneVerifiedAt: new Date(),
+    verificationStatus: "not_started", companyVerificationStatus: "not_started",
+  }});
+  suspendedGbPoster = await prisma.account.create({ data: {
+    type: "poster", companyName: "CI suspended GB poster", displayId: "CIS-" + suffix,
+    country: "GB", currency: "GBP", verificationStatus: "suspended",
+    isTester: true, testerApprovalStatus: "approved",
+    subscriptionStatus: "active", subscriptionPlanKey: "individual",
+    subscriptionStartedAt: new Date(), subscriptionEndsAt: new Date("2035-12-31T00:00:00.000Z"),
+  } });
+  pendingCompanyAccount = await prisma.account.create({ data: {
+    type: "poster", companyName: "CI pending company review", displayId: "CIPC-" + suffix,
+    country: "GB", currency: "GBP", verificationStatus: "verified",
+    companyVerificationStatus: "pending", companyVerificationSubmittedAt: new Date(),
+  } });
+  accountIds.push(poster.id, driver.id, outsider.id, indiaPoster.id, suspendedGbPoster.id, pendingCompanyAccount.id);
   const passwordHash = await bcrypt.hash("ci-e2e-password-12345", 8);
   const posterUser = await prisma.user.create({ data: {
     accountId: poster.id, name: "CI Poster", email: "ci-poster-" + suffix + "@example.invalid",
@@ -141,6 +244,24 @@ try {
     accountId: outsider.id, name: "CI Outsider", email: "ci-outsider-" + suffix + "@example.invalid",
     phone: "outsider-" + suffix, passwordHash, emailVerifiedAt: new Date(),
   }});
+  const indiaUser = await prisma.user.create({ data: {
+    accountId: indiaPoster.id, name: "CI India Poster", email: "ci-india-" + suffix + "@example.invalid",
+    phone: "india-" + suffix, passwordHash, emailVerifiedAt: new Date(),
+  }});
+  suspendedGbUser = await prisma.user.create({ data: {
+    accountId: suspendedGbPoster.id, name: "CI Suspended GB Tester",
+    email: "ci-suspended-gb-" + suffix + "@example.invalid",
+    phone: "suspended-gb-" + suffix, passwordHash, emailVerifiedAt: new Date(),
+  }});
+
+  suspendedGbJob = await prisma.job.create({ data: {
+    posterId: suspendedGbPoster.id, status: "open", priceMode: "fixed",
+    pickup: "CI suspended poster pickup", dropoff: "CI suspended poster dropoff",
+    jobDate: new Date(Date.now() + 7 * 86_400_000), pickupTime: "12:00", dropoffTime: "13:00",
+    pickupTimeZone: "Europe/London", dropoffTimeZone: "Europe/London",
+    vehicleType: "Small van (SWB)", price: 100, currency: "GBP", crossBorder: false,
+  }});
+  jobIds.push(suspendedGbJob.id);
 
   lifecycleJob = await prisma.job.create({ data: {
     posterId: poster.id, acceptedById: driver.id, status: "accepted", priceMode: "fixed",
@@ -155,6 +276,10 @@ try {
     jobDate: new Date(Date.now() + 172_800_000), pickupTime: "10:00", dropoffTime: "14:00",
     pickupTimeZone: "Europe/London", dropoffTimeZone: "Europe/London",
     vehicleType: "Small van (SWB)", price: 100, currency: "GBP", crossBorder: false,
+  }});
+  notification = await prisma.notification.create({ data: {
+    accountId: driver.id, type: "job_update", title: "CI notification",
+    body: "Private notification fixture", jobId: lifecycleJob.id, metadata: { ci: true },
   }});
   jobIds.push(lifecycleJob.id, bidJob.id);
   const baseFixtureJob = {
@@ -216,7 +341,15 @@ try {
   const port = await getAvailablePort();
   base = "http://127.0.0.1:" + port;
   server = spawn(process.execPath, ["node_modules/next/dist/bin/next", "start", "--port", String(port)], {
-    env: { ...process.env, NEXTAUTH_URL: base, NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET || "ci-only-secret", NODE_ENV: "production" },
+    env: {
+      ...process.env,
+      NEXTAUTH_URL: base,
+      NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET || "ci-only-secret",
+      OPS_DASHBOARD_BRIDGE_SECRET: "ci-only-admin-bridge-secret-at-least-32-bytes",
+      SUBSCRIPTION_WEBHOOK_SECRET: "ci-only-subscription-webhook-secret",
+      VERIFICATION_WEBHOOK_SECRET: "ci-only-verification-webhook-secret",
+      NODE_ENV: "production",
+    },
     stdio: ["ignore", "pipe", "pipe"],
   });
   server.stdout.on("data", (b) => { serverOutput += b.toString(); });
@@ -239,6 +372,8 @@ try {
   const secondOutsiderCookie = await signIn(outsiderUser.email);
   const posterCookie = await signIn(posterUser.email);
   const driverCookie = await signIn(driverUser.email);
+  const indiaCookie = await signIn(indiaUser.email);
+  const suspendedGbCookie = await signIn(suspendedGbUser.email);
 
   const oldSessionA = await api("/api/auth/session", "GET", firstOutsiderCookie);
   const oldSessionB = await api("/api/auth/session", "GET", secondOutsiderCookie);
@@ -301,6 +436,395 @@ try {
   assert.equal((await (await api("/api/auth/session", "GET", outsiderCookie)).json())?.user?.email, outsiderUser.email,
     "new password should create a valid session after reset");
 
+  const accountRead = await api("/api/account", "GET", outsiderCookie);
+  assert.equal(accountRead.status, 200);
+  const accountReadBody = await accountRead.json();
+  assert.equal(accountReadBody.account.id, outsider.id);
+  assert.deepEqual(accountReadBody.account.users.map(user => user.id), [outsiderUser.id]);
+  for (const field of ["subscriptionStatus", "subscriptionPlanKey", "isTester", "verificationStatus", "deletionRequestedAt"]) {
+    assert.equal(Object.hasOwn(accountReadBody.account, field), false, "account API must not expose internal field " + field);
+  }
+  assert.equal(Object.hasOwn(accountReadBody.account.users[0], "passwordHash"), false);
+  const accountMarketAttack = await api("/api/account", "PATCH", outsiderCookie, {
+    accountId: poster.id, country: "IN", currency: "INR",
+  });
+  assert.equal(accountMarketAttack.status, 409, "account settings must reject immutable market changes");
+  assert.deepEqual(await prisma.account.findUnique({ where: { id: outsider.id }, select: { country: true, currency: true } }),
+    { country: "GB", currency: "GBP" });
+  assert.deepEqual(await prisma.account.findUnique({ where: { id: poster.id }, select: { country: true, currency: true } }),
+    { country: "GB", currency: "GBP" }, "client accountId must not redirect settings mutation");
+
+  // The former in-app performance endpoint is a deliberately public
+  // tombstone: it returns no operational data and points clients to admin access.
+  // It is not a protected metrics endpoint, so both anonymous and normal
+  // authenticated clients must receive the same safe 410 response.
+  const performanceTombstoneBefore = await snapshot();
+  for (const [label, cookie] of [["anonymous", null], ["authenticated-non-admin", outsiderCookie]]) {
+    const response = await api("/api/admin/performance", "GET", cookie);
+    assert.equal(response.status, 410, label + " caller must receive the retired endpoint status");
+    assert.deepEqual(await response.json(), {
+      error: "This endpoint has been retired.",
+      replacement: "/admin-access",
+    }, label + " caller must receive only the safe tombstone response");
+    assert.deepEqual(await snapshot(), performanceTombstoneBefore,
+      label + " tombstone request must not read or mutate protected operational state");
+  }
+
+  for (const path of [
+    "/api/admin/company-verification", "/api/admin/incidents/resolve",
+    "/api/admin/research", "/api/admin/testers", "/api/admin/qa-campaigns",
+  ]) {
+    assert.equal((await api(path, "GET", outsiderCookie)).status, 403,
+      path + " must deny a normal authenticated user");
+  }
+
+  // Prove the same admin boundary protects mutating methods before they can
+  // validate attacker-supplied data, touch state, or create audit records.
+  const pendingCompanyBefore = await prisma.account.findUnique({
+    where: { id: pendingCompanyAccount.id },
+    select: { companyVerificationStatus: true, companyVerifiedAt: true },
+  });
+  const testerCodesBefore = await prisma.testerAccessCode.count();
+  const adminMutationsBefore = await snapshot();
+  const forbiddenAdminMutations = [
+    ["/api/admin/company-verification", "POST", {
+      accountId: pendingCompanyAccount.id, decision: "verified", notes: "unauthorised CI probe",
+    }],
+    ["/api/admin/incidents/resolve", "POST", {
+      jobId: lifecycleJob.id, incidentId: incident.id,
+      outcome: "no_further_action", notes: "unauthorised CI probe",
+    }],
+    ["/api/admin/testers", "POST", { action: "generate-pilot-codes", count: 1 }],
+    ["/api/admin/qa-campaigns", "POST", {}],
+    ["/api/admin/qa-campaigns/campaign-" + randomUUID(), "DELETE"],
+    ["/api/admin/qa-campaigns/campaign-" + randomUUID() + "/start", "POST", {
+      target: "staging", confirm: "RUN_QA_CAMPAIGN_ON_STAGING",
+    }],
+  ];
+  for (const [path, method, body] of forbiddenAdminMutations) {
+    const response = await api(path, method, outsiderCookie, body);
+    assert.equal(response.status, 403,
+      method + " " + path + " must deny a normal authenticated user before validation or resource access");
+  }
+  assert.deepEqual(await snapshot(), adminMutationsBefore,
+    "denied admin mutation probes must not alter jobs, activity, bids, evidence, vehicles, ratings or notifications");
+  assert.deepEqual(await prisma.account.findUnique({
+    where: { id: pendingCompanyAccount.id },
+    select: { companyVerificationStatus: true, companyVerifiedAt: true },
+  }), pendingCompanyBefore, "denied company review must not change verification state");
+  assert.equal(await prisma.testerAccessCode.count(), testerCodesBefore,
+    "denied tester code generation must not create access codes");
+
+  const bridgeSecret = "ci-only-admin-bridge-secret-at-least-32-bytes";
+  const bridgeBody = JSON.stringify({ action: "unsupported-ci-contract-action", actor: "qa-e2e" });
+  const bridgeNonce = randomUUID().replaceAll("-", "");
+  const bridgeTimestamp = String(Date.now());
+  const bridgeSignature = createHmac("sha256", bridgeSecret)
+    .update(bridgeTimestamp + "." + bridgeNonce + "." + bridgeBody).digest("hex");
+  const bridgeHeaders = {
+    "content-type": "application/json", "x-p2d-admin-timestamp": bridgeTimestamp,
+    "x-p2d-admin-nonce": bridgeNonce, "x-p2d-admin-signature": bridgeSignature,
+  };
+  const invalidBridge = await fetch(base + "/api/internal/admin-bridge", {
+    method: "POST", headers: { ...bridgeHeaders, "x-p2d-admin-signature": "00".repeat(32) },
+    body: bridgeBody, cache: "no-store",
+  });
+  assert.equal(invalidBridge.status, 401, "bridge must reject an invalid signature");
+  const staleBridge = await fetch(base + "/api/internal/admin-bridge", {
+    method: "POST", headers: { ...bridgeHeaders, "x-p2d-admin-timestamp": String(Date.now() - 5 * 60 * 1000) },
+    body: bridgeBody, cache: "no-store",
+  });
+  assert.equal(staleBridge.status, 401, "bridge must reject expired timestamps");
+  const validBridge = await fetch(base + "/api/internal/admin-bridge", {
+    method: "POST", headers: bridgeHeaders, body: bridgeBody, cache: "no-store",
+  });
+  assert.equal(validBridge.status, 400, "valid signed bridge request must reach action validation");
+  const replayBridge = await fetch(base + "/api/internal/admin-bridge", {
+    method: "POST", headers: bridgeHeaders, body: bridgeBody, cache: "no-store",
+  });
+  assert.equal(replayBridge.status, 409, "bridge must reject a replayed nonce");
+
+  for (const [path, header] of [
+    ["/api/subscription/webhook", "x-post2drive-webhook-secret"],
+    ["/api/verification/start/webhook", "x-verification-webhook-secret"],
+  ]) {
+    const noCredential = await fetch(base + path, { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
+    assert.equal(noCredential.status, 401, path + " must reject missing credentials");
+    const wrongCredential = await fetch(base + path, {
+      method: "POST", headers: { "content-type": "application/json", [header]: "wrong-secret" }, body: "{}",
+    });
+    assert.equal(wrongCredential.status, 401, path + " must reject incorrect credentials");
+  }
+  const corsProbe = await fetch(base + "/api/account", {
+    method: "GET", headers: { cookie: outsiderCookie, origin: "https://attacker.invalid" }, cache: "no-store",
+  });
+  assert.equal(corsProbe.headers.get("access-control-allow-origin"), null,
+    "authenticated APIs must not grant arbitrary cross-origin browser access");
+
+  // Verify private API responses use the actual runtime cache policy.
+  const privateApiChecks = [
+    ["/api/account", posterCookie],
+    ["/api/account/access", posterCookie],
+    ["/api/jobs", posterCookie],
+    ["/api/jobs/" + lifecycleJob.id, posterCookie],
+    ["/api/jobs/" + lifecycleJob.id + "/activity", posterCookie],
+    ["/api/jobs/" + lifecycleJob.id + "/incidents", posterCookie],
+    ["/api/vehicles", posterCookie],
+    ["/api/profile/" + poster.displayId, posterCookie],
+    ["/api/notifications", posterCookie],
+    ["/api/payments", posterCookie],
+  ];
+  for (const [path, cookie] of privateApiChecks) {
+    const response = await api(path, "GET", cookie);
+    assert.equal(response.status, 200, path + " private-cache probe must be authenticated and successful");
+    assert.match(response.headers.get("cache-control") || "", /no-store/i,
+      path + " must not be cached by a browser or shared intermediary");
+    assert.match(response.headers.get("pragma") || "", /no-cache/i,
+      path + " must include the configured legacy no-cache directive");
+    assert.equal(response.headers.get("x-content-type-options"), "nosniff",
+      path + " must disable MIME sniffing");
+    assert.equal(response.headers.get("x-frame-options"), "DENY",
+      path + " must not be embeddable in a frame");
+    assert.equal(response.headers.get("referrer-policy"), "strict-origin-when-cross-origin",
+      path + " must use the reviewed referrer policy");
+    assert.match(response.headers.get("content-security-policy-report-only") || "", /report-uri \/api\/security\/csp-report/i,
+      path + " must deliver the report-only CSP without prematurely enforcing it");
+  }
+
+  // Actual provider HTTP lifecycle and replay checks against isolated CI rows.
+  const pendingSubscription = await prisma.subscriptionPayment.create({ data: {
+    accountId: poster.id, planKey: "individual", amountMinorUnits: 1000,
+    currency: "GBP", status: "pending",
+  } });
+  const subscriptionWebhookBody = { paymentId: pendingSubscription.id, provider: "ci-provider",
+    providerPaymentId: "ci-payment-" + suffix, providerCheckoutId: "ci-checkout-" + suffix };
+  const subscriptionWebhookRequest = () => fetch(base + "/api/subscription/webhook", {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-post2drive-webhook-secret": "ci-only-subscription-webhook-secret" },
+    body: JSON.stringify(subscriptionWebhookBody), cache: "no-store",
+  });
+  const concurrentPaidWebhooks = await Promise.all([subscriptionWebhookRequest(), subscriptionWebhookRequest()]);
+  assert.ok(concurrentPaidWebhooks.every(response => response.status === 200),
+    "concurrent duplicate subscription callbacks must both be safely acknowledged");
+  const concurrentPaidBodies = await Promise.all(concurrentPaidWebhooks.map(response => response.json()));
+  assert.ok(concurrentPaidBodies.every(body => body.status === "paid"),
+    "both concurrent subscription callbacks must observe the single paid result");
+  const subscriptionAfterFirst = await prisma.subscriptionPayment.findUnique({ where: { id: pendingSubscription.id } });
+  const accountAfterFirstPayment = await prisma.account.findUnique({
+    where: { id: poster.id }, select: { subscriptionEndsAt: true, subscriptionStatus: true },
+  });
+  const paidWebhookReplay = await subscriptionWebhookRequest();
+  assert.equal(paidWebhookReplay.status, 200, "later subscription webhook retry should be idempotently acknowledged");
+  const subscriptionAfterReplay = await prisma.subscriptionPayment.findUnique({ where: { id: pendingSubscription.id } });
+  const accountAfterReplay = await prisma.account.findUnique({
+    where: { id: poster.id }, select: { subscriptionEndsAt: true, subscriptionStatus: true },
+  });
+  assert.equal(subscriptionAfterReplay.paidAt?.toISOString(), subscriptionAfterFirst.paidAt?.toISOString());
+  assert.equal(subscriptionAfterReplay.accessEndsAt?.toISOString(), subscriptionAfterFirst.accessEndsAt?.toISOString());
+  assert.deepEqual(accountAfterReplay, accountAfterFirstPayment,
+    "concurrent and later subscription webhook retries must not extend the same payment more than once");
+
+  // Separate pending payments for one account must serialize their access
+  // extensions rather than calculate from the same stale subscription end.
+  const secondPendingSubscription = await prisma.subscriptionPayment.create({ data: {
+    accountId: poster.id, planKey: "individual", amountMinorUnits: 1000,
+    currency: "GBP", status: "pending",
+  } });
+  const secondPendingWebhookBody = {
+    paymentId: secondPendingSubscription.id, provider: "ci-provider",
+    providerPaymentId: "ci-payment-two-" + suffix, providerCheckoutId: "ci-checkout-two-" + suffix,
+  };
+  const thirdPendingSubscription = await prisma.subscriptionPayment.create({ data: {
+    accountId: poster.id, planKey: "individual", amountMinorUnits: 1000,
+    currency: "GBP", status: "pending",
+  } });
+  const thirdPendingWebhookBody = {
+    paymentId: thirdPendingSubscription.id, provider: "ci-provider",
+    providerPaymentId: "ci-payment-three-" + suffix, providerCheckoutId: "ci-checkout-three-" + suffix,
+  };
+  const differentPaymentResponses = await Promise.all([
+    fetch(base + "/api/subscription/webhook", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-post2drive-webhook-secret": "ci-only-subscription-webhook-secret" },
+      body: JSON.stringify(secondPendingWebhookBody), cache: "no-store",
+    }),
+    fetch(base + "/api/subscription/webhook", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-post2drive-webhook-secret": "ci-only-subscription-webhook-secret" },
+      body: JSON.stringify(thirdPendingWebhookBody), cache: "no-store",
+    }),
+  ]);
+  assert.ok(differentPaymentResponses.every(response => response.status === 200),
+    "different subscription payments for one account must both confirm successfully");
+  const [firstPaymentRow, secondPaymentRow] = await Promise.all([
+    prisma.subscriptionPayment.findUnique({ where: { id: secondPendingSubscription.id } }),
+    prisma.subscriptionPayment.findUnique({ where: { id: thirdPendingSubscription.id } }),
+  ]);
+  const orderedPaymentRows = [firstPaymentRow, secondPaymentRow]
+    .sort((left, right) => left.accessStartedAt.getTime() - right.accessStartedAt.getTime());
+  assert.equal(orderedPaymentRows[1].accessStartedAt.toISOString(), orderedPaymentRows[0].accessEndsAt.toISOString(),
+    "separate concurrent payments must extend from the latest committed access end without a lost update");
+
+  const verificationAccount = await prisma.account.create({ data: {
+    type: "both", companyName: "CI verification webhook", displayId: "CIV-" + suffix,
+    country: "GB", currency: "GBP", verificationStatus: "pending",
+  } });
+  accountIds.push(verificationAccount.id);
+  const verificationAttempt = await prisma.verificationAttempt.create({ data: {
+    accountId: verificationAccount.id, attemptNumber: 1, status: "pending",
+    feeMinorUnits: 500, feeCurrency: "GBP", feeStatus: "paid", submittedAt: new Date(),
+  } });
+  const verificationReferral = await prisma.referral.create({ data: {
+    referrerId: poster.id, referredAccountId: verificationAccount.id, status: "pending",
+  } });
+  const verificationWebhookBody = {
+    attemptId: verificationAttempt.id, status: "successful", providerReference: "ci-verification-" + suffix,
+  };
+  const verificationWebhookRequest = (body = verificationWebhookBody) => fetch(base + "/api/verification/start/webhook", {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-verification-webhook-secret": "ci-only-verification-webhook-secret" },
+    body: JSON.stringify(body), cache: "no-store",
+  });
+  const concurrentVerificationWebhooks = await Promise.all([
+    verificationWebhookRequest(), verificationWebhookRequest(),
+  ]);
+  assert.ok(concurrentVerificationWebhooks.every(response => response.status === 200),
+    "concurrent duplicate verification callbacks must both be safely acknowledged");
+  const concurrentVerificationBodies = await Promise.all(concurrentVerificationWebhooks.map(response => response.json()));
+  assert.ok(concurrentVerificationBodies.every(body => body.verificationStatus === "verified"),
+    "concurrent verification callbacks must observe the same verified account state");
+  const lateVerificationFailure = await verificationWebhookRequest({
+    attemptId: verificationAttempt.id, status: "failed", failureReasons: ["delayed provider failure"],
+  });
+  assert.equal(lateVerificationFailure.status, 200,
+    "a delayed failure callback after success must be idempotently acknowledged");
+  assert.equal((await lateVerificationFailure.json()).status, "successful",
+    "a delayed failure callback must not downgrade a successful attempt");
+  const verificationAfter = await prisma.verificationAttempt.findUnique({ where: { id: verificationAttempt.id } });
+  const verifiedAccountAfter = await prisma.account.findUnique({
+    where: { id: verificationAccount.id }, select: { verificationStatus: true },
+  });
+  const referralAfterConcurrentCallbacks = await prisma.referral.findUnique({ where: { id: verificationReferral.id } });
+  assert.equal(verificationAfter.status, "successful");
+  assert.equal(verifiedAccountAfter.verificationStatus, "verified",
+    "verification webhook must update only the account bound to its eligible GB attempt");
+  assert.ok(referralAfterConcurrentCallbacks.verifiedAt,
+    "a successful GB verification must mark its eligible referral as verified");
+  const firstReferralVerifiedAt = referralAfterConcurrentCallbacks.verifiedAt.toISOString();
+  const repeatedVerifiedWebhook = await verificationWebhookRequest();
+  assert.equal(repeatedVerifiedWebhook.status, 200, "additional verification retries must remain idempotent");
+  const referralAfterRepeatedCallback = await prisma.referral.findUnique({ where: { id: verificationReferral.id } });
+  assert.equal(referralAfterRepeatedCallback.verifiedAt.toISOString(), firstReferralVerifiedAt,
+    "verification webhook retries must preserve the first referral verification timestamp");
+
+  // Product/Quality cross-market HTTP checks: country and currency come from
+  // the signed-in account, never from client-supplied request fields.
+  const indiaCreate = await api("/api/jobs", "POST", indiaCookie, {
+    pickup: "CI Hyderabad pickup", dropoff: "CI Vijayawada dropoff",
+    jobDate: new Date(Date.now() + 2 * 86_400_000).toISOString().slice(0, 10),
+    pickupTime: "10:00", dropoffTime: "14:00",
+    pickupTimeZone: "Asia/Kolkata", dropoffTimeZone: "Asia/Kolkata",
+    vehicleType: "Small van (SWB)", price: null, priceMode: "fixed", currency: "INR", crossBorder: false,
+  });
+  if (indiaCreate.status !== 201) {
+    throw new Error("India phone-verified account must post without person/company verification or a paid plan (got " +
+      indiaCreate.status + "): " + await indiaCreate.text());
+  }
+  const indiaJobBody = await indiaCreate.json();
+  indiaJob = indiaJobBody.job;
+  assert.ok(indiaJob?.id, "India job creation must return a persistent job");
+  jobIds.push(indiaJob.id);
+  const indiaAccountAfterPost = await prisma.account.findUnique({
+    where: { id: indiaPoster.id },
+    select: { country: true, currency: true, verificationStatus: true, companyVerificationStatus: true, phoneVerifiedAt: true, subscriptionStatus: true },
+  });
+  assert.equal(indiaAccountAfterPost.country, "IN");
+  assert.equal(indiaAccountAfterPost.currency, "INR");
+  assert.equal(indiaAccountAfterPost.verificationStatus, "not_started",
+    "India job posting must not require UK person verification");
+  assert.equal(indiaAccountAfterPost.companyVerificationStatus, "not_started",
+    "India job posting must not require company verification");
+  assert.ok(indiaAccountAfterPost.phoneVerifiedAt, "India posting fixture must prove phone verification");
+  assert.notEqual(indiaAccountAfterPost.subscriptionStatus, "active",
+    "India posting fixture must not rely on a paid subscription");
+
+  const indiaOwnJob = await api("/api/jobs/" + indiaJob.id, "GET", indiaCookie);
+  assert.equal(indiaOwnJob.status, 200, "India poster can read its own INR job");
+  const ukToIndiaBefore = await snapshot();
+  const ukToIndia = await api("/api/jobs/" + indiaJob.id, "GET", posterCookie);
+  assert.equal(ukToIndia.status, 403, "GB account must not read an INR job by ID");
+  assert.deepEqual(await snapshot(), ukToIndiaBefore, "GB cross-market read must not change state");
+  const indiaToUkBefore = await snapshot();
+  const indiaToUk = await api("/api/jobs/" + lifecycleJob.id, "GET", indiaCookie);
+  assert.equal(indiaToUk.status, 403, "IN account must not read a GBP job by ID");
+  assert.deepEqual(await snapshot(), indiaToUkBefore, "IN cross-market read must not change state");
+
+  const ukProfileLeak = await api("/api/profile/" + indiaPoster.displayId, "GET", posterCookie);
+  assert.equal(ukProfileLeak.status, 404, "foreign-market profile must be indistinguishable from missing");
+  const indiaOwnProfile = await api("/api/profile/" + indiaPoster.displayId, "GET", indiaCookie);
+  assert.equal(indiaOwnProfile.status, 200, "same-market India profile lookup should work");
+
+  // An active GB user must not discover a suspended GB poster or the poster's
+  // still-open job. Suspended users may retain their own history, but their
+  // public marketplace presence must be removed.
+  const gbBrowseWithSuspendedPoster = await api("/api/jobs", "GET", posterCookie);
+  assert.equal(gbBrowseWithSuspendedPoster.status, 200);
+  const gbBrowseBody = await gbBrowseWithSuspendedPoster.json();
+  assert.ok(!gbBrowseBody.jobs.some(item => item.id === suspendedGbJob.id),
+    "GB open marketplace must hide listings owned by suspended accounts");
+  const suspendedTargetProfile = await api("/api/profile/" + suspendedGbPoster.displayId, "GET", posterCookie);
+  assert.equal(suspendedTargetProfile.status, 404,
+    "a suspended account's profile must be indistinguishable from a missing marketplace profile");
+
+  const tamperedUkBrowse = await api("/api/jobs?country=IN&currency=INR", "GET", posterCookie);
+  assert.equal(tamperedUkBrowse.status, 200);
+  const tamperedUkBrowseBody = await tamperedUkBrowse.json();
+  assert.ok(tamperedUkBrowseBody.jobs.every(job => job.currency === "GBP"),
+    "client country/currency query tampering must not change the GB marketplace boundary");
+  assert.ok(!tamperedUkBrowseBody.jobs.some(job => job.id === indiaJob.id),
+    "GB marketplace listing must not expose an India job");
+
+  const jobsBeforeForgedMarket = await prisma.job.count({ where: { posterId: poster.id } });
+  const forgedMarketPost = await api("/api/jobs", "POST", posterCookie, {
+    pickup: "CI forged market pickup", dropoff: "CI forged market dropoff",
+    jobDate: new Date(Date.now() + 4 * 86_400_000).toISOString().slice(0, 10),
+    pickupTime: "10:00", dropoffTime: "14:00",
+    pickupTimeZone: "Europe/London", dropoffTimeZone: "Europe/London",
+    vehicleType: "Small van (SWB)", price: 100, priceMode: "fixed",
+    currency: "INR", country: "IN", crossBorder: false,
+  });
+  assert.equal(forgedMarketPost.status, 400,
+    "GB job creation must reject a client-supplied INR/India market");
+  assert.equal(await prisma.job.count({ where: { posterId: poster.id } }), jobsBeforeForgedMarket,
+    "rejected market tampering must not create a job");
+
+  const indiaPersonVerification = await api("/api/verification/start", "POST", indiaCookie, {});
+  assert.equal(indiaPersonVerification.status, 403,
+    "India must not enter the UK person-verification provider flow");
+  const indiaCompanyVerification = await api("/api/company-verification", "POST", indiaCookie, {
+    companyName: "CI India company", companyNumber: "", isSoleTrader: true,
+  });
+  assert.equal(indiaCompanyVerification.status, 403,
+    "India must not be forced into the UK company-verification workflow");
+  const indiaVerificationState = await prisma.account.findUnique({
+    where: { id: indiaPoster.id }, select: { verificationStatus: true, companyVerificationStatus: true },
+  });
+  assert.deepEqual(indiaVerificationState, { verificationStatus: "not_started", companyVerificationStatus: "not_started" },
+    "India verification denials must not mutate verification state");
+
+  const notificationReadBefore = await snapshot();
+  const outsiderNotifications = await (await api("/api/notifications", "GET", outsiderCookie)).json();
+  assert.ok(!outsiderNotifications.notifications.some(item => item.id === notification.id),
+    "notification collection must be scoped to the signed-in account");
+  const outsiderNotificationRead = await api("/api/notifications/" + notification.id + "/read", "POST", outsiderCookie, {});
+  assert.equal(outsiderNotificationRead.status, 404,
+    "one account must not mark another account's notification as read");
+  assert.deepEqual(await snapshot(), notificationReadBefore,
+    "foreign notification access must not change notification or protected lifecycle state");
+  const driverNotifications = await (await api("/api/notifications", "GET", driverCookie)).json();
+  assert.ok(driverNotifications.notifications.some(item => item.id === notification.id),
+    "notification owner must be able to read its notification");
+
   const posterJobRead = await api("/api/jobs/" + lifecycleJob.id, "GET", posterCookie);
   assert.equal(posterJobRead.status, 200, "poster may read their own job");
   const driverActivityRead = await api("/api/jobs/" + lifecycleJob.id + "/activity", "GET", driverCookie);
@@ -318,14 +842,35 @@ try {
   }
   assert.equal((await prisma.job.findUnique({ where: { id: bidJob.id } })).pickup, "Updated CI bid pickup",
     "authorized edit should persist the poster's updated pickup");
+  const beforeTamperedEdit = await prisma.job.findUnique({ where: { id: bidJob.id } });
+  const forgedMarketEdit = await api("/api/jobs/" + bidJob.id + "/edit", "PATCH", posterCookie, {
+    pickup: "Forged edit", dropoff: "CI bid dropoff",
+    jobDate: new Date(Date.now() + 2 * 86_400_000).toISOString().slice(0, 10),
+    pickupTime: "10:00", dropoffTime: "14:00",
+    pickupTimeZone: "Europe/London", dropoffTimeZone: "Europe/London",
+    vehicleType: "Small van (SWB)", price: 100, priceMode: "bid",
+    currency: "INR", country: "IN", crossBorder: false,
+  });
+  assert.equal(forgedMarketEdit.status, 400, "job edit must reject forged cross-market currency");
+  const afterTamperedEdit = await prisma.job.findUnique({ where: { id: bidJob.id } });
+  assert.equal(afterTamperedEdit.currency, beforeTamperedEdit.currency, "rejected edit must preserve the stored currency");
+  assert.equal(afterTamperedEdit.pickup, beforeTamperedEdit.pickup, "rejected edit must preserve the stored route");
 
-  const placedBidResponse = await api("/api/jobs/" + bidJob.id + "/bid", "POST", driverCookie, { amount: 95 });
-  if (![200, 201].includes(placedBidResponse.status)) {
-    throw new Error("eligible authenticated driver should place a bid (got " + placedBidResponse.status + "): " + await placedBidResponse.text());
-  }
-  const placedBidBody = await placedBidResponse.json();
+  const competingSameDriverBids = await Promise.all([
+    api("/api/jobs/" + bidJob.id + "/bid", "POST", driverCookie, { amount: 95 }),
+    api("/api/jobs/" + bidJob.id + "/bid", "POST", driverCookie, { amount: 96 }),
+  ]);
+  const createdBidResponses = competingSameDriverBids.filter(response => [200, 201].includes(response.status));
+  const duplicateBidResponses = competingSameDriverBids.filter(response => response.status === 409);
+  assert.equal(createdBidResponses.length, 1,
+    "two concurrent submissions from one driver must create exactly one active bid");
+  assert.equal(duplicateBidResponses.length, 1,
+    "the competing duplicate bid request must receive HTTP 409");
+  const placedBidBody = await createdBidResponses[0].json();
   assert.ok(placedBidBody.bid?.id, "successful bid response must return the created bid ID");
   bid = { id: placedBidBody.bid.id };
+  assert.equal(await prisma.bid.count({ where: { jobId: bidJob.id, bidderId: driver.id, status: "active" } }), 1,
+    "same-driver concurrent bid race must leave exactly one active bid in PostgreSQL");
   const posterBidsRead = await api("/api/jobs/" + bidJob.id + "/bids", "GET", posterCookie);
   assert.equal(posterBidsRead.status, 200, "poster may read bids for their own job");
 
@@ -383,6 +928,97 @@ try {
     const after = await snapshot();
     assert.deepEqual(after, before, method + " " + path + ": denied request changed lifecycle/ownership/evidence/vehicle/notification state");
   }
+
+  // A suspended user's existing session must not bypass job-market protection.
+  // UK tester status and an active subscription must not bypass suspension.
+  const suspendedGbAccessResponse = await api("/api/account/access", "GET", suspendedGbCookie);
+  assert.equal(suspendedGbAccessResponse.status, 200);
+  const suspendedGbAccess = await suspendedGbAccessResponse.json();
+  assert.equal(suspendedGbAccess.allowed, false,
+    "suspended UK tester with an active subscription must not retain account access");
+  assert.equal(suspendedGbAccess.reason, "account_suspended",
+    "UK tester suspension must be reported before tester or paid-plan exemptions");
+  const suspendedGbOwnJobRead = await api("/api/jobs/" + suspendedGbJob.id, "GET", suspendedGbCookie);
+  assert.equal(suspendedGbOwnJobRead.status, 403,
+    "a pre-existing UK tester session must not read protected job details while suspended");
+  const suspendedGbTargetProfile = await api("/api/profile/" + poster.displayId, "GET", suspendedGbCookie);
+  assert.equal(suspendedGbTargetProfile.status, 403,
+    "a suspended UK tester must not access another account's public profile");
+
+  const suspendedGbJobCountBefore = await prisma.job.count({ where: { posterId: suspendedGbPoster.id } });
+  const suspendedGbJobPost = await api("/api/jobs", "POST", suspendedGbCookie, {
+    pickup: "CI suspended UK pickup", dropoff: "CI suspended UK dropoff",
+    jobDate: new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10),
+    pickupTime: "10:00", dropoffTime: "14:00",
+    pickupTimeZone: "Europe/London", dropoffTimeZone: "Europe/London",
+    vehicleType: "Small van (SWB)", price: 100, priceMode: "fixed", currency: "GBP", crossBorder: false,
+  });
+  assert.equal(suspendedGbJobPost.status, 403,
+    "suspended UK tester must not post by bypassing verification checks");
+  assert.equal(await prisma.job.count({ where: { posterId: suspendedGbPoster.id } }), suspendedGbJobCountBefore,
+    "suspended UK tester denial must not create a marketplace job");
+  const suspendedGbVehicle = await api("/api/vehicles", "POST", suspendedGbCookie, {});
+  assert.equal(suspendedGbVehicle.status, 403,
+    "suspended UK tester must not register a vehicle");
+  const suspendedGbSubscription = await api("/api/subscription/create-payment", "POST", suspendedGbCookie, {});
+  assert.equal(suspendedGbSubscription.status, 403,
+    "suspended UK tester must not create subscription payments despite an active subscription");
+
+  await prisma.account.update({ where: { id: indiaPoster.id }, data: { verificationStatus: "suspended" } });
+  const suspendedIndiaJobRead = await api("/api/jobs/" + indiaJob.id, "GET", indiaCookie);
+  assert.equal(suspendedIndiaJobRead.status, 403,
+    "a pre-existing India session must be denied protected job actions immediately after suspension");
+  const suspendedIndiaRating = await api("/api/ratings", "POST", indiaCookie, {
+    jobId: indiaJob.id, stars: 5, comment: "must not persist",
+  });
+  assert.equal(suspendedIndiaRating.status, 403,
+    "suspended India account must not submit ratings through the job-market guard");
+
+  const suspendedJobCases = [
+    ["POST", "/api/jobs", {
+      pickup: "CI suspended account pickup", dropoff: "CI suspended account dropoff",
+      jobDate: new Date(Date.now() + 2 * 86_400_000).toISOString().slice(0, 10),
+      pickupTime: "10:00", dropoffTime: "14:00",
+      pickupTimeZone: "Asia/Kolkata", dropoffTimeZone: "Asia/Kolkata",
+      vehicleType: "Small van (SWB)", price: null, priceMode: "fixed", currency: "INR", crossBorder: false,
+    }],
+    ["POST", "/api/jobs/" + indiaJob.id + "/accept", {}],
+    ["GET", "/api/jobs/" + indiaJob.id + "/activity"],
+    ["POST", "/api/jobs/" + indiaJob.id + "/bid", { amount: 100 }],
+    ["GET", "/api/jobs/" + indiaJob.id + "/bids"],
+    ["POST", "/api/jobs/" + indiaJob.id + "/bids/ci-missing-bid/accept", {}],
+    ["POST", "/api/jobs/" + indiaJob.id + "/cancel", {}],
+    ["POST", "/api/jobs/" + indiaJob.id + "/confirm-delivered", {}],
+    ["POST", "/api/jobs/" + indiaJob.id + "/confirm-pickup", {}],
+    ["POST", "/api/jobs/" + indiaJob.id + "/driver-cancel", {}],
+    ["PATCH", "/api/jobs/" + indiaJob.id + "/edit", {}],
+    ["GET", "/api/jobs/" + indiaJob.id + "/incidents"],
+    ["POST", "/api/jobs/" + indiaJob.id + "/incidents", {}],
+    ["POST", "/api/jobs/" + indiaJob.id + "/incidents/terminate", {}],
+    ["POST", "/api/jobs/" + indiaJob.id + "/incidents/updates", {}],
+    ["POST", "/api/jobs/" + indiaJob.id + "/incidents/ci-missing-incident/evidence", {}],
+    ["GET", "/api/jobs/" + indiaJob.id + "/incidents/ci-missing-incident/evidence/ci-missing-evidence"],
+    ["POST", "/api/jobs/" + indiaJob.id + "/mark-delivered", {}],
+    ["POST", "/api/jobs/" + indiaJob.id + "/payment/confirm-received", {}],
+    ["POST", "/api/jobs/" + indiaJob.id + "/payment/mark-paid", {}],
+    ["POST", "/api/jobs/" + indiaJob.id + "/reject-delivered", {}],
+    ["POST", "/api/jobs/" + indiaJob.id + "/unassign", {}],
+  ];
+  const suspendedStateBefore = await snapshot();
+  for (const [method, path, body] of suspendedJobCases) {
+    const response = await api(path, method, indiaCookie, body);
+    assert.equal(response.status, 403,
+      "suspended account must be denied before protected job API action: " + method + " " + path +
+      " (got " + response.status + ")");
+  }
+  const suspendedVehicle = await api("/api/vehicles", "POST", indiaCookie, {});
+  assert.equal(suspendedVehicle.status, 403, "suspended account must not register a vehicle");
+  const suspendedSubscription = await api("/api/subscription/create-payment", "POST", indiaCookie, {});
+  assert.equal(suspendedSubscription.status, 403, "suspended/India account must not create subscription payments");
+  assert.deepEqual(await snapshot(), suspendedStateBefore,
+    "suspended account denials must leave protected jobs, bids, incidents, evidence, vehicles and ratings unchanged");
+
+  await prisma.account.update({ where: { id: indiaPoster.id }, data: { verificationStatus: "not_started" } });
 
   // An authenticated poster may accept the driver's valid bid; the unrelated
   // account above must not be able to accept that same bid.
@@ -493,10 +1129,74 @@ try {
   assert.ok(current.receivedConfirmedAt, "receipt confirmation should persist received timestamp");
   assert.equal(current.status, "completed", "payment confirmation must not change completed lifecycle state");
 
+  const validRating = await api("/api/ratings", "POST", driverCookie, {
+    jobId: lifecycleJob.id, stars: 5, comment: "CI authenticated rating",
+  });
+  assert.equal(validRating.status, 200, "matched driver may rate the completed job");
+  assert.equal(await prisma.rating.count({ where: { jobId: lifecycleJob.id, raterId: driver.id } }), 1,
+    "one rating must be persisted for the matched driver");
+  const duplicateRating = await api("/api/ratings", "POST", driverCookie, {
+    jobId: lifecycleJob.id, stars: 4, comment: "duplicate",
+  });
+  assert.equal(duplicateRating.status, 409, "a second rating by the same party must be rejected");
+  const ratingBeforeAttacks = await snapshot();
+  const outsiderRating = await api("/api/ratings", "POST", outsiderCookie, {
+    jobId: lifecycleJob.id, stars: 1, comment: "unrelated account",
+  });
+  assert.equal(outsiderRating.status, 403, "unrelated GB account must not rate a job");
+  const foreignMarketRating = await api("/api/ratings", "POST", indiaCookie, {
+    jobId: lifecycleJob.id, stars: 1, comment: "foreign market account",
+  });
+  assert.equal(foreignMarketRating.status, 403, "India account must not rate a UK job");
+  assert.deepEqual(await snapshot(), ratingBeforeAttacks,
+    "denied rating attempts must not write ratings or mutate protected state");
+
+  const indiaPayments = await (await api("/api/payments", "GET", indiaCookie)).json();
+  assert.ok(!indiaPayments.asPoster.some(job => job.id === lifecycleJob.id) &&
+    !indiaPayments.asDriver.some(job => job.id === lifecycleJob.id),
+    "India payment view must not expose the UK completed job");
+  const ukPayments = await (await api("/api/payments", "GET", posterCookie)).json();
+  assert.ok(ukPayments.asPoster.some(job => job.id === lifecycleJob.id),
+    "UK poster must see its own completed payment-tracking record");
+
+  // Prepare pending provider callbacks for an account that is about to be
+  // deleted. A late provider event must not reactivate or verify an anonymised account.
+  await prisma.account.update({ where: { id: outsider.id }, data: { verificationStatus: "pending" } });
+  const deletedAccountPendingPayment = await prisma.subscriptionPayment.create({ data: {
+    accountId: outsider.id, planKey: "individual", amountMinorUnits: 1000,
+    currency: "GBP", status: "pending",
+  } });
+  const deletedAccountPendingAttempt = await prisma.verificationAttempt.create({ data: {
+    accountId: outsider.id, attemptNumber: 1, status: "pending",
+    feeMinorUnits: 0, feeCurrency: "GBP", feeStatus: "paid", submittedAt: new Date(),
+  } });
+
   // Reuse the same pre-existing session after deletion is requested.
-  await prisma.account.update({ where: { id: outsider.id }, data: { deletionRequestedAt: new Date() } });
+  const deleteAccount = await api("/api/account", "DELETE", outsiderCookie, {
+    currentPassword: "ci-e2e-password-reset-12345", confirm: "DELETE",
+  });
+  assert.equal(deleteAccount.status, 200, "account owner can request deletion and anonymisation");
+  const deletedAccount = await prisma.account.findUnique({
+    where: { id: outsider.id },
+    select: { companyName: true, deletionRequestedAt: true, marketingConsent: true, subscriptionStatus: true, isTester: true },
+  });
+  const deletedUser = await prisma.user.findUnique({
+    where: { id: outsiderUser.id },
+    select: { name: true, email: true, phone: true, emailVerifiedAt: true },
+  });
+  assert.ok(deletedAccount?.deletionRequestedAt);
+  assert.equal(deletedAccount.companyName, "Deleted account");
+  assert.equal(deletedAccount.marketingConsent, false);
+  assert.equal(deletedAccount.subscriptionStatus, "inactive");
+  assert.equal(deletedAccount.isTester, false);
+  assert.equal(deletedUser.name, "Deleted user");
+  assert.match(deletedUser.email, /^deleted\+.*@post2drive\.invalid$/);
+  assert.equal(deletedUser.phone, "");
+  assert.equal(deletedUser.emailVerifiedAt, null);
+  assert.equal(await (await api("/api/auth/session", "GET", outsiderCookie)).text(), "null",
+    "account deletion must revoke its pre-existing JWT");
   const deletedGet = await api("/api/vehicles", "GET", outsiderCookie);
-  assert.equal(deletedGet.status, 401, "pre-existing JWT must not read vehicles after deletion request");
+  assert.equal(deletedGet.status, 401, "pre-existing JWT must not read vehicles after account deletion");
   const deletedPost = await api("/api/vehicles", "POST", outsiderCookie, {
     vehicleType: "Small van (SWB)", regPlate: "DEL-" + suffix,
   });
@@ -504,7 +1204,40 @@ try {
   assert.equal(await prisma.vehicle.count({ where: { accountId: outsider.id } }), 0,
     "deletion-requested account must not create a vehicle");
 
-  console.log("PASS authenticated lifecycle HTTP E2E in isolated CI DB: 22 outsider object-route denials with unchanged state, account-scoped vehicle reads, poster/driver pickup→delivery→payment flow, and pre-existing JWT revocation after deletion.");
+  const deletedWebhookStateBefore = await snapshot();
+  const lateSubscriptionWebhook = await fetch(base + "/api/subscription/webhook", {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-post2drive-webhook-secret": "ci-only-subscription-webhook-secret" },
+    body: JSON.stringify({ paymentId: deletedAccountPendingPayment.id, provider: "ci-provider",
+      providerPaymentId: "ci-deleted-payment-" + suffix }), cache: "no-store",
+  });
+  assert.equal(lateSubscriptionWebhook.status, 409,
+    "a late subscription callback must not grant access after account deletion");
+  const lateVerificationSuccess = await verificationWebhookRequest({
+    attemptId: deletedAccountPendingAttempt.id, status: "successful", providerReference: "ci-deleted-verification-" + suffix,
+  });
+  assert.equal(lateVerificationSuccess.status, 409,
+    "a late verification success callback must not verify a deletion-requested account");
+  const lateVerificationFailureAfterDeletion = await verificationWebhookRequest({
+    attemptId: deletedAccountPendingAttempt.id, status: "failed", failureReasons: ["late callback after deletion"],
+  });
+  assert.equal(lateVerificationFailureAfterDeletion.status, 409,
+    "a late verification failure callback must not mutate a deletion-requested account");
+  assert.deepEqual(await snapshot(), deletedWebhookStateBefore,
+    "late provider callbacks after deletion must not mutate any fixture or operational state");
+  const deletedPendingPaymentAfter = await prisma.subscriptionPayment.findUnique({ where: { id: deletedAccountPendingPayment.id } });
+  const deletedPendingAttemptAfter = await prisma.verificationAttempt.findUnique({ where: { id: deletedAccountPendingAttempt.id } });
+  const deletedAccountAfterCallbacks = await prisma.account.findUnique({
+    where: { id: outsider.id }, select: { verificationStatus: true, subscriptionStatus: true, subscriptionEndsAt: true, deletionRequestedAt: true },
+  });
+  assert.equal(deletedPendingPaymentAfter.status, "pending");
+  assert.equal(deletedPendingAttemptAfter.status, "pending");
+  assert.equal(deletedAccountAfterCallbacks.verificationStatus, "pending");
+  assert.equal(deletedAccountAfterCallbacks.subscriptionStatus, "inactive");
+  assert.equal(deletedAccountAfterCallbacks.subscriptionEndsAt, null);
+  assert.ok(deletedAccountAfterCallbacks.deletionRequestedAt);
+
+  console.log("PASS authenticated lifecycle HTTP E2E in isolated CI DB: cross-account and cross-market ownership; UK/India policy boundaries and tampering; admin, bridge and webhook protection; concurrent payment/verification retries; deleted-account callback denial; suspension, notification, rating and evidence privacy; lifecycle state transitions; and session revocation.");
 } finally {
   if (server) {
     server.kill("SIGTERM");
@@ -514,6 +1247,7 @@ try {
     await prisma.incidentEvidence.deleteMany({ where: { OR: [{ uploadedById: { in: accountIds } }, { jobId: { in: jobIds } }] } }).catch(() => {});
     await prisma.jobActivity.deleteMany({ where: { OR: [{ actorId: { in: accountIds } }, { jobId: { in: jobIds } }] } }).catch(() => {});
     await prisma.bid.deleteMany({ where: { OR: [{ bidderId: { in: accountIds } }, { jobId: { in: jobIds } }] } }).catch(() => {});
+    await prisma.rating.deleteMany({ where: { jobId: { in: jobIds } } }).catch(() => {});
     await prisma.vehicle.deleteMany({ where: { accountId: { in: accountIds } } }).catch(() => {});
     await prisma.notification.deleteMany({ where: { accountId: { in: accountIds } } }).catch(() => {});
     await prisma.job.deleteMany({ where: { OR: [{ id: { in: jobIds } }, { posterId: { in: accountIds } }] } }).catch(() => {});

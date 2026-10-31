@@ -86,53 +86,42 @@ export async function createReferral(
   });
 }
 
-export async function markReferralVerified(
-  accountId: string
-) {
-  const referral =
-    await prisma.referral.findUnique({
-      where: {
-        referredAccountId:
-          accountId,
-      },
+export async function markReferralVerified(accountId: string) {
+  return prisma.$transaction(async tx => {
+    // Verification webhooks can retry concurrently. Serialize this side effect
+    // with account deletion and other verification callbacks before reading
+    // referral/account state.
+    const lockedAccounts = await tx.$queryRawUnsafe<Array<{ id: string }>>(
+      'SELECT "id" FROM "Account" WHERE "id" = $1 FOR UPDATE', accountId,
+    );
+    if (lockedAccounts.length !== 1) return null;
 
-      include: {
-        referrer: true,
-        referredAccount: true,
-      },
+    const referral = await tx.referral.findUnique({
+      where: { referredAccountId: accountId },
+      include: { referrer: true, referredAccount: true },
     });
+    if (!referral) return null;
+    if (
+      !isUkAccount(referral.referrer) ||
+      !isUkAccount(referral.referredAccount) ||
+      referral.referrer.deletionRequestedAt ||
+      referral.referredAccount.deletionRequestedAt
+    ) {
+      return null;
+    }
 
-  if (!referral) {
-    return null;
-  }
+    // Preserve the first successful verification timestamp. A retry must not
+    // move it forward or overwrite the original audit chronology.
+    if (referral.status !== "pending" || referral.verifiedAt) return referral;
 
-  if (
-    !isUkAccount(
-      referral.referrer
-    ) ||
-    !isUkAccount(
-      referral.referredAccount
-    )
-  ) {
-    return null;
-  }
-
-  if (
-    referral.status !==
-    "pending"
-  ) {
-    return referral;
-  }
-
-  return prisma.referral.update({
-    where: {
-      id: referral.id,
-    },
-
-    data: {
-      verifiedAt:
-        new Date(),
-    },
+    await tx.referral.updateMany({
+      where: { id: referral.id, status: "pending", verifiedAt: null },
+      data: { verifiedAt: new Date() },
+    });
+    return tx.referral.findUnique({
+      where: { id: referral.id },
+      include: { referrer: true, referredAccount: true },
+    });
   });
 }
 

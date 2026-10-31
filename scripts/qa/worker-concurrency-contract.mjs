@@ -17,9 +17,12 @@ assert.equal(parsed.port || "5432", "5432", "concurrency contract must use the C
 
 const prisma = new PrismaClient();
 const runId = "qa-worker-race-" + randomUUID();
+const staleRunId = "qa-worker-stale-" + randomUUID();
+const deadWorkerId = "dead-worker-" + randomUUID();
 const fakeTarget = "https://qa-worker-race.invalid";
 const children = [];
 let rowInserted = false;
+let staleRowInserted = false;
 let watchdogs = [];
 
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -44,6 +47,7 @@ function startWorker(index) {
     QA_MARKET_COUNTRY: "GB",
     QA_WORKER_POLL_MS: "50",
     QA_WORKER_HEARTBEAT_MS: "500",
+    QA_WORKER_STALE_AFTER_MS: "1000",
   };
   const child = spawn(process.execPath, [
     "--experimental-default-type=module",
@@ -84,6 +88,58 @@ try {
   );
 
   await prisma.$executeRawUnsafe(
+    "INSERT INTO qa_test_runs(id,target_url,target_accounts,status,summary) VALUES($1,$2,10000,'running',$3::jsonb)",
+    staleRunId,
+    fakeTarget,
+    JSON.stringify({
+      status: "running", country: "GB", phase: "executing",
+      workerId: deadWorkerId,
+      workerClaimedAt: "2000-01-01T00:00:00.000Z",
+      workerHeartbeatAt: "2000-01-01T00:00:00.000Z",
+    }),
+  );
+  await prisma.$executeRawUnsafe(
+    "UPDATE qa_test_runs SET started_at=now()-interval '10 minutes' WHERE id=$1",
+    staleRunId,
+  );
+  staleRowInserted = true;
+
+  const staleRow = await waitFor(async () => {
+    const rows = await prisma.$queryRawUnsafe(
+      "SELECT id,status,finished_at,duration_ms,summary FROM qa_test_runs WHERE id=$1",
+      staleRunId,
+    );
+    return rows[0]?.status === "failed" ? rows[0] : null;
+  }, "a run with an expired heartbeat must be finalised as stale");
+  assert.ok(staleRow.finished_at, "stale run must be finalised with finished_at");
+  assert.notEqual(staleRow.duration_ms, null, "stale run must persist its duration");
+  const staleSummary = readSummary(staleRow.summary);
+  assert.equal(staleSummary.phase, "worker-stale", "stale recovery must record a distinct terminal phase");
+  assert.equal(staleSummary.workerFailureReason, "stale-heartbeat", "stale recovery must record the reason");
+  assert.equal(staleSummary.workerId, deadWorkerId, "stale recovery must preserve the original owner");
+  assert.ok(
+    children.some(({ child }) => typeof child.pid === "number" &&
+      String(staleSummary.workerRecoveryOwner).startsWith(`${hostname()}-${child.pid}-`)),
+    "one live worker must record itself as the recovery owner",
+  );
+  const stillStale = await prisma.$queryRawUnsafe(
+    "SELECT status,summary FROM qa_test_runs WHERE id=$1",
+    staleRunId,
+  );
+  assert.equal(stillStale[0]?.status, "failed", "stale work must remain terminal and not be re-queued");
+  assert.equal(readSummary(stillStale[0]?.summary).workerId, deadWorkerId,
+    "stale recovery must not transfer execution ownership");
+
+  // The same durable predicate used by the runner must reject the stale owner.
+  const staleOwnerLease = await prisma.$queryRawUnsafe(
+    "SELECT id FROM qa_test_runs WHERE id=$1 AND status='running' AND summary->>'workerId'=$2",
+    staleRunId,
+    deadWorkerId,
+  );
+  assert.equal(staleOwnerLease.length, 0,
+    "a recovered stale run must no longer authorize side effects from its original worker");
+
+  await prisma.$executeRawUnsafe(
     "INSERT INTO qa_test_runs(id,target_url,target_accounts,status,summary) VALUES($1,$2,10000,'queued',$3::jsonb)",
     runId,
     fakeTarget,
@@ -120,7 +176,7 @@ try {
   assert.ok(children.every(({ output }) => output.includes("Post2Drive staging QA worker started")),
     "both competing consumers must stay healthy while one owns the job");
 
-  console.log("QA two-worker PostgreSQL claim concurrency contract passed.");
+  console.log("QA worker stale recovery and two-worker claim contracts passed.");
 } catch (error) {
   console.error("QA worker concurrency integration contract failed.");
   for (const record of children) {
@@ -139,10 +195,12 @@ try {
     }
     if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");
   }
-  if (rowInserted) {
-    await prisma.$executeRawUnsafe("DELETE FROM qa_test_events WHERE run_id=$1", runId).catch(() => {});
-    await prisma.$executeRawUnsafe("DELETE FROM qa_test_accounts WHERE run_id=$1", runId).catch(() => {});
-    await prisma.$executeRawUnsafe("DELETE FROM qa_test_runs WHERE id=$1", runId).catch(() => {});
+  if (rowInserted || staleRowInserted) {
+    for (const id of [runId, staleRunId]) {
+      await prisma.$executeRawUnsafe("DELETE FROM qa_test_events WHERE run_id=$1", id).catch(() => {});
+      await prisma.$executeRawUnsafe("DELETE FROM qa_test_accounts WHERE run_id=$1", id).catch(() => {});
+      await prisma.$executeRawUnsafe("DELETE FROM qa_test_runs WHERE id=$1", id).catch(() => {});
+    }
   }
   await prisma.$disconnect();
 }

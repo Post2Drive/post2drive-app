@@ -55,6 +55,19 @@ async function POSTHandler(request: Request) {
       accessEndsAt: payment.accessEndsAt,
     });
   } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    if ([
+      "Account is pending deletion.",
+      "Account is suspended.",
+      "Subscription payment is not payable.",
+      "Payment currency does not match the account market.",
+      "This account is not eligible for paid weekly access.",
+    ].includes(message)) {
+      return NextResponse.json(
+        { error: "This subscription payment can no longer be confirmed." },
+        { status: 409 },
+      );
+    }
     console.error("Subscription webhook could not confirm payment.", {
       errorName: error instanceof Error ? error.name : "UnknownError",
     });

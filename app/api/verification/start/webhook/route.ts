@@ -68,6 +68,21 @@ async function POSTHandler(req: Request) {
 
     return NextResponse.json({ error: "Unsupported verification status." }, { status: 400 });
   } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    if ([
+      "Account is pending deletion.",
+      "Account is suspended.",
+      "Person verification is only available to GB + GBP accounts.",
+      "Verification attempt is no longer eligible for completion.",
+      "Verification attempt is no longer eligible for failure processing.",
+      "Account is no longer eligible for verification.",
+      "Account is no longer eligible for verification failure processing.",
+    ].includes(message)) {
+      return NextResponse.json(
+        { error: "This verification attempt can no longer be updated." },
+        { status: 409 },
+      );
+    }
     console.error("Verification webhook processing failed.", {
       errorName: error instanceof Error ? error.name : "UnknownError",
     });

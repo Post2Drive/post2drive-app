@@ -19,7 +19,8 @@
     "qa:signup-display-id-retry": "node scripts/qa/signup-display-id-retry-contract.mjs",
     "qa:country-matrix": "node --experimental-strip-types scripts/qa/country-matrix-contract.mjs",
     "qa:qa-runner-guard": "node --experimental-strip-types scripts/qa/qa-runner-guard-contract.mjs",
-    "qa:all": "npm run qa:tester-admin-contract && npm run qa:company-verification-contract && npm run qa:account-api-security && npm run qa:suspension-access-contract && npm run qa:design-accessibility && npm run qa:health-contract && npm run qa:campaign-builder-contract && npm run qa:signup-display-id-retry && npm run qa:market-timezone && npm run qa:dropoff-timezone && npm run qa:dashboard-localisation && npm run qa:ops-dashboard && npm run qa:market-isolation && npm run qa:qa-isolation-contract && npm run qa:market-parity && npm run qa:country-matrix && npm run qa:localisation && npm run qa:localisation-copy && npm run qa:qa-runner-guard && npm run qa:phone-verification-contract && npm run qa:provider-lifecycle-contract && npm run qa:india-email-optional-contract && npm run qa:lifecycle-contract && npm run qa:worker-contract && npm run qa:security-isolation-contract && npm run qa:lifecycle-api-e2e && npm run qa:lifecycle-auth-matrix && npm run qa:job-response-data-minimization && npm run qa:profile-vehicle-privacy && npm run qa:password-reset-url && npm run qa:csp-report-contract",
+    "qa:api-route-inventory": "node scripts/qa/api-route-inventory-contract.mjs",
+    "qa:all": "npm run qa:api-route-inventory && npm run qa:tester-admin-contract && npm run qa:company-verification-contract && npm run qa:account-api-security && npm run qa:suspension-access-contract && npm run qa:design-accessibility && npm run qa:health-contract && npm run qa:campaign-builder-contract && npm run qa:signup-display-id-retry && npm run qa:market-timezone && npm run qa:dropoff-timezone && npm run qa:dashboard-localisation && npm run qa:ops-dashboard && npm run qa:market-isolation && npm run qa:qa-isolation-contract && npm run qa:market-parity && npm run qa:country-matrix && npm run qa:localisation && npm run qa:localisation-copy && npm run qa:qa-runner-guard && npm run qa:phone-verification-contract && npm run qa:provider-lifecycle-contract && npm run qa:india-email-optional-contract && npm run qa:lifecycle-contract && npm run qa:worker-contract && npm run qa:worker-boot-contract && npm run qa:worker-concurrency-contract && npm run qa:security-isolation-contract && npm run qa:lifecycle-api-e2e && npm run qa:lifecycle-auth-matrix && npm run qa:job-response-data-minimization && npm run qa:profile-vehicle-privacy && npm run qa:password-reset-url && npm run qa:csp-report-contract",
     "qa:worker": "node --experimental-default-type=module --experimental-strip-types scripts/qa/worker.ts",
     "qa:worker-contract": "node scripts/qa/worker-contract.mjs",
     "qa:worker-boot-contract": "node scripts/qa/worker-boot-contract.mjs",
@@ -46,7 +47,8 @@
     "qa:phone-verification-contract": "node scripts/qa/phone-verification-contract.mjs",
     "qa:provider-lifecycle-contract": "node --experimental-strip-types scripts/qa/provider-lifecycle-contract.mjs",
     "qa:india-email-optional-contract": "node scripts/qa/india-email-optional-contract.mjs",
-    "qa:uk-student-pilot-contract": "node scripts/qa/uk-student-pilot-contract.mjs"
+    "qa:uk-student-pilot-contract": "node scripts/qa/uk-student-pilot-contract.mjs",
+    "qa:security-log-redaction": "node scripts/qa/security-log-redaction-contract.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.3",

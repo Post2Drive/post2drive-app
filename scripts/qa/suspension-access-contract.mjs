@@ -69,15 +69,39 @@ assert.ok(
   createPaymentSource.indexOf('verificationStatus === "suspended"') < createPaymentSource.indexOf("isWeeklyPricingEligible(account)"),
   "subscription creation must check suspension before market or tester eligibility",
 );
-assert.match(confirmPaymentSource, /payment\.account\.verificationStatus === "suspended"/,
+assert.ok(
+  createPaymentSource.includes('FROM "Account" WHERE "id" = $1 FOR UPDATE'),
+  "subscription payment creation must lock the account row against concurrent deletion or suspension",
+);
+assert.ok(
+  createPaymentSource.indexOf('FROM "Account" WHERE "id" = $1 FOR UPDATE') <
+    createPaymentSource.indexOf("tx.account.findUnique") &&
+    createPaymentSource.indexOf("tx.account.findUnique") < createPaymentSource.indexOf("tx.subscriptionPayment.create"),
+  "payment creation must lock and re-read the account before inserting the pending payment",
+);
+assert.match(confirmPaymentSource, /account\.verificationStatus === "suspended"/,
   "a delayed payment webhook must not activate a subscription for a suspended account");
 assert.ok(
-  confirmPaymentSource.indexOf('payment.account.verificationStatus === "suspended"') < confirmPaymentSource.indexOf("tx.account.update"),
-  "subscription confirmation must check suspension before granting paid access",
+  confirmPaymentSource.indexOf('account.verificationStatus === "suspended"') < confirmPaymentSource.indexOf("tx.account.update"),
+  "subscription confirmation must check fresh locked account suspension state before granting paid access",
 );
+assert.match(confirmPaymentSource, /account\.deletionRequestedAt/,
+  "a delayed payment webhook must not activate a subscription for a deletion-requested account");
 const createPaymentRoute = readFileSync("app/api/subscription/create-payment/route.ts", "utf8");
 assert.match(createPaymentRoute, /"Account is suspended\."/,
   "subscription API must expose a controlled suspended-account denial");
+assert.ok(createPaymentRoute.includes('"Account is pending deletion."'),
+  "subscription API must expose a controlled deletion-requested denial");
+assert.ok(createPaymentRoute.includes('["Account is suspended.", "Account is pending deletion."]'),
+  "suspended and deletion-requested access errors must map to HTTP 403");
+const promotionSource = readFileSync("lib/promotion.ts", "utf8");
+const promotionStartup = promotionSource.slice(
+  promotionSource.indexOf("export async function startPromotionForVerifiedAccount"),
+);
+assert.match(promotionStartup, /account\.verificationStatus === "suspended"/,
+  "a delayed verification side effect must not start promotion for a suspended tester account");
+assert.match(promotionStartup, /account\.deletionRequestedAt/,
+  "a delayed verification side effect must not start promotion for a deletion-requested account");
 
 const jobMarketSource = readFileSync("lib/jobMarket.ts", "utf8");
 assert.match(jobMarketSource, /verificationStatus:\s*true/,

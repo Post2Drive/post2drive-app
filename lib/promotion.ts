@@ -123,58 +123,49 @@ export async function startPromotionForVerifiedAccount(
     );
   }
 
-  const account =
-    await prisma.account.findUnique({
-      where: {
-        id: accountId,
+  return prisma.$transaction(async tx => {
+    // Verification retries may run these post-transaction side effects
+    // concurrently. Lock the account so only one promotion is ever started.
+    const lockedAccounts = await tx.$queryRawUnsafe<Array<{ id: string }>>(
+      'SELECT "id" FROM "Account" WHERE "id" = $1 FOR UPDATE', accountId,
+    );
+    if (lockedAccounts.length !== 1) throw new Error("Account not found.");
+
+    const account = await tx.account.findUnique({ where: { id: accountId } });
+    if (!account) throw new Error("Account not found.");
+    if (account.deletionRequestedAt) throw new Error("Account is pending deletion.");
+    if (account.verificationStatus === "suspended") throw new Error("Account is suspended.");
+
+    if (!isUkAccount(account)) {
+      throw new Error(
+        "The UK promotional programme is available only to GB accounts using GBP."
+      );
+    }
+
+    if (account.verificationStatus !== "verified" && !account.isTester) {
+      throw new Error(
+        "Account must be successfully verified before promotional membership starts."
+      );
+    }
+
+    if (account.trialStartedAt) return account;
+
+    const initialMonths = getInitialFreeMonths(account.planType);
+    const initialEnd = minDate(addMonths(now, initialMonths), promotion.endAt);
+
+    return tx.account.update({
+      where: { id: accountId },
+      data: {
+        promotionParticipant: true,
+        trialStartedAt: now,
+        trialEndsAt: initialEnd,
+        freeEndsAt: initialEnd,
+        freeMonthsEarned: 0,
+        extensionCount: 0,
+        subscriptionStatus: "promotional",
+        lastActivityAt: now,
+        inactiveSince: null,
       },
     });
-
-  if (!account) {
-    throw new Error("Account not found.");
-  }
-
-  if (!isUkAccount(account)) {
-    throw new Error(
-      "The UK promotional programme is available only to GB accounts using GBP."
-    );
-  }
-
-  if (account.verificationStatus !== "verified" && !account.isTester) {
-    throw new Error(
-      "Account must be successfully verified before promotional membership starts."
-    );
-  }
-
-  if (account.trialStartedAt) {
-    return account;
-  }
-
-  const initialMonths =
-    getInitialFreeMonths(
-      account.planType
-    );
-
-  const initialEnd = minDate(
-    addMonths(now, initialMonths),
-    promotion.endAt
-  );
-
-  return prisma.account.update({
-    where: {
-      id: accountId,
-    },
-
-    data: {
-      promotionParticipant: true,
-      trialStartedAt: now,
-      trialEndsAt: initialEnd,
-      freeEndsAt: initialEnd,
-      freeMonthsEarned: 0,
-      extensionCount: 0,
-      subscriptionStatus: "promotional",
-      lastActivityAt: now,
-      inactiveSince: null,
-    },
   });
 }

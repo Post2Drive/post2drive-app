@@ -37,6 +37,12 @@ const password = "QA-test-only-password-42!";
 async function scanRoute(page, route, viewport) {
   const response = await page.goto(new URL(route, baseURL).toString(), { waitUntil: "domcontentloaded" });
   assert.ok(response && response.status() < 400, `${route} should load successfully at ${viewport.label}`);
+  const responseHeaders = response.headers();
+  assert.equal(responseHeaders["x-content-type-options"], "nosniff", `${route} must send nosniff`);
+  assert.equal(responseHeaders["x-frame-options"], "DENY", `${route} must deny framing`);
+  assert.equal(responseHeaders["referrer-policy"], "strict-origin-when-cross-origin", `${route} must send a restrictive referrer policy`);
+  assert.ok(responseHeaders["content-security-policy-report-only"]?.includes("report-uri /api/security/csp-report"),
+    `${route} must retain the report-only CSP until violations are reviewed`);
   try {
     await page.locator("main h1").first().waitFor({ state: "visible" });
   } catch (error) {
@@ -174,6 +180,16 @@ try {
     await page.getByRole("button", { name: "Log in" }).click();
     await page.waitForURL(url => url.pathname === "/dashboard", { timeout: 15_000 });
 
+    // The browser session must not be readable by client-side scripts and must
+    // not accompany cross-site POST navigations/forms.
+    const sessionCookie = (await context.cookies(baseURL)).find(cookie =>
+      /^(?:__Secure-)?next-auth\.session-token$/.test(cookie.name)
+    );
+    assert.ok(sessionCookie, "authenticated browser flow must receive a NextAuth session cookie");
+    assert.equal(sessionCookie.httpOnly, true, "session cookie must be HttpOnly");
+    assert.equal(String(sessionCookie.sameSite).toLowerCase(), "lax",
+      "session cookie must use SameSite=Lax to mitigate cross-site request forgery");
+
     const routesForViewport = [
       ...authenticatedRoutes,
       ...(jobId ? [`/jobs/${jobId}/edit`, `/jobs/${jobId}/incidents`] : []),
@@ -254,6 +270,29 @@ try {
       await page.goto(new URL("/jobs", baseURL).toString(), { waitUntil: "domcontentloaded" });
       await page.getByRole("alert").filter({ hasText: "Synthetic QA outage" }).waitFor({ state: "visible" });
       assert.equal(await page.getByText("No jobs in this category.").count(), 0, "a failed marketplace load must not be shown as an empty list");
+      await page.getByRole("button", { name: "Retry loading jobs" }).click();
+      await page.getByText("No jobs in this category.").waitFor({ state: "visible" });
+      await page.unroute("**/api/jobs");
+
+      // A disconnected network request must be distinguished from an empty
+      // marketplace and the Retry action must recover once connectivity returns.
+      let disconnectNextLoad = true;
+      await page.route("**/api/jobs", async route => {
+        if (disconnectNextLoad) {
+          disconnectNextLoad = false;
+          await route.abort("internetdisconnected");
+        } else {
+          await route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify({ jobs: [] }),
+          });
+        }
+      });
+      await page.goto(new URL("/jobs", baseURL).toString(), { waitUntil: "domcontentloaded" });
+      await page.getByRole("alert").filter({ hasText: "Check your connection" }).waitFor({ state: "visible" });
+      assert.equal(await page.getByText("No jobs in this category.").count(), 0,
+        "a disconnected marketplace request must not be shown as an empty list");
       await page.getByRole("button", { name: "Retry loading jobs" }).click();
       await page.getByText("No jobs in this category.").waitFor({ state: "visible" });
       await page.unroute("**/api/jobs");

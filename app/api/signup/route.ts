@@ -472,7 +472,10 @@ if (verificationRequired && normalizedEmail && !isPilotAccess) {
       verificationEmailSent = true;
     } catch (sendError) {
       // Account and token remain available so the user can request another email.
-      console.error("Signup verification email failed:", sendError);
+      // Provider response details can contain addresses or request metadata.
+      console.error("Signup verification email failed.", {
+        errorName: sendError instanceof Error ? sendError.name : "UnknownError",
+      });
     }
   }
 }

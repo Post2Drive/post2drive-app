@@ -28,10 +28,12 @@ class ApiClient {
   private readonly account: AccountFixture;
   private readonly base: string;
   private readonly runId: string;
-  constructor(account: AccountFixture, base: string, runId: string) {
+  private readonly assertOwnership: () => Promise<void>;
+  constructor(account: AccountFixture, base: string, runId: string, assertOwnership: () => Promise<void>) {
     this.account = account;
     this.base = base;
     this.runId = runId;
+    this.assertOwnership = assertOwnership;
   }
   private absorb(headers: Headers) {
     const h = headers as Headers & { getSetCookie?: () => string[] };
@@ -48,11 +50,13 @@ class ApiClient {
   }
   private cookie() { return [...this.cookies.entries()].map(([k, v]) => k + "=" + v).join("; "); }
   async login() {
+    await this.assertOwnership();
     const csrfResponse = await fetch(this.base + "/api/auth/csrf", { headers: { "x-post2drive-qa-run-id": this.runId }, redirect: "manual", signal: AbortSignal.timeout(15000) });
     this.absorb(csrfResponse.headers);
     const csrf = await csrfResponse.json();
     if (!csrf?.csrfToken) return { status: csrfResponse.status, ok: false };
     const form = new URLSearchParams({ csrfToken: csrf.csrfToken, email: this.account.email, password: this.account.password, callbackUrl: this.base + "/", json: "true" });
+    await this.assertOwnership();
     const login = await fetch(this.base + "/api/auth/callback/credentials", {
       method: "POST", redirect: "manual",
       headers: { "content-type": "application/x-www-form-urlencoded", cookie: this.cookie(), "x-post2drive-qa-run-id": this.runId },
@@ -60,6 +64,7 @@ class ApiClient {
       signal: AbortSignal.timeout(15000),
     });
     this.absorb(login.headers);
+    await this.assertOwnership();
     const sessionResponse = await fetch(this.base + "/api/auth/session", {
       headers: { cookie: this.cookie(), "x-post2drive-qa-run-id": this.runId }, redirect: "manual", signal: AbortSignal.timeout(15000),
     });
@@ -76,6 +81,7 @@ class ApiClient {
       headers["content-type"] = "application/json";
       init.body = JSON.stringify(body);
     }
+    await this.assertOwnership();
     const response = await fetch(this.base + path, init);
     this.absorb(response.headers);
     const text = await response.text();
@@ -113,9 +119,31 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
   const fixtures: AccountFixture[] = [];
   let accountPoolRunId: string | null = null;
 
+  // Revalidate the durable lease before every runner-owned network or database
+  // side effect. A stale worker whose row has been terminally recovered cannot
+  // resume provisioning, authentication, workflow mutations or audit writes.
+  async function assertWorkerOwnership() {
+    const heartbeatMs = Number(process.env.QA_WORKER_HEARTBEAT_MS || 15_000);
+    const staleAfterMs = Number(process.env.QA_WORKER_STALE_AFTER_MS || Math.max(heartbeatMs * 4, 5 * 60 * 1000));
+    if (!Number.isSafeInteger(staleAfterMs) || staleAfterMs < heartbeatMs * 2) {
+      throw new Error("QA worker lease configuration is invalid; stopping further side effects.");
+    }
+    const rows = await prisma.$queryRawUnsafe<Array<{ id: string }>>(
+      `SELECT id FROM qa_test_runs
+       WHERE id=$1 AND status='running' AND summary->>'workerId'=$2
+         AND COALESCE(NULLIF(summary->>'workerHeartbeatAt','')::timestamptz,started_at)
+             >= now() - ($3::double precision * interval '1 millisecond')`,
+      runId, workerId, staleAfterMs,
+    );
+    if (rows.length !== 1) {
+      throw new Error("QA worker lost or expired run ownership; stopping further side effects.");
+    }
+  }
+
   async function record(e: { index?: number; accountId?: string; cohort?: string; scenario: string; action: string; method: string; path: string; expected: number[]; actual: number | null; duration: number; details?: Record<string, unknown> }) {
     const passed = e.actual !== null && e.expected.includes(e.actual);
     events.push({ path: e.path, duration: e.duration, passed });
+    await assertWorkerOwnership();
     await prisma.$executeRawUnsafe(
       'INSERT INTO qa_test_events(run_id,account_index,account_id,cohort,scenario,action,method,path,expected_statuses,actual_status,passed,duration_ms,details) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::jsonb)',
       runId, e.index ?? null, e.accountId ?? null, e.cohort ?? null, e.scenario, e.action, e.method, e.path, e.expected, e.actual, passed, e.duration, JSON.stringify({ marker, ...(e.details || {}) }),
@@ -138,22 +166,28 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
           headers["content-type"] = "application/json";
           init.body = JSON.stringify(body);
         }
+        await assertWorkerOwnership();
         const response = await fetch(base + path, init);
         status = response.status;
         const text = await response.text();
         try { data = text ? JSON.parse(text) : null; } catch { data = {}; }
       }
     } catch (error) {
-      data = { networkError: error instanceof Error ? error.message : String(error) };
+      data = {
+        networkError: "Request failed before an HTTP response was received.",
+        networkErrorName: error instanceof Error ? error.name : "UnknownError",
+      };
     }
     const details: Record<string, unknown> = {};
     if (data && typeof data === "object") {
-      for (const key of ["success", "error", "reason", "jobId", "status", "allowed", "planType", "verificationStatus"]) {
+      for (const key of ["success", "reason", "jobId", "status", "allowed", "planType", "verificationStatus"]) {
         if (data[key] !== undefined) details[key] = data[key];
       }
+      if (data.error !== undefined) details.error = "The API returned a non-success response.";
       if (data.job?.id) details.jobId = data.job.id;
       if (data.bid?.id) details.bidId = data.bid.id;
-      if (data.networkError) details.networkError = String(data.networkError).slice(0, 250);
+      if (data.networkError) details.networkError = String(data.networkError).slice(0, 120);
+      if (data.networkErrorName) details.networkErrorName = String(data.networkErrorName).slice(0, 80);
     }
     const passed = await record({ index: account?.index, accountId: account?.accountId, cohort: account?.cohort, scenario, action, method, path, expected, actual: status, duration: Date.now() - t, details });
     return { status, data, passed };
@@ -171,6 +205,7 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
   }
 
   async function finish(status: string, extra: Record<string, unknown> = {}) {
+    await assertWorkerOwnership();
     const passed = events.filter(e => e.passed).length;
     const failed = events.length - passed;
     const finalStatus = status === "completed" && (failed > 0 || routeMatrixExecuted !== routeMatrixTarget) ? "failed" : status;
@@ -231,15 +266,22 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
       let status: number | null = null;
       let data: any = null;
       try {
+        await assertWorkerOwnership();
         const response = await fetch(base + "/api/signup", { method: "POST", headers: { "content-type": "application/json", accept: "application/json", "x-post2drive-qa-run-id": runId }, body: JSON.stringify(payload), redirect: "manual", signal: AbortSignal.timeout(15000) });
         status = response.status;
         data = await response.json().catch(() => null);
-      } catch (error) { data = { networkError: String(error) }; }
-      await record({ index: i, cohort, scenario: "account-provisioning", action: "signup", method: "POST", path: "/api/signup", expected: [201], actual: status, duration: Date.now() - t, details: { error: data?.error || data?.networkError } });
+      } catch (error) {
+        data = {
+          networkError: "Signup request failed before an HTTP response was received.",
+          networkErrorName: error instanceof Error ? error.name : "UnknownError",
+        };
+      }
+      await record({ index: i, cohort, scenario: "account-provisioning", action: "signup", method: "POST", path: "/api/signup", expected: [201], actual: status, duration: Date.now() - t, details: { error: status === 201 ? undefined : "Signup did not complete.", networkErrorName: data?.networkErrorName } });
       if (status !== 201 || !data?.accountId) return;
       const accountId = String(data.accountId);
       const persistStarted = Date.now();
       try {
+        await assertWorkerOwnership();
         await prisma.$transaction(async tx => {
           const ukPromotion = selectedMarket.country === "GB" && i !== accountTarget - 1;
           const paidWeeklyMarket = selectedMarket.country !== "GB" && selectedMarket.country !== "IN" && i !== accountTarget - 1;
@@ -264,12 +306,13 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
         createdAccounts++;
       } catch (error) {
         try {
-          await record({ index: i, accountId, cohort, scenario: "account-provisioning", action: "persist-synthetic-fixture", method: "DB", path: "qa_test_accounts", expected: [200], actual: 500, duration: Date.now() - persistStarted, details: { error: error instanceof Error ? error.message.slice(0, 250) : String(error).slice(0, 250) } });
+          await record({ index: i, accountId, cohort, scenario: "account-provisioning", action: "persist-synthetic-fixture", method: "DB", path: "qa_test_accounts", expected: [200], actual: 500, duration: Date.now() - persistStarted, details: { errorName: error instanceof Error ? error.name : "UnknownError" } });
         } catch {}
       }
     });
 
-    await prisma.$executeRawUnsafe("UPDATE qa_test_runs SET created_accounts=$2 WHERE id=$1", runId, createdAccounts);
+    await assertWorkerOwnership();
+    await prisma.$executeRawUnsafe("UPDATE qa_test_runs SET created_accounts=$2 WHERE id=$1 AND status='running' AND summary->>'workerId'=$3", runId, createdAccounts, workerId);
     if (testType === "synthetic-accounts") {
       if (createdAccounts !== accountTarget) return await finish("aborted", { testType, reason: "Account provisioning did not create the configured account target.", expectedAccounts: accountTarget, createdAccounts });
       accountPoolRunId = runId;
@@ -298,7 +341,7 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
     })));
 
     await parallel(fixtures.filter(account => account.index < Math.min(499, accountTarget - 1) || account.index === accountTarget - 1), executionConcurrency, async account => {
-      const client = new ApiClient(account, base, runId);
+      const client = new ApiClient(account, base, runId, assertWorkerOwnership);
       const t = Date.now();
       let status = 401;
       let ok = false;
@@ -686,7 +729,7 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
       { name: "unauth-rating-write", auth: false, method: "POST", path: () => "/api/ratings", body: () => ({ jobId: "missing", stars: 5 }), expected: [401] },
       { name: "unauth-subscription-create", auth: false, method: "POST", path: () => "/api/subscription/create-payment", body: () => ({}), expected: [401] },
       { name: "unauth-verification-start", auth: false, method: "POST", path: () => "/api/verification/start", body: () => ({}), expected: [401] },
-      { name: "unauth-admin-performance", auth: false, method: "GET", path: () => "/api/admin/performance", expected: [401] },
+      { name: "retired-admin-performance-tombstone-anonymous", auth: false, method: "GET", path: () => "/api/admin/performance", expected: [410] },
       { name: "unauth-admin-research", auth: false, method: "GET", path: () => "/api/admin/research", expected: [401] },
       { name: "unauth-admin-testers", auth: false, method: "GET", path: () => "/api/admin/testers", expected: [401] },
       { name: "unauth-admin-incidents", auth: false, method: "GET", path: () => "/api/admin/incidents/resolve", expected: [401] },
@@ -704,7 +747,7 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
       { name: "wrong-password-delete-rejected", auth: true, method: "DELETE", path: () => "/api/account", body: () => ({ confirm: "DELETE", currentPassword: "not-the-real-password" }), expected: [403] },
       { name: "authenticated-promotion-status", auth: true, method: "GET", path: () => "/api/promotion/status", expected: [200] },
       { name: "authenticated-referral-progress", auth: true, method: "GET", path: () => "/api/promotion/referrals/progress", expected: [200] },
-      { name: "non-admin-performance-denied", auth: true, method: "GET", path: () => "/api/admin/performance", expected: [403] },
+      { name: "retired-admin-performance-tombstone-authenticated", auth: true, method: "GET", path: () => "/api/admin/performance", expected: [410] },
       { name: "non-admin-research-denied", auth: true, method: "GET", path: () => "/api/admin/research", expected: [403] },
       { name: "non-admin-testers-denied", auth: true, method: "GET", path: () => "/api/admin/testers", expected: [403] },
       { name: "non-admin-incidents-denied", auth: true, method: "GET", path: () => "/api/admin/incidents/resolve", expected: [403] },
@@ -774,9 +817,12 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
     };
     return await finish("completed", { testType, successfulLogins: signed.length, accountPoolRunId, persistedDataSummary, limitations: ["Email delivery and real provider settlements were not attempted.", "This is API-driven lifecycle simulation, not browser-based usability testing.", "Route distances and prices are deterministic synthetic estimates, not live routing results or market quotes.", "Account deletion and cleanup were intentionally not run; synthetic data is retained."] });
   } catch (error) {
-    const failureMessage = error instanceof Error ? error.message : String(error);
-    console.error("Staging QA runner exception", error);
-    return await finish("failed", { exception: failureMessage.slice(0, 250) });
+    const errorName = error instanceof Error ? error.name : "UnknownError";
+    console.error("Staging QA runner exception.", { errorName });
+    return await finish("failed", {
+      exceptionName: errorName,
+      exception: "Unexpected internal QA runner failure. Inspect restricted CI/runtime diagnostics.",
+    });
   }
 }
 
