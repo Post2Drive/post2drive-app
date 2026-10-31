@@ -33,25 +33,78 @@ let base = "";
 let poster, driver, outsider, indiaPoster, suspendedGbPoster, suspendedGbUser, suspendedGbJob, pendingCompanyAccount, lifecycleJob, bidJob, bid, incident, evidence, posterVehicle, incidentJob, cancelJob, acceptJob, unassignJob, rejectJob, indiaJob, notification;
 
 async function snapshot() {
-  const [jobRows, jobCount, bidCount, activityCount, evidenceCount, vehicleCount, notificationCount, notificationRows, ratingCount] = await Promise.all([
+  // Compare complete isolated fixture rows rather than counts alone. A denied
+  // attacker edit can mutate an existing row without changing any row count.
+  const [
+    accountRows,
+    jobRows,
+    jobCount,
+    bidRows,
+    activityRows,
+    evidenceRows,
+    vehicleRows,
+    notificationRows,
+    ratingRows,
+    subscriptionPaymentRows,
+    verificationAttemptRows,
+  ] = await Promise.all([
+    prisma.account.findMany({
+      where: { id: { in: accountIds } },
+      orderBy: { id: "asc" },
+    }),
     prisma.job.findMany({
       where: { id: { in: jobIds } },
-      select: { id: true, posterId: true, acceptedById: true, status: true, priceMode: true, deliveryMarkedById: true, paidMarkedAt: true, receivedConfirmedAt: true },
+      orderBy: { id: "asc" },
     }),
     prisma.job.count({ where: { posterId: { in: accountIds } } }),
-    prisma.bid.count({ where: { jobId: { in: jobIds } } }),
-    prisma.jobActivity.count({ where: { jobId: { in: jobIds } } }),
-    prisma.incidentEvidence.count({ where: { jobId: { in: jobIds } } }),
-    prisma.vehicle.count({ where: { accountId: { in: accountIds } } }),
-    prisma.notification.count({ where: { accountId: { in: accountIds } } }),
-    prisma.notification.findMany({
-      where: { id: { in: notificationIds } },
-      select: { id: true, accountId: true, readAt: true },
+    prisma.bid.findMany({
+      where: { jobId: { in: jobIds } },
+      orderBy: { id: "asc" },
     }),
-    prisma.rating.count({ where: { jobId: { in: jobIds } } }),
+    prisma.jobActivity.findMany({
+      where: { jobId: { in: jobIds } },
+      orderBy: { id: "asc" },
+    }),
+    prisma.incidentEvidence.findMany({
+      where: { jobId: { in: jobIds } },
+      orderBy: { id: "asc" },
+    }),
+    prisma.vehicle.findMany({
+      where: { accountId: { in: accountIds } },
+      orderBy: { id: "asc" },
+    }),
+    prisma.notification.findMany({
+      where: { accountId: { in: accountIds } },
+      orderBy: { id: "asc" },
+    }),
+    prisma.rating.findMany({
+      where: { jobId: { in: jobIds } },
+      orderBy: { id: "asc" },
+    }),
+    prisma.subscriptionPayment.findMany({
+      where: { accountId: { in: accountIds } },
+      orderBy: { id: "asc" },
+    }),
+    prisma.verificationAttempt.findMany({
+      where: { accountId: { in: accountIds } },
+      orderBy: { id: "asc" },
+    }),
   ]);
-  return { jobRows, jobCount, bidCount, activityCount, evidenceCount, vehicleCount, notificationCount, notificationRows, ratingCount };
+  return {
+    accountRows,
+    jobRows,
+    jobCount,
+    bidRows,
+    activityRows,
+    evidenceRows,
+    vehicleRows,
+    notificationRows,
+    ratingRows,
+    subscriptionPaymentRows,
+    verificationAttemptRows,
+  };
 }
+
 const getSetCookies = (response) => {
   if (typeof response.headers.getSetCookie === "function") return response.headers.getSetCookie();
   const single = response.headers.get("set-cookie");
