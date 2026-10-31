@@ -130,6 +130,15 @@ try {
   assert.equal(readSummary(stillStale[0]?.summary).workerId, deadWorkerId,
     "stale recovery must not transfer execution ownership");
 
+  // The same durable predicate used by the runner must reject the stale owner.
+  const staleOwnerLease = await prisma.$queryRawUnsafe(
+    "SELECT id FROM qa_test_runs WHERE id=$1 AND status='running' AND summary->>'workerId'=$2",
+    staleRunId,
+    deadWorkerId,
+  );
+  assert.equal(staleOwnerLease.length, 0,
+    "a recovered stale run must no longer authorize side effects from its original worker");
+
   await prisma.$executeRawUnsafe(
     "INSERT INTO qa_test_runs(id,target_url,target_accounts,status,summary) VALUES($1,$2,10000,'queued',$3::jsonb)",
     runId,
