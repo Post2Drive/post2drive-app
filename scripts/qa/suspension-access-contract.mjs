@@ -80,6 +80,14 @@ assert.match(confirmPaymentSource, /account\.deletionRequestedAt/,
 const createPaymentRoute = readFileSync("app/api/subscription/create-payment/route.ts", "utf8");
 assert.match(createPaymentRoute, /"Account is suspended\."/,
   "subscription API must expose a controlled suspended-account denial");
+const promotionSource = readFileSync("lib/promotion.ts", "utf8");
+const promotionStartup = promotionSource.slice(
+  promotionSource.indexOf("export async function startPromotionForVerifiedAccount"),
+);
+assert.match(promotionStartup, /account\.verificationStatus === "suspended"/,
+  "a delayed verification side effect must not start promotion for a suspended tester account");
+assert.match(promotionStartup, /account\.deletionRequestedAt/,
+  "a delayed verification side effect must not start promotion for a deletion-requested account");
 
 const jobMarketSource = readFileSync("lib/jobMarket.ts", "utf8");
 assert.match(jobMarketSource, /verificationStatus:\s*true/,
