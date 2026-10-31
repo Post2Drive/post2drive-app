@@ -6,6 +6,7 @@ import { createPendingSubscriptionPayment } from "@/lib/subscription";
 
 const SAFE_CLIENT_ERRORS = new Set([
   "Paid weekly access is available to supported non-India markets.",
+  "Account is pending deletion.",
   "Account must be successfully verified before purchasing access.",
   "This account does not have a valid weekly subscription price.",
   "Account is suspended.",
@@ -38,7 +39,7 @@ async function POSTHandler() {
     // Database/ORM failures must not leak schema, query, or infrastructure details.
     if (error instanceof Error && SAFE_CLIENT_ERRORS.has(error.message)) {
       // Suspension is an authorization denial, not invalid client input.
-      const status = error.message === "Account is suspended." ? 403 : 400;
+      const status = ["Account is suspended.", "Account is pending deletion."].includes(error.message) ? 403 : 400;
       return NextResponse.json({ error: error.message }, { status });
     }
 
