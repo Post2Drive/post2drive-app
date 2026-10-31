@@ -24,11 +24,17 @@ assert.doesNotMatch(worker, /console\.(?:error|warn)\([^\n]*,\s*error\s*\)/,
 assert.match(metrics, /errorName: error instanceof Error \? error\.name : "UnknownError"/);
 
 const opsDashboard = readFileSync("ops-dashboard/server.mjs", "utf8");
-assert.match(opsDashboard, /prisma\\.\\$on\\("error"/);
-assert.doesNotMatch(opsDashboard, /console\\.error\\("Ops metrics query failed:",label,e\\?\\.message\\)/);
-assert.doesNotMatch(opsDashboard, /console\\.error\\("Ops dashboard request failed:",e\\)/);
-assert.doesNotMatch(opsDashboard, /console\\.error\\("Ops dashboard browser error:",event\\.message\\)/);
-assert.doesNotMatch(opsDashboard, /console\\.error\\("Ops dashboard unhandled promise:",event\\.reason\\)/);
-assert.doesNotMatch(opsDashboard, /error instanceof Error \\? error\\.message : "unknown error"/);
+assert.ok(opsDashboard.includes('prisma.$on("error"'),
+  "Ops dashboard database client errors must use a redacted event logger");
+assert.ok(!opsDashboard.includes('console.error("Ops metrics query failed:",label,e?.message)'),
+  "Ops metrics must not log raw database exception messages");
+assert.ok(!opsDashboard.includes('console.error("Ops dashboard request failed:",e)'),
+  "Ops request handler must not log raw exception objects");
+assert.ok(!opsDashboard.includes('console.error("Ops dashboard browser error:",event.message)'),
+  "Ops browser errors must not log raw browser messages");
+assert.ok(!opsDashboard.includes('console.error("Ops dashboard unhandled promise:",event.reason)'),
+  "Ops promise rejections must not log raw rejection values");
+assert.ok(!opsDashboard.includes('error instanceof Error ? error.message : "unknown error"'),
+  "Ops startup must not log database-driver exception messages");
 
 console.log("QA runner and provider diagnostic redaction contract passed.");
