@@ -69,6 +69,16 @@ assert.ok(
   createPaymentSource.indexOf('verificationStatus === "suspended"') < createPaymentSource.indexOf("isWeeklyPricingEligible(account)"),
   "subscription creation must check suspension before market or tester eligibility",
 );
+assert.ok(
+  createPaymentSource.includes('FROM "Account" WHERE "id" = $1 FOR UPDATE'),
+  "subscription payment creation must lock the account row against concurrent deletion or suspension",
+);
+assert.ok(
+  createPaymentSource.indexOf('FROM "Account" WHERE "id" = $1 FOR UPDATE') <
+    createPaymentSource.indexOf("tx.account.findUnique") &&
+    createPaymentSource.indexOf("tx.account.findUnique") < createPaymentSource.indexOf("tx.subscriptionPayment.create"),
+  "payment creation must lock and re-read the account before inserting the pending payment",
+);
 assert.match(confirmPaymentSource, /account\.verificationStatus === "suspended"/,
   "a delayed payment webhook must not activate a subscription for a suspended account");
 assert.ok(
