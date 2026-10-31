@@ -75,6 +75,8 @@ async function POSTHandler(req: Request) {
       "Person verification is only available to GB + GBP accounts.",
       "Verification attempt is no longer eligible for completion.",
       "Verification attempt is no longer eligible for failure processing.",
+      "Account is no longer eligible for verification.",
+      "Account is no longer eligible for verification failure processing.",
     ].includes(message)) {
       return NextResponse.json(
         { error: "This verification attempt can no longer be updated." },
