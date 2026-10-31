@@ -676,7 +676,13 @@ try {
     "suspended India account must not submit ratings through the job-market guard");
 
   const suspendedJobCases = [
-    ["POST", "/api/jobs", {}],
+    ["POST", "/api/jobs", {
+      pickup: "CI suspended account pickup", dropoff: "CI suspended account dropoff",
+      jobDate: new Date(Date.now() + 2 * 86_400_000).toISOString().slice(0, 10),
+      pickupTime: "10:00", dropoffTime: "14:00",
+      pickupTimeZone: "Asia/Kolkata", dropoffTimeZone: "Asia/Kolkata",
+      vehicleType: "Small van (SWB)", price: null, priceMode: "fixed", currency: "INR", crossBorder: false,
+    }],
     ["POST", "/api/jobs/" + indiaJob.id + "/accept", {}],
     ["GET", "/api/jobs/" + indiaJob.id + "/activity"],
     ["POST", "/api/jobs/" + indiaJob.id + "/bid", { amount: 100 }],
