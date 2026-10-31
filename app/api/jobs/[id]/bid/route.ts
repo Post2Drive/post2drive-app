@@ -253,7 +253,7 @@ async function POSTHandler(
       return createdBid;
     });
   } catch (error) {
-    console.error("Place bid error:", error);
+    console.error("Place bid failed.", { errorName: error instanceof Error ? error.name : "UnknownError" });
     return NextResponse.json({ error: "Unable to place bid right now. Please retry." }, { status: 500 });
   }
 
