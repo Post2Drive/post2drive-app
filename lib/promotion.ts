@@ -134,6 +134,7 @@ export async function startPromotionForVerifiedAccount(
     const account = await tx.account.findUnique({ where: { id: accountId } });
     if (!account) throw new Error("Account not found.");
     if (account.deletionRequestedAt) throw new Error("Account is pending deletion.");
+    if (account.verificationStatus === "suspended") throw new Error("Account is suspended.");
 
     if (!isUkAccount(account)) {
       throw new Error(
