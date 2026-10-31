@@ -1022,12 +1022,7 @@ async function startServer() {
     }
     if (problems.length) throw new Error(problems.join("; "));
 
-    console.log("Ops dashboard read-only database boundary verified.", {
-      readableTables: identity.readable_tables,
-      writableTables: identity.writable_tables,
-      publicSchemaCreate: identity.can_create_in_public,
-      inheritsRoles: identity.inherits_roles,
-    });
+    console.log(`Ops dashboard read-only boundary verified (${identity.readable_tables} readable/${identity.public_tables} public tables; writable tables=${identity.writable_tables}; sequence privileges=${identity.sequence_privileges}; role memberships=${identity.role_memberships}; public schema CREATE=${identity.can_create_in_public}; inherits roles=${identity.inherits_roles}).`);
     server.listen(PORT, "0.0.0.0", () => console.log(`Post2Drive Ops Dashboard listening on ${PORT}`));
   } catch (error) {
     console.error("Ops dashboard startup blocked: restricted read-only database role verification failed.", {

@@ -24,6 +24,11 @@ assert.doesNotMatch(worker, /console\.(?:error|warn)\([^\n]*,\s*error\s*\)/,
 assert.match(metrics, /errorName: error instanceof Error \? error\.name : "UnknownError"/);
 
 const opsDashboard = readFileSync("ops-dashboard/server.mjs", "utf8");
+
+const opsProvision = readFileSync("ops-dashboard/provision-readonly-role.mjs", "utf8");
+assert.ok(opsProvision.includes('prisma.$on("error"'));
+assert.ok(!opsProvision.includes('error instanceof Error ? error.message : "unknown error"'));
+assert.ok(!opsProvision.includes('console.error("Read-only database role provisioning failed:",'));
 assert.ok(opsDashboard.includes('prisma.$on("error"'),
   "Ops dashboard database client errors must use a redacted event logger");
 assert.ok(!opsDashboard.includes('console.error("Ops metrics query failed:",label,e?.message)'),
