@@ -30,7 +30,7 @@ const notificationIds = [];
 let server;
 let serverOutput = "";
 let base = "";
-let poster, driver, outsider, indiaPoster, suspendedGbPoster, suspendedGbJob, lifecycleJob, bidJob, bid, incident, evidence, posterVehicle, incidentJob, cancelJob, acceptJob, unassignJob, rejectJob, indiaJob, notification;
+let poster, driver, outsider, indiaPoster, suspendedGbPoster, suspendedGbUser, suspendedGbJob, lifecycleJob, bidJob, bid, incident, evidence, posterVehicle, incidentJob, cancelJob, acceptJob, unassignJob, rejectJob, indiaJob, notification;
 
 async function snapshot() {
   const [jobRows, jobCount, bidCount, activityCount, evidenceCount, vehicleCount, notificationCount, notificationRows, ratingCount] = await Promise.all([
@@ -145,6 +145,9 @@ try {
   suspendedGbPoster = await prisma.account.create({ data: {
     type: "poster", companyName: "CI suspended GB poster", displayId: "CIS-" + suffix,
     country: "GB", currency: "GBP", verificationStatus: "suspended",
+    isTester: true, testerApprovalStatus: "approved",
+    subscriptionStatus: "active", subscriptionPlanKey: "individual",
+    subscriptionStartedAt: new Date(), subscriptionEndsAt: new Date("2035-12-31T00:00:00.000Z"),
   } });
   accountIds.push(poster.id, driver.id, outsider.id, indiaPoster.id, suspendedGbPoster.id);
   const passwordHash = await bcrypt.hash("ci-e2e-password-12345", 8);
@@ -163,6 +166,11 @@ try {
   const indiaUser = await prisma.user.create({ data: {
     accountId: indiaPoster.id, name: "CI India Poster", email: "ci-india-" + suffix + "@example.invalid",
     phone: "india-" + suffix, passwordHash, emailVerifiedAt: new Date(),
+  }});
+  suspendedGbUser = await prisma.user.create({ data: {
+    accountId: suspendedGbPoster.id, name: "CI Suspended GB Tester",
+    email: "ci-suspended-gb-" + suffix + "@example.invalid",
+    phone: "suspended-gb-" + suffix, passwordHash, emailVerifiedAt: new Date(),
   }});
 
   suspendedGbJob = await prisma.job.create({ data: {
@@ -285,6 +293,7 @@ try {
   const posterCookie = await signIn(posterUser.email);
   const driverCookie = await signIn(driverUser.email);
   const indiaCookie = await signIn(indiaUser.email);
+  const suspendedGbCookie = await signIn(suspendedGbUser.email);
 
   const oldSessionA = await api("/api/auth/session", "GET", firstOutsiderCookie);
   const oldSessionB = await api("/api/auth/session", "GET", secondOutsiderCookie);
@@ -434,6 +443,14 @@ try {
       path + " must not be cached by a browser or shared intermediary");
     assert.match(response.headers.get("pragma") || "", /no-cache/i,
       path + " must include the configured legacy no-cache directive");
+    assert.equal(response.headers.get("x-content-type-options"), "nosniff",
+      path + " must disable MIME sniffing");
+    assert.equal(response.headers.get("x-frame-options"), "DENY",
+      path + " must not be embeddable in a frame");
+    assert.equal(response.headers.get("referrer-policy"), "strict-origin-when-cross-origin",
+      path + " must use the reviewed referrer policy");
+    assert.match(response.headers.get("content-security-policy-report-only") || "", /report-uri \/api\/security\/csp-report/i,
+      path + " must deliver the report-only CSP without prematurely enforcing it");
   }
 
   // Actual provider HTTP lifecycle and replay checks against isolated CI rows.
@@ -707,6 +724,40 @@ try {
   }
 
   // A suspended user's existing session must not bypass job-market protection.
+  // UK tester status and an active subscription must not bypass suspension.
+  const suspendedGbAccessResponse = await api("/api/account/access", "GET", suspendedGbCookie);
+  assert.equal(suspendedGbAccessResponse.status, 200);
+  const suspendedGbAccess = await suspendedGbAccessResponse.json();
+  assert.equal(suspendedGbAccess.allowed, false,
+    "suspended UK tester with an active subscription must not retain account access");
+  assert.equal(suspendedGbAccess.reason, "account_suspended",
+    "UK tester suspension must be reported before tester or paid-plan exemptions");
+  const suspendedGbOwnJobRead = await api("/api/jobs/" + suspendedGbJob.id, "GET", suspendedGbCookie);
+  assert.equal(suspendedGbOwnJobRead.status, 403,
+    "a pre-existing UK tester session must not read protected job details while suspended");
+  const suspendedGbTargetProfile = await api("/api/profile/" + poster.displayId, "GET", suspendedGbCookie);
+  assert.equal(suspendedGbTargetProfile.status, 403,
+    "a suspended UK tester must not access another account's public profile");
+
+  const suspendedGbJobCountBefore = await prisma.job.count({ where: { posterId: suspendedGbPoster.id } });
+  const suspendedGbJobPost = await api("/api/jobs", "POST", suspendedGbCookie, {
+    pickup: "CI suspended UK pickup", dropoff: "CI suspended UK dropoff",
+    jobDate: new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10),
+    pickupTime: "10:00", dropoffTime: "14:00",
+    pickupTimeZone: "Europe/London", dropoffTimeZone: "Europe/London",
+    vehicleType: "Small van (SWB)", price: 100, priceMode: "fixed", currency: "GBP", crossBorder: false,
+  });
+  assert.equal(suspendedGbJobPost.status, 403,
+    "suspended UK tester must not post by bypassing verification checks");
+  assert.equal(await prisma.job.count({ where: { posterId: suspendedGbPoster.id } }), suspendedGbJobCountBefore,
+    "suspended UK tester denial must not create a marketplace job");
+  const suspendedGbVehicle = await api("/api/vehicles", "POST", suspendedGbCookie, {});
+  assert.equal(suspendedGbVehicle.status, 403,
+    "suspended UK tester must not register a vehicle");
+  const suspendedGbSubscription = await api("/api/subscription/create-payment", "POST", suspendedGbCookie, {});
+  assert.equal(suspendedGbSubscription.status, 403,
+    "suspended UK tester must not create subscription payments despite an active subscription");
+
   await prisma.account.update({ where: { id: indiaPoster.id }, data: { verificationStatus: "suspended" } });
   const suspendedIndiaJobRead = await api("/api/jobs/" + indiaJob.id, "GET", indiaCookie);
   assert.equal(suspendedIndiaJobRead.status, 403,
