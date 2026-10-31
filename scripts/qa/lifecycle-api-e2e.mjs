@@ -406,6 +406,23 @@ try {
   assert.equal(corsProbe.headers.get("access-control-allow-origin"), null,
     "authenticated APIs must not grant arbitrary cross-origin browser access");
 
+  // Verify private API responses use the actual runtime cache policy.
+  const privateApiChecks = [
+    ["/api/account", posterCookie],
+    ["/api/account/access", posterCookie],
+    ["/api/jobs", posterCookie],
+    ["/api/notifications", posterCookie],
+    ["/api/payments", posterCookie],
+  ];
+  for (const [path, cookie] of privateApiChecks) {
+    const response = await api(path, "GET", cookie);
+    assert.equal(response.status, 200, path + " private-cache probe must be authenticated and successful");
+    assert.match(response.headers.get("cache-control") || "", /no-store/i,
+      path + " must not be cached by a browser or shared intermediary");
+    assert.match(response.headers.get("pragma") || "", /no-cache/i,
+      path + " must include the configured legacy no-cache directive");
+  }
+
   // Actual provider HTTP lifecycle and replay checks against isolated CI rows.
   const pendingSubscription = await prisma.subscriptionPayment.create({ data: {
     accountId: poster.id, planKey: "individual", amountMinorUnits: 1000,
