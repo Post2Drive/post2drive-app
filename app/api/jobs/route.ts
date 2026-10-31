@@ -463,10 +463,7 @@ try {
       { status: 201 },
     );
   } catch (error) {
-    console.error(
-      "create job error:",
-      error,
-    );
+    console.error("Create job failed.", { errorName: error instanceof Error ? error.name : "UnknownError" });
 
     return NextResponse.json(
       {
