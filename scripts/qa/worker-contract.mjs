@@ -6,6 +6,21 @@ const read = p => readFileSync(p, "utf8");
 const route = read("app/api/qa/run/route.ts");
 const runner = read("lib/qaRunner.ts");
 const worker = read("scripts/qa/worker.ts");
+const applicationLogSources = [
+  "lib/jobActivity.ts",
+  "app/api/admin/qa-campaigns/[id]/route.ts",
+  "app/api/admin/qa-campaigns/route.ts",
+  "app/api/profile/[id]/route.ts",
+  "app/api/vehicles/route.ts",
+  "app/api/jobs/route.ts",
+  "app/api/jobs/[id]/unassign/route.ts",
+  "app/api/jobs/[id]/cancel/route.ts",
+  "app/api/jobs/[id]/driver-cancel/route.ts",
+].map(path => [path, read(path)]);
+for (const [path, source] of applicationLogSources) {
+  assert.doesNotMatch(source, /console\\.error\\([\\s\\S]{0,180}?\\berror\\s*\\)/,
+    path + " must not pass raw exception objects/messages to application logs");
+}
 
 assert.match(route, /pg_advisory_xact_lock/,"concurrent API enqueues must serialize at the database");
 assert.match(route, /status IN \('queued','running'\)/,"route must detect active durable runs");
