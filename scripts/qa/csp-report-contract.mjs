@@ -5,10 +5,12 @@ import { readFileSync } from "node:fs";
 const config = readFileSync("next.config.js", "utf8");
 const route = readFileSync("app/api/security/csp-report/route.ts", "utf8");
 
-assert.match(config, /Content-Security-Policy-Report-Only/,
-  "CSP remains report-only until compatibility evidence is reviewed");
+// CSP has been promoted from report-only to enforced (#38).
+// The enforced header must be present; report-only is no longer required.
+assert.match(config, /key:\s*"Content-Security-Policy"/,
+  "CSP must be enforced (promoted from report-only after compatibility evidence reviewed)");
 assert.match(config, /report-uri \/api\/security\/csp-report/,
-  "CSP report-only policy must send violations to the bounded report endpoint");
+  "Enforced CSP policy must still send violations to the bounded report endpoint");
 assert.doesNotMatch(config, /script-src[^\n]*unsafe-eval/,
   "Report-only policy must surface eval use rather than allow it silently");
 assert.match(route, /readBoundedJson\(request, MAX_REPORT_BYTES\)/,

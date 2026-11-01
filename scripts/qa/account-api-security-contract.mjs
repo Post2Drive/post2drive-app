@@ -150,10 +150,9 @@ assert.match(patchHandler, /FOR UPDATE/,
 assert.match(patchHandler, /if \(name !== undefined \|\| phone !== undefined\)/,
   "Account PATCH must permit intentional clearing of blank profile fields");
 
-assert.match(nextConfig, /Content-Security-Policy-Report-Only/,
-  "CSP must be observable in report-only mode before enforcement");
-assert.doesNotMatch(nextConfig, /key:\s*"Content-Security-Policy"/,
-  "CSP must not be enforced before compatibility evidence is reviewed");
+// CSP has been promoted to enforcement (#38, Nov 2026).
+assert.match(nextConfig, /key:\s*"Content-Security-Policy"/,
+  "CSP must be enforced (promoted from report-only after compatibility evidence reviewed)");
 
 assert.match(passwordResetSource, /createHmac\("sha256",\s*secret\)\.update\(token\)\.digest\("hex"\)/,
   "high-entropy password-reset tokens must use a keyed HMAC digest");
@@ -188,4 +187,4 @@ assert.ok(apiMetricsSource.includes("errorName:") && apiMetricsSource.includes("
 assert.ok(rateLimitSource.includes("errorName:") && rateLimitSource.includes("UnknownError"),
   "rate-limit errors must log only a safe error class");
 
-console.log("Account API security contracts passed: minimized GET response, current-user scoping, deletion guard, bounded signup/reset/webhook inputs, bcrypt password byte limits, constant-time webhook authentication, lifecycle lock and report-only CSP.");
+console.log("Account API security contracts passed: minimized GET response, current-user scoping, deletion guard, bounded signup/reset/webhook inputs, bcrypt password byte limits, constant-time webhook authentication, lifecycle lock and enforced CSP.");

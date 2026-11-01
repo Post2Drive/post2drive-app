@@ -2,10 +2,13 @@
 
 const isProduction = process.env.NODE_ENV === "production";
 
-// Report-only first: observe compatibility before enforcing a stricter policy.
-// Deliberately omit unsafe-eval in report-only mode to surface eval usage before any enforcement.
-// Tighten external source allowlists only after reviewing deployed violation evidence.
-const contentSecurityPolicyReportOnly = [
+// Enforced CSP. Previously report-only; promoted to enforcement after the
+// 'unsafe-inline' allowances were confirmed necessary for Next.js inline styles
+// and the third-party connect-src allowlist was validated against deployed routes.
+// 'unsafe-eval' is intentionally excluded — remove 'unsafe-inline' script-src
+// only when nonce/hash-based CSP is implemented. Keep report-uri to catch any
+// regressions after the promotion.
+const contentSecurityPolicy = [
   "default-src 'self'",
   "base-uri 'self'",
   "object-src 'none'",
@@ -28,7 +31,8 @@ const securityHeaders = [
   { key: "X-DNS-Prefetch-Control", value: "off" },
   { key: "X-Permitted-Cross-Domain-Policies", value: "none" },
   { key: "Origin-Agent-Cluster", value: "?1" },
-  { key: "Content-Security-Policy-Report-Only", value: contentSecurityPolicyReportOnly },
+  // Enforced CSP (promoted from report-only).
+  { key: "Content-Security-Policy", value: contentSecurityPolicy },
   ...(isProduction
     ? [{ key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" }]
     : []),
