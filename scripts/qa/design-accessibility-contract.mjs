@@ -54,11 +54,13 @@ assert.match(layout, /href="#main-content">Skip to main content/, "Layout must p
 assert.match(layout, /id="main-content" tabIndex=\{-1\}/, "Skip link target must be programmatically focusable");
 
 const nav = read("app/main-nav.tsx");
-assert.match(nav, /aria-current=\{active \? "page" : undefined\}/, "Navigation must expose the current page");
+const serviceTiles = read("components/service-tiles.tsx");
+assert.match(serviceTiles, /aria-current=\{active \? "page" : undefined\}/, "Service tiles must expose the current page");
+assert.match(nav, /<ServiceTiles/, "Header Menu must open the shared service tiles");
 assert.match(nav, /aria-expanded=\{moreOpen\}/, "More disclosure must expose expanded state");
 assert.match(nav, /aria-controls="mobile-more-menu"/, "More disclosure must identify its controlled content");
 assert.match(nav, /id="mobile-more-menu"[^>]*hidden=\{!moreOpen\}/, "More disclosure target must exist while collapsed and be hidden");
-assert.match(css, /\.mobile-more-menu\[hidden\]\s*\{\s*display: none;/, "Collapsed More menu must not remain visible");
+assert.match(css, /\.service-menu-panel\[hidden\]\s*\{\s*display: none;/, "Collapsed service Menu must not remain visible");
 
 const dashboard = read("app/dashboard/page.tsx");
 assert.match(dashboard, /export default async function DashboardPage\([\s\S]*?return \([\s\S]*?<main/, "Dashboard must expose a main landmark");

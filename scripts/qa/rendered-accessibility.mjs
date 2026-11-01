@@ -213,11 +213,11 @@ try {
         await page.waitForFunction(() => document.activeElement?.textContent?.trim() === "Contacts, notes & review");
       }
       if (route === "/dashboard" && viewport.width <= 700) {
-        const more = page.locator(".mobile-nav-more");
+        const more = page.locator(".service-menu-button");
         await more.click();
         assert.equal(await more.getAttribute("aria-expanded"), "true", "mobile More button must expose expanded state");
         assert.equal(await page.locator("#mobile-more-menu").isVisible(), true, "mobile More menu must open");
-        assert.equal(await page.getByRole("link", { name: "My Requirements" }).isVisible(), true, "India accounts must see My Requirements in More");
+        assert.equal(await page.locator("#mobile-more-menu").getByRole("link", { name: "My Requirements" }).isVisible(), true, "India accounts must see My Requirements in More");
         const menuAxe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "best-practice"]).analyze();
         for (const violation of menuAxe.violations) failures.push(`mobile More menu (${viewport.label}) ${violation.impact || "unknown"}: ${violation.id} — ${violation.help}`);
         await page.keyboard.press("Escape");

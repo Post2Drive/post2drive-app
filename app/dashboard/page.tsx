@@ -16,6 +16,10 @@ import { isWeeklyPricingEligible } from "@/lib/pricing";
 
 import SignOutButton from "@/app/sign-out-button";
 import NotificationCenter from "@/components/notification-center";
+import ServiceTiles from "@/components/service-tiles";
+import { getServiceLinks } from "@/lib/serviceLinks";
+import { isTesterAdmin } from "@/lib/testerAdmin";
+import { isQaRunnerEnabled } from "@/lib/qaRunnerGuard";
 
 function StatCard({
   title,
@@ -86,6 +90,12 @@ export default async function DashboardPage() {
   if (!account) {
     redirect("/login");
   }
+
+  const showQaCampaigns = await isTesterAdmin();
+  const serviceLinks = getServiceLinks(account.country, {
+    showQaCampaigns,
+    showStudentPilot: showQaCampaigns && isQaRunnerEnabled(),
+  }).filter((link) => link.href !== "/dashboard");
 
   const marketProfile = getLocalisationProfile({ country: account.country, currency: account.currency });
   const ukEligible =
@@ -254,14 +264,8 @@ export default async function DashboardPage() {
         <SignOutButton />
       </div>
 
-      <nav className="dashboard-quick-actions" aria-label="Quick actions">
-        <Link href="/jobs" className="button-link">
-          View jobs →
-        </Link>
-        <Link href="/payments" className="button-link button-link-secondary">
-          Payment dashboard →
-        </Link>
-        <Link href="/vehicles" className="button-link button-link-secondary">Vehicles &amp; Verification</Link>
+      <nav className="dashboard-services" aria-label="Services">
+        <ServiceTiles links={serviceLinks} />
       </nav>
 
       <NotificationCenter />

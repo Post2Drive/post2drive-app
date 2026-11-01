@@ -36,8 +36,9 @@ assert.ok(css.includes('[style*="minmax(280px"]') && css.includes("grid-template
 assert.ok(css.includes(".ops-theme-dashboard .dashboard-stat-link") && css.includes("min-width: 0 !important"), "Dashboard KPI cards must not enforce widths that overflow narrow screens");
 assert.ok(css.includes("nav[aria-label=\"Job posting progress\"]") && css.includes("repeat(2, minmax(0, 1fr))"), "Job-posting progress must reflow on narrow phones");
 
-assert.ok(nav.includes('className="mobile-bottom-nav"') && nav.includes('aria-label="Mobile navigation"'), "Mobile navigation must remain present and labelled");
-assert.ok(nav.includes('aria-current={active ? "page" : undefined}'), "Navigation must expose the active route accessibly");
+assert.ok(nav.includes('aria-label="Main navigation"') && nav.includes('className="service-menu-button"') && nav.includes("<ServiceTiles"), "Every page must keep a labelled header with a Menu that opens the service tiles");
+assert.ok(readFileSync("components/service-tiles.tsx", "utf8").includes('aria-current={active ? "page" : undefined}'), "Service tiles must expose the active route accessibly");
+assert.ok(css.includes(".service-tile {") && css.includes("min-height: 96px;") && css.includes("repeat(2, minmax(0, 1fr))"), "Service tiles must be large touch targets in a two-column phone grid");
 assert.ok(marketplace.includes('className="marketplace-page"') && marketplace.includes('className="marketplace-job-tabs"'), "Marketplace must use width-safe layout and scrollable job tabs");
 assert.ok(createJob.includes('aria-label="Job posting progress"'), "Job creation progress must remain labelled");
 assert.ok(dashboard.includes('className="ops-theme-dashboard"'), "Dashboard must retain the responsive dashboard wrapper");

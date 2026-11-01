@@ -1,24 +1,11 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
-
-const baseLinks = [
-  { href: "/dashboard", label: "Home" },
-  { href: "/jobs", label: "Marketplace" },
-  { href: "/jobs/new", label: "Post a Job" },
-  { href: "/vehicles", label: "Vehicles" },
-  { href: "/payments", label: "Payments" },
-  { href: "/settings", label: "Account" },
-  { href: "/admin", label: "Admin" },
-];
-
-function isActive(pathname: string, href: string) {
-  return pathname === href ||
-    (href === "/jobs" && pathname.startsWith("/jobs/") && pathname !== "/jobs/new");
-}
+import ServiceTiles from "@/components/service-tiles";
+import { getServiceLinks, isServiceActive } from "@/lib/serviceLinks";
 
 export default function MainNav({ showQaCampaigns = false, showStudentPilot = false }: { showQaCampaigns?: boolean; showStudentPilot?: boolean }) {
   const pathname = usePathname();
@@ -26,106 +13,59 @@ export default function MainNav({ showQaCampaigns = false, showStudentPilot = fa
   const [moreOpen, setMoreOpen] = useState(false);
   const moreButtonRef = useRef<HTMLButtonElement>(null);
   const country = (session?.user as any)?.country;
-  const marketLinks = country === "IN"
-    ? [...baseLinks.slice(0, 2), { href: "/requirements", label: "My Requirements" }, ...baseLinks.slice(2)]
-    : baseLinks;
-  const links = [
-    ...marketLinks,
-    ...(showQaCampaigns ? [{ href: "/admin/qa-campaigns", label: "QA Campaigns" }] : []),
-    ...(showStudentPilot ? [{ href: "/admin/pilot", label: "UK Market QA" }] : []),
-  ];
-  const mobilePrimary = links.filter((link) =>
-    ["/dashboard", "/jobs", "/jobs/new", "/vehicles"].includes(link.href)
-  );
-  const mobileMore = links.filter((link) => !mobilePrimary.some((item) => item.href === link.href));
-  const moreActive = mobileMore.some((link) => isActive(pathname, link.href));
+  const links = getServiceLinks(country, { showQaCampaigns, showStudentPilot });
+  const current = links.find((link) => isServiceActive(pathname, link.href));
+
+  // Close the menu whenever the route changes.
+  useEffect(() => {
+    setMoreOpen(false);
+  }, [pathname]);
 
   if (status !== "authenticated") return null;
 
   return (
-    <>
-      <header className="main-nav-header">
-        <nav className="main-nav-inner" aria-label="Main navigation">
-          <Link href="/dashboard" className="main-nav-brand">Post2Drive</Link>
-          <div className="desktop-nav">
-            {links.map((link) => {
-              const active = isActive(pathname, link.href);
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={`main-nav-link${active ? " is-active" : ""}`}
-                  aria-current={active ? "page" : undefined}
-                  style={{
-                    fontWeight: active ? 700 : 600,
-                    color: active ? "var(--color-primary-action)" : "var(--color-text)",
-                    background: active ? "var(--color-action-soft)" : "transparent",
-                  }}
-                >
-                  {link.label}
-                </Link>
-              );
-            })}
-          </div>
-        </nav>
-      </header>
-
-      <nav
-        className="mobile-bottom-nav"
-        aria-label="Mobile navigation"
-        onKeyDown={(event) => {
-          if (event.key === "Escape" && moreOpen) {
-            setMoreOpen(false);
-            moreButtonRef.current?.focus();
-          }
-        }}
-      >
-        {mobilePrimary.map((link) => {
-          const active = isActive(pathname, link.href);
-          return (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="mobile-nav-link"
-              aria-current={active ? "page" : undefined}
-              onClick={() => setMoreOpen(false)}
-              style={{
-                fontWeight: active ? 800 : 600,
-                color: active ? "var(--color-primary-action)" : "var(--color-muted)",
-              }}
-            >
-              {link.label}
-            </Link>
-          );
-        })}
+    <header
+      className="main-nav-header"
+      onKeyDown={(event) => {
+        if (event.key === "Escape" && moreOpen) {
+          setMoreOpen(false);
+          moreButtonRef.current?.focus();
+        }
+      }}
+    >
+      <nav className="main-nav-inner service-nav" aria-label="Main navigation">
+        <Link
+          href="/dashboard"
+          className="main-nav-brand"
+          aria-current={pathname === "/dashboard" ? "page" : undefined}
+        >
+          Post2Drive
+        </Link>
+        {current && current.href !== "/dashboard" && (
+          <span className="service-nav-current">{current.label}</span>
+        )}
         <button
           ref={moreButtonRef}
           type="button"
-          className={`mobile-nav-more${moreActive ? " is-active" : ""}`}
+          className="service-menu-button"
           aria-expanded={moreOpen}
           aria-controls="mobile-more-menu"
           onClick={() => setMoreOpen((open) => !open)}
         >
-          <span aria-hidden="true">•••</span>
-          <span>More</span>
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
+            <path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+          </svg>
+          <span>Menu</span>
         </button>
-        <div id="mobile-more-menu" className="mobile-more-menu" hidden={!moreOpen} role="region" aria-label="More navigation links">
-          {mobileMore.map((link) => {
-            const active = isActive(pathname, link.href);
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="mobile-more-link"
-                aria-current={active ? "page" : undefined}
-                onClick={() => setMoreOpen(false)}
-              >
-                {link.label}
-              </Link>
-            );
-          })}
-        </div>
       </nav>
-    </>
+      <div id="mobile-more-menu" className="service-menu-panel" hidden={!moreOpen} role="region" aria-label="All services">
+        <ServiceTiles
+          links={links}
+          activeHref={current?.href}
+          onNavigate={() => setMoreOpen(false)}
+          compact
+        />
+      </div>
+    </header>
   );
 }
