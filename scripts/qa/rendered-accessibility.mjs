@@ -160,6 +160,10 @@ try {
     page.on("pageerror", error => failures.push(`[${viewport.label}] browser exception on ${new URL(page.url()).pathname}: ${error.message}`));
 
     for (const route of publicRoutes) await scanRoute(page, route, viewport);
+    // Public routes above are scanned with the first-visit cookie banner showing.
+    // Then record a choice, as a returning visitor would, so the fixed banner
+    // cannot intercept clicks in the interactive flows below.
+    await context.addCookies([{ name: "p2d_consent", value: encodeURIComponent(JSON.stringify({ v: 1, analytics: false, at: new Date().toISOString() })), url: baseURL }]);
 
     if (viewport.width === 320) {
       await page.goto(new URL("/signup", baseURL).toString(), { waitUntil: "domcontentloaded" });

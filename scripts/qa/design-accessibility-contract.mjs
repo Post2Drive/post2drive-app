@@ -153,3 +153,28 @@ assert.match(login, /autoComplete="email"/, "Login email must support autofill")
 assert.match(login, /autoComplete="current-password"/, "Login password must support password managers");
 
 console.log("Design accessibility source contracts passed (contrast, focus, motion, navigation, forms, requirements, signup, payments, vehicles, settings, admin research privacy, and login).");
+
+// Consent: nothing optional may track a visitor before they allow it.
+{
+  const { readdirSync, statSync } = await import("node:fs");
+  const { join } = await import("node:path");
+  const banner = read("components/consent-banner.tsx");
+  assert.match(read("app/layout.tsx"), /<ConsentBanner \/>/, "Cookie banner must be mounted on every page");
+  assert.match(banner, />\s*Essential only\s*</, "Banner must offer an equally visible reject option");
+  assert.match(banner, />\s*Allow analytics\s*</, "Banner must ask before enabling analytics");
+  assert.match(read("lib/consent.ts"), /return readConsent\(\)\?\.\[category\] === true;/, "Consent must default to off");
+  const footer = read("components/legal-footer.tsx");
+  for (const href of ["/terms", "/privacy", "/cookies"]) assert.ok(footer.includes(`href="${href}"`), `Legal footer must link ${href}`);
+  const trackers = /googletagmanager|gtag\(|google-analytics|posthog|mixpanel|hotjar|clarity\.ms|segment\.com|plausible|fbq\(|connect\.facebook/i;
+  const walk = (dir) => readdirSync(dir).flatMap((name) => {
+    const path = join(dir, name);
+    if (name === "node_modules" || name.startsWith(".")) return [];
+    return statSync(path).isDirectory() ? walk(path) : /\.(tsx?|jsx?)$/.test(name) ? [path] : [];
+  });
+  for (const file of ["app", "components", "lib"].flatMap(walk)) {
+    const source = read(file);
+    if (trackers.test(source)) {
+      assert.match(source, /AnalyticsConsentGate|hasConsent\(/, `${file} loads a tracker without the consent gate`);
+    }
+  }
+}
