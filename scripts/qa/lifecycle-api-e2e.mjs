@@ -4,7 +4,9 @@ import { spawn } from "node:child_process";
 import { createServer } from "node:net";
 import { setTimeout as delay } from "node:timers/promises";
 import { createHmac, randomUUID } from "node:crypto";
-import { PrismaClient } from "@prisma/client";
+// Use the WASM-based Prisma shim when the native query engine binary is absent
+// (CI environments that cannot download binaries from binaries.prisma.sh).
+import { PrismaClient } from "./prisma-pg-shim.mjs";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
@@ -986,6 +988,47 @@ try {
     "same-driver concurrent bid race must leave exactly one active bid in PostgreSQL");
   const posterBidsRead = await api("/api/jobs/" + bidJob.id + "/bids", "GET", posterCookie);
   assert.equal(posterBidsRead.status, 200, "poster may read bids for their own job");
+
+  // ── Mutation-route bounds validation (#38) ────────────────────────────────
+  // Account PATCH must reject overlong name, malformed JSON, and wrong content-type.
+  const mutationBoundsBefore = await snapshot();
+  const overLongName = "A".repeat(200);
+  const overLongNameResp = await api("/api/account", "PATCH", outsiderCookie, { name: overLongName });
+  assert.equal(overLongNameResp.status, 400, "account PATCH must reject name exceeding 120 chars");
+  const afterOverLongResp = await api("/api/account", "GET", outsiderCookie);
+  const afterOverLongBody = await afterOverLongResp.json();
+  assert.notEqual(afterOverLongBody.account?.users?.[0]?.name, overLongName, "overlong name rejection must not persist");
+
+  const malformedBody = await fetch(new URL("/api/account", base).href, {
+    method: "PATCH",
+    headers: { cookie: outsiderCookie, "content-type": "application/json" },
+    body: "not-json{{{{",
+    signal: AbortSignal.timeout(8000),
+  });
+  assert.ok([400, 500].includes(malformedBody.status), "account PATCH must reject malformed JSON body (got " + malformedBody.status + ")");
+
+  const wrongContentType = await fetch(new URL("/api/account", base).href, {
+    method: "PATCH",
+    headers: { cookie: outsiderCookie, "content-type": "text/plain" },
+    body: "name=legit",
+    signal: AbortSignal.timeout(8000),
+  });
+  assert.ok([400, 415, 422].includes(wrongContentType.status),
+    "account PATCH with wrong content-type must be rejected (got " + wrongContentType.status + ")");
+  assert.deepEqual(await snapshot(), mutationBoundsBefore,
+    "mutation bounds rejections must leave account state unchanged");
+
+  // Job create must reject an overlong pickup string.
+  const overLongPickupJob = await api("/api/jobs", "POST", posterCookie, {
+    pickup: "X".repeat(600),
+    dropoff: "CI Dropoff",
+    jobDate: new Date(Date.now() + 2 * 86_400_000).toISOString().slice(0, 10),
+    pickupTime: "09:00", dropoffTime: "17:00",
+    pickupTimeZone: "Europe/London", dropoffTimeZone: "Europe/London",
+    vehicleType: "Small van (SWB)", price: 50, priceMode: "fixed", currency: "GBP", crossBorder: false,
+  });
+  assert.ok([400, 422].includes(overLongPickupJob.status), "job create must reject overlong pickup (got " + overLongPickupJob.status + ")");
+  console.log("Mutation bounds: overlong name, malformed JSON, wrong content-type and overlong pickup all rejected.");
 
   // Establish that the credentials session is accepted, and the vehicle collection is
   // account-scoped rather than exposing another account's records.
