@@ -145,6 +145,9 @@ async function signIn(email, password = "ci-e2e-password-12345") {
       cookie: csrfCookie,
       "content-type": "application/x-www-form-urlencoded",
       "x-auth-return-redirect": "true",
+      // Behave like Railway's edge, which always sets the client address.
+      // Each test client gets its own rate-limit bucket, as real users do.
+      "x-real-ip": "198.51.100.20",
     },
     body: new URLSearchParams({
       csrfToken: csrf.csrfToken,
