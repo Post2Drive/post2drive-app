@@ -1,8 +1,8 @@
 import Link from "next/link";
 
 export default function TermsPage() {
-  return <main style={{ maxWidth: 900, margin: "0 auto", padding: "32px 20px 64px" }}>
-    <p><Link href="/signup">← Back to signup</Link></p>
+  return <main className="legal-page">
+    <p><Link href="/">← Back</Link></p>
     <h1>Post2Drive Terms of Service</h1>
     <p><strong>Version:</strong> 16 October 2026 · Draft for product testing</p>
     <p>Post2Drive is a delivery marketplace in development. These terms explain the basic rules for using the test service; the platform is not yet represented as a fully launched or fully regulated transport, payment or insurance service.</p>

@@ -6,7 +6,6 @@ import ActivityHistory from "./activity-history";
 import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import SignOutButton from "@/app/sign-out-button";
 import { symbolFor, COUNTRIES } from "@/lib/currency";
 import { formatMarketDate, formatMarketCurrency, getLocalisationProfile, getTimeZoneOptions } from "@/lib/localisation";
 import { vehicleTypeLabel } from "@/lib/vehicles";
@@ -239,6 +238,9 @@ export default function JobsPage() {
 
   const [tab, setTab] =
     useState("open");
+
+  const [vehicleFilter, setVehicleFilter] = useState("all");
+  const [sortBy, setSortBy] = useState<"newest" | "pickup" | "price">("newest");
 
   const [
     ratingInputs,
@@ -675,15 +677,30 @@ export default function JobsPage() {
       (t) => t.key === tab
     ) || TABS[0];
 
-  const visibleJobs =
-    activeTab.statuses
-      .length === 0
+  const tabJobs =
+    activeTab.statuses.length === 0
       ? jobs
-      : jobs.filter((job) =>
-          activeTab.statuses.includes(
-            job.status
-          )
-        );
+      : jobs.filter((job) => activeTab.statuses.includes(job.status));
+
+  const vehicleOptions = Array.from(new Set(tabJobs.map((job) => job.vehicleType))).sort();
+
+  const activeVehicle = vehicleOptions.includes(vehicleFilter) ? vehicleFilter : "all";
+
+  const pickupKey = (job: Job) => `${job.jobDate.slice(0, 10)}T${job.pickupTime || "23:59"}`;
+
+  const visibleJobs = tabJobs
+    .filter((job) => activeVehicle === "all" || job.vehicleType === activeVehicle)
+    .map((job, index) => ({ job, index }))
+    .sort((left, right) => {
+      if (sortBy === "pickup") {
+        return pickupKey(left.job).localeCompare(pickupKey(right.job)) || left.index - right.index;
+      }
+      if (sortBy === "price") {
+        return right.job.price - left.job.price || left.index - right.index;
+      }
+      return left.index - right.index;
+    })
+    .map(({ job }) => job);
 
   return (
     <main className="marketplace-page"
@@ -693,46 +710,7 @@ export default function JobsPage() {
         minWidth: 0,
       }}
     >
-      <div
-        style={{
-          display: "flex",
-          justifyContent:
-            "space-between",
-          alignItems:
-            "center",
-          flexWrap: "wrap",
-          gap: 12,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, minWidth: 0, flex: "1 1 260px" }}>
-        <h1 style={{ margin: 0, minWidth: 0, overflowWrap: "anywhere" }}>{countryName} delivery marketplace</h1>
-        {accountCountry === "IN" && <Link className="button-link button-link-secondary" href="/requirements">My Requirements</Link>}
-      </div>
-
-        <div
-          style={{
-            display: "flex",
-            gap: 12,
-            alignItems:
-              "center",
-            flexWrap: "wrap",
-            minWidth: 0,
-          }}
-        >
-          {canPost && (
-            <Link href="/jobs/new" className="button-link button-link-secondary">
-              + Post a job
-            </Link>
-          )}
-
-          <Link href="/payments" className="button-link button-link-secondary">
-            Payments
-          </Link>
-
-
-          <SignOutButton />
-        </div>
-      </div>
+      <h1 style={{ margin: "0 0 12px", minWidth: 0, overflowWrap: "anywhere" }}>{countryName} delivery marketplace</h1>
 
       <div
         className="marketplace-job-tabs"
@@ -786,7 +764,7 @@ export default function JobsPage() {
             fontSize: 14,
           }}
         >
-          Showing open jobs in {countryName}. Only listings posted within your selected country and currency are shown. Jobs you have posted or already accepted also remain visible here.
+          Loads in {countryName} only, plus jobs you posted or accepted.
         </p>
       )}
 
@@ -801,6 +779,31 @@ export default function JobsPage() {
 
       {loading && (
         <p role="status" aria-live="polite">Loading jobs…</p>
+      )}
+
+      {!loading && !loadError && tabJobs.length > 0 && (
+        <div className="load-board-controls">
+          <label>
+            <span>Vehicle</span>
+            <select value={activeVehicle} onChange={(event) => setVehicleFilter(event.target.value)}>
+              <option value="all">All vehicles</option>
+              {vehicleOptions.map((type) => (
+                <option key={type} value={type}>{vehicleTypeLabel(type, accountCountry)}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span>Sort</span>
+            <select value={sortBy} onChange={(event) => setSortBy(event.target.value as "newest" | "pickup" | "price")}>
+              <option value="newest">Newest first</option>
+              <option value="pickup">Pickup soonest</option>
+              <option value="price">Price: high to low</option>
+            </select>
+          </label>
+          <p className="load-board-count" aria-live="polite">
+            {visibleJobs.length} {visibleJobs.length === 1 ? "load" : "loads"}
+          </p>
+        </div>
       )}
 
       {!loading && !loadError &&
@@ -840,182 +843,86 @@ export default function JobsPage() {
                 style={{
                   background: "var(--color-surface)",
                   border: "1px solid var(--color-border)",
-                  borderRadius: 14,
-                  padding: 20,
-                  marginBottom: 14,
+                  borderRadius: 12,
+                  padding: 16,
+                  marginBottom: 10,
                   boxShadow: "var(--shadow-card)",
                 }}
               >
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "flex-start",
-                    gap: 16,
-                    flexWrap: "wrap",
-                  }}
-                >
-                  <div style={{ minWidth: 0 }}>
-                    <div
-                      style={{
-                        fontSize: 20,
-                        fontWeight: 700,
-                        color: "var(--color-text)",
-                        lineHeight: 1.35,
-                      }}
-                    >
-                      {job.pickup} → {job.dropoff}
-                    </div>
-
-                    {job.crossBorder && (
-                      <span
-                        style={{
-                          display: "inline-block",
-                          marginTop: 7,
-                          padding: "3px 8px",
-                          borderRadius: 999,
-                          background: "var(--color-primary-soft)",
-                          color: "var(--color-primary-action)",
-                          fontSize: 12,
-                          fontWeight: 700,
-                        }}
-                      >
-                        Cross-border
+                <div className="load-card-head">
+                  <div className="load-card-route">
+                    <div className="load-card-tags">
+                      <span className={`load-status load-status-${job.status}`}>
+                        {job.status.replace("_", " ")}
                       </span>
-                    )}
+                      {job.crossBorder && (
+                        <span className="load-tag">Cross-border</span>
+                      )}
+                    </div>
+                    <h2 className="load-card-title" aria-label={`${job.pickup} to ${job.dropoff}`}>
+                      {job.pickup} <span aria-hidden="true">→</span> {job.dropoff}
+                    </h2>
                   </div>
 
-                  <span
-                    style={{
-                      padding: "5px 10px",
-                      borderRadius: 999,
-                      background:
-                        job.status === "open"
-                          ? "var(--color-positive-soft)"
-                          : job.status === "completed"
-                          ? "var(--color-positive-soft)"
-                          : job.status === "cancelled"
-                          ? "var(--color-danger-soft)"
-                          : "var(--color-warning-soft)",
-                      color:
-                        job.status === "open"
-                          ? "var(--color-positive)"
-                          : job.status === "completed"
-                          ? "var(--color-positive)"
-                          : job.status === "cancelled"
-                          ? "var(--color-danger)"
-                          : "var(--color-warning)",
-                      fontSize: 12,
-                      fontWeight: 700,
-                      textTransform: "capitalize",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {job.status.replace("_", " ")}
-                  </span>
+                  <div className="load-card-price">
+                    <strong>
+                      {accountCountry === "IN" && job.price <= 0 ? "Negotiable" : formatMarketCurrency(job.price, { country: accountCountry || "GB", currency: job.currency })}
+                    </strong>
+                    {job.pricePerMile && (
+                      <small>
+                        {formatMarketCurrency(marketProfile?.distanceUnit === "km" ? job.pricePerMile * 0.621371 : job.pricePerMile, { country: accountCountry || "GB", currency: job.currency })}/{marketProfile?.distanceUnit ?? "mile"}
+                      </small>
+                    )}
+                    {accountCountry !== "IN" && job.priceMode === "bid" && (
+                      <small>Guide price · open to bids</small>
+                    )}
+                    {accountCountry === "IN" && job.price <= 0 && (
+                      <small>Contact poster</small>
+                    )}
+                  </div>
                 </div>
 
+                <p className="load-card-facts">
+                  <span>{vehicleTypeLabel(job.vehicleType, accountCountry)}</span>
+                  {job.weightKg ? (
+                    <span>{accountCountry === "US" ? (job.weightKg / 0.45359237).toLocaleString("en-US", { maximumFractionDigits: 1 }) + " lb" : job.weightKg + " kg"}</span>
+                  ) : null}
+                  {job.dimensions ? <span>{job.dimensions}</span> : null}
+                </p>
+
+                <p className="load-card-facts">
+                  <span>{formatMarketDate(job.jobDate, { country: accountCountry, currency: job.currency })}</span>
+                  {job.pickupTime && (
+                    <span>
+                      Pickup {job.pickupTime}
+                      {job.pickupTimeZone && job.pickupTimeZone !== marketProfile?.timeZone
+                        ? ` (${getTimeZoneOptions(accountCountry || "GB", marketProfile?.timeZone).find((zone) => zone.value === job.pickupTimeZone)?.label ?? job.pickupTimeZone})`
+                        : ""}
+                    </span>
+                  )}
+                  {job.dropoffTime && (
+                    <span>
+                      Drop-off {job.dropoffTime}
+                      {(job.dropoffTimeZone ?? job.pickupTimeZone) && (job.dropoffTimeZone ?? job.pickupTimeZone) !== marketProfile?.timeZone
+                        ? ` (${getTimeZoneOptions(accountCountry || "GB", marketProfile?.timeZone).find((zone) => zone.value === job.dropoffTimeZone)?.label ?? job.dropoffTimeZone ?? job.pickupTimeZone})`
+                        : ""}
+                    </span>
+                  )}
+                </p>
+
                 {involved && (job.status !== "open" || job.hasAcceptedDriver) && (
-                  <div style={{ marginTop: 12 }}>
+                  <div style={{ marginTop: 10 }}>
                     <Link
                       href={`/jobs/${job.id}/incidents`}
-                      style={{
-                        display: "inline-block",
-                        padding: "8px 11px",
-                        border: "1px solid var(--color-border)",
-                        borderRadius: 8,
-                        color: "var(--color-text)",
-                        textDecoration: "none",
-                      }}
+                      className="button-link button-link-secondary"
                     >
                       Report an issue / incident history
                     </Link>
                   </div>
                 )}
 
-                <div
-                  style={{
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: 8,
-                    marginTop: 14,
-                    color: "var(--color-text)",
-                    fontSize: 14,
-                  }}
-                >
-                  <span>{vehicleTypeLabel(job.vehicleType, accountCountry)}</span>
-                  <span>·</span>
-                  <strong>
-                    {accountCountry === "IN" && job.price <= 0 ? "Price negotiable — contact poster" : formatMarketCurrency(job.price, { country: accountCountry || "GB", currency: job.currency })}
-                  </strong>
-
-                  {job.pricePerMile && (
-                    <>
-                      <span>·</span>
-                      <span>
-                        {formatMarketCurrency(marketProfile?.distanceUnit === "km" ? job.pricePerMile * 0.621371 : job.pricePerMile, { country: accountCountry || "GB", currency: job.currency })}/{marketProfile?.distanceUnit ?? "mile"}
-                      </span>
-                    </>
-                  )}
-
-                  <span>·</span>
-
-                  <span>
-                    {formatMarketDate(job.jobDate, { country: accountCountry, currency: job.currency })}
-                  </span>
-
-                  {job.pickupTime && (
-                    <>
-                      <span>·</span>
-                      <span>Pickup {job.pickupTime} ({getTimeZoneOptions(accountCountry || "GB", marketProfile?.timeZone).find((zone) => zone.value === job.pickupTimeZone)?.label ?? job.pickupTimeZone ?? marketProfile?.timeZone})</span>
-                    </>
-                  )}
-
-                  {job.dropoffTime && (
-                    <>
-                      <span>·</span>
-                      <span>Drop-off {job.dropoffTime} ({getTimeZoneOptions(accountCountry || "GB", marketProfile?.timeZone).find((zone) => zone.value === job.dropoffTimeZone)?.label ?? job.dropoffTimeZone ?? job.pickupTimeZone ?? marketProfile?.timeZone})</span>
-                    </>
-                  )}
-                </div>
-
-                {accountCountry !== "IN" && job.priceMode === "bid" && (
-                  <p
-                    style={{
-                      margin: "10px 0 0",
-                      color: "var(--color-primary-action)",
-                      fontSize: 13,
-                      fontWeight: 600,
-                    }}
-                  >
-                    Guide price · open to bids
-                  </p>
-                )}
-
-                {(job.weightKg || job.dimensions) && (
-                  <p
-                    style={{
-                      margin: "12px 0 0",
-                      color: "var(--color-muted)",
-                      fontSize: 13,
-                    }}
-                  >
-                    {job.weightKg ? `${accountCountry === "US" ? (job.weightKg / 0.45359237).toLocaleString("en-US", { maximumFractionDigits: 1 }) + " lb" : job.weightKg + " kg"}` : ""}
-                    {job.weightKg && job.dimensions ? " · " : ""}
-                    {job.dimensions || ""}
-                  </p>
-                )}
-
                 {job.notes && (
-                  <p
-                    style={{
-                      margin: "12px 0 0",
-                      color: "var(--color-text)",
-                      lineHeight: 1.5,
-                    }}
-                  >
-                    {job.notes}
-                  </p>
+                  <p className="load-card-notes">{job.notes}</p>
                 )}
 
                 <p

@@ -1,90 +1,86 @@
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { redirect } from "next/navigation";
 import Link from "next/link";
+import { authOptions } from "@/lib/auth";
+import LegalFooter from "@/components/legal-footer";
 
+/** First screen. Signed-in users skip straight to their Home boxes. */
 export default async function HomePage() {
   const session = await getServerSession(authOptions);
-
-  if (session?.user) {
-    return (
-      <main className="home-page home-page-authenticated">
-        <section className="home-welcome">
-          <p className="home-eyebrow">POST2DRIVE · YOUR WORKSPACE</p>
-          <h1>Hello, {session.user.name?.trim() || "there"}.</h1>
-          <p className="home-intro">Pick up where you left off. Post a delivery, find available work, or manage your vehicles and verification.</p>
-          <div className="home-action-grid">
-            <Link className="home-action-card home-action-primary" href="/jobs/new">
-              <span className="home-action-label">FOR CUSTOMERS</span>
-              <strong>Post a delivery job</strong>
-              <span>Share the route and requirements to get started.</span>
-              <span className="home-action-cta">Create a job <span aria-hidden="true">→</span></span>
-            </Link>
-            <Link className="home-action-card" href="/jobs">
-              <span className="home-action-label">FOR DRIVERS</span>
-              <strong>Find delivery work</strong>
-              <span>Explore available jobs and review the details.</span>
-              <span className="home-action-cta">Browse jobs <span aria-hidden="true">→</span></span>
-            </Link>
-            <Link className="home-action-card" href="/vehicles">
-              <span className="home-action-label">ACCOUNT READINESS</span>
-              <strong>Vehicles &amp; verification</strong>
-              <span>Review your vehicle information and verification status.</span>
-              <span className="home-action-cta">Manage vehicles <span aria-hidden="true">→</span></span>
-            </Link>
-          </div>
-        </section>
-      </main>
-    );
-  }
+  if (session?.user) redirect("/dashboard");
 
   return (
-    <main className="home-page">
-      <section className="home-hero" aria-labelledby="home-title">
-        <div className="home-hero-copy">
-          <p className="home-eyebrow"><span className="home-eyebrow-dot" aria-hidden="true" /> FREIGHT &amp; COURIER EXCHANGE</p>
-          <h1 id="home-title">Delivery work and transport jobs, <span>connected.</span></h1>
-          <p className="home-intro">Post a delivery, discover available work, and manage the job from start to finish — in one place.</p>
-          <div className="home-hero-actions">
-            <Link className="home-button home-button-primary" href="/signup">Create an account <span aria-hidden="true">→</span></Link>
-            <Link className="home-button home-button-secondary" href="/login">Log in</Link>
+    <main className="landing">
+      <header className="landing-bar">
+        <span className="landing-brand">Post2Drive</span>
+        <Link className="landing-bar-login" href="/login">Log in</Link>
+      </header>
+
+      <section className="landing-hero" aria-labelledby="landing-title">
+        <div className="landing-hero-copy">
+          <h1 id="landing-title">Loads and drivers, matched in one place.</h1>
+          <p className="landing-lede">
+            Businesses post delivery jobs. Couriers and hauliers pick them up. Both sides follow the job
+            through to delivery.
+          </p>
+          <div className="landing-actions">
+            <Link className="landing-button landing-button-primary" href="/signup">Create account</Link>
+            <Link className="landing-button landing-button-secondary" href="/login">Log in</Link>
           </div>
-          <p className="home-supporting-copy">Already have an account? Log in to continue to your workspace.</p>
+          <p className="landing-note">Piloting in Manchester and Birmingham. Free early access in India.</p>
         </div>
-        <div className="home-route-panel" aria-label="How Post2Drive works">
-          <div className="home-route-panel-top">
-            <span className="home-route-label">ONE WORKFLOW</span>
-            <span className="home-route-status"><span aria-hidden="true" /> From post to delivery</span>
+
+        <figure className="load-ticket" aria-label="Example of a load listing">
+          <figcaption className="load-ticket-tag">Example load</figcaption>
+          <div className="load-ticket-route">
+            <span className="load-ticket-stop">
+              <span className="load-ticket-dot" aria-hidden="true" />
+              <span><strong>Trafford Park</strong><small>Manchester</small></span>
+            </span>
+            <span className="load-ticket-line" aria-hidden="true" />
+            <span className="load-ticket-stop">
+              <span className="load-ticket-dot load-ticket-dot-end" aria-hidden="true" />
+              <span><strong>Digbeth</strong><small>Birmingham</small></span>
+            </span>
           </div>
-          <ol className="home-steps">
-            <li><span className="home-step-number">01</span><span><strong>Post or discover</strong><small>Start with a delivery job or available work.</small></span></li>
-            <li><span className="home-step-number">02</span><span><strong>Review the details</strong><small>Check route, requirements and job terms.</small></span></li>
-            <li><span className="home-step-number">03</span><span><strong>Manage the delivery</strong><small>Follow the job through its lifecycle.</small></span></li>
-          </ol>
-          <div className="home-route-footer"><span aria-hidden="true">↗</span> Clear steps. One place to manage the work.</div>
+          <dl className="load-ticket-facts">
+            <div><dt>Vehicle</dt><dd>Luton van</dd></div>
+            <div><dt>Load</dt><dd>4 pallets, 800 kg</dd></div>
+            <div><dt>Collect</dt><dd>Tue, 08:00</dd></div>
+          </dl>
+          <div className="load-ticket-foot">
+            <span>Fixed price</span>
+            <strong>£240</strong>
+          </div>
+        </figure>
+      </section>
+
+      <section className="landing-steps" aria-labelledby="landing-steps-title">
+        <h2 id="landing-steps-title">How a job moves</h2>
+        <ol>
+          <li><span className="landing-step-n" aria-hidden="true">1</span><div><h3>Post or find a load</h3><p>Add the route, vehicle and price, or browse loads in your market.</p></div></li>
+          <li><span className="landing-step-n" aria-hidden="true">2</span><div><h3>Agree the job</h3><p>A driver accepts or bids. Contact details are shared only once you are matched.</p></div></li>
+          <li><span className="landing-step-n" aria-hidden="true">3</span><div><h3>Deliver and confirm</h3><p>Pickup and delivery are confirmed by both sides, then you rate each other.</p></div></li>
+        </ol>
+      </section>
+
+      <section className="landing-paths" aria-labelledby="landing-paths-title">
+        <h2 id="landing-paths-title">Which side are you on?</h2>
+        <div className="landing-path-grid">
+          <Link className="landing-path" href="/signup">
+            <h3>I have something to move</h3>
+            <p>Post a delivery and choose from drivers who can take it.</p>
+            <span className="landing-path-cta">Create a business account</span>
+          </Link>
+          <Link className="landing-path" href="/signup">
+            <h3>I drive for work</h3>
+            <p>See loads that fit your vehicle and your day.</p>
+            <span className="landing-path-cta">Create a driver account</span>
+          </Link>
         </div>
       </section>
-      <section className="home-audience" aria-labelledby="home-audience-title">
-        <div className="home-section-heading">
-          <p className="home-eyebrow">BUILT FOR BOTH SIDES</p>
-          <h2 id="home-audience-title">What brings you here?</h2>
-          <p>Choose the path that matches what you need today.</p>
-        </div>
-        <div className="home-action-grid home-public-actions">
-          <Link className="home-action-card" href="/signup">
-            <span className="home-action-label">I NEED TRANSPORT</span>
-            <strong>Post a job</strong>
-            <span>Describe the delivery and manage the next steps from your account.</span>
-            <span className="home-action-cta">Get started <span aria-hidden="true">→</span></span>
-          </Link>
-          <Link className="home-action-card" href="/jobs">
-            <span className="home-action-label">I AM A DRIVER</span>
-            <strong>Find work</strong>
-            <span>Browse the job marketplace and review opportunities that fit.</span>
-            <span className="home-action-cta">Explore jobs <span aria-hidden="true">→</span></span>
-          </Link>
-        </div>
-      </section>
-      <footer className="home-utility"><Link href="/pricing">Pricing</Link><span aria-hidden="true">·</span><Link href="/requirements">Requirements</Link></footer>
+
+      <LegalFooter />
     </main>
   );
 }

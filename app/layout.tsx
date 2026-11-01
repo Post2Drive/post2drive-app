@@ -7,6 +7,7 @@ import MainNav from "./main-nav";
 import { isTesterAdmin } from "@/lib/testerAdmin";
 import { isQaRunnerEnabled } from "@/lib/qaRunnerGuard";
 import PilotFeedbackLauncher from "@/app/components/pilot-feedback-launcher";
+import ConsentBanner from "@/components/consent-banner";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -37,6 +38,7 @@ export default async function RootLayout({
             {children}
           </div>
           {showPilotFeedback ? <PilotFeedbackLauncher /> : null}
+          <ConsentBanner />
         </Providers>
       </body>
     </html>
