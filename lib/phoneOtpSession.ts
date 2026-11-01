@@ -3,11 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { toE164ForMarket } from "@/lib/phoneVerification";
 
-/** Peppers stored OTP hashes; falls back to the auth secret, never to a constant. */
-export function otpPepper(): string | null {
-  const secret = process.env.POST2DRIVE_OTP_SECRET || process.env.NEXTAUTH_SECRET || "";
-  return secret.length >= 32 ? secret : null;
-}
+export { otpPepper } from "@/lib/otpStore";
 
 /**
  * The phone being verified is always the signed-in user's saved number,
