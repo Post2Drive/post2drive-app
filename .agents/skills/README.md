@@ -10,6 +10,7 @@ These skills live under `.agents/skills/` so they stay out of normal product UI 
 
 - `nextjs-review`, `react-review` — [yldgio/codereview-skills](https://github.com/yldgio/codereview-skills)
 - `debugging`, `code-review`, `security-analysis`, `test-driven-development`, `integration-testing`, `browser-testing`, `root-cause-analysis`, `accessibility-review` — [arjunprabhulal/agent-skills](https://github.com/arjunprabhulal/agent-skills)
+- `karpathy-guidelines` — [forrestchang/andrej-karpathy-skills](https://github.com/forrestchang/andrej-karpathy-skills) (MIT), applied on every coding task alongside `codex-workflow`
 - `emil-design-eng` — [emilkowalski/skills](https://github.com/emilkowalski/skills), pinned in this repository as a reviewed skill snapshot
 
 ## Supporting design skills
