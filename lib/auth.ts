@@ -6,6 +6,34 @@ import { emailVerificationRequiredForCountry } from "@/lib/emailVerification";
 import { checkRateLimit, clientNetworkIdentity } from "@/lib/rateLimit";
 import { isAuthorizedQaRunId } from "@/lib/qaRunAuthorization";
 import { isQaRunnerEnabled } from "@/lib/qaRunnerGuard";
+import { findIndiaUserByPhone } from "@/lib/phoneLogin";
+import { verifyOtp } from "@/lib/providerLifecycle";
+import { PrismaOtpStore, otpPepper } from "@/lib/otpStore";
+
+type SessionSource = {
+  id: string;
+  email: string | null;
+  name: string;
+  accountId: string;
+  sessionVersion: number;
+  passwordChangedAt: Date | null;
+  account: { currency: string; country: string };
+};
+
+/** One shape for every sign-in method, so sessions behave identically. */
+export function toSessionUser(user: SessionSource) {
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    accountId: user.accountId,
+    accountType: "both",
+    currency: user.account.currency,
+    country: user.account.country,
+    sessionVersion: user.sessionVersion,
+    passwordChangedAt: user.passwordChangedAt?.getTime() ?? null,
+  } as any;
+}
 
 export const authOptions: NextAuthOptions = {
   session: { strategy: "jwt" },
@@ -72,6 +100,9 @@ export const authOptions: NextAuthOptions = {
             take: 2,
           });
           if (phoneMatches.length === 1) user = phoneMatches[0];
+          // Otherwise match on the normalised number, so "98765 43210" and
+          // "+919876543210" find the same account.
+          if (!user && phoneMatches.length === 0) user = (await findIndiaUserByPhone(identifier)).user;
         }
         if (!user || user.account.deletionRequestedAt) return null;
 
@@ -97,17 +128,46 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          accountId: user.accountId,
-          accountType: "both",
-          currency: user.account.currency,
-          country: user.account.country,
-          sessionVersion: user.sessionVersion,
-          passwordChangedAt: user.passwordChangedAt?.getTime() ?? null,
-        } as any;
+        return toSessionUser(user);
+      },
+    }),
+    CredentialsProvider({
+      // India: sign in with the phone number and a one-time text code, no
+      // password needed. The code was requested via /api/phone-otp/request.
+      id: "phone-otp",
+      name: "India phone and text code",
+      credentials: {
+        phone: { label: "Mobile number", type: "tel" },
+        code: { label: "Six-digit code", type: "text" },
+      },
+      async authorize(credentials, req) {
+        const phone = credentials?.phone?.trim() ?? "";
+        const code = (credentials?.code ?? "").replace(/\s/g, "");
+        if (!phone || !/^\d{6}$/.test(code)) return null;
+
+        const headers = new Headers((req.headers ?? {}) as unknown as HeadersInit);
+        const networkIdentity = clientNetworkIdentity(new Request("https://post2drive.invalid/", { headers }));
+        const { e164, user } = await findIndiaUserByPhone(phone);
+        try {
+          const [networkLimit, phoneLimit] = await Promise.all([
+            checkRateLimit({ scope: "login-otp-network", identity: networkIdentity, limit: 20, windowMs: 15 * 60 * 1000 }),
+            checkRateLimit({ scope: "login-otp-phone", identity: e164 ?? phone, limit: 10, windowMs: 15 * 60 * 1000 }),
+          ]);
+          if (!networkLimit.allowed || !phoneLimit.allowed) return null;
+        } catch {
+          console.error("Login rate-limit control unavailable.");
+          return null;
+        }
+        const pepper = otpPepper();
+        if (!user || !e164 || !pepper) return null;
+
+        const ok = await verifyOtp(e164, code, new PrismaOtpStore(user.accountId), { pepper });
+        if (!ok) return null;
+        // Receiving the code proves possession of the number.
+        if (!user.account.phoneVerifiedAt) {
+          await prisma.account.update({ where: { id: user.accountId }, data: { phoneVerifiedAt: new Date() } });
+        }
+        return toSessionUser(user);
       },
     }),
   ],
