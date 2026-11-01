@@ -12,6 +12,14 @@ These skills live under `.agents/skills/` so they stay out of normal product UI 
 - `debugging`, `code-review`, `security-analysis`, `test-driven-development`, `integration-testing`, `browser-testing`, `root-cause-analysis`, `accessibility-review` — [arjunprabhulal/agent-skills](https://github.com/arjunprabhulal/agent-skills)
 - `emil-design-eng` — [emilkowalski/skills](https://github.com/emilkowalski/skills), pinned in this repository as a reviewed skill snapshot
 
+## Supporting design skills
+
+- `design-taste-frontend` (Taste) — [Leonxlnx/taste-skill](https://github.com/Leonxlnx/taste-skill) (MIT)
+- `ui-ux-pro-max` — [nextlevelbuilder/ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) (MIT); script paths patched for `.agents/skills/`, upstream tests omitted
+- `baseline-ui`, `fixing-accessibility`, `fixing-motion-performance`, `improve-ui` — [ibelick/ui-skills](https://github.com/ibelick/ui-skills) (MIT)
+
+These support `emil-design-eng` and never replace it; `AGENTS.md` sets their precedence. Each folder keeps its upstream `LICENSE`.
+
 Each imported upstream skill includes its source URL at the bottom. These are snapshots, not auto-updating vendor dependencies; review upstream changes and security before refreshing them.
 
 ## Codex compatibility
