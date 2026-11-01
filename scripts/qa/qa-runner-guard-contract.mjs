@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { isQaRunnerEnabled } from "../../lib/qaRunnerGuard.ts";
+import { isQaRunnerEnabled, isApprovedStagingOrigin } from "../../lib/qaRunnerGuard.ts";
 
 const keys = [
   "POST2DRIVE_QA_MODE",
@@ -29,6 +29,11 @@ function configure(overrides = {}) {
 try {
   configure();
   assert.equal(isQaRunnerEnabled(), true, "valid, allow-listed staging config should enable QA");
+  configure({ QA_BASE_URL: "https://post2drive-web-staging.up.railway.app/" });
+  assert.equal(isQaRunnerEnabled(), true, "a trailing slash on the approved origin is fine");
+  configure({ QA_BASE_URL: "HTTPS://Post2Drive-Web-Staging.up.railway.app" });
+  assert.equal(isQaRunnerEnabled(), true, "scheme and host are case-insensitive");
+  assert.equal(isApprovedStagingOrigin("https://x.test", ["https://x.test"]), true, "explicit allow-lists are honoured");
 
   const rejected = [
     ["QA mode disabled", { POST2DRIVE_QA_MODE: "false" }],
@@ -40,6 +45,13 @@ try {
     ["HTTP URL", { QA_BASE_URL: "http://post2drive-staging.example.test" }],
     ["non-staging host", { QA_BASE_URL: "https://post2drive.example.com" }],
     ["invalid URL", { QA_BASE_URL: "not a URL" }],
+    // Issue #38: lookalikes that passed the old "contains staging" check.
+    ["unrelated host with a staging label", { QA_BASE_URL: "https://attacker-staging.example.com" }],
+    ["approved host used as a subdomain of another domain", { QA_BASE_URL: "https://post2drive-web-staging.up.railway.app.attacker.example" }],
+    ["userinfo before the approved host", { QA_BASE_URL: "https://attacker@post2drive-web-staging.up.railway.app" }],
+    ["non-default port", { QA_BASE_URL: "https://post2drive-web-staging.up.railway.app:8443" }],
+    ["unexpected path", { QA_BASE_URL: "https://post2drive-web-staging.up.railway.app/redirect?to=evil" }],
+    ["other Railway staging app", { QA_BASE_URL: "https://someone-else-staging.up.railway.app" }],
   ];
   for (const [label, overrides] of rejected) {
     configure(overrides);
