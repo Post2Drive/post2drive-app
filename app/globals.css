@@ -3228,3 +3228,5 @@ button.consent-button:focus-visible { outline: 3px solid #F2B705; outline-offset
 main.legal-page table { display: table !important; overflow: visible !important; table-layout: fixed; }
 main.legal-page td, main.legal-page th { overflow-wrap: anywhere; }
 @media (max-width: 560px) { main.legal-page th, main.legal-page td { padding: 8px 6px; font-size: 14px; } }
+/* While the consent banner is open, let every page scroll clear of it. */
+body:has(.consent-banner) { padding-bottom: var(--consent-space, 180px) !important; }

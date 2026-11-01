@@ -11,6 +11,26 @@ import { CONSENT_EVENT, OPEN_CONSENT_EVENT, readConsent, writeConsent, type Cons
 export default function ConsentBanner() {
   const [open, setOpen] = useState(false);
   const firstButton = useRef<HTMLButtonElement>(null);
+  const bannerRef = useRef<HTMLElement>(null);
+
+  // Reserve space under the page while the banner is open, so it never
+  // covers content the visitor needs to reach (e.g. the last Home box).
+  useEffect(() => {
+    const root = document.documentElement;
+    if (!open || !bannerRef.current) {
+      root.style.removeProperty("--consent-space");
+      return;
+    }
+    const banner = bannerRef.current;
+    const update = () => root.style.setProperty("--consent-space", `${banner.offsetHeight + 24}px`);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(banner);
+    return () => {
+      observer.disconnect();
+      root.style.removeProperty("--consent-space");
+    };
+  }, [open]);
 
   useEffect(() => {
     if (!readConsent()) setOpen(true);
@@ -30,7 +50,7 @@ export default function ConsentBanner() {
   };
 
   return (
-    <section className="consent-banner" role="region" aria-label="Cookie choices">
+    <section ref={bannerRef} className="consent-banner" role="region" aria-label="Cookie choices">
       <p>
         We use essential cookies to keep you signed in. Optional analytics would help us improve Post2Drive, and stays off unless you allow it.{" "}
         <Link href="/cookies">Cookie details</Link>
