@@ -254,6 +254,16 @@ export default async function DashboardPage() {
         <SignOutButton />
       </div>
 
+      <nav className="dashboard-quick-actions" aria-label="Quick actions">
+        <Link href="/jobs" className="button-link">
+          View jobs →
+        </Link>
+        <Link href="/payments" className="button-link button-link-secondary">
+          Payment dashboard →
+        </Link>
+        <Link href="/vehicles" className="button-link button-link-secondary">Vehicles &amp; Verification</Link>
+      </nav>
+
       <NotificationCenter />
 
       <section
@@ -656,23 +666,6 @@ export default async function DashboardPage() {
         )}
       </section>
 
-      <div
-        style={{
-          display: "flex",
-          gap: 18,
-          flexWrap: "wrap",
-          marginTop: 28,
-        }}
-      >
-        <Link href="/jobs" className="button-link button-link-secondary">
-          View jobs →
-        </Link>
-
-        <Link href="/payments" className="button-link button-link-secondary">
-          Payment dashboard →
-        </Link>
-        <Link href="/vehicles" className="button-link button-link-secondary">Vehicles &amp; Verification</Link>
-      </div>
     </main>
   );
 }

@@ -84,7 +84,7 @@ export default async function HomePage() {
           </Link>
         </div>
       </section>
-      <footer className="home-utility"><Link href="/pricing">Pricing</Link><span aria-hidden="true">·</span><Link href="/requirements">Requirements</Link><span aria-hidden="true">·</span><Link href="/admin-access">Operations access</Link></footer>
+      <footer className="home-utility"><Link href="/pricing">Pricing</Link><span aria-hidden="true">·</span><Link href="/requirements">Requirements</Link></footer>
     </main>
   );
 }

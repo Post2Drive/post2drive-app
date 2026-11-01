@@ -1137,12 +1137,12 @@ a.button-link-secondary *,
 }
 
 /* Inline-styled labels must not overrule a button's background contrast. */
-button:not(:disabled):not([style*="background: transparent"]):not([style*="background:transparent"]):not([style*="background: var(--color-surface)"]):not([style*="background:var(--color-surface)"]),
+button:not(:disabled):not([style*="background: transparent"]):not([style*="background:transparent"]):not([style*="background: var(--color-surface)"]):not([style*="background:var(--color-surface)"]):not(.button-link-secondary):not(.button-danger-quiet),
 input[type="submit"]:not(:disabled),
 input[type="button"]:not(:disabled) {
   color: #FFFFFF !important;
 }
-button:not(:disabled):not([style*="background: transparent"]):not([style*="background:transparent"]):not([style*="background: var(--color-surface)"]):not([style*="background:var(--color-surface)"]) *,
+button:not(:disabled):not([style*="background: transparent"]):not([style*="background:transparent"]):not([style*="background: var(--color-surface)"]):not([style*="background:var(--color-surface)"]):not(.button-link-secondary):not(.button-danger-quiet) *,
 input[type="submit"]:not(:disabled) *,
 input[type="button"]:not(:disabled) * {
   color: #FFFFFF !important;
@@ -2694,4 +2694,158 @@ main textarea {
     min-width: 104px;
     min-height: 44px;
   }
+}
+
+/* Mobile usability pass (Nov 2026). Appended last so these deliberate variants
+   win over the earlier blanket button-contrast rules. */
+
+/* Destructive actions read as secondary and red, never as the primary blue. */
+button.button-danger-quiet {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font: inherit;
+  font-weight: 650;
+  line-height: 1.25;
+  background: #FFFFFF !important;
+  color: #B42318 !important;
+  -webkit-text-fill-color: #B42318 !important;
+  border: 1px solid #F0B7B0 !important;
+  cursor: pointer;
+}
+button.button-danger-quiet * {
+  color: #B42318 !important;
+  -webkit-text-fill-color: #B42318 !important;
+}
+button.button-danger-quiet:hover {
+  background: #FEF3F2 !important;
+  border-color: #B42318 !important;
+}
+button.button-danger-quiet:focus-visible {
+  outline: 3px solid #B42318;
+  outline-offset: 2px;
+}
+
+/* Secondary <button>s keep the same white surface and blue text as secondary links. */
+button.button-link-secondary,
+button.button-link-secondary * {
+  -webkit-text-fill-color: #2457D6 !important;
+}
+
+/* 44px minimum touch target for every action link. */
+.button-link {
+  min-height: 44px;
+}
+
+/* Pressed feedback on touch: a short, subtle scale (Emil: buttons must feel responsive). */
+.button-link,
+main button {
+  transition: transform 160ms ease-out, background-color .15s ease, border-color .15s ease;
+}
+.button-link:active,
+main button:not(:disabled):active {
+  transform: scale(0.97);
+}
+@media (prefers-reduced-motion: reduce) {
+  .button-link,
+  main button {
+    transition: background-color .15s ease, border-color .15s ease;
+  }
+  .button-link:active,
+  main button:not(:disabled):active {
+    transform: none;
+  }
+}
+
+/* Dashboard: the next step comes before the statistics. */
+.dashboard-quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+/* Map preview links get full-height tap targets instead of 13px inline text. */
+.job-route-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 12px;
+  margin: 8px 0;
+  font-size: 15px;
+}
+.job-route-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+
+/* Checkboxes and radios large enough to hit with a thumb. */
+main input[type="checkbox"],
+main input[type="radio"] {
+  width: 20px;
+  height: 20px;
+  accent-color: #2457D6;
+}
+
+/* Home footer links: tappable height, not 14px text. */
+.home-utility a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 4px;
+}
+
+@media (max-width: 700px) {
+  /* Status filters become scrollable chips with an edge fade, so it is
+     obvious more filters exist off-screen (same pattern as freight driver apps). */
+  .marketplace-job-tabs {
+    gap: 8px !important;
+    border-bottom: none !important;
+    padding: 2px 32px 6px 0 !important;
+    scroll-snap-type: x proximity;
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent);
+  }
+  .marketplace-job-tabs button {
+    border: 1px solid #CDD9F0 !important;
+    border-radius: 999px !important;
+    padding: 0 16px !important;
+    scroll-snap-align: start;
+  }
+  .marketplace-job-tabs button[aria-pressed="true"] {
+    border-color: #2457D6 !important;
+  }
+
+  /* Two stat tiles per row instead of one long column. */
+  .dashboard-stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  .dashboard-quick-actions .button-link {
+    flex: 1 1 100%;
+  }
+}
+
+@media (max-width: 700px) {
+  .marketplace-job-tabs {
+    margin-top: 8px;
+  }
+}
+
+/* Auth submit buttons meet the same 44px touch target as other buttons. */
+.auth-page button[type="submit"] {
+  min-height: 44px;
+}
+
+/* A checkbox wrapped in its label: the whole row is the touch target. */
+main label:has(> input[type="checkbox"]),
+main label:has(> input[type="radio"]) {
+  min-height: 44px;
+  cursor: pointer;
 }
