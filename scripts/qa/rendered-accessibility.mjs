@@ -154,6 +154,8 @@ try {
     const context = await browser.newContext({
       viewport: { width: viewport.width, height: viewport.height },
       reducedMotion: "reduce",
+      // Behave like Railway's edge, which always sets the client address.
+      extraHTTPHeaders: { "x-real-ip": "198.51.100.30" },
     });
     const page = await context.newPage();
     page.setDefaultTimeout(10_000);
