@@ -53,19 +53,21 @@
 | 44 | `/api/notifications/[id]/read` | POST | NextAuth session; update predicate includes both notification ID and the signed-in account ID; foreign record returns not-found. |
 | 45 | `/api/notifications` | GET | NextAuth session; query and unread count are scoped to the signed-in account ID with selected response fields. |
 | 46 | `/api/payments` | GET | NextAuth session; account/market-scoped completed jobs and response allowlist; private no-store response. No live payment-provider settlement is implied. |
-| 47 | `/api/pilot/feedback` | GET, POST | Explicit staging/QA-runner guard; NextAuth session; approved UK student-pilot tester cohort only; suspended-account denial and per-account rate limit. |
-| 48 | `/api/profile/[id]` | GET | NextAuth session; target profile lookup is same-market; suspended/deletion-requested viewer is denied and returned fields are allow-listed. |
-| 49 | `/api/promotion/referrals/progress` | GET | NextAuth session; current account identity is taken from the session and referral progress is read for that account. |
-| 50 | `/api/promotion/status` | GET | NextAuth session; current account identity is taken from the session. |
-| 51 | `/api/qa/run` | GET, POST | Explicit QA-runner staging allowlist and constant-time shared-token checks for protected reports/queueing; target URL, market and account-count preflight; destructive cleanup requires durable terminal markers. |
-| 52 | `/api/ratings` | POST | NextAuth session plus job-market guard; rater must be an authorized job party; stars/comment are bounded and unique job/rater constraint prevents duplicate rating. |
-| 53 | `/api/security/csp-report` | POST | Public browser-report endpoint; rate-limited and handles reports as untrusted input. |
-| 54 | `/api/signup` | POST | Public entry point; network rate limit, bounded/typed fields, supported market/currency validation and country-specific verification policy. |
-| 55 | `/api/subscription/create-payment` | POST | NextAuth session; account access, suspension and market/plan eligibility checks before creating a pending provider-payment record. |
-| 56 | `/api/subscription/webhook` | POST | Shared secret in request header with constant-time comparison; validates payment ID/body before applying an idempotent subscription transition. |
-| 57 | `/api/vehicles` | GET, POST | NextAuth session and account-scoped lookup; POST checks account type, suspension, market-specific registration/insurance inputs and bounded data. |
-| 58 | `/api/verification/start` | POST | NextAuth session; person-verification initiation is restricted to GB/GBP; India remains phone-only. |
-| 59 | `/api/verification/start/webhook` | POST | Shared verification secret with constant-time comparison; validates attempt/status/provider reference and delegates to guarded lifecycle transition logic. |
+| 47 | `/api/phone-otp/request` | POST | Public; India only. Sends a code only to a number already on exactly one India account; identical reply whether or not the number is registered (cooldown included); per-network and per-number rate limits; fails closed (503) without an SMS adapter. |
+| 48 | `/api/phone-otp/reset` | POST | Public; India only. Sets a new password after a valid account-scoped one-time code (hashed, 5-minute, 5 attempts, single use); bumps sessionVersion to sign out every session and clears email reset tokens; per-network and per-number rate limits; generic error for unknown numbers. |
+| 49 | `/api/pilot/feedback` | GET, POST | Explicit staging/QA-runner guard; NextAuth session; approved UK student-pilot tester cohort only; suspended-account denial and per-account rate limit. |
+| 50 | `/api/profile/[id]` | GET | NextAuth session; target profile lookup is same-market; suspended/deletion-requested viewer is denied and returned fields are allow-listed. |
+| 51 | `/api/promotion/referrals/progress` | GET | NextAuth session; current account identity is taken from the session and referral progress is read for that account. |
+| 52 | `/api/promotion/status` | GET | NextAuth session; current account identity is taken from the session. |
+| 53 | `/api/qa/run` | GET, POST | Explicit QA-runner staging allowlist and constant-time shared-token checks for protected reports/queueing; target URL, market and account-count preflight; destructive cleanup requires durable terminal markers. |
+| 54 | `/api/ratings` | POST | NextAuth session plus job-market guard; rater must be an authorized job party; stars/comment are bounded and unique job/rater constraint prevents duplicate rating. |
+| 55 | `/api/security/csp-report` | POST | Public browser-report endpoint; rate-limited and handles reports as untrusted input. |
+| 56 | `/api/signup` | POST | Public entry point; network rate limit, bounded/typed fields, supported market/currency validation and country-specific verification policy. |
+| 57 | `/api/subscription/create-payment` | POST | NextAuth session; account access, suspension and market/plan eligibility checks before creating a pending provider-payment record. |
+| 58 | `/api/subscription/webhook` | POST | Shared secret in request header with constant-time comparison; validates payment ID/body before applying an idempotent subscription transition. |
+| 59 | `/api/vehicles` | GET, POST | NextAuth session and account-scoped lookup; POST checks account type, suspension, market-specific registration/insurance inputs and bounded data. |
+| 60 | `/api/verification/start` | POST | NextAuth session; person-verification initiation is restricted to GB/GBP; India remains phone-only. |
+| 61 | `/api/verification/start/webhook` | POST | Shared verification secret with constant-time comparison; validates attempt/status/provider reference and delegates to guarded lifecycle transition logic. |
 
 ## Test evidence map
 

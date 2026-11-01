@@ -12,6 +12,7 @@ import { createEmailVerificationToken, emailDeliveryConfigured, emailVerificatio
 import { marketForAccount } from "@/lib/market";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { readBoundedJson } from "@/lib/requestBody";
+import { toE164ForMarket } from "@/lib/phoneVerification";
 
 const MARKET_RESEARCH_OPTIONS = {
   role: ["driver", "fleet", "shipper", "broker"],
@@ -365,6 +366,8 @@ async function POSTHandler(
 
                     phone:
                       phone.trim(),
+
+                    phoneE164: toE164ForMarket(phone, country),
 
                     passwordHash,
 

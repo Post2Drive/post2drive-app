@@ -7,6 +7,7 @@ import { isSupportedMarket } from "@/lib/market";
 import { authOptions } from "@/lib/auth";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { readBoundedJson } from "@/lib/requestBody";
+import { toE164ForMarket } from "@/lib/phoneVerification";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
@@ -195,7 +196,7 @@ async function PATCHHandler(req: Request) {
         where: { id: userId },
         data: {
           ...(typeof name === "string" && { name: name.trim() }),
-          ...(typeof phone === "string" && { phone: phone.trim() }),
+          ...(typeof phone === "string" && { phone: phone.trim(), phoneE164: toE164ForMarket(phone, account.country) }),
         },
       });
     }

@@ -116,6 +116,9 @@ const authModule = loadTypeScriptModule("lib/auth.ts", {
   "@/lib/qaRunAuthorization": { isAuthorizedQaRunId: async () => false },
   "@/lib/qaRunnerGuard": { isQaRunnerEnabled: () => false },
   "@/lib/eligibility": { isIndiaPhoneVerifiedAccount: () => false },
+  "@/lib/phoneLogin": { findIndiaUserByPhone: async () => ({ e164: null, user: null }) },
+  "@/lib/providerLifecycle": { verifyOtp: async () => false },
+  "@/lib/otpStore": { PrismaOtpStore: class {}, otpPepper: () => null },
 });
 const callbacks = authModule.authOptions.callbacks;
 
@@ -133,6 +136,7 @@ const malformedDeleteModule = loadTypeScriptModule("app/api/account/route.ts", {
   "@prisma/client": { Prisma: { DbNull: null } },
   "@/lib/prisma": { prisma: fakePrisma },
   "@/lib/uk": { isUkAccount: () => false, isUkPromotionLocked: () => false },
+  "@/lib/phoneVerification": { toE164ForMarket: () => null },
   "@/lib/requestBody": {
     readBoundedJson: async (request, maxBytes) => {
       const text = await request.text();

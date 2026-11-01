@@ -3242,3 +3242,8 @@ main.legal-page.sms-outbox table { table-layout: auto; }
 main.legal-page.sms-outbox td, main.legal-page.sms-outbox th { overflow-wrap: normal; white-space: nowrap; }
 /* Every text field and select meets the 44px touch-target minimum. */
 main input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]), main select { min-height: 44px; }
+
+/* India text-code login / reset */
+.phone-code-flow { display: flex; flex-direction: column; gap: 12px; }
+.phone-code-flow input[autocomplete="one-time-code"] { max-width: 12ch; font-size: 22px; letter-spacing: 0.3em; font-variant-numeric: tabular-nums; }
+.phone-code-actions { display: flex; flex-wrap: wrap; gap: 10px; }
