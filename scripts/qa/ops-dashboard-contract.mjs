@@ -17,6 +17,7 @@ assert.doesNotThrow(() => new Script(browserScript), "Operations dashboard brows
 
 for (const [name, pattern] of [
   ["separate operations service", /post2drive-ops-dashboard/],
+  ["per-visitor login lockout behind the app proxy", /const fromLocalProxy = \/\^\(\?:127\\\.\|::1\$\|::ffff:127\\\.\)\/\.test\(remote\);\s*const relayedIp = fromLocalProxy \? String\(req\.headers\["x-post2drive-client-ip"\]/],
   ["separate admin username", /OPS_DASHBOARD_USERNAME/],
   ["separate operator credential", /OPS_DASHBOARD_PASSWORD/],
   ["admin-only login form", /name="username"/],
@@ -138,3 +139,9 @@ assert.match(migration, /AdminAuditEvent_createdAt_idx/);
 assert.ok(server.includes('String(x.action||"check")+" · active QA issue"'), "attention queue uses an actual QA issue label");
 assert.ok(!server.includes('String(x.count||0)+" failed check(s)"'), "attention queue must not display a fabricated zero failed-check count");
 console.log("Ops dashboard contract checks passed.");
+{
+  const proxyRoute = readFileSync(new URL("../../app/admin-access/[[...path]]/route.ts", import.meta.url), "utf8");
+  if (!proxyRoute.includes('headers.set("x-post2drive-client-ip", clientNetworkIdentity(request));')) {
+    throw new Error("The /admin-access proxy must relay the edge-set visitor address so dashboard lockouts are per visitor.");
+  }
+}
