@@ -51,7 +51,7 @@
     "qa:security-log-redaction": "node scripts/qa/security-log-redaction-contract.mjs"
   },
   "dependencies": {
-    "@capacitor/android": "^8.5.3",
+    "@capacitor/android": "^8.6.0",
     "@capacitor/cli": "^8.6.0",
     "@capacitor/core": "^8.6.0",
     "@prisma/client": "^5.22.0",
