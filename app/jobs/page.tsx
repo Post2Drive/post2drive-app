@@ -1044,11 +1044,7 @@ export default function JobsPage() {
                 </p>
 
                 {!matched && (
-                  <p
-                    style={{
-                      fontSize: 13,
-                    }}
-                  >
+                  <p className="job-route-links">
                     <a
                       href={navLink(
                         job.pickup,
@@ -1061,8 +1057,6 @@ export default function JobsPage() {
                       Preview route to
                       pickup
                     </a>
-
-                    {" · "}
 
                     <a
                       href={navLink(
@@ -1164,22 +1158,13 @@ export default function JobsPage() {
                     >
                       <Link
                         href={`/jobs/${job.id}/edit`}
-                        style={{
-                          display:
-                            "inline-block",
-                          padding:
-                            "6px 10px",
-                          border: "1px solid var(--color-border)",
-                          borderRadius: 8,
-                          color: "var(--color-text)",
-                          textDecoration:
-                            "none",
-                        }}
-                       className="button-link button-link-secondary">
+                        className="button-link button-link-secondary">
                         Edit job
                       </Link>
 
                       <button
+                        type="button"
+                        className="button-danger-quiet"
                         onClick={() =>
                           handleCancel(
                             job.id,
@@ -1197,6 +1182,8 @@ export default function JobsPage() {
                     "accepted" && (
                     <>
                       <button
+                        type="button"
+                        className="button-link button-link-secondary"
                         onClick={() =>
                           handleUnassign(
                             job.id
@@ -1214,6 +1201,8 @@ export default function JobsPage() {
                             job.status
                           )
                         }
+                        type="button"
+                        className="button-danger-quiet"
                         style={{
                           marginLeft: 8,
                         }}
