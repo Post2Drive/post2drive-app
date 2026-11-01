@@ -5,6 +5,7 @@ import { signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getLocalisationProfile } from "@/lib/localisation";
+import PhoneVerification from "@/components/phone-verification";
 
 
 export default function SettingsPage() {
@@ -166,6 +167,8 @@ export default function SettingsPage() {
         {message && <p role="status" aria-live="polite">{message}</p>}
         <button type="submit" disabled={saveBusy}>{saveBusy ? "Saving…" : "Save"}</button>
       </form>
+
+      <PhoneVerification verified={Boolean(account.phoneVerifiedAt)} onVerified={() => void loadAccount()} />
 
       <h2 style={{ marginTop: 32 }}>Change password</h2>
       <form onSubmit={handlePasswordChange} style={{ display: "flex", flexDirection: "column", gap: 12 }}>

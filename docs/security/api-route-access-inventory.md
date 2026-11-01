@@ -9,61 +9,63 @@
 |---:|---|---|---|
 | 1 | `/api/account/access` | GET | NextAuth session; account identifier taken from session; reads current account access state. |
 | 2 | `/api/account` | GET, PATCH, DELETE | NextAuth session; current account only; bounded/validated mutations, lifecycle concurrency and session-revocation controls; rate limiting where configured. |
-| 3 | `/api/admin/company-verification` | GET, POST | NextAuth session plus tester-admin authorization; review is limited to GB/GBP submissions and creates an admin audit event. |
-| 4 | `/api/admin/incidents/resolve` | GET, POST | NextAuth session plus tester-admin authorization; POST validates job/incident/outcome/notes, checks job state, and records the administrator decision. |
-| 5 | `/api/admin/performance` | GET | Retired legacy endpoint; returns the replacement admin route rather than the former performance data. |
-| 6 | `/api/admin/qa-campaigns/[id]` | DELETE | NextAuth session plus tester-admin authorization; deletes only the addressed campaign resource. |
-| 7 | `/api/admin/qa-campaigns/[id]/start` | POST | NextAuth session plus tester-admin authorization and explicit staging-only QA-runner guard. |
-| 8 | `/api/admin/qa-campaigns/access` | POST, DELETE | NextAuth session; same-origin enforcement, request rate limit and configured Ops Dashboard credentials for issuing/revoking the QA-admin cookie. |
-| 9 | `/api/admin/qa-campaigns` | GET, POST | NextAuth session plus tester-admin authorization; validates draft input; GET is no-store; execution remains staging-guarded. |
-| 10 | `/api/admin/research` | GET | Tester-admin authorization; unauthenticated callers receive 401 and non-admin sessions receive 403. |
-| 11 | `/api/admin/testers` | GET, POST | Tester-admin authorization; code generation is additionally restricted to the explicit staging environment and writes admin audit records. |
-| 12 | `/api/auth/[...nextauth]` | GET, POST | NextAuth handlers; credential/session policy is enforced by the shared NextAuth configuration. |
-| 13 | `/api/auth/forgot-password` | POST | Public entry point; rate-limited and uses a generic response to avoid account enumeration. |
-| 14 | `/api/auth/reset-password` | POST | Public token flow; rate-limited, validates/consumes a one-time reset token and revokes existing sessions. |
-| 15 | `/api/company-verification` | POST | NextAuth session; GB/GBP-only market gate rejects India before accepting a company-verification submission. |
-| 16 | `/api/email/verification/resend` | POST | Public entry point with rate limit and generic response; looks up an email address without confirming account existence. |
-| 17 | `/api/email/verify` | POST | Public one-time token flow with rate limiting, expiry/consumption checks and conditional state update. |
-| 18 | `/api/health` | GET | Public operational health endpoint; no account data. |
-| 19 | `/api/internal/admin-bridge` | POST | Signed bridge request: HMAC-SHA256, timestamp freshness window, nonce format, constant-time signature comparison and persisted replay rejection; QA-sensitive actions remain environment-guarded. |
-| 20 | `/api/jobs/[id]/accept` | POST | NextAuth session plus shared job-market guard; driver eligibility and job-state/ownership checks. |
-| 21 | `/api/jobs/[id]/activity` | GET | NextAuth session plus shared job-market guard and job-party authorization. |
-| 22 | `/api/jobs/[id]/bid` | POST | NextAuth session, job-market guard, request rate limit, driver/vehicle eligibility and open-job state checks. |
-| 23 | `/api/jobs/[id]/bids/[bidId]/accept` | POST | NextAuth session plus job-market guard; job poster ownership and bid/job association are checked. |
-| 24 | `/api/jobs/[id]/bids` | GET | NextAuth session plus job-market guard; bids are returned to authorized job parties. |
-| 25 | `/api/jobs/[id]/cancel` | POST | NextAuth session plus job-market guard; poster ownership and allowed transition are checked. |
-| 26 | `/api/jobs/[id]/confirm-delivered` | POST | NextAuth session plus job-market guard; poster/party and delivery-state checks. |
-| 27 | `/api/jobs/[id]/confirm-pickup` | POST | NextAuth session plus job-market guard; assigned-driver and lifecycle-state checks. |
-| 28 | `/api/jobs/[id]/driver-cancel` | POST | NextAuth session plus job-market guard; assigned-driver and allowed withdrawal-state checks. |
-| 29 | `/api/jobs/[id]/edit` | PATCH | NextAuth session plus job-market guard; poster ownership, open-state conditional write and market-derived currency/time-zone validation. |
-| 30 | `/api/jobs/[id]/incidents/[incidentId]/evidence/[evidenceId]` | GET | NextAuth session plus job-market guard; evidence is selected through job/incident/evidence identity and restricted to a job party or explicit tester-admin exception; private no-store/nosniff response. |
-| 31 | `/api/jobs/[id]/incidents/[incidentId]/evidence` | POST | NextAuth session plus job-market guard; job-party check, rate limiting, bounded upload, MIME/signature/filename checks and per-incident limits. |
-| 32 | `/api/jobs/[id]/incidents` | GET, POST | NextAuth session plus job-market guard; job-party ownership; incident creation is tied to the addressed job. |
-| 33 | `/api/jobs/[id]/incidents/terminate` | POST | NextAuth session plus job-market guard; incident/job association, party authority and allowed outcome/state transition. |
-| 34 | `/api/jobs/[id]/incidents/updates` | POST | NextAuth session plus job-market guard; incident/job association and party authorization. |
-| 35 | `/api/jobs/[id]/mark-delivered` | POST | NextAuth session plus job-market guard; assigned-driver and lifecycle-state checks. |
-| 36 | `/api/jobs/[id]/payment/confirm-received` | POST | NextAuth session plus job-market guard; assigned-driver and payment-state checks; this is an in-app confirmation, not a provider settlement. |
-| 37 | `/api/jobs/[id]/payment/mark-paid` | POST | NextAuth session plus job-market guard; poster and lifecycle-state checks; this is a user marker, not a provider charge. |
-| 38 | `/api/jobs/[id]/reject-delivered` | POST | NextAuth session plus job-market guard; poster/party and lifecycle transition checks. |
-| 39 | `/api/jobs/[id]` | GET | NextAuth session plus job-market guard; only the poster or accepted driver may read the private job detail. |
-| 40 | `/api/jobs/[id]/unassign` | POST | NextAuth session plus job-market guard; poster ownership and pre-pickup state checks. |
-| 41 | `/api/jobs` | GET, POST | NextAuth session; market is derived from the account record, not client country/currency; POST uses bounded JSON, schema/business validation, rate limit and access checks. |
-| 42 | `/api/notifications/[id]/read` | POST | NextAuth session; update predicate includes both notification ID and the signed-in account ID; foreign record returns not-found. |
-| 43 | `/api/notifications` | GET | NextAuth session; query and unread count are scoped to the signed-in account ID with selected response fields. |
-| 44 | `/api/payments` | GET | NextAuth session; account/market-scoped completed jobs and response allowlist; private no-store response. No live payment-provider settlement is implied. |
-| 45 | `/api/pilot/feedback` | GET, POST | Explicit staging/QA-runner guard; NextAuth session; approved UK student-pilot tester cohort only; suspended-account denial and per-account rate limit. |
-| 46 | `/api/profile/[id]` | GET | NextAuth session; target profile lookup is same-market; suspended/deletion-requested viewer is denied and returned fields are allow-listed. |
-| 47 | `/api/promotion/referrals/progress` | GET | NextAuth session; current account identity is taken from the session and referral progress is read for that account. |
-| 48 | `/api/promotion/status` | GET | NextAuth session; current account identity is taken from the session. |
-| 49 | `/api/qa/run` | GET, POST | Explicit QA-runner staging allowlist and constant-time shared-token checks for protected reports/queueing; target URL, market and account-count preflight; destructive cleanup requires durable terminal markers. |
-| 50 | `/api/ratings` | POST | NextAuth session plus job-market guard; rater must be an authorized job party; stars/comment are bounded and unique job/rater constraint prevents duplicate rating. |
-| 51 | `/api/security/csp-report` | POST | Public browser-report endpoint; rate-limited and handles reports as untrusted input. |
-| 52 | `/api/signup` | POST | Public entry point; network rate limit, bounded/typed fields, supported market/currency validation and country-specific verification policy. |
-| 53 | `/api/subscription/create-payment` | POST | NextAuth session; account access, suspension and market/plan eligibility checks before creating a pending provider-payment record. |
-| 54 | `/api/subscription/webhook` | POST | Shared secret in request header with constant-time comparison; validates payment ID/body before applying an idempotent subscription transition. |
-| 55 | `/api/vehicles` | GET, POST | NextAuth session and account-scoped lookup; POST checks account type, suspension, market-specific registration/insurance inputs and bounded data. |
-| 56 | `/api/verification/start` | POST | NextAuth session; person-verification initiation is restricted to GB/GBP; India remains phone-only. |
-| 57 | `/api/verification/start/webhook` | POST | Shared verification secret with constant-time comparison; validates attempt/status/provider reference and delegates to guarded lifecycle transition logic. |
+| 3 | `/api/account/phone/request` | POST | NextAuth session; sends a code only to the session user's saved number (never a client-supplied number); per-network and per-account rate limits; fails closed when no SMS adapter is available. |
+| 4 | `/api/account/phone/verify` | POST | NextAuth session; verifies a six-digit code for the session user's saved number via the account-scoped OTP store (hashed, 5-minute expiry, 5 attempts, atomic single use); per-account rate limit; sets only that account's phoneVerifiedAt. |
+| 5 | `/api/admin/company-verification` | GET, POST | NextAuth session plus tester-admin authorization; review is limited to GB/GBP submissions and creates an admin audit event. |
+| 6 | `/api/admin/incidents/resolve` | GET, POST | NextAuth session plus tester-admin authorization; POST validates job/incident/outcome/notes, checks job state, and records the administrator decision. |
+| 7 | `/api/admin/performance` | GET | Retired legacy endpoint; returns the replacement admin route rather than the former performance data. |
+| 8 | `/api/admin/qa-campaigns/[id]` | DELETE | NextAuth session plus tester-admin authorization; deletes only the addressed campaign resource. |
+| 9 | `/api/admin/qa-campaigns/[id]/start` | POST | NextAuth session plus tester-admin authorization and explicit staging-only QA-runner guard. |
+| 10 | `/api/admin/qa-campaigns/access` | POST, DELETE | NextAuth session; same-origin enforcement, request rate limit and configured Ops Dashboard credentials for issuing/revoking the QA-admin cookie. |
+| 11 | `/api/admin/qa-campaigns` | GET, POST | NextAuth session plus tester-admin authorization; validates draft input; GET is no-store; execution remains staging-guarded. |
+| 12 | `/api/admin/research` | GET | Tester-admin authorization; unauthenticated callers receive 401 and non-admin sessions receive 403. |
+| 13 | `/api/admin/testers` | GET, POST | Tester-admin authorization; code generation is additionally restricted to the explicit staging environment and writes admin audit records. |
+| 14 | `/api/auth/[...nextauth]` | GET, POST | NextAuth handlers; credential/session policy is enforced by the shared NextAuth configuration. |
+| 15 | `/api/auth/forgot-password` | POST | Public entry point; rate-limited and uses a generic response to avoid account enumeration. |
+| 16 | `/api/auth/reset-password` | POST | Public token flow; rate-limited, validates/consumes a one-time reset token and revokes existing sessions. |
+| 17 | `/api/company-verification` | POST | NextAuth session; GB/GBP-only market gate rejects India before accepting a company-verification submission. |
+| 18 | `/api/email/verification/resend` | POST | Public entry point with rate limit and generic response; looks up an email address without confirming account existence. |
+| 19 | `/api/email/verify` | POST | Public one-time token flow with rate limiting, expiry/consumption checks and conditional state update. |
+| 20 | `/api/health` | GET | Public operational health endpoint; no account data. |
+| 21 | `/api/internal/admin-bridge` | POST | Signed bridge request: HMAC-SHA256, timestamp freshness window, nonce format, constant-time signature comparison and persisted replay rejection; QA-sensitive actions remain environment-guarded. |
+| 22 | `/api/jobs/[id]/accept` | POST | NextAuth session plus shared job-market guard; driver eligibility and job-state/ownership checks. |
+| 23 | `/api/jobs/[id]/activity` | GET | NextAuth session plus shared job-market guard and job-party authorization. |
+| 24 | `/api/jobs/[id]/bid` | POST | NextAuth session, job-market guard, request rate limit, driver/vehicle eligibility and open-job state checks. |
+| 25 | `/api/jobs/[id]/bids/[bidId]/accept` | POST | NextAuth session plus job-market guard; job poster ownership and bid/job association are checked. |
+| 26 | `/api/jobs/[id]/bids` | GET | NextAuth session plus job-market guard; bids are returned to authorized job parties. |
+| 27 | `/api/jobs/[id]/cancel` | POST | NextAuth session plus job-market guard; poster ownership and allowed transition are checked. |
+| 28 | `/api/jobs/[id]/confirm-delivered` | POST | NextAuth session plus job-market guard; poster/party and delivery-state checks. |
+| 29 | `/api/jobs/[id]/confirm-pickup` | POST | NextAuth session plus job-market guard; assigned-driver and lifecycle-state checks. |
+| 30 | `/api/jobs/[id]/driver-cancel` | POST | NextAuth session plus job-market guard; assigned-driver and allowed withdrawal-state checks. |
+| 31 | `/api/jobs/[id]/edit` | PATCH | NextAuth session plus job-market guard; poster ownership, open-state conditional write and market-derived currency/time-zone validation. |
+| 32 | `/api/jobs/[id]/incidents/[incidentId]/evidence/[evidenceId]` | GET | NextAuth session plus job-market guard; evidence is selected through job/incident/evidence identity and restricted to a job party or explicit tester-admin exception; private no-store/nosniff response. |
+| 33 | `/api/jobs/[id]/incidents/[incidentId]/evidence` | POST | NextAuth session plus job-market guard; job-party check, rate limiting, bounded upload, MIME/signature/filename checks and per-incident limits. |
+| 34 | `/api/jobs/[id]/incidents` | GET, POST | NextAuth session plus job-market guard; job-party ownership; incident creation is tied to the addressed job. |
+| 35 | `/api/jobs/[id]/incidents/terminate` | POST | NextAuth session plus job-market guard; incident/job association, party authority and allowed outcome/state transition. |
+| 36 | `/api/jobs/[id]/incidents/updates` | POST | NextAuth session plus job-market guard; incident/job association and party authorization. |
+| 37 | `/api/jobs/[id]/mark-delivered` | POST | NextAuth session plus job-market guard; assigned-driver and lifecycle-state checks. |
+| 38 | `/api/jobs/[id]/payment/confirm-received` | POST | NextAuth session plus job-market guard; assigned-driver and payment-state checks; this is an in-app confirmation, not a provider settlement. |
+| 39 | `/api/jobs/[id]/payment/mark-paid` | POST | NextAuth session plus job-market guard; poster and lifecycle-state checks; this is a user marker, not a provider charge. |
+| 40 | `/api/jobs/[id]/reject-delivered` | POST | NextAuth session plus job-market guard; poster/party and lifecycle transition checks. |
+| 41 | `/api/jobs/[id]` | GET | NextAuth session plus job-market guard; only the poster or accepted driver may read the private job detail. |
+| 42 | `/api/jobs/[id]/unassign` | POST | NextAuth session plus job-market guard; poster ownership and pre-pickup state checks. |
+| 43 | `/api/jobs` | GET, POST | NextAuth session; market is derived from the account record, not client country/currency; POST uses bounded JSON, schema/business validation, rate limit and access checks. |
+| 44 | `/api/notifications/[id]/read` | POST | NextAuth session; update predicate includes both notification ID and the signed-in account ID; foreign record returns not-found. |
+| 45 | `/api/notifications` | GET | NextAuth session; query and unread count are scoped to the signed-in account ID with selected response fields. |
+| 46 | `/api/payments` | GET | NextAuth session; account/market-scoped completed jobs and response allowlist; private no-store response. No live payment-provider settlement is implied. |
+| 47 | `/api/pilot/feedback` | GET, POST | Explicit staging/QA-runner guard; NextAuth session; approved UK student-pilot tester cohort only; suspended-account denial and per-account rate limit. |
+| 48 | `/api/profile/[id]` | GET | NextAuth session; target profile lookup is same-market; suspended/deletion-requested viewer is denied and returned fields are allow-listed. |
+| 49 | `/api/promotion/referrals/progress` | GET | NextAuth session; current account identity is taken from the session and referral progress is read for that account. |
+| 50 | `/api/promotion/status` | GET | NextAuth session; current account identity is taken from the session. |
+| 51 | `/api/qa/run` | GET, POST | Explicit QA-runner staging allowlist and constant-time shared-token checks for protected reports/queueing; target URL, market and account-count preflight; destructive cleanup requires durable terminal markers. |
+| 52 | `/api/ratings` | POST | NextAuth session plus job-market guard; rater must be an authorized job party; stars/comment are bounded and unique job/rater constraint prevents duplicate rating. |
+| 53 | `/api/security/csp-report` | POST | Public browser-report endpoint; rate-limited and handles reports as untrusted input. |
+| 54 | `/api/signup` | POST | Public entry point; network rate limit, bounded/typed fields, supported market/currency validation and country-specific verification policy. |
+| 55 | `/api/subscription/create-payment` | POST | NextAuth session; account access, suspension and market/plan eligibility checks before creating a pending provider-payment record. |
+| 56 | `/api/subscription/webhook` | POST | Shared secret in request header with constant-time comparison; validates payment ID/body before applying an idempotent subscription transition. |
+| 57 | `/api/vehicles` | GET, POST | NextAuth session and account-scoped lookup; POST checks account type, suspension, market-specific registration/insurance inputs and bounded data. |
+| 58 | `/api/verification/start` | POST | NextAuth session; person-verification initiation is restricted to GB/GBP; India remains phone-only. |
+| 59 | `/api/verification/start/webhook` | POST | Shared verification secret with constant-time comparison; validates attempt/status/provider reference and delegates to guarded lifecycle transition logic. |
 
 ## Test evidence map
 

@@ -8,6 +8,7 @@ import LogoutTile from "@/components/logout-tile";
 import { getServiceLinks } from "@/lib/serviceLinks";
 import { isTesterAdmin } from "@/lib/testerAdmin";
 import { isQaRunnerEnabled } from "@/lib/qaRunnerGuard";
+import { isSmsSandboxEnabled } from "@/lib/smsProvider";
 
 /** Home: welcome line, then boxes only. Each box opens one section. */
 export default async function DashboardPage() {
@@ -17,16 +18,24 @@ export default async function DashboardPage() {
   const accountId = (session.user as any)?.accountId;
   const account = await prisma.account.findUnique({
     where: { id: accountId },
-    select: { country: true, currency: true, companyName: true, displayId: true },
+    select: { country: true, currency: true, companyName: true, displayId: true, phoneVerifiedAt: true },
   });
   if (!account) redirect("/login");
 
   const marketProfile = getLocalisationProfile({ country: account.country, currency: account.currency });
   const showQaCampaigns = await isTesterAdmin();
-  const links = getServiceLinks(account.country, {
-    showQaCampaigns,
-    showStudentPilot: showQaCampaigns && isQaRunnerEnabled(),
-  });
+  const needsPhoneVerification = account.country === "IN" && !account.phoneVerifiedAt;
+  const links = [
+    // India access starts with phone verification, so it leads the grid until done.
+    ...(needsPhoneVerification
+      ? [{ href: "/settings#phone-verify-title", label: "Verify your phone", hint: "Needed before you can use the marketplace", icon: "phone" as const }]
+      : []),
+    ...getServiceLinks(account.country, {
+      showQaCampaigns,
+      showStudentPilot: showQaCampaigns && isQaRunnerEnabled(),
+      showSmsOutbox: showQaCampaigns && isSmsSandboxEnabled(),
+    }),
+  ];
 
   return (
     <main className="ops-theme-dashboard service-home" data-market={account.country} data-currency={account.currency}>

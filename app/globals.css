@@ -3230,3 +3230,15 @@ main.legal-page td, main.legal-page th { overflow-wrap: anywhere; }
 @media (max-width: 560px) { main.legal-page th, main.legal-page td { padding: 8px 6px; font-size: 14px; } }
 /* While the consent banner is open, let every page scroll clear of it. */
 body:has(.consent-banner) { padding-bottom: var(--consent-space, 180px) !important; }
+
+/* Phone verification (Account) */
+.phone-verify { margin-top: 32px; }
+.phone-verify-form { display: flex; flex-direction: column; gap: 12px; }
+.phone-verify-form input { max-width: 12ch; font-size: 22px; letter-spacing: 0.3em; font-variant-numeric: tabular-nums; }
+.phone-verify-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.phone-verify-test { margin: 0; padding: 10px 12px; border-radius: 8px; background: #FFF6D6; color: #5A4300; font-size: 14px; }
+.phone-verify-status { margin-top: 24px; font-weight: 700; color: #00695C; }
+main.legal-page.sms-outbox table { table-layout: auto; }
+main.legal-page.sms-outbox td, main.legal-page.sms-outbox th { overflow-wrap: normal; white-space: nowrap; }
+/* Every text field and select meets the 44px touch-target minimum. */
+main input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]), main select { min-height: 44px; }

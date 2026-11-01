@@ -811,3 +811,30 @@ model QaTestAccount {
   @@id([runId, accountId])
   @@map("qa_test_accounts")
 }
+
+/// One active SMS one-time-code challenge per phone number. Only hashes are
+/// stored: the phone as SHA-256, the code peppered with a server secret.
+model PhoneOtpChallenge {
+  phoneHash  String    @id
+  accountId  String
+  codeHash   String
+  expiresAt  DateTime
+  createdAt  DateTime  @default(now())
+  attempts   Int       @default(0)
+  consumedAt DateTime?
+
+  @@index([accountId])
+  @@index([expiresAt])
+}
+
+/// Staging-only SMS test outbox. Written only by the sandbox adapter, which is
+/// enabled solely behind the isolated staging QA guard. Never used in production.
+model SmsSandboxMessage {
+  id          String   @id @default(cuid())
+  phoneMasked String
+  code        String
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+}

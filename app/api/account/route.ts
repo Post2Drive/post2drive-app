@@ -39,6 +39,7 @@ async function GETHandler() {
       currency: true,
       displayId: true,
       marketingConsent: true,
+      phoneVerifiedAt: true,
       users: {
         where: { id: userId },
         select: { id: true, name: true, email: true, phone: true },
@@ -181,6 +182,14 @@ async function PATCHHandler(req: Request) {
       await tx.passwordResetToken.deleteMany({ where: { userId } });
     }
 
+    // Changing the number clears phone verification: the new number has to be
+    // proven again before it counts (India access depends on it).
+    let phoneChanged = false;
+    if (typeof phone === "string") {
+      const currentUser = await tx.user.findFirst({ where: { id: userId, accountId }, select: { phone: true } });
+      phoneChanged = (currentUser?.phone ?? "").replace(/[\s().-]/g, "") !== phone.trim().replace(/[\s().-]/g, "");
+    }
+
     if (name !== undefined || phone !== undefined) {
       await tx.user.update({
         where: { id: userId },
@@ -192,6 +201,9 @@ async function PATCHHandler(req: Request) {
     }
 
     const accountData: Record<string, unknown> = {};
+    if (phoneChanged && account.phoneVerifiedAt) {
+      accountData.phoneVerifiedAt = null;
+    }
     if (typeof companyName === "string") {
       accountData.companyName = companyName.trim();
     }

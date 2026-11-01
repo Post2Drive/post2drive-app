@@ -14,6 +14,7 @@ const paths: Record<ServiceIcon, string> = {
   overview: "M12 3a9 9 0 1 0 9 9h-9zM15 3.5A9 9 0 0 1 20.5 9H15z",
   notifications: "M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20.5a2 2 0 0 0 4 0",
   logout: "M14 4h5v16h-5M10 8l-4 4 4 4M6 12h10",
+  phone: "M8 3h8a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1ZM11 18h2",
 };
 
 export function ServiceTileIcon({ icon }: { icon: ServiceIcon }) {

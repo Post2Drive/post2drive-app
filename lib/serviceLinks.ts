@@ -10,7 +10,8 @@ export type ServiceIcon =
   | "qa"
   | "overview"
   | "notifications"
-  | "logout";
+  | "logout"
+  | "phone";
 
 export type ServiceLink = {
   href: string;
@@ -24,7 +25,7 @@ export type ServiceLink = {
  */
 export function getServiceLinks(
   country: string | null | undefined,
-  { showQaCampaigns = false, showStudentPilot = false }: { showQaCampaigns?: boolean; showStudentPilot?: boolean } = {},
+  { showQaCampaigns = false, showStudentPilot = false, showSmsOutbox = false }: { showQaCampaigns?: boolean; showStudentPilot?: boolean; showSmsOutbox?: boolean } = {},
 ): ServiceLink[] {
   return [
     { href: "/jobs", label: "Marketplace", hint: "Browse and accept loads", icon: "marketplace" },
@@ -40,5 +41,6 @@ export function getServiceLinks(
     ...(showQaCampaigns ? [{ href: "/admin", label: "Admin", hint: "Operations tools", icon: "admin" as const }] : []),
     ...(showQaCampaigns ? [{ href: "/admin/qa-campaigns", label: "QA Campaigns", hint: "Tester campaigns", icon: "qa" as const }] : []),
     ...(showStudentPilot ? [{ href: "/admin/pilot", label: "UK Market QA", hint: "Student pilot", icon: "qa" as const }] : []),
+    ...(showSmsOutbox ? [{ href: "/admin/sms-outbox", label: "SMS test outbox", hint: "Codes in staging test mode", icon: "phone" as const }] : []),
   ];
 }
