@@ -18,7 +18,7 @@ Before a substantial UI change, read the relevant sections of the Emil skill, th
 
 ## Persistent coding skills
 
-For every substantive coding task, follow `.agents/skills/codex-workflow/SKILL.md` and load the specialist skill(s) that match the task. These are project-local instructions and are intended to be used automatically, without the user needing to name a skill.
+For every substantive coding task, follow `.agents/skills/codex-workflow/SKILL.md` and `.agents/skills/karpathy-guidelines/SKILL.md` (state assumptions, keep changes minimal and surgical, define verifiable success criteria), and load the specialist skill(s) that match the task. These are project-local instructions and are intended to be used automatically, without the user needing to name a skill.
 
 Routing:
 - Unknown failures: `.agents/skills/debugging/SKILL.md`
