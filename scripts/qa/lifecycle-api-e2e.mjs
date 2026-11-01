@@ -878,6 +878,52 @@ try {
   assert.deepEqual(await snapshot(), crossMarketBefore,
     "cross-market action attempts must leave jobs, bids, incidents, evidence, ratings and payments unchanged");
 
+  // ── Isolation family: vehicle registration jurisdiction ──────────────────
+  // An IN account must not register a vehicle with a GB jurisdiction code.
+  const vehicleIsolationBefore = await snapshot();
+  const gbJurisdictionForInAccount = await api("/api/vehicles", "POST", indiaCookie, {
+    vehicleType: "Small van (SWB)",
+    regPlate: "MH12AB1234",
+    registrationRegion: "ENGLAND",   // GB jurisdiction code, invalid for IN market
+    ownershipType: "owned",
+    make: "Tata",
+    model: "Ace",
+    insuranceValidUntil: new Date(Date.now() + 365 * 86_400_000).toISOString().slice(0, 10),
+  });
+  assert.ok(
+    [400, 403].includes(gbJurisdictionForInAccount.status),
+    "IN account must not register a vehicle with a GB jurisdiction code (got " +
+      gbJurisdictionForInAccount.status + ")"
+  );
+  assert.deepEqual(await snapshot(), vehicleIsolationBefore,
+    "rejected GB-jurisdiction vehicle POST must not create any vehicle row");
+
+  // ── Isolation family: pilot feedback restricted to UK pilot accounts ──────
+  // The IN poster is not in the UK pilot, so the feedback endpoint must refuse it.
+  const pilotFeedbackBefore = await snapshot();
+  const indiaFeedbackPost = await api("/api/pilot/feedback", "POST", indiaCookie, {
+    category: "other",
+    severity: "minor",
+    description: "CI isolation check – non-pilot account",
+  });
+  assert.ok(
+    [403, 404].includes(indiaFeedbackPost.status),
+    "IN (non-pilot) account must not submit pilot feedback (got " +
+      indiaFeedbackPost.status + ")"
+  );
+  assert.deepEqual(await snapshot(), pilotFeedbackBefore,
+    "rejected pilot feedback must not persist any record");
+
+  // ── Isolation family: /api/qa/run requires a bearer token ─────────────────
+  // A GET with no Authorization header must be rejected before any work is done.
+  const qaRunNoToken = await api("/api/qa/run", "GET", null);
+  assert.ok(
+    [401, 404].includes(qaRunNoToken.status),
+    "/api/qa/run without a token must return 401 or 404 (got " +
+      qaRunNoToken.status + ")"
+  );
+  console.log("Isolation families: vehicle jurisdiction, pilot feedback, qa-run auth — all enforced.");
+
   // A signed-in account cannot move itself into another market.
   const marketSwitchBefore = await snapshot();
   const marketSwitch = await api("/api/account", "PATCH", posterCookie, { country: "IN", currency: "INR" });
