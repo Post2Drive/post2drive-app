@@ -828,6 +828,70 @@ try {
   assert.ok(driverNotifications.notifications.some(item => item.id === notification.id),
     "notification owner must be able to read its notification");
 
+  // Issue #122: cross-market action matrix for ACTIVE (not suspended) accounts.
+  // Every job action against another market's job must be refused and leave
+  // every protected row unchanged, in both directions.
+  const jobActionRoutes = (jobId) => [
+    ["POST", "/api/jobs/" + jobId + "/accept", {}],
+    ["GET", "/api/jobs/" + jobId + "/activity"],
+    ["POST", "/api/jobs/" + jobId + "/bid", { amount: 100 }],
+    ["GET", "/api/jobs/" + jobId + "/bids"],
+    ["POST", "/api/jobs/" + jobId + "/bids/ci-missing-bid/accept", {}],
+    ["POST", "/api/jobs/" + jobId + "/cancel", {}],
+    ["POST", "/api/jobs/" + jobId + "/confirm-delivered", {}],
+    ["POST", "/api/jobs/" + jobId + "/confirm-pickup", {}],
+    ["POST", "/api/jobs/" + jobId + "/driver-cancel", {}],
+    ["PATCH", "/api/jobs/" + jobId + "/edit", { price: 1 }],
+    ["GET", "/api/jobs/" + jobId + "/incidents"],
+    ["POST", "/api/jobs/" + jobId + "/incidents", { reason: "cross-market probe" }],
+    ["POST", "/api/jobs/" + jobId + "/incidents/terminate", {}],
+    ["POST", "/api/jobs/" + jobId + "/incidents/updates", {}],
+    ["POST", "/api/jobs/" + jobId + "/incidents/ci-missing-incident/evidence", {}],
+    ["GET", "/api/jobs/" + jobId + "/incidents/ci-missing-incident/evidence/ci-missing-evidence"],
+    ["POST", "/api/jobs/" + jobId + "/mark-delivered", {}],
+    ["POST", "/api/jobs/" + jobId + "/payment/confirm-received", {}],
+    ["POST", "/api/jobs/" + jobId + "/payment/mark-paid", {}],
+    ["POST", "/api/jobs/" + jobId + "/reject-delivered", {}],
+    ["POST", "/api/jobs/" + jobId + "/unassign", {}],
+    ["GET", "/api/jobs/" + jobId],
+  ];
+  const crossMarketBefore = await snapshot();
+  const crossMarketFindings = [];
+  for (const [label, cookie, jobId] of [
+    ["IN account -> GB job", indiaCookie, lifecycleJob.id],
+    ["GB account -> IN job", outsiderCookie, indiaJob.id],
+  ]) {
+    for (const [method, path, body] of jobActionRoutes(jobId)) {
+      const response = await api(path, method, cookie, body);
+      if (![403, 404].includes(response.status)) {
+        crossMarketFindings.push(label + ": " + method + " " + path + " -> " + response.status);
+      }
+    }
+  }
+  const crossMarketRating = await api("/api/ratings", "POST", outsiderCookie, {
+    jobId: indiaJob.id, stars: 1, comment: "cross-market rating must not persist",
+  });
+  if (![403, 404].includes(crossMarketRating.status)) crossMarketFindings.push("GB rating on IN job -> " + crossMarketRating.status);
+  assert.deepEqual(crossMarketFindings, [],
+    "every cross-market job action must be refused with 403/404");
+  console.log("Cross-market isolation: " + (jobActionRoutes("x").length * 2 + 1) + " active-account attempts refused (403/404).");
+  assert.deepEqual(await snapshot(), crossMarketBefore,
+    "cross-market action attempts must leave jobs, bids, incidents, evidence, ratings and payments unchanged");
+
+  // A signed-in account cannot move itself into another market.
+  const marketSwitchBefore = await snapshot();
+  const marketSwitch = await api("/api/account", "PATCH", posterCookie, { country: "IN", currency: "INR" });
+  assert.equal(marketSwitch.status, 409, "account market must be immutable after signup");
+  assert.deepEqual(await snapshot(), marketSwitchBefore, "a refused market switch must not change any account");
+
+  // Phone verification only ever acts on the caller's own account.
+  const phoneProbeBefore = await snapshot();
+  const foreignPhoneVerify = await api("/api/account/phone/verify", "POST", outsiderCookie, { code: "123456" });
+  assert.ok([400, 503].includes(foreignPhoneVerify.status),
+    "phone verification with a guessed code must fail (got " + foreignPhoneVerify.status + ")");
+  assert.deepEqual(await snapshot(), phoneProbeBefore,
+    "a failed phone verification must not mark any account verified");
+
   const posterJobRead = await api("/api/jobs/" + lifecycleJob.id, "GET", posterCookie);
   assert.equal(posterJobRead.status, 200, "poster may read their own job");
   const driverActivityRead = await api("/api/jobs/" + lifecycleJob.id + "/activity", "GET", driverCookie);
