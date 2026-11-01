@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
 export const OPS_QA_ADMIN_COOKIE = "p2d_ops_qa_admin";
 export const OPS_QA_ADMIN_SESSION_SECONDS = 8 * 60 * 60;
@@ -52,13 +53,34 @@ export async function hasOpsQaAdminSession(rawEmail?: string | null) {
   return safeEqualHex(suppliedSignature, signature(username, email, expiresAt, secret));
 }
 
-export async function isTesterAdmin() {
-  const session = await getServerSession(authOptions);
-  const email = session?.user?.email?.trim().toLowerCase();
-  const allowedEmails = (process.env.POST2DRIVE_ADMIN_EMAILS || "")
+export function adminAllowList(env: Record<string, string | undefined> = process.env) {
+  return (env.POST2DRIVE_ADMIN_EMAILS || "")
     .split(",")
     .map((value) => value.trim().toLowerCase())
     .filter(Boolean);
-  if (email && allowedEmails.includes(email)) return true;
-  return hasOpsQaAdminSession(email);
+}
+
+/**
+ * An allow-listed email only grants admin once the address has been proven
+ * (emailVerifiedAt set). Otherwise anyone could register with an admin's
+ * address — India signup, for example, stores emails unverified.
+ */
+export function isVerifiedAllowListedAdmin(
+  user: { email: string | null; emailVerifiedAt: Date | null } | null,
+  allowList: string[],
+) {
+  const email = user?.email?.trim().toLowerCase();
+  return Boolean(email && user?.emailVerifiedAt && allowList.includes(email));
+}
+
+export async function isTesterAdmin() {
+  const session = await getServerSession(authOptions);
+  const userId = (session?.user as { id?: string } | undefined)?.id;
+  if (!userId) return false;
+  // Read from the database, not the session token, so the check reflects the
+  // current verified state of the address.
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true, emailVerifiedAt: true } });
+  if (isVerifiedAllowListedAdmin(user, adminAllowList())) return true;
+  // The ops dashboard session is a separate, signed second factor.
+  return hasOpsQaAdminSession(user?.email);
 }

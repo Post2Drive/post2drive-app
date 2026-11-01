@@ -1,3 +1,4 @@
+import { clientNetworkIdentity } from "@/lib/clientIp";
 import { createHash } from "crypto";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -59,15 +60,7 @@ export function rateLimitResponse(retryAfterSeconds: number, message = "Too many
   );
 }
 
-export function clientNetworkIdentity(request: Request): string {
-  // Prefer headers commonly overwritten by a trusted edge proxy. x-forwarded-for
-  // is only a fallback and should be set/normalised by the chosen host.
-  const identity = request.headers.get("cf-connecting-ip")?.trim()
-    || request.headers.get("x-real-ip")?.trim()
-    || request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
-    || "unavailable";
-  return identity.slice(0, 200);
-}
+export { clientNetworkIdentity };
 
 /** Apply a shared durable limit and convert DB failures to a safe 503 response. */
 export async function enforceRateLimit(request: Request, options: Omit<RateLimitOptions, "identity"> & { identity?: string }) {
