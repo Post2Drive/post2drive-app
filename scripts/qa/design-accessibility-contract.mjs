@@ -54,13 +54,11 @@ assert.match(layout, /href="#main-content">Skip to main content/, "Layout must p
 assert.match(layout, /id="main-content" tabIndex=\{-1\}/, "Skip link target must be programmatically focusable");
 
 const nav = read("app/main-nav.tsx");
-const serviceTiles = read("components/service-tiles.tsx");
-assert.match(serviceTiles, /aria-current=\{active \? "page" : undefined\}/, "Service tiles must expose the current page");
-assert.match(nav, /<ServiceTiles/, "Header Menu must open the shared service tiles");
-assert.match(nav, /aria-expanded=\{moreOpen\}/, "More disclosure must expose expanded state");
-assert.match(nav, /aria-controls="mobile-more-menu"/, "More disclosure must identify its controlled content");
-assert.match(nav, /id="mobile-more-menu"[^>]*hidden=\{!moreOpen\}/, "More disclosure target must exist while collapsed and be hidden");
-assert.match(css, /\.service-menu-panel\[hidden\]\s*\{\s*display: none;/, "Collapsed service Menu must not remain visible");
+assert.match(nav, /aria-label="Main navigation"/, "Inner pages must keep a labelled navigation landmark");
+assert.match(nav, /href="\/dashboard" className="back-home-link"/, "Every inner page must offer one way back to the Home boxes");
+assert.match(nav, /pathname === "\/dashboard"\) return null/, "Home must show boxes only, with no navigation bar above them");
+const homeBoxes = read("app/dashboard/page.tsx");
+assert.match(homeBoxes, /<nav aria-label="Services">[\s\S]*<ServiceTiles/, "Home boxes must be a labelled navigation list");
 
 const dashboard = read("app/dashboard/page.tsx");
 assert.match(dashboard, /export default async function DashboardPage\([\s\S]*?return \([\s\S]*?<main/, "Dashboard must expose a main landmark");

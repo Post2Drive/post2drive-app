@@ -128,9 +128,6 @@ export default function SettingsPage() {
 
   return (
     <main className="account-settings-page" style={{ width: "100%", maxWidth: 760, margin: "0 auto", padding: "24px 16px 48px", boxSizing: "border-box" }}>
-      <p>
-        <Link href="/jobs" className="button-link button-link-secondary">← Back to jobs</Link>
-      </p>
       <h1>Account settings</h1>
       <p style={{ color: "var(--color-muted)" }}>{account.displayId}</p>
 

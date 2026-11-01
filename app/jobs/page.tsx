@@ -6,7 +6,6 @@ import ActivityHistory from "./activity-history";
 import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import SignOutButton from "@/app/sign-out-button";
 import { symbolFor, COUNTRIES } from "@/lib/currency";
 import { formatMarketDate, formatMarketCurrency, getLocalisationProfile, getTimeZoneOptions } from "@/lib/localisation";
 import { vehicleTypeLabel } from "@/lib/vehicles";
@@ -711,46 +710,7 @@ export default function JobsPage() {
         minWidth: 0,
       }}
     >
-      <div
-        style={{
-          display: "flex",
-          justifyContent:
-            "space-between",
-          alignItems:
-            "center",
-          flexWrap: "wrap",
-          gap: 12,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, minWidth: 0, flex: "1 1 260px" }}>
-        <h1 style={{ margin: 0, minWidth: 0, overflowWrap: "anywhere" }}>{countryName} delivery marketplace</h1>
-        {accountCountry === "IN" && <Link className="button-link button-link-secondary" href="/requirements">My Requirements</Link>}
-      </div>
-
-        <div
-          style={{
-            display: "flex",
-            gap: 12,
-            alignItems:
-              "center",
-            flexWrap: "wrap",
-            minWidth: 0,
-          }}
-        >
-          {canPost && (
-            <Link href="/jobs/new" className="button-link button-link-secondary">
-              + Post a job
-            </Link>
-          )}
-
-          <Link href="/payments" className="button-link button-link-secondary">
-            Payments
-          </Link>
-
-
-          <SignOutButton />
-        </div>
-      </div>
+      <h1 style={{ margin: "0 0 12px", minWidth: 0, overflowWrap: "anywhere" }}>{countryName} delivery marketplace</h1>
 
       <div
         className="marketplace-job-tabs"
