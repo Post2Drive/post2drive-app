@@ -8,6 +8,13 @@ Keep the shared accessibility and platform baseline: semantic landmarks, keyboar
 
 Before a substantial UI change, read the relevant sections of the Emil skill, then load `.agents/skills/accessibility-review/SKILL.md` and the applicable component/browser-testing skill. Cite the specific skill section when explaining design decisions. Review the rendered result at mobile and desktop sizes; source-only review is not proof of conformance.
 
+Supporting design skills, used alongside Emil (never instead of it):
+- `.agents/skills/design-taste-frontend/SKILL.md` (Taste): avoid generic, AI-looking layouts on public pages and app screens; its `references/app-screens.md` covers dashboards and settings.
+- `.agents/skills/ui-ux-pro-max/SKILL.md`: palette, type and design-system research. Run its `search.py` from the repository root; it is offline and read-only.
+- `.agents/skills/baseline-ui/SKILL.md`, `fixing-accessibility`, `fixing-motion-performance` and `improve-ui` (ibelick/ui-skills): targeted fixers and a planning pass for an existing screen.
+
+When they disagree, this order wins: accessibility baseline, then Post2Drive's established colour semantics and identity, then Emil, then the supporting skills. Do not add third-party CDN scripts (for example GSAP from jsDelivr, which Taste's scene helpers suggest) to the app; any animation library must be an npm dependency reviewed like any other.
+
 ## Engineering and release safety
 
 - Inspect existing behavior and tests before changing a flow. Prefer small, reviewable changes over wholesale rewrites.
