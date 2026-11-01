@@ -880,6 +880,74 @@ try {
   assert.deepEqual(await snapshot(), crossMarketBefore,
     "cross-market action attempts must leave jobs, bids, incidents, evidence, ratings and payments unchanged");
 
+  // ── Isolation family: vehicles (cross-market read/write) (#122) ──────────
+  // An IN account must not be able to read or enumerate a GB account's vehicles.
+  // Vehicle GET returns the caller's own vehicles only — an IN caller must not
+  // see the GB poster's vehicle in the response.
+  const vehicleCrossMarketBefore = await snapshot();
+  const indiaVehicleList = await (await api("/api/vehicles", "GET", indiaCookie)).json();
+  const gbPosterVehicleExposedToIndia = indiaVehicleList?.vehicles?.some(
+    (v) => v.id === posterVehicle.id
+  );
+  assert.ok(!gbPosterVehicleExposedToIndia,
+    "GB poster's vehicle must not appear in an IN account's vehicle list");
+
+  // An IN account must not register a vehicle — even with a valid IN reg plate —
+  // because the staging environment should scope vehicle creation to the caller's
+  // market. The vehicles API returns the caller's own list; the isolation is that
+  // the posterVehicle (owned by a GB account) is invisible to the IN account.
+  // Also confirm the IN account's vehicle list is distinct from the GB poster's.
+  const posterVehicleList = await (await api("/api/vehicles", "GET", posterCookie)).json();
+  const indiaPosterVehicleVisible = posterVehicleList?.vehicles?.some(
+    (v) => v.accountId === indiaPoster.id
+  );
+  assert.ok(!indiaPosterVehicleVisible,
+    "IN poster's vehicles must not appear in a GB poster's vehicle list");
+  assert.deepEqual(await snapshot(), vehicleCrossMarketBefore,
+    "cross-market vehicle reads must not change any state");
+  console.log("Cross-market vehicle isolation: GB vehicle invisible to IN account, IN vehicle invisible to GB account.");
+
+  // ── Isolation family: notifications (cross-account mark-read) (#122) ──────
+  // The notification created during setup belongs to the driver.
+  // An India account (indiaCookie) must not be able to mark it read or fetch it.
+  const notifCrossMarketBefore = await snapshot();
+  const indiaNotifList = await (await api("/api/notifications", "GET", indiaCookie)).json();
+  assert.ok(!indiaNotifList?.notifications?.some((n) => n.id === notification.id),
+    "IN account must not see a GB driver's notification");
+  const indiaMarkRead = await api(
+    "/api/notifications/" + notification.id + "/read",
+    "POST",
+    indiaCookie,
+    {}
+  );
+  assert.ok([403, 404].includes(indiaMarkRead.status),
+    "IN account must not mark a GB notification as read (got " + indiaMarkRead.status + ")");
+  assert.deepEqual(await snapshot(), notifCrossMarketBefore,
+    "cross-market notification mark-read attempt must not change state");
+  console.log("Cross-market notification isolation: IN account cannot read or mark GB driver notification.");
+
+  // ── Isolation family: profile (cross-market) (#122) ──────────────────────
+  // A GB account must not be able to read a public profile across markets when
+  // the profile belongs to a different market.
+  // Note: /api/profile/:id may return 404 for cross-market accounts if the
+  // route scopes profiles to the caller's market, or may return a limited
+  // public view. Either is acceptable; what must NOT happen is returning
+  // private fields (phone, email, internal IDs other than displayId).
+  const profileCrossMarketBefore = await snapshot();
+  const gbReadIndiaProfile = await api("/api/profile/" + indiaPoster.displayId, "GET", posterCookie);
+  if (gbReadIndiaProfile.status === 200) {
+    const profileBody = await gbReadIndiaProfile.json();
+    assert.ok(!profileBody?.profile?.email, "cross-market profile must not expose email");
+    assert.ok(!profileBody?.profile?.phone, "cross-market profile must not expose phone");
+    assert.ok(!profileBody?.profile?.passwordHash, "cross-market profile must not expose passwordHash");
+  } else {
+    assert.ok([403, 404].includes(gbReadIndiaProfile.status),
+      "GB account reading IN profile must get 200 (restricted) or 403/404 (got " + gbReadIndiaProfile.status + ")");
+  }
+  assert.deepEqual(await snapshot(), profileCrossMarketBefore,
+    "cross-market profile read must not change state");
+  console.log("Cross-market profile isolation: no private fields exposed across markets.");
+
   // ── Isolation family: vehicle registration jurisdiction ──────────────────
   // An IN account must not register a vehicle with a GB jurisdiction code.
   const vehicleIsolationBefore = await snapshot();
