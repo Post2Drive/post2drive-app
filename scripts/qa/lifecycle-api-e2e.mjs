@@ -592,8 +592,10 @@ try {
       path + " must not be embeddable in a frame");
     assert.equal(response.headers.get("referrer-policy"), "strict-origin-when-cross-origin",
       path + " must use the reviewed referrer policy");
-    assert.match(response.headers.get("content-security-policy-report-only") || "", /report-uri \/api\/security\/csp-report/i,
-      path + " must deliver the report-only CSP without prematurely enforcing it");
+    // CSP promoted to enforcement (#38, Nov 2026); check enforced header.
+    const cspEnforced = response.headers.get("content-security-policy") || "";
+    assert.match(cspEnforced, /report-uri \/api\/security\/csp-report/i,
+      path + " must deliver the enforced CSP with a report-uri sink");
   }
 
   // Actual provider HTTP lifecycle and replay checks against isolated CI rows.
