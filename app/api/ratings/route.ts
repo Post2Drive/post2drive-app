@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { requireJobMarketAccess } from "@/lib/jobMarket";
 
 // POST /api/ratings — rate the other party on a job you were matched on.
-// Ratings are allowed regardless of the job's final status.
+// Ratings require the job to be completed; pre-completion ratings are not allowed.
 async function POSTHandler(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session) {
@@ -52,10 +52,21 @@ async function POSTHandler(req: Request) {
 
   const job = await prisma.job.findUnique({
     where: { id: jobId },
-    select: { id: true, posterId: true, acceptedById: true },
+    select: { id: true, posterId: true, acceptedById: true, status: true },
   });
   if (!job) {
     return NextResponse.json({ error: "Job not found." }, { status: 404 });
+  }
+
+  // Ratings are only meaningful once the job has reached a terminal state.
+  // Allowing ratings on open or in-progress jobs would let a party rate
+  // before the work is done and prevent a genuine post-completion review.
+  const rateableStatuses = ["completed", "delivered"];
+  if (!rateableStatuses.includes(job.status)) {
+    return NextResponse.json(
+      { error: "Ratings can only be submitted once the job is completed." },
+      { status: 409 },
+    );
   }
 
   let rateeId: string | null = null;
