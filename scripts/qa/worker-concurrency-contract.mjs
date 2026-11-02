@@ -40,6 +40,7 @@ function startWorker(index) {
     POST2DRIVE_QA_MODE: "true",
     POST2DRIVE_QA_ENVIRONMENT: "staging",
     POST2DRIVE_QA_DATABASE_ISOLATED: "true",
+    QA_DATABASE_URL: process.env.DATABASE_URL,
     RAILWAY_ENVIRONMENT_ID: "ci-qa-worker-race",
     POST2DRIVE_QA_ALLOWED_ENVIRONMENT_ID: "ci-qa-worker-race",
     // Must pass the exact staging allow-list (issue 38). The test rows target

@@ -125,6 +125,9 @@ try {
   assert.ok(qaWorker.includes("FOR UPDATE SKIP LOCKED"), "worker claims must be atomic across replicas");
   assert.ok(qaWorker.includes("workerHeartbeatAt"), "worker heartbeat must be persisted");
   assert.ok(qaWorker.includes("runQaWorker(job.id, country, workerId, testType, config)"), "worker must dispatch the selected QA workload mode with the claim owner ID");
+  // Issue #38: prove the worker targets the isolated QA database, not production.
+  assert.ok(qaWorker.includes("QA_DATABASE_URL") && qaWorker.includes("process.env.QA_DATABASE_URL !== process.env.DATABASE_URL"), "worker must require QA_DATABASE_URL to equal DATABASE_URL to prove DB isolation");
+  assert.ok(qaRunner.includes("QA_DATABASE_URL") && qaRunner.includes("process.env.QA_DATABASE_URL !== db"), "qaRunner must require QA_DATABASE_URL === DATABASE_URL before campaigns run");
   assert.ok(qaRunner.includes("status='running' AND target_url=$2 AND target_accounts=$4 AND summary->>'workerId'=$3"), "runner must verify the exact worker-owned staging row and configured account count");
   assert.ok(qaRunner.includes("summary=COALESCE(summary,'{}'::jsonb) || $7::jsonb"), "run finalization must preserve worker metadata");
   assert.ok(qaRunner.includes("summary->>'workerId'=$8"), "only the claiming worker may finalize a run");
@@ -137,8 +140,8 @@ try {
 
   console.log(JSON.stringify({
     status: "passed",
-    checks: rejected.length + 31,
-    covered: ["valid Railway staging allow-list", ...rejected.map(([label]) => label), "GET guard before sensitive operations", "raw QA errors not returned", "GET and POST handlers present", "resend endpoint rate-limited", "verification token endpoint rate-limited", "login network/email rate limits", "login throttling fails closed", "QA throttle bypass requires an active run, target and origin", "QA runner is market-parameterized", "synthetic fixtures use market currency", "high-entropy QA run IDs", "bounded configured API route iterations required per run", "cleanup preserves findings, marks data deleted and preserves failure status", "cleanup rejects active runs", "interrupted run finalization timestamps"]
+    checks: rejected.length + 33,
+    covered: ["valid Railway staging allow-list", ...rejected.map(([label]) => label), "GET guard before sensitive operations", "raw QA errors not returned", "GET and POST handlers present", "resend endpoint rate-limited", "verification token endpoint rate-limited", "login network/email rate limits", "login throttling fails closed", "QA throttle bypass requires an active run, target and origin", "QA runner is market-parameterized", "synthetic fixtures use market currency", "high-entropy QA run IDs", "bounded configured API route iterations required per run", "cleanup preserves findings, marks data deleted and preserves failure status", "cleanup rejects active runs", "interrupted run finalization timestamps", "worker requires QA_DATABASE_URL == DATABASE_URL for DB isolation proof", "qaRunner requires QA_DATABASE_URL == DATABASE_URL before campaigns"]
   }, null, 2));
 } finally {
   for (const [key, value] of Object.entries(original)) {
