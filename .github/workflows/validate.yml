@@ -136,6 +136,8 @@ jobs:
           grep -q "(0 rows)" /tmp/qa-inventory.txt
       - name: Validate API route safety invariants (issue #38)
         run: npm run qa:route-safety
+      - name: Validate ratings rate limit, completion gate, and party checks
+        run: npm run qa:ratings-contract
       - name: Validate privacy-safe application and QA diagnostics
         run: npm run qa:security-log-redaction
       - name: Validate account API privacy and request validation
