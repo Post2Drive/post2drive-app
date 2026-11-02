@@ -1,3 +1,11 @@
+> **Current state — 1 November 2026 (supersedes the older status notes below).**
+> - **Branch:** every Railway service (Post2Drive Web and the QA worker shown as "Post2Drive Infra Smoke Test") deploys from `main`. Work reaches `main` only through a PR with all five required checks green.
+> - **Region:** all staging services and both Postgres volumes run in **EU West (Amsterdam, `europe-west4-drams3a`)**, moved from US East on 1 Nov 2026 (data preserved, about 75 s volume migration).
+> - **Databases:** `Postgres-J8xl` is the app/QA database. `Postgres` is a separate database whose consumer is still not verified; do not delete or repoint it until audited. Migrations run automatically in Web's pre-deploy step (`prisma migrate deploy`).
+> - **Leftovers:** `REDIS_URL` is still set on Web and the QA worker, but no code reads it, and the detached `redis-volume` (500 MB) is unused. Both can be removed once the owner approves.
+> - **QA worker:** healthy on `main`; `QA_ALLOW_CLEANUP` and `QA_AUTO_CLEANUP` are `false`.
+> - **Security:** the rate limiter trusts only Railway's `X-Real-IP` (`TRUSTED_CLIENT_IP_HEADER` can opt in to another edge). The admin email allow-list needs verified emails, and the embedded ops-dashboard login lockout is per visitor.
+
 > **Status audit — 25 October 2026.** PR #48 and #49 are merged; documentation PR #47 is merged. The integration candidate now includes PR #44's password-reset email formatting/cooldown fixes, regression assertions, service ownership/recovery notes, and the Android emulator setup fix. On the earlier candidate, Validate, CodeQL and Security Scan passed, while Android smoke failed because the workflow redundantly rewrote animation settings already handled by the emulator action. Those duplicate writes are removed, and Android CI now runs on integration pushes. Required Validate, CodeQL, Security Scan and Android WebView checks must all pass on the latest exact head before staging deployment.
 >
 > **Railway staging:** Post2Drive Web remains connected to `integration/pr12-pr41-resolved`; the latest successful Web deployment observed remains `4e58a373cf408fb232db994fda8b217977767928` from 21 October. No new Web deployment has been triggered. Deploy only after current-head checks pass, then verify deployment status and health.

@@ -1,3 +1,4 @@
+import { clientNetworkIdentity } from "@/lib/clientIp";
 import type { NextRequest } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -80,6 +81,9 @@ async function proxy(request: NextRequest, context: RouteContext): Promise<Respo
     const value = request.headers.get(name);
     if (value) headers.set(name, value);
   }
+  // Tell the embedded dashboard who the visitor is (from the edge-set header),
+  // so its login lockout is per visitor rather than one shared loopback bucket.
+  headers.set("x-post2drive-client-ip", clientNetworkIdentity(request));
   // The public request's origin is checked above. The embedded service then
   // receives a trusted internal same-origin value for its own CSRF guard.
   if (isAdminAction) {

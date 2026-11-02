@@ -3,7 +3,8 @@ name: Android Capacitor build
 on:
   workflow_dispatch:
   push:
-    branches: ["integration/**"]
+    # main included so every main commit carries the required android-debug-build check (issue #38).
+    branches: [main, "integration/**"]
   pull_request:
     branches: [main, "integration/**"]
 
@@ -21,14 +22,14 @@ jobs:
     timeout-minutes: 35
     steps:
       - name: Check out repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Set up Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
           cache: npm
       - name: Set up Java
-        uses: actions/setup-java@v6
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: temurin
           java-version: "21"
@@ -55,7 +56,7 @@ jobs:
       - name: Compile Android debug APK
         run: cd android && ./gradlew --no-daemon assembleDebug
       - name: Upload installable debug APK
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: post2drive-android-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
@@ -64,7 +65,7 @@ jobs:
       - name: Confirm the existing staging homepage is reachable
         run: curl --fail --silent --show-error --location --retry 3 --retry-delay 5 --max-time 30 https://post2drive-web-staging.up.railway.app | grep -qi "Post2Drive"
       - name: Run Capacitor WebView smoke test on Android emulator
-        uses: reactivecircus/android-emulator-runner@v2
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
           api-level: 35
           target: google_apis

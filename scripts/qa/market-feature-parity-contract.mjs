@@ -122,7 +122,7 @@ contains("app/jobs/page.tsx", "finally {\n      bidInFlight.current = false;", "
 contains("app/jobs/page.tsx", "const ratingInFlight = useRef(false)", "rating submission must guard against duplicate in-flight requests");
 contains("app/jobs/page.tsx", "if (ratingInFlight.current) {", "repeated rating clicks must not submit a second rating");
 contains("app/jobs/page.tsx", "finally {\n      ratingInFlight.current = false;", "rating submission lock must be released after success or failure");
-contains("app/dashboard/page.tsx", "This is a planning price only. Payment checkout is not connected yet", "dashboard must not imply an operational renewal checkout");
+contains("app/dashboard/overview/page.tsx", "This is a planning price only. Payment checkout is not connected yet", "dashboard must not imply an operational renewal checkout");
 
 
 // Account settings should give recoverable feedback and prevent repeated submissions.

@@ -14,6 +14,8 @@ assert.ok(route.includes("isCurrentUserPoster: job.posterId === accountId") && r
 assert.ok(!route.includes("      posterId: job.posterId,") && !route.includes("      acceptedById: job.acceptedById,"), "do not serialize job-party account IDs in marketplace responses");
 assert.ok(!page.includes("job.posterId") && !page.includes("job.acceptedById") && !page.includes("job.deliveryMarkedById"), "client must use caller-relative flags, not internal account IDs");
 assert.ok(route.includes("hasPreviousDrivers: previousDriverIds.length > 0"));
+assert.ok(route.includes("const canSeePartyContacts = contactVisibleStatuses.includes(job.status) && isJobParty;"), "party contacts must be limited to matched-job parties in every market");
+assert.ok(!/canSeePartyContacts = country ===/.test(route), "no market may expose other users' contacts to non-parties");
 assert.ok(route.includes("pickupContactName: canSeePartyContacts ? pickupContactName : null"));
 assert.ok(route.includes("pickupContactPhone: canSeePartyContacts ? pickupContactPhone : null"));
 assert.ok(route.includes("dropoffContactName: canSeePartyContacts ? dropoffContactName : null"));

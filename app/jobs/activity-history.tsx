@@ -81,6 +81,8 @@ export default function ActivityHistory({
     >
       <button
         type="button"
+        className="button-link button-link-secondary"
+        aria-expanded={open}
         onClick={() => setOpen(!open)}
       >
         {open

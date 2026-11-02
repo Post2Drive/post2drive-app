@@ -1137,12 +1137,12 @@ a.button-link-secondary *,
 }
 
 /* Inline-styled labels must not overrule a button's background contrast. */
-button:not(:disabled):not([style*="background: transparent"]):not([style*="background:transparent"]):not([style*="background: var(--color-surface)"]):not([style*="background:var(--color-surface)"]),
+button:not(:disabled):not([style*="background: transparent"]):not([style*="background:transparent"]):not([style*="background: var(--color-surface)"]):not([style*="background:var(--color-surface)"]):not(.button-link-secondary):not(.button-danger-quiet):not(.service-tile-button):not(.consent-button):not(.legal-footer-button),
 input[type="submit"]:not(:disabled),
 input[type="button"]:not(:disabled) {
   color: #FFFFFF !important;
 }
-button:not(:disabled):not([style*="background: transparent"]):not([style*="background:transparent"]):not([style*="background: var(--color-surface)"]):not([style*="background:var(--color-surface)"]) *,
+button:not(:disabled):not([style*="background: transparent"]):not([style*="background:transparent"]):not([style*="background: var(--color-surface)"]):not([style*="background:var(--color-surface)"]):not(.button-link-secondary):not(.button-danger-quiet):not(.service-tile-button):not(.consent-button):not(.legal-footer-button) *,
 input[type="submit"]:not(:disabled) *,
 input[type="button"]:not(:disabled) * {
   color: #FFFFFF !important;
@@ -2695,3 +2695,555 @@ main textarea {
     min-height: 44px;
   }
 }
+
+/* Mobile usability pass (Nov 2026). Appended last so these deliberate variants
+   win over the earlier blanket button-contrast rules. */
+
+/* Destructive actions read as secondary and red, never as the primary blue. */
+button.button-danger-quiet {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font: inherit;
+  font-weight: 650;
+  line-height: 1.25;
+  background: #FFFFFF !important;
+  color: #B42318 !important;
+  -webkit-text-fill-color: #B42318 !important;
+  border: 1px solid #F0B7B0 !important;
+  cursor: pointer;
+}
+button.button-danger-quiet * {
+  color: #B42318 !important;
+  -webkit-text-fill-color: #B42318 !important;
+}
+button.button-danger-quiet:hover {
+  background: #FEF3F2 !important;
+  border-color: #B42318 !important;
+}
+button.button-danger-quiet:focus-visible {
+  outline: 3px solid #B42318;
+  outline-offset: 2px;
+}
+
+/* Secondary <button>s keep the same white surface and blue text as secondary links. */
+button.button-link-secondary,
+button.button-link-secondary * {
+  -webkit-text-fill-color: #2457D6 !important;
+}
+
+/* 44px minimum touch target for every action link. */
+.button-link {
+  min-height: 44px;
+}
+
+/* Pressed feedback on touch: a short, subtle scale (Emil: buttons must feel responsive). */
+.button-link,
+main button {
+  transition: transform 160ms ease-out, background-color .15s ease, border-color .15s ease;
+}
+.button-link:active,
+main button:not(:disabled):active {
+  transform: scale(0.97);
+}
+@media (prefers-reduced-motion: reduce) {
+  .button-link,
+  main button {
+    transition: background-color .15s ease, border-color .15s ease;
+  }
+  .button-link:active,
+  main button:not(:disabled):active {
+    transform: none;
+  }
+}
+
+/* Dashboard: the next step comes before the statistics. */
+.dashboard-quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+/* Map preview links get full-height tap targets instead of 13px inline text. */
+.job-route-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 12px;
+  margin: 8px 0;
+  font-size: 15px;
+}
+.job-route-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+
+/* Checkboxes and radios large enough to hit with a thumb. */
+main input[type="checkbox"],
+main input[type="radio"] {
+  width: 20px;
+  height: 20px;
+  accent-color: #2457D6;
+}
+
+/* Home footer links: tappable height, not 14px text. */
+.home-utility a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 4px;
+}
+
+@media (max-width: 700px) {
+  /* Status filters become scrollable chips with an edge fade, so it is
+     obvious more filters exist off-screen (same pattern as freight driver apps). */
+  .marketplace-job-tabs {
+    gap: 8px !important;
+    border-bottom: none !important;
+    padding: 2px 32px 6px 0 !important;
+    scroll-snap-type: x proximity;
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent);
+  }
+  .marketplace-job-tabs button {
+    border: 1px solid #CDD9F0 !important;
+    border-radius: 999px !important;
+    padding: 0 16px !important;
+    scroll-snap-align: start;
+  }
+  .marketplace-job-tabs button[aria-pressed="true"] {
+    border-color: #2457D6 !important;
+  }
+
+  /* Two stat tiles per row instead of one long column. */
+  .dashboard-stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  .dashboard-quick-actions .button-link {
+    flex: 1 1 100%;
+  }
+}
+
+@media (max-width: 700px) {
+  .marketplace-job-tabs {
+    margin-top: 8px;
+  }
+}
+
+/* Auth submit buttons meet the same 44px touch target as other buttons. */
+.auth-page button[type="submit"] {
+  min-height: 44px;
+}
+
+/* A checkbox wrapped in its label: the whole row is the touch target. */
+main label:has(> input[type="checkbox"]),
+main label:has(> input[type="radio"]) {
+  min-height: 44px;
+  cursor: pointer;
+}
+
+/* Load-board job cards: route as title, price prominent, one-line facts. */
+.load-board-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px 12px;
+  margin: 0 0 12px;
+}
+.load-board-controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 1 150px;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-muted);
+}
+.load-board-controls select {
+  min-height: 44px;
+  font-size: 16px;
+  width: 100%;
+}
+.load-board-count {
+  flex: 1 1 100%;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+.load-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+.load-card-route {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.load-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.load-status,
+.load-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 18px;
+  text-transform: capitalize;
+  background: var(--color-surface-muted, #F4F7FA);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+}
+.load-status-open { background: var(--color-positive-soft); color: var(--color-positive); border-color: transparent; }
+.load-status-in_progress { background: var(--color-action-soft); color: var(--color-primary-action); border-color: transparent; }
+.load-status-completed { color: var(--color-muted); }
+.load-status-cancelled { background: var(--color-danger-soft, #FDECEC); color: #B42318; border-color: transparent; }
+.load-card-title {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.3;
+  font-weight: 700;
+  color: var(--color-text);
+  overflow-wrap: anywhere;
+}
+.load-card-price {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+  flex: 0 0 auto;
+  max-width: 45%;
+}
+.load-card-price strong {
+  font-size: 20px;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+}
+.load-card-price small {
+  font-size: 12px;
+  color: var(--color-muted);
+}
+.load-card-facts {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 8px 0 0;
+  font-size: 14px;
+  color: var(--color-muted);
+}
+.load-card-facts + .load-card-facts { margin-top: 2px; }
+.load-card-facts span:not(:last-child)::after {
+  content: "·";
+  margin: 0 6px;
+  color: var(--color-border-strong, #9AA9B8);
+}
+.load-card-notes {
+  margin: 10px 0 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--color-text);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Service tiles: Home grid and the header Menu panel open the same existing pages. */
+.service-tiles {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+}
+@media (max-width: 560px) {
+  .service-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+}
+.service-tiles > li { min-width: 0; }
+.service-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  height: 100%;
+  min-height: 96px;
+  box-sizing: border-box;
+  padding: 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-surface);
+  color: var(--color-text) !important;
+  text-decoration: none !important;
+  box-shadow: var(--shadow-card);
+  transition: border-color .15s ease, background-color .15s ease, transform .12s ease;
+}
+.service-tile-icon {
+  width: 40px;
+  height: 40px;
+  padding: 8px;
+  box-sizing: border-box;
+  border-radius: 10px;
+  background: var(--color-action-soft);
+  color: var(--color-primary-action);
+}
+.service-tile-label { font-size: 15px; font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
+.service-tile-hint { font-size: 13px; color: var(--color-muted); line-height: 1.3; }
+@media (hover: hover) {
+  .service-tile:hover { border-color: var(--color-primary-action); background: var(--color-action-soft); }
+}
+.service-tile:active { transform: scale(0.97); }
+.service-tile:focus-visible { outline: 3px solid rgba(25, 118, 210, .35); outline-offset: 2px; }
+.service-tile[aria-current="page"] { border-color: var(--color-primary-action); background: var(--color-action-soft); }
+@media (prefers-reduced-motion: reduce) {
+  .service-tile { transition: none; }
+  .service-tile:active { transform: none; }
+}
+/* The dashboard theme resets soft tokens to white; keep icon chips identifiable everywhere. */
+.service-tiles .service-tile-icon { background: #E8F1FB !important; color: #1769AA !important; }
+
+/* Boxes-only navigation: Home is welcome + boxes; inner pages show only a way back. */
+.back-home-bar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  padding: 8px max(16px, env(safe-area-inset-left));
+}
+.back-home-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  color: var(--color-text) !important;
+  font-weight: 700;
+  text-decoration: none !important;
+}
+.back-home-link:focus-visible { outline: 3px solid rgba(25, 118, 210, .35); outline-offset: 2px; }
+main.service-home {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 28px 16px 48px;
+  box-sizing: border-box;
+}
+.service-home-welcome { margin-bottom: 20px; }
+.service-home-welcome h1 { margin: 0 0 4px; font-size: 26px; line-height: 1.2; overflow-wrap: anywhere; }
+.service-home-welcome p { margin: 0; color: var(--color-muted); font-size: 15px; overflow-wrap: anywhere; }
+.service-entry { min-height: calc(100vh - 40px); display: flex; flex-direction: column; justify-content: center; }
+.service-entry .home-utility { display: flex; gap: 8px; justify-content: center; margin-top: 24px; }
+button.service-tile.service-tile-button {
+  width: 100%;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  background: var(--color-surface) !important;
+  color: var(--color-text) !important;
+}
+button.service-tile.service-tile-button * { color: inherit !important; }
+button.service-tile.service-tile-button .service-tile-icon { background: #FDECEC !important; color: #B42318 !important; }
+button.service-tile.service-tile-button .service-tile-hint { color: var(--color-muted) !important; }
+main button.service-tile.service-tile-button { border: 1px solid var(--color-border) !important; color: #172B4D !important; box-shadow: var(--shadow-card) !important; }
+main button.service-tile.service-tile-button .service-tile-label { color: #172B4D !important; }
+main button.service-tile.service-tile-button .service-tile-hint { color: #4D6074 !important; }
+.service-entry .home-utility { align-items: center; }
+main button.service-tile.service-tile-button,
+main button.service-tile.service-tile-button * { -webkit-text-fill-color: currentColor !important; }
+
+/* ---------- Landing (first screen) ----------
+   Motorway-sign blue + hi-vis amber: drawn from road freight, not a stock SaaS palette. */
+.landing {
+  --l-blue: #0B3D91;
+  --l-blue-deep: #082C6A;
+  --l-amber: #F2B705;
+  --l-ink: #14213D;
+  --l-muted: #4A5568;
+  --l-paper: #F5F7FA;
+  --l-line: #D8DEE8;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 20px 24px;
+  color: var(--l-ink);
+  box-sizing: border-box;
+}
+body:has(main.landing) { background: var(--l-paper, #F5F7FA); }
+.landing-bar { display: flex; align-items: center; justify-content: space-between; min-height: 64px; }
+.landing-brand { font-size: 20px; font-weight: 800; letter-spacing: -0.01em; color: var(--l-blue); }
+.landing .landing-bar-login {
+  display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px;
+  color: var(--l-blue); font-weight: 700; text-decoration: none; border-radius: 8px;
+}
+.landing .landing-bar-login:hover { background: #E6ECF7; }
+
+.landing-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  gap: clamp(28px, 5vw, 64px);
+  align-items: center;
+  padding: clamp(28px, 6vw, 72px) 0 clamp(36px, 6vw, 72px);
+}
+.landing-hero h1 {
+  margin: 0;
+  font-size: clamp(2.4rem, 6.2vw, 4.6rem);
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+  font-weight: 800;
+  color: var(--l-ink);
+  max-width: 13ch;
+}
+.landing-lede { margin: 20px 0 0; max-width: 46ch; font-size: clamp(1.05rem, 1.6vw, 1.2rem); line-height: 1.55; color: var(--l-muted); }
+.landing-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
+.landing .landing-button {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 52px; padding: 0 24px; border-radius: 10px;
+  font-size: 17px; font-weight: 700; text-decoration: none;
+  transition: background-color .15s ease, transform .12s ease;
+}
+.landing .landing-button-primary { background: var(--l-blue); color: #FFFFFF; }
+.landing .landing-button-primary:hover { background: var(--l-blue-deep); }
+.landing .landing-button-secondary { background: #FFFFFF; color: var(--l-blue); border: 1.5px solid var(--l-blue); }
+.landing .landing-button-secondary:hover { background: #E6ECF7; }
+.landing .landing-button:active { transform: scale(0.97); }
+.landing-note { margin: 16px 0 0; font-size: 14px; color: var(--l-muted); }
+
+/* The one bold element: an example load docket with a hi-vis edge and perforation. */
+.load-ticket {
+  position: relative;
+  margin: 0;
+  padding: 26px 24px 22px;
+  background: #FFFFFF;
+  border-radius: 14px;
+  border-top: 8px solid var(--l-amber);
+  box-shadow: 0 1px 2px rgba(20, 33, 61, .06), 0 18px 40px -18px rgba(11, 61, 145, .35);
+  transform: rotate(-1.5deg);
+}
+.load-ticket-tag {
+  display: inline-block; margin-bottom: 18px; padding: 3px 10px; border-radius: 999px;
+  background: #FFF6D6; color: #6B4E00; font-size: 13px; font-weight: 700;
+}
+.load-ticket-route { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; }
+.load-ticket-stop { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.load-ticket-stop strong { display: block; font-size: 17px; line-height: 1.2; }
+.load-ticket-stop small { display: block; font-size: 14px; color: var(--l-muted); }
+.load-ticket-dot { width: 12px; height: 12px; border-radius: 50%; border: 3px solid var(--l-blue); background: #FFFFFF; flex: 0 0 auto; }
+.load-ticket-dot-end { background: var(--l-blue); }
+.load-ticket-line { height: 0; border-top: 2px dashed #9FB1CE; min-width: 24px; }
+.load-ticket-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 22px 0 0; padding: 16px 0; border-top: 1px dashed var(--l-line); border-bottom: 1px dashed var(--l-line); }
+.load-ticket-facts dt { font-size: 13px; color: var(--l-muted); }
+.load-ticket-facts dd { margin: 2px 0 0; font-size: 15px; font-weight: 700; }
+.load-ticket-foot { display: flex; align-items: baseline; justify-content: space-between; padding-top: 14px; color: var(--l-muted); font-size: 14px; }
+.load-ticket-foot strong { font-size: 32px; letter-spacing: -0.02em; color: var(--l-ink); font-variant-numeric: tabular-nums; }
+
+.landing-steps, .landing-paths { padding: clamp(28px, 5vw, 56px) 0; border-top: 1px solid var(--l-line); }
+.landing h2 { margin: 0 0 22px; font-size: clamp(1.5rem, 3vw, 2rem); letter-spacing: -0.02em; color: var(--l-ink); }
+.landing h3 { margin: 0 0 6px; font-size: 18px; color: var(--l-ink); }
+.landing-steps ol { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; }
+.landing-steps li { display: flex; gap: 14px; }
+.landing-steps p, .landing-path p { margin: 0; color: var(--l-muted); line-height: 1.5; }
+.landing-step-n {
+  flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--l-amber); color: var(--l-ink); font-weight: 800;
+}
+.landing-path-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.landing .landing-path {
+  display: block; padding: 24px; border-radius: 14px; background: #FFFFFF;
+  border: 1px solid var(--l-line); color: var(--l-ink); text-decoration: none;
+  transition: border-color .15s ease;
+}
+.landing .landing-path:hover { border-color: var(--l-blue); }
+.landing-path-cta { display: inline-block; margin-top: 16px; color: var(--l-blue); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+.landing a:focus-visible, .landing button:focus-visible { outline: 3px solid var(--l-amber); outline-offset: 2px; }
+
+@media (max-width: 820px) {
+  .landing-hero { grid-template-columns: minmax(0, 1fr); }
+  .load-ticket { transform: none; }
+  .landing-steps ol, .landing-path-grid { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+}
+@media (max-width: 560px) {
+  .landing { padding: 0 16px 16px; }
+  .landing-actions { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .load-ticket-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing .landing-button, .landing .landing-path { transition: none; }
+  .landing .landing-button:active { transform: none; }
+}
+
+/* ---------- Legal footer + legal pages ---------- */
+.legal-footer { margin-top: 24px; padding: 20px 0 8px; border-top: 1px solid #D8DEE8; text-align: center; color: #4A5568; font-size: 14px; }
+.legal-footer nav { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 6px; }
+.legal-footer a, button.legal-footer-button {
+  display: inline-flex; align-items: center; min-height: 44px; padding: 0 10px;
+  color: #0B3D91 !important; background: none !important; border: 0; font: inherit; font-size: 14px;
+  text-decoration: underline; text-underline-offset: 3px; cursor: pointer; box-shadow: none !important;
+}
+.legal-footer p { margin: 6px 0 0; }
+main.legal-page { max-width: 820px; margin: 0 auto; padding: 24px 20px 64px; line-height: 1.6; box-sizing: border-box; }
+.legal-table-wrap { overflow: visible; }
+.legal-page table { width: 100%; border-collapse: collapse; font-size: 15px; }
+.legal-page th, .legal-page td { text-align: left; vertical-align: top; padding: 10px 12px; border-bottom: 1px solid #D8DEE8; }
+
+/* ---------- Consent banner ---------- */
+.consent-banner {
+  position: fixed; z-index: 200;
+  left: max(12px, env(safe-area-inset-left)); right: max(12px, env(safe-area-inset-right));
+  bottom: max(12px, env(safe-area-inset-bottom));
+  max-width: 720px; margin: 0 auto; padding: 16px 18px;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px;
+  background: #14213D; color: #FFFFFF; border-radius: 14px;
+  box-shadow: 0 16px 40px -12px rgba(0, 0, 0, .45);
+}
+.consent-banner p { margin: 0; flex: 1 1 320px; font-size: 15px; line-height: 1.5; color: #FFFFFF; }
+.consent-banner a { color: #FFD75E !important; text-decoration: underline; }
+.consent-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+button.consent-button {
+  min-height: 44px; padding: 0 16px; border-radius: 10px; font-size: 15px; font-weight: 700;
+  background: #FFFFFF !important; color: #14213D !important; border: 0 !important;
+}
+button.consent-button:focus-visible { outline: 3px solid #F2B705; outline-offset: 2px; }
+@media (max-width: 560px) {
+  .consent-actions { width: 100%; }
+  button.consent-button { flex: 1 1 0; }
+}
+main.legal-page table { display: table !important; overflow: visible !important; table-layout: fixed; }
+main.legal-page td, main.legal-page th { overflow-wrap: anywhere; }
+@media (max-width: 560px) { main.legal-page th, main.legal-page td { padding: 8px 6px; font-size: 14px; } }
+/* While the consent banner is open, let every page scroll clear of it. */
+body:has(.consent-banner) { padding-bottom: var(--consent-space, 180px) !important; }
+
+/* Phone verification (Account) */
+.phone-verify { margin-top: 32px; }
+.phone-verify-form { display: flex; flex-direction: column; gap: 12px; }
+.phone-verify-form input { max-width: 12ch; font-size: 22px; letter-spacing: 0.3em; font-variant-numeric: tabular-nums; }
+.phone-verify-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.phone-verify-test { margin: 0; padding: 10px 12px; border-radius: 8px; background: #FFF6D6; color: #5A4300; font-size: 14px; }
+.phone-verify-status { margin-top: 24px; font-weight: 700; color: #00695C; }
+main.legal-page.sms-outbox table { table-layout: auto; }
+main.legal-page.sms-outbox td, main.legal-page.sms-outbox th { overflow-wrap: normal; white-space: nowrap; }
+/* Every text field and select meets the 44px touch-target minimum. */
+main input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]), main select { min-height: 44px; }
+
+/* India text-code login / reset */
+.phone-code-flow { display: flex; flex-direction: column; gap: 12px; }
+.phone-code-flow input[autocomplete="one-time-code"] { max-width: 12ch; font-size: 22px; letter-spacing: 0.3em; font-variant-numeric: tabular-nums; }
+.phone-code-actions { display: flex; flex-wrap: wrap; gap: 10px; }

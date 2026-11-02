@@ -54,11 +54,11 @@ assert.match(layout, /href="#main-content">Skip to main content/, "Layout must p
 assert.match(layout, /id="main-content" tabIndex=\{-1\}/, "Skip link target must be programmatically focusable");
 
 const nav = read("app/main-nav.tsx");
-assert.match(nav, /aria-current=\{active \? "page" : undefined\}/, "Navigation must expose the current page");
-assert.match(nav, /aria-expanded=\{moreOpen\}/, "More disclosure must expose expanded state");
-assert.match(nav, /aria-controls="mobile-more-menu"/, "More disclosure must identify its controlled content");
-assert.match(nav, /id="mobile-more-menu"[^>]*hidden=\{!moreOpen\}/, "More disclosure target must exist while collapsed and be hidden");
-assert.match(css, /\.mobile-more-menu\[hidden\]\s*\{\s*display: none;/, "Collapsed More menu must not remain visible");
+assert.match(nav, /aria-label="Main navigation"/, "Inner pages must keep a labelled navigation landmark");
+assert.match(nav, /href="\/dashboard" className="back-home-link"/, "Every inner page must offer one way back to the Home boxes");
+assert.match(nav, /pathname === "\/dashboard"\) return null/, "Home must show boxes only, with no navigation bar above them");
+const homeBoxes = read("app/dashboard/page.tsx");
+assert.match(homeBoxes, /<nav aria-label="Services">[\s\S]*<ServiceTiles/, "Home boxes must be a labelled navigation list");
 
 const dashboard = read("app/dashboard/page.tsx");
 assert.match(dashboard, /export default async function DashboardPage\([\s\S]*?return \([\s\S]*?<main/, "Dashboard must expose a main landmark");
@@ -153,3 +153,28 @@ assert.match(login, /autoComplete="email"/, "Login email must support autofill")
 assert.match(login, /autoComplete="current-password"/, "Login password must support password managers");
 
 console.log("Design accessibility source contracts passed (contrast, focus, motion, navigation, forms, requirements, signup, payments, vehicles, settings, admin research privacy, and login).");
+
+// Consent: nothing optional may track a visitor before they allow it.
+{
+  const { readdirSync, statSync } = await import("node:fs");
+  const { join } = await import("node:path");
+  const banner = read("components/consent-banner.tsx");
+  assert.match(read("app/layout.tsx"), /<ConsentBanner \/>/, "Cookie banner must be mounted on every page");
+  assert.match(banner, />\s*Essential only\s*</, "Banner must offer an equally visible reject option");
+  assert.match(banner, />\s*Allow analytics\s*</, "Banner must ask before enabling analytics");
+  assert.match(read("lib/consent.ts"), /return readConsent\(\)\?\.\[category\] === true;/, "Consent must default to off");
+  const footer = read("components/legal-footer.tsx");
+  for (const href of ["/terms", "/privacy", "/cookies"]) assert.ok(footer.includes(`href="${href}"`), `Legal footer must link ${href}`);
+  const trackers = /googletagmanager|gtag\(|google-analytics|posthog|mixpanel|hotjar|clarity\.ms|segment\.com|plausible|fbq\(|connect\.facebook/i;
+  const walk = (dir) => readdirSync(dir).flatMap((name) => {
+    const path = join(dir, name);
+    if (name === "node_modules" || name.startsWith(".")) return [];
+    return statSync(path).isDirectory() ? walk(path) : /\.(tsx?|jsx?)$/.test(name) ? [path] : [];
+  });
+  for (const file of ["app", "components", "lib"].flatMap(walk)) {
+    const source = read(file);
+    if (trackers.test(source)) {
+      assert.match(source, /AnalyticsConsentGate|hasConsent\(/, `${file} loads a tracker without the consent gate`);
+    }
+  }
+}

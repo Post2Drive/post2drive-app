@@ -2,7 +2,8 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-const dashboard = readFileSync("app/dashboard/page.tsx", "utf8");
+// Stats, plan and promotion moved from Home into the Overview box.
+const dashboard = readFileSync("app/dashboard/overview/page.tsx", "utf8");
 
 assert.match(dashboard, /getLocalisationProfile\(\{ country: account\.country, currency: account\.currency \}\)/,
   "dashboard must resolve the signed-in account's validated market profile");

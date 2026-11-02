@@ -104,6 +104,7 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
     throw new Error("QA runner is disabled unless an explicitly allow-listed staging deployment and isolated QA database are configured.");
   }
   if (!base.startsWith("https://") || !db || process.env.QA_ACCOUNT_COUNT !== "10000" || process.env.POST2DRIVE_QA_DATABASE_ISOLATED !== "true") throw new Error("QA preflight requires an HTTPS staging target, an explicitly isolated DATABASE_URL and QA_ACCOUNT_COUNT=10000.");
+  if (!process.env.QA_DATABASE_URL || process.env.QA_DATABASE_URL !== db) throw new Error("QA_DATABASE_URL must be set and must equal DATABASE_URL to confirm the worker targets the isolated QA database.");
   const accountTarget = Number.isInteger(config.accountCount) && config.accountCount >= 500 && config.accountCount <= 10_000 ? config.accountCount : 10_000;
   const testIterations = Number.isInteger(config.testIterations) && config.testIterations >= 1 && config.testIterations <= 25_000 ? config.testIterations : 10_000;
   const executionConcurrency = Number.isInteger(config.concurrency) && config.concurrency >= 1 && config.concurrency <= 100 ? config.concurrency : 12;

@@ -41,8 +41,9 @@ async function scanRoute(page, route, viewport) {
   assert.equal(responseHeaders["x-content-type-options"], "nosniff", `${route} must send nosniff`);
   assert.equal(responseHeaders["x-frame-options"], "DENY", `${route} must deny framing`);
   assert.equal(responseHeaders["referrer-policy"], "strict-origin-when-cross-origin", `${route} must send a restrictive referrer policy`);
-  assert.ok(responseHeaders["content-security-policy-report-only"]?.includes("report-uri /api/security/csp-report"),
-    `${route} must retain the report-only CSP until violations are reviewed`);
+  // CSP promoted from report-only to enforcement (#38, Nov 2026).
+  assert.ok(responseHeaders["content-security-policy"]?.includes("report-uri /api/security/csp-report"),
+    `${route} must have an enforced CSP with a report-uri sink`);
   try {
     await page.locator("main h1").first().waitFor({ state: "visible" });
   } catch (error) {
@@ -154,12 +155,18 @@ try {
     const context = await browser.newContext({
       viewport: { width: viewport.width, height: viewport.height },
       reducedMotion: "reduce",
+      // Behave like Railway's edge, which always sets the client address.
+      extraHTTPHeaders: { "x-real-ip": "198.51.100.30" },
     });
     const page = await context.newPage();
     page.setDefaultTimeout(10_000);
     page.on("pageerror", error => failures.push(`[${viewport.label}] browser exception on ${new URL(page.url()).pathname}: ${error.message}`));
 
     for (const route of publicRoutes) await scanRoute(page, route, viewport);
+    // Public routes above are scanned with the first-visit cookie banner showing.
+    // Then record a choice, as a returning visitor would, so the fixed banner
+    // cannot intercept clicks in the interactive flows below.
+    await context.addCookies([{ name: "p2d_consent", value: encodeURIComponent(JSON.stringify({ v: 1, analytics: false, at: new Date().toISOString() })), url: baseURL }]);
 
     if (viewport.width === 320) {
       await page.goto(new URL("/signup", baseURL).toString(), { waitUntil: "domcontentloaded" });
@@ -212,18 +219,13 @@ try {
         await page.getByRole("button", { name: "Continue" }).click();
         await page.waitForFunction(() => document.activeElement?.textContent?.trim() === "Contacts, notes & review");
       }
-      if (route === "/dashboard" && viewport.width <= 700) {
-        const more = page.locator(".mobile-nav-more");
-        await more.click();
-        assert.equal(await more.getAttribute("aria-expanded"), "true", "mobile More button must expose expanded state");
-        assert.equal(await page.locator("#mobile-more-menu").isVisible(), true, "mobile More menu must open");
-        assert.equal(await page.getByRole("link", { name: "My Requirements" }).isVisible(), true, "India accounts must see My Requirements in More");
-        const menuAxe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "best-practice"]).analyze();
-        for (const violation of menuAxe.violations) failures.push(`mobile More menu (${viewport.label}) ${violation.impact || "unknown"}: ${violation.id} — ${violation.help}`);
-        await page.keyboard.press("Escape");
-        assert.equal(await more.getAttribute("aria-expanded"), "false", "Escape must collapse mobile More menu");
-        assert.equal(await page.locator("#mobile-more-menu").isVisible(), false, "Escape must hide mobile More menu");
-        assert.equal(await more.evaluate(element => element === document.activeElement), true, "Escape must return focus to More trigger");
+      if (route === "/dashboard") {
+        const services = page.getByRole("navigation", { name: "Services" });
+        assert.equal(await services.getByRole("link", { name: /My Requirements/ }).isVisible(), true, "India accounts must see the My Requirements box on Home");
+        assert.equal(await page.locator(".back-home-bar").count(), 0, "Home must show boxes only, with no navigation bar above them");
+      }
+      if (route === "/jobs") {
+        assert.equal(await page.locator(".back-home-link").isVisible(), true, "Inner pages must offer a way back to the Home boxes");
       }
     }
 

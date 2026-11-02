@@ -10,8 +10,9 @@ Use this skill as the project-wide entry point. Load the narrow specialist skill
 ## Required workflow
 
 1. **Establish reality first.** Inspect the current branch, working tree, relevant files, recent changes, and existing tests before proposing edits. Treat repository code and live CI output as the source of truth.
-2. **Plan proportionately.** For a multi-file, risky, or ambiguous change, state the intended outcome, constraints, likely failure modes, and verification plan before implementation. Keep trivial changes lightweight.
-3. **Follow the right specialist skill.**
+2. **Apply `karpathy-guidelines`.** Surface assumptions and ambiguity before coding, prefer the simplest change, touch only lines the task requires, and turn the task into checks that can be verified.
+3. **Plan proportionately.** For a multi-file, risky, or ambiguous change, state the intended outcome, constraints, likely failure modes, and verification plan before implementation. Keep trivial changes lightweight.
+4. **Follow the right specialist skill.**
    - Unknown bug or failing check: `debugging`; use `root-cause-analysis` for a known incident/postmortem.
    - Code or PR review: `code-review`.
    - Next.js App Router or server/client behavior: `nextjs-review`.
@@ -21,11 +22,11 @@ Use this skill as the project-wide entry point. Load the narrow specialist skill
    - Database/API integration: `integration-testing`.
    - Browser flows and responsive UI: `browser-testing`.
    - Accessibility or UI review: `accessibility-review` plus Emil Kowalski's design-engineering skill at `.agents/skills/emil-design-eng/SKILL.md`.
-4. **Make the smallest complete change.** Preserve existing architecture and market isolation (UK and India). Do not weaken tests, access controls, type checks, or safety gates just to make a run green.
-5. **Verify, don't infer.** Run the most relevant tests and checks available. Clearly distinguish checks that passed, failed, were skipped, or could not be run. Never call a security scan a substitute for full validation or deployed verification.
-6. **Review your own diff.** Look for unintended changes, error paths, auth and market boundaries, database integrity, migration safety, accessibility, responsive behavior, and missing regression tests.
-7. **Respect release boundaries.** Never merge, deploy, change the default branch, or delete/force-update branches without the user's explicit approval. Prefer a feature branch and reviewable PR.
-8. **Report plainly.** Summarize what changed, why, exact verification evidence, remaining risks, and links to the branch/PR when available. Never claim an action or test succeeded without evidence.
+5. **Make the smallest complete change.** Preserve existing architecture and market isolation (UK and India). Do not weaken tests, access controls, type checks, or safety gates just to make a run green.
+6. **Verify, don't infer.** Run the most relevant tests and checks available. Clearly distinguish checks that passed, failed, were skipped, or could not be run. Never call a security scan a substitute for full validation or deployed verification.
+7. **Review your own diff.** Look for unintended changes, error paths, auth and market boundaries, database integrity, migration safety, accessibility, responsive behavior, and missing regression tests.
+8. **Respect release boundaries.** Never merge, deploy, change the default branch, or delete/force-update branches without the user's explicit approval. Prefer a feature branch and reviewable PR.
+9. **Report plainly.** Summarize what changed, why, exact verification evidence, remaining risks, and links to the branch/PR when available. Never claim an action or test succeeded without evidence.
 
 ## Context and response behavior
 
