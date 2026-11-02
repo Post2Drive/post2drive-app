@@ -7,8 +7,6 @@ export const metadata: Metadata = {
   description: "How Post2Drive uses cookies and how to manage your preferences.",
 };
 
-export const metadata = { title: "Cookies · Post2Drive" };
-
 const essential = [
   { name: "next-auth.session-token (or __Secure- prefixed)", purpose: "Keeps you signed in.", lasts: "Until you log out, up to 30 days" },
   { name: "next-auth.csrf-token (or __Host- prefixed)", purpose: "Protects sign-in forms from cross-site request forgery.", lasts: "Browser session" },
