@@ -227,6 +227,14 @@ async function POSTHandler(
       });
       if (existingActiveBid) return "already_bid" as const;
 
+      // Cap the number of active bids per job to prevent unbounded growth that
+      // would overwhelm the poster's bids view and degrade query performance.
+      const MAX_ACTIVE_BIDS_PER_JOB = 50;
+      const activeBidCount = await tx.bid.count({
+        where: { jobId: routeParams.id, status: "active" },
+      });
+      if (activeBidCount >= MAX_ACTIVE_BIDS_PER_JOB) return "bid_limit_reached" as const;
+
       const createdBid = await tx.bid.create({
         data: {
           jobId: routeParams.id,
@@ -268,6 +276,10 @@ async function POSTHandler(
 
   if (bid === "already_bid") {
     return NextResponse.json({ error: "You already have an active bid on this job." }, { status: 409 });
+  }
+
+  if (bid === "bid_limit_reached") {
+    return NextResponse.json({ error: "This job has reached its maximum number of bids and is no longer accepting new ones." }, { status: 409 });
   }
 
   if (!bid) {
