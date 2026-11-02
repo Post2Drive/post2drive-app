@@ -273,7 +273,7 @@ try {
       await page.getByRole("alert").filter({ hasText: "Synthetic QA outage" }).waitFor({ state: "visible" });
       assert.equal(await page.getByText("No jobs in this category.").count(), 0, "a failed marketplace load must not be shown as an empty list");
       await page.getByRole("button", { name: "Retry loading jobs" }).click();
-      await page.getByText("No jobs in this category.").waitFor({ state: "visible" });
+      await page.getByRole("status").filter({ hasText: /No loads posted yet|No jobs here yet|No jobs in this category/ }).waitFor({ state: "visible" });
       await page.unroute("**/api/jobs");
 
       // A disconnected network request must be distinguished from an empty
@@ -296,7 +296,7 @@ try {
       assert.equal(await page.getByText("No jobs in this category.").count(), 0,
         "a disconnected marketplace request must not be shown as an empty list");
       await page.getByRole("button", { name: "Retry loading jobs" }).click();
-      await page.getByText("No jobs in this category.").waitFor({ state: "visible" });
+      await page.getByRole("status").filter({ hasText: /No loads posted yet|No jobs here yet|No jobs in this category/ }).waitFor({ state: "visible" });
       await page.unroute("**/api/jobs");
     }
     await context.close();
