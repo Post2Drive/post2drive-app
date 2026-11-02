@@ -64,6 +64,8 @@ jobs:
         run: node scripts/qa/company-verification-contract.mjs
       - name: Validate lifecycle, incident, and market-guard contracts
         run: npm run qa:lifecycle-contract
+      - name: Validate signup vehicle count bounds and server-side plan derivation
+        run: npm run qa:signup-vehicle-validation
       - name: Validate signup display ID collision retries
         run: npm run qa:signup-display-id-retry
       - name: Validate signup, jobs, bidding, status, payments and vehicle workflows
