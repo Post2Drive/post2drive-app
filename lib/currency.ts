@@ -1,7 +1,8 @@
-import { MARKETS, getMarket, type SupportedCountry } from "@/lib/market";
+import { MARKETS, LAUNCH_COUNTRIES, getMarket, type SupportedCountry } from "@/lib/market";
 
-/** Only configured Post2Drive markets are selectable. */
+/** Only launch-enabled Post2Drive markets are selectable in the signup flow. */
 export const COUNTRIES = Object.values(MARKETS)
+  .filter((market) => LAUNCH_COUNTRIES.has(market.country))
   .map((market) => ({
     code: market.country,
     name: market.label,
