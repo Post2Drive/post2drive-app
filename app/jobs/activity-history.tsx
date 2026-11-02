@@ -97,7 +97,7 @@ export default function ActivityHistory({
             borderRadius: 4,
           }}
         >
-          {loading && <p>Loading activity...</p>}
+          {loading && <p role="status" aria-live="polite">Loading activity…</p>}
 
           {!loading &&
             activities.length === 0 && (
