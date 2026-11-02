@@ -931,8 +931,8 @@ try {
   const indiaReadGbNotif = await api("/api/notifications/" + notification.id + "/read", "POST", indiaCookie, {});
   assert.ok([403, 404].includes(indiaReadGbNotif.status),
     "India account must not mark-read a GB account's notification (got " + indiaReadGbNotif.status + ")");
-  const indiaNotifList = await (await api("/api/notifications", "GET", indiaCookie)).json();
-  assert.ok(!indiaNotifList.notifications.some(n => n.id === notification.id),
+  const indiaNotifListForGb = await (await api("/api/notifications", "GET", indiaCookie)).json();
+  assert.ok(!indiaNotifListForGb.notifications.some(n => n.id === notification.id),
     "India notification list must not include GB account's notifications");
   assert.deepEqual(await snapshot(), crossMarketNotifBefore,
     "cross-market notification probes must not mutate any fixture state");
