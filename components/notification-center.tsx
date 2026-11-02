@@ -23,6 +23,7 @@ export default function NotificationCenter() {
   const [unread, setUnread] = useState(0);
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState("");
+  const [markingAll, setMarkingAll] = useState(false);
 
   const refresh = useCallback(async () => {
     const response = await fetch("/api/notifications?limit=10", { cache: "no-store" });
@@ -35,6 +36,21 @@ export default function NotificationCenter() {
   useEffect(() => {
     refresh().catch((reason) => setError(reason instanceof Error ? reason.message : "Could not load notifications."));
   }, [refresh]);
+
+  async function markAllRead() {
+    setMarkingAll(true);
+    setError("");
+    try {
+      const response = await fetch("/api/notifications/read-all", { method: "POST" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Could not mark all as read.");
+      await refresh();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Could not mark all as read.");
+    } finally {
+      setMarkingAll(false);
+    }
+  }
 
   async function markRead(id: string) {
     setBusyId(id);
@@ -55,7 +71,14 @@ export default function NotificationCenter() {
     <section style={{ marginTop: 20, border: "1px solid var(--color-border)", borderRadius: 12, padding: 16 }}>
       <div style={{ display: "flex", gap: 12, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
         <h2 style={{ margin: 0 }}>Notifications {unread > 0 ? `· ${unread} unread` : ""}</h2>
-        <button type="button" className="button-link button-link-secondary" onClick={() => refresh().catch((reason) => setError(reason instanceof Error ? reason.message : "Refresh failed."))}>Refresh</button>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {unread > 0 && (
+            <button type="button" className="button-link button-link-secondary" disabled={markingAll} onClick={() => markAllRead()}>
+              {markingAll ? "Marking…" : "Mark all as read"}
+            </button>
+          )}
+          <button type="button" className="button-link button-link-secondary" onClick={() => refresh().catch((reason) => setError(reason instanceof Error ? reason.message : "Refresh failed."))}>Refresh</button>
+        </div>
       </div>
       {error && <p role="alert">{error}</p>}
       {items.length === 0 ? <p>No notifications yet.</p> : (
