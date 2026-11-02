@@ -6,6 +6,7 @@ import { isTesterAdmin } from "@/lib/testerAdmin";
 import { prisma } from "@/lib/prisma";
 import { isQaRunnerEnabled } from "@/lib/qaRunnerGuard";
 import { readBoundedJson } from "@/lib/requestBody";
+import { withApiMetrics } from "@/lib/apiMetrics";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -55,7 +56,7 @@ function validate(body: any) {
   return { errors, value: { name, countryCode, scenario, totalCampaignTests, testsPerVariation, accountCount, concurrency, suites, variations } };
 }
 
-export async function GET() {
+async function GETHandler() {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Not logged in." }, { status: 401 });
   if (!(await isTesterAdmin())) return NextResponse.json({ error: "Admin access required." }, { status: 403 });
@@ -102,7 +103,7 @@ export async function GET() {
   }
 }
 
-export async function POST(request: Request) {
+async function POSTHandler(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Not logged in." }, { status: 401 });
   if (!(await isTesterAdmin())) return NextResponse.json({ error: "Admin access required." }, { status: 403 });
@@ -134,3 +135,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Could not save the campaign draft. Confirm the campaign metadata migration is applied and the app database role has the required table permissions." }, { status: 503 });
   }
 }
+
+export const GET = withApiMetrics("/api/admin/qa-campaigns", GETHandler);
+export const POST = withApiMetrics("/api/admin/qa-campaigns", POSTHandler);

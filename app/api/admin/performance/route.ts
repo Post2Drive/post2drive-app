@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { withApiMetrics } from "@/lib/apiMetrics";
 
 export const dynamic = "force-dynamic";
 
@@ -7,7 +8,7 @@ export const dynamic = "force-dynamic";
  * Keep this route as an explicit tombstone so stale clients fail clearly without
  * querying the application database with its normal credentials.
  */
-export async function GET() {
+async function GETHandler() {
   return NextResponse.json(
     {
       error: "This endpoint has been retired.",
@@ -19,3 +20,5 @@ export async function GET() {
     }
   );
 }
+
+export const GET = withApiMetrics("/api/admin/performance", GETHandler);

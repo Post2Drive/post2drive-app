@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { readBoundedJson } from "@/lib/requestBody";
+import { withApiMetrics } from "@/lib/apiMetrics";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -32,7 +33,7 @@ function blockedUriCategory(value: unknown): string {
  * bounded, rate-limited reports and log a small allowlisted summary; never
  * persist or log raw report bodies, source paths, query strings, or user data.
  */
-export async function POST(request: Request) {
+async function POSTHandler(request: Request) {
   const limited = await enforceRateLimit(request, {
     scope: "csp-report",
     limit: 60,
@@ -69,3 +70,5 @@ export async function POST(request: Request) {
   console.warn("CSP_REPORT", JSON.stringify(summary));
   return new NextResponse(null, { status: 204, headers: NO_STORE });
 }
+
+export const POST = withApiMetrics("/api/security/csp-report", POSTHandler);
