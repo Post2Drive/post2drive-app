@@ -34,7 +34,7 @@ const jobIds = [];
 let server;
 let serverOutput = "";
 let base = "";
-let poster, driver, outsider, indiaPoster, suspendedGbPoster, suspendedGbUser, suspendedGbJob, pendingCompanyAccount, lifecycleJob, bidJob, bid, incident, evidence, posterVehicle, incidentJob, cancelJob, acceptJob, unassignJob, rejectJob, indiaJob, notification;
+let poster, driver, outsider, indiaPoster, suspendedGbPoster, suspendedGbUser, suspendedGbJob, pendingCompanyAccount, lifecycleJob, bidJob, bid, incident, evidence, posterVehicle, indiaVehicle, incidentJob, cancelJob, acceptJob, unassignJob, rejectJob, indiaJob, notification;
 
 async function snapshot() {
   // Compare complete isolated fixture rows rather than counts alone. A denied
@@ -337,6 +337,10 @@ try {
   }});
   posterVehicle = await prisma.vehicle.create({ data: {
     accountId: poster.id, vehicleType: "Small van (SWB)", regPlate: "CI-" + suffix,
+    verificationStatus: "verified",
+  }});
+  indiaVehicle = await prisma.vehicle.create({ data: {
+    accountId: indiaPoster.id, vehicleType: "Motorbike", regPlate: "CIIN-" + suffix,
     verificationStatus: "verified",
   }});
   await prisma.vehicle.create({ data: {
@@ -1110,6 +1114,57 @@ try {
   const ownVehiclesBody = await ownVehicles.text();
   assert.ok(!ownVehiclesBody.includes(posterVehicle.id), "vehicle collection must not expose another account's vehicle ID");
   assert.ok(!ownVehiclesBody.includes(posterVehicle.regPlate), "vehicle collection must not expose another account's registration");
+
+  // Cross-market vehicle isolation: a GB account must not see an IN account's
+  // vehicle registration, and an IN account must not see a GB account's vehicle.
+  const crossMarketVehicleStateBefore = await snapshot();
+  const gbVehiclesBody = await (await api("/api/vehicles", "GET", posterCookie)).text();
+  assert.ok(!gbVehiclesBody.includes(indiaVehicle.id),
+    "GB account vehicle collection must not expose an India account's vehicle ID");
+  assert.ok(!gbVehiclesBody.includes(indiaVehicle.regPlate),
+    "GB account vehicle collection must not expose an India account's registration plate");
+  const indiaVehiclesBody = await (await api("/api/vehicles", "GET", indiaCookie)).text();
+  assert.ok(!indiaVehiclesBody.includes(posterVehicle.id),
+    "India account vehicle collection must not expose a GB account's vehicle ID");
+  assert.ok(!indiaVehiclesBody.includes(posterVehicle.regPlate),
+    "India account vehicle collection must not expose a GB account's registration plate");
+  // Vehicle IDs must not leak across markets via the GET response body.
+  const gbVehicleRaw = await (await api("/api/vehicles", "GET", posterCookie)).text();
+  assert.ok(!gbVehicleRaw.includes(indiaVehicle.id),
+    "GB vehicle response body must not contain the India account vehicle's database ID");
+  assert.ok(!gbVehicleRaw.includes(indiaVehicle.regPlate),
+    "GB vehicle response body must not contain the India account vehicle's registration plate");
+  const indiaVehicleRaw = await (await api("/api/vehicles", "GET", indiaCookie)).text();
+  assert.ok(!indiaVehicleRaw.includes(posterVehicle.id),
+    "India vehicle response body must not contain the GB account vehicle's database ID");
+  assert.ok(!indiaVehicleRaw.includes(posterVehicle.regPlate),
+    "India vehicle response body must not contain the GB account vehicle's registration plate");
+  assert.deepEqual(await snapshot(), crossMarketVehicleStateBefore,
+    "cross-market vehicle read/write probes must not mutate any fixture state");
+
+  // Cross-market notification isolation: a GB account must not see or mark-read
+  // a notification that belongs to an IN account, and vice-versa.
+  const indiaNotification = await prisma.notification.create({ data: {
+    accountId: indiaPoster.id,
+    type: "job_created",
+    title: "CI India notification " + suffix,
+    body: "isolation proof",
+  }});
+  const crossMarketNotifBefore = await snapshot();
+  const gbReadIndiaNotif = await api("/api/notifications/" + indiaNotification.id + "/read", "POST", posterCookie, {});
+  assert.ok([403, 404].includes(gbReadIndiaNotif.status),
+    "GB account must not mark-read an India account's notification (got " + gbReadIndiaNotif.status + ")");
+  const gbNotifList = await (await api("/api/notifications", "GET", posterCookie)).json();
+  assert.ok(!gbNotifList.notifications.some(n => n.id === indiaNotification.id),
+    "GB notification list must not include India account's notifications");
+  const indiaReadGbNotif = await api("/api/notifications/" + notification.id + "/read", "POST", indiaCookie, {});
+  assert.ok([403, 404].includes(indiaReadGbNotif.status),
+    "India account must not mark-read a GB account's notification (got " + indiaReadGbNotif.status + ")");
+  const indiaNotifListForGb = await (await api("/api/notifications", "GET", indiaCookie)).json();
+  assert.ok(!indiaNotifListForGb.notifications.some(n => n.id === notification.id),
+    "India notification list must not include GB account's notifications");
+  assert.deepEqual(await snapshot(), crossMarketNotifBefore,
+    "cross-market notification probes must not mutate any fixture state");
 
   const outsiderCases = [
     ["/api/jobs/" + lifecycleJob.id, "GET"],
