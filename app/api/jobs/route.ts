@@ -135,6 +135,7 @@ async function GETHandler(req: Request) {
 
   const localOpenWhere: any = {
     ...searchFilter,
+    status: "open",
     currency,
     crossBorder: false,
     poster: {
