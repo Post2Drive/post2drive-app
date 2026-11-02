@@ -920,7 +920,6 @@ try {
     type: "job_created",
     title: "CI India notification " + suffix,
     body: "isolation proof",
-    read: false,
   }});
   const crossMarketNotifBefore = await snapshot();
   const gbReadIndiaNotif = await api("/api/notifications/" + indiaNotification.id + "/read", "POST", posterCookie, {});
