@@ -57,6 +57,29 @@ export type SupportedCountry = keyof typeof MARKETS;
 export type MarketCurrency = (typeof MARKETS)[SupportedCountry]["currency"];
 export type MarketIdentity = { country?: string | null; currency?: string | null };
 
+/**
+ * Countries currently open for signup. Defaults to GB and IN only.
+ * Set NEXT_PUBLIC_LAUNCH_COUNTRIES=GB,IN,US (comma-separated) to override in
+ * dev/staging when testing other markets. Production deployments must not
+ * widen this without a matching market readiness review.
+ */
+const _rawLaunchCountries =
+  process.env.NEXT_PUBLIC_LAUNCH_COUNTRIES ??
+  process.env.LAUNCH_COUNTRIES ??
+  "GB,IN";
+
+export const LAUNCH_COUNTRIES: ReadonlySet<string> = new Set(
+  _rawLaunchCountries
+    .split(",")
+    .map((c) => c.trim().toUpperCase())
+    .filter((c) => Object.prototype.hasOwnProperty.call(MARKETS, c))
+);
+
+/** True when a country code is part of the current launch set. */
+export function isLaunchMarket(country: unknown): boolean {
+  return typeof country === "string" && LAUNCH_COUNTRIES.has(country);
+}
+
 export function getMarket(country: unknown) {
   if (typeof country !== "string") return null;
   return Object.prototype.hasOwnProperty.call(MARKETS, country)
