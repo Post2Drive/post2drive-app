@@ -4,10 +4,13 @@ import { spawn } from "node:child_process";
 import { createServer } from "node:net";
 import { setTimeout as delay } from "node:timers/promises";
 import { createHmac, randomUUID } from "node:crypto";
-// Use the WASM-based Prisma shim when the native query engine binary is absent
-// (CI environments that cannot download binaries from binaries.prisma.sh).
-import { PrismaClient } from "./prisma-pg-shim.mjs";
 import bcrypt from "bcryptjs";
+
+// In CI the native Prisma binary is available; locally it is not (binaries.prisma.sh
+// returns 403 from the agent proxy), so use the WASM-backed shim instead.
+const { PrismaClient } = process.env.CI === "true"
+  ? await import("@prisma/client")
+  : await import("./prisma-pg-shim.mjs");
 
 const prisma = new PrismaClient();
 
