@@ -173,3 +173,6 @@ jobs:
           exit 1
       - name: Scan rendered public routes for accessibility and responsive regressions
         run: node scripts/qa/rendered-accessibility.mjs
+
+      - name: Validate GET /api/jobs hard cap and hasMore pagination flag
+        run: npm run qa:jobs-list-cap
