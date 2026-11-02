@@ -59,12 +59,13 @@ assert.doesNotMatch(accountGet, /include: \{/,
   "account details API must not return the full Account model by default");
 assert.match(accountGet, /users:\s*\{[\s\S]*?where: \{ id: userId \}/,
   "account settings must return the current session user's profile, not an arbitrary fleet member");
-assert.match(nextConfig, /Content-Security-Policy-Report-Only/,
-  "a report-only CSP must be present while compatibility is assessed");
+// CSP promoted from report-only to enforcement (#38, Nov 2026).
+assert.match(nextConfig, /key:\s*"Content-Security-Policy"/,
+  "CSP must be enforced (promoted from report-only after compatibility review)");
 assert.match(nextConfig, /object-src 'none'/,
-  "the report-only CSP must disallow plugin/object content");
+  "the enforced CSP must disallow plugin/object content");
 assert.match(nextConfig, /frame-ancestors 'none'/,
-  "the report-only CSP must disallow framing");
+  "the enforced CSP must disallow framing");
 assert.match(jobAccept, /tx\.job\.updateMany\([\s\S]*?status: "open"[\s\S]*?priceMode: "fixed"/,
   "fixed-job acceptance must use a conditional atomic claim");
 assert.match(jobAccept, /if \(\s*updated\.count !== 1\s*\)/,

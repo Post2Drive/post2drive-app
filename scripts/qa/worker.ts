@@ -35,6 +35,12 @@ function validateWorkerConfig() {
       !process.env.DATABASE_URL || !process.env.QA_BASE_URL?.startsWith("https://")) {
     throw new Error("QA worker requires an isolated staging database, HTTPS target and QA_ACCOUNT_COUNT=10000.");
   }
+  // QA_DATABASE_URL must be set and must match DATABASE_URL. This double-confirmation
+  // forces the operator to explicitly wire the QA worker to the isolated database
+  // service rather than accidentally inheriting the production connection string.
+  if (!process.env.QA_DATABASE_URL || process.env.QA_DATABASE_URL !== process.env.DATABASE_URL) {
+    throw new Error("QA_DATABASE_URL must be set and must equal DATABASE_URL to confirm the worker targets the isolated QA database.");
+  }
   if (!Number.isSafeInteger(HEARTBEAT_MS) || HEARTBEAT_MS < 250 ||
       !Number.isSafeInteger(STALE_AFTER_MS) || STALE_AFTER_MS < HEARTBEAT_MS * 2) {
     throw new Error("QA worker heartbeat/stale timeout configuration is invalid.");

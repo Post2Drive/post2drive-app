@@ -64,8 +64,11 @@
     "react-dom": "^19.3.1"
   },
   "devDependencies": {
+    "@prisma/adapter-pg": "^5.22.0",
     "@types/node": "^26.6.6",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19.3.0",
+    "pg": "^8.23.1",
     "prisma": "^5.20.0",
     "typescript": "^5.5.4"
   },

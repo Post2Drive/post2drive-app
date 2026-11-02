@@ -41,8 +41,9 @@ async function scanRoute(page, route, viewport) {
   assert.equal(responseHeaders["x-content-type-options"], "nosniff", `${route} must send nosniff`);
   assert.equal(responseHeaders["x-frame-options"], "DENY", `${route} must deny framing`);
   assert.equal(responseHeaders["referrer-policy"], "strict-origin-when-cross-origin", `${route} must send a restrictive referrer policy`);
-  assert.ok(responseHeaders["content-security-policy-report-only"]?.includes("report-uri /api/security/csp-report"),
-    `${route} must retain the report-only CSP until violations are reviewed`);
+  // CSP promoted from report-only to enforcement (#38, Nov 2026).
+  assert.ok(responseHeaders["content-security-policy"]?.includes("report-uri /api/security/csp-report"),
+    `${route} must have an enforced CSP with a report-uri sink`);
   try {
     await page.locator("main h1").first().waitFor({ state: "visible" });
   } catch (error) {

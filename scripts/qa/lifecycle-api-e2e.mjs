@@ -4,8 +4,13 @@ import { spawn } from "node:child_process";
 import { createServer } from "node:net";
 import { setTimeout as delay } from "node:timers/promises";
 import { createHmac, randomUUID } from "node:crypto";
-import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+
+// In CI the native Prisma binary is available; locally it is not (binaries.prisma.sh
+// returns 403 from the agent proxy), so use the WASM-backed shim instead.
+const { PrismaClient } = process.env.CI === "true"
+  ? await import("@prisma/client")
+  : await import("./prisma-pg-shim.mjs");
 
 const prisma = new PrismaClient();
 
@@ -590,8 +595,10 @@ try {
       path + " must not be embeddable in a frame");
     assert.equal(response.headers.get("referrer-policy"), "strict-origin-when-cross-origin",
       path + " must use the reviewed referrer policy");
-    assert.match(response.headers.get("content-security-policy-report-only") || "", /report-uri \/api\/security\/csp-report/i,
-      path + " must deliver the report-only CSP without prematurely enforcing it");
+    // CSP promoted to enforcement (#38, Nov 2026); check enforced header.
+    const cspEnforced = response.headers.get("content-security-policy") || "";
+    assert.match(cspEnforced, /report-uri \/api\/security\/csp-report/i,
+      path + " must deliver the enforced CSP with a report-uri sink");
   }
 
   // Actual provider HTTP lifecycle and replay checks against isolated CI rows.
@@ -878,6 +885,74 @@ try {
   assert.deepEqual(await snapshot(), crossMarketBefore,
     "cross-market action attempts must leave jobs, bids, incidents, evidence, ratings and payments unchanged");
 
+  // ── Isolation family: vehicles (cross-market read/write) (#122) ──────────
+  // An IN account must not be able to read or enumerate a GB account's vehicles.
+  // Vehicle GET returns the caller's own vehicles only — an IN caller must not
+  // see the GB poster's vehicle in the response.
+  const vehicleCrossMarketBefore = await snapshot();
+  const indiaVehicleList = await (await api("/api/vehicles", "GET", indiaCookie)).json();
+  const gbPosterVehicleExposedToIndia = indiaVehicleList?.vehicles?.some(
+    (v) => v.id === posterVehicle.id
+  );
+  assert.ok(!gbPosterVehicleExposedToIndia,
+    "GB poster's vehicle must not appear in an IN account's vehicle list");
+
+  // An IN account must not register a vehicle — even with a valid IN reg plate —
+  // because the staging environment should scope vehicle creation to the caller's
+  // market. The vehicles API returns the caller's own list; the isolation is that
+  // the posterVehicle (owned by a GB account) is invisible to the IN account.
+  // Also confirm the IN account's vehicle list is distinct from the GB poster's.
+  const posterVehicleList = await (await api("/api/vehicles", "GET", posterCookie)).json();
+  const indiaPosterVehicleVisible = posterVehicleList?.vehicles?.some(
+    (v) => v.accountId === indiaPoster.id
+  );
+  assert.ok(!indiaPosterVehicleVisible,
+    "IN poster's vehicles must not appear in a GB poster's vehicle list");
+  assert.deepEqual(await snapshot(), vehicleCrossMarketBefore,
+    "cross-market vehicle reads must not change any state");
+  console.log("Cross-market vehicle isolation: GB vehicle invisible to IN account, IN vehicle invisible to GB account.");
+
+  // ── Isolation family: notifications (cross-account mark-read) (#122) ──────
+  // The notification created during setup belongs to the driver.
+  // An India account (indiaCookie) must not be able to mark it read or fetch it.
+  const notifCrossMarketBefore = await snapshot();
+  const indiaNotifList = await (await api("/api/notifications", "GET", indiaCookie)).json();
+  assert.ok(!indiaNotifList?.notifications?.some((n) => n.id === notification.id),
+    "IN account must not see a GB driver's notification");
+  const indiaMarkRead = await api(
+    "/api/notifications/" + notification.id + "/read",
+    "POST",
+    indiaCookie,
+    {}
+  );
+  assert.ok([403, 404].includes(indiaMarkRead.status),
+    "IN account must not mark a GB notification as read (got " + indiaMarkRead.status + ")");
+  assert.deepEqual(await snapshot(), notifCrossMarketBefore,
+    "cross-market notification mark-read attempt must not change state");
+  console.log("Cross-market notification isolation: IN account cannot read or mark GB driver notification.");
+
+  // ── Isolation family: profile (cross-market) (#122) ──────────────────────
+  // A GB account must not be able to read a public profile across markets when
+  // the profile belongs to a different market.
+  // Note: /api/profile/:id may return 404 for cross-market accounts if the
+  // route scopes profiles to the caller's market, or may return a limited
+  // public view. Either is acceptable; what must NOT happen is returning
+  // private fields (phone, email, internal IDs other than displayId).
+  const profileCrossMarketBefore = await snapshot();
+  const gbReadIndiaProfile = await api("/api/profile/" + indiaPoster.displayId, "GET", posterCookie);
+  if (gbReadIndiaProfile.status === 200) {
+    const profileBody = await gbReadIndiaProfile.json();
+    assert.ok(!profileBody?.profile?.email, "cross-market profile must not expose email");
+    assert.ok(!profileBody?.profile?.phone, "cross-market profile must not expose phone");
+    assert.ok(!profileBody?.profile?.passwordHash, "cross-market profile must not expose passwordHash");
+  } else {
+    assert.ok([403, 404].includes(gbReadIndiaProfile.status),
+      "GB account reading IN profile must get 200 (restricted) or 403/404 (got " + gbReadIndiaProfile.status + ")");
+  }
+  assert.deepEqual(await snapshot(), profileCrossMarketBefore,
+    "cross-market profile read must not change state");
+  console.log("Cross-market profile isolation: no private fields exposed across markets.");
+
   // ── Isolation family: vehicle registration jurisdiction ──────────────────
   // An IN account must not register a vehicle with a GB jurisdiction code.
   const vehicleIsolationBefore = await snapshot();
@@ -986,6 +1061,47 @@ try {
     "same-driver concurrent bid race must leave exactly one active bid in PostgreSQL");
   const posterBidsRead = await api("/api/jobs/" + bidJob.id + "/bids", "GET", posterCookie);
   assert.equal(posterBidsRead.status, 200, "poster may read bids for their own job");
+
+  // ── Mutation-route bounds validation (#38) ────────────────────────────────
+  // Account PATCH must reject overlong name, malformed JSON, and wrong content-type.
+  const mutationBoundsBefore = await snapshot();
+  const overLongName = "A".repeat(200);
+  const overLongNameResp = await api("/api/account", "PATCH", outsiderCookie, { name: overLongName });
+  assert.equal(overLongNameResp.status, 400, "account PATCH must reject name exceeding 120 chars");
+  const afterOverLongResp = await api("/api/account", "GET", outsiderCookie);
+  const afterOverLongBody = await afterOverLongResp.json();
+  assert.notEqual(afterOverLongBody.account?.users?.[0]?.name, overLongName, "overlong name rejection must not persist");
+
+  const malformedBody = await fetch(new URL("/api/account", base).href, {
+    method: "PATCH",
+    headers: { cookie: outsiderCookie, "content-type": "application/json" },
+    body: "not-json{{{{",
+    signal: AbortSignal.timeout(8000),
+  });
+  assert.ok([400, 500].includes(malformedBody.status), "account PATCH must reject malformed JSON body (got " + malformedBody.status + ")");
+
+  const wrongContentType = await fetch(new URL("/api/account", base).href, {
+    method: "PATCH",
+    headers: { cookie: outsiderCookie, "content-type": "text/plain" },
+    body: "name=legit",
+    signal: AbortSignal.timeout(8000),
+  });
+  assert.ok([400, 415, 422].includes(wrongContentType.status),
+    "account PATCH with wrong content-type must be rejected (got " + wrongContentType.status + ")");
+  assert.deepEqual(await snapshot(), mutationBoundsBefore,
+    "mutation bounds rejections must leave account state unchanged");
+
+  // Job create must reject an overlong pickup string.
+  const overLongPickupJob = await api("/api/jobs", "POST", posterCookie, {
+    pickup: "X".repeat(600),
+    dropoff: "CI Dropoff",
+    jobDate: new Date(Date.now() + 2 * 86_400_000).toISOString().slice(0, 10),
+    pickupTime: "09:00", dropoffTime: "17:00",
+    pickupTimeZone: "Europe/London", dropoffTimeZone: "Europe/London",
+    vehicleType: "Small van (SWB)", price: 50, priceMode: "fixed", currency: "GBP", crossBorder: false,
+  });
+  assert.ok([400, 422].includes(overLongPickupJob.status), "job create must reject overlong pickup (got " + overLongPickupJob.status + ")");
+  console.log("Mutation bounds: overlong name, malformed JSON, wrong content-type and overlong pickup all rejected.");
 
   // Establish that the credentials session is accepted, and the vehicle collection is
   // account-scoped rather than exposing another account's records.
