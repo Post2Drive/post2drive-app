@@ -7,6 +7,7 @@ import { isSupportedMarket } from "@/lib/market";
 import { authOptions } from "@/lib/auth";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { readBoundedJson } from "@/lib/requestBody";
+import { toE164ForMarket } from "@/lib/phoneVerification";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
@@ -39,6 +40,7 @@ async function GETHandler() {
       currency: true,
       displayId: true,
       marketingConsent: true,
+      phoneVerifiedAt: true,
       users: {
         where: { id: userId },
         select: { id: true, name: true, email: true, phone: true },
@@ -181,17 +183,28 @@ async function PATCHHandler(req: Request) {
       await tx.passwordResetToken.deleteMany({ where: { userId } });
     }
 
+    // Changing the number clears phone verification: the new number has to be
+    // proven again before it counts (India access depends on it).
+    let phoneChanged = false;
+    if (typeof phone === "string") {
+      const currentUser = await tx.user.findFirst({ where: { id: userId, accountId }, select: { phone: true } });
+      phoneChanged = (currentUser?.phone ?? "").replace(/[\s().-]/g, "") !== phone.trim().replace(/[\s().-]/g, "");
+    }
+
     if (name !== undefined || phone !== undefined) {
       await tx.user.update({
         where: { id: userId },
         data: {
           ...(typeof name === "string" && { name: name.trim() }),
-          ...(typeof phone === "string" && { phone: phone.trim() }),
+          ...(typeof phone === "string" && { phone: phone.trim(), phoneE164: toE164ForMarket(phone, account.country) }),
         },
       });
     }
 
     const accountData: Record<string, unknown> = {};
+    if (phoneChanged && account.phoneVerifiedAt) {
+      accountData.phoneVerifiedAt = null;
+    }
     if (typeof companyName === "string") {
       accountData.companyName = companyName.trim();
     }

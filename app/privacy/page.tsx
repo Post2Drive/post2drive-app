@@ -1,8 +1,8 @@
 import Link from "next/link";
 
 export default function PrivacyPage() {
-  return <main style={{ maxWidth: 900, margin: "0 auto", padding: "32px 20px 64px" }}>
-    <p><Link href="/signup">← Back to signup</Link></p>
+  return <main className="legal-page">
+    <p><Link href="/">← Back</Link></p>
     <h1>Post2Drive Privacy Notice</h1>
     <p><strong>Version:</strong> 16 October 2026 · Draft for product testing</p>
     <p>This notice describes the categories of information used by the Post2Drive development service. It is a working notice and must be reviewed against the final hosting, analytics, email, verification and payment providers before public launch.</p>
@@ -11,6 +11,7 @@ export default function PrivacyPage() {
     <h2>Sharing and access</h2><p>Some details are shared with the other party to a delivery only when needed for an accepted job. Public job browsing should not expose direct contact details. Authorised administrators may access limited operational or incident information for support, security and moderation. Service providers may process data on our behalf when configured.</p>
     <h2>Security and retention</h2><p>We use access controls, password hashing, private configuration, audit records and market isolation as applicable. No internet service can guarantee absolute security. Operational and transaction records may be retained to protect other users, investigate disputes or meet legal obligations; we aim to minimise identifiable information and retention where practical.</p>
     <h2>Your choices</h2><p>You can update profile details and your marketing preference in Account Settings. You can request account deletion there; the workflow is designed to disable access and anonymise personal details while preserving limited job/audit records needed for other participants. Contact us if you need access, correction or privacy support.</p>
+    <h2>Cookies and tracking</h2><p>We use only essential cookies to keep you signed in and secure. Optional analytics or similar tracking stays off unless you choose &ldquo;Allow analytics&rdquo; in the cookie banner, and you can change that at any time from Cookie settings. See the <Link href="/cookies">Cookies page</Link> for the full list.</p>
     <h2>Market and launch status</h2><p>Country and currency are selected at signup and cannot be freely changed because job visibility is restricted to that market. Email verification, SMS/OTP, payment processing, analytics and any other provider integration should be enabled only after the relevant provider and notice details have been verified.</p>
     <h2>Contact</h2><p>Before launch, add the final legal operator name, registered address, privacy contact, applicable supervisory authority information and verified provider list. This document should be reviewed by qualified counsel before being relied on as the final legal notice.</p>
   </main>;

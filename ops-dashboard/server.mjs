@@ -878,7 +878,14 @@ const server = http.createServer(async (req,res) => {
     if (req.method === "GET" && url.pathname === "/health") return send(res,200,JSON.stringify({ok:true,service:"post2drive-ops-dashboard"}),"application/json");
     if (req.method === "POST" && url.pathname === "/login") {
       const forwardedIp = process.env.TRUST_PROXY_HEADERS === "true" ? String(req.headers["x-forwarded-for"] || "").split(",")[0].trim() : "";
-      const ip = forwardedIp || String(req.socket.remoteAddress || "unknown");
+      // Embedded behind the Next.js app, every request arrives from loopback, so
+      // without the relayed visitor address all admins would share one lockout
+      // bucket. Only a loopback caller (the app's own proxy, which rebuilds
+      // headers from scratch) may supply x-post2drive-client-ip.
+      const remote = String(req.socket.remoteAddress || "unknown");
+      const fromLocalProxy = /^(?:127\.|::1$|::ffff:127\.)/.test(remote);
+      const relayedIp = fromLocalProxy ? String(req.headers["x-post2drive-client-ip"] || "").trim().slice(0, 100) : "";
+      const ip = forwardedIp || relayedIp || remote;
       const now = Date.now();
       const attempt = loginAttempts.get(ip);
       if (attempt && now - attempt.startedAt < LOGIN_WINDOW_MS && attempt.count >= LOGIN_MAX_ATTEMPTS) {

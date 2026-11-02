@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import PhoneCodeFlow from "@/components/phone-code-flow";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -13,6 +14,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
   const [resendMessage, setResendMessage] = useState("");
+  const [method, setMethod] = useState<"password" | "phone-code">("password");
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get("passwordChanged") === "1") {
@@ -66,6 +68,22 @@ export default function LoginPage() {
       <h1>Log in</h1>
       <p>Sign in to post transport jobs, find delivery work and manage your activity in your selected market.</p>
       {notice && <p role="status" aria-live="polite">{notice}</p>}
+      {method === "phone-code" ? (
+        <>
+          <PhoneCodeFlow
+            mode="login"
+            submitLabel="Log in"
+            onConfirm={async ({ phone, code }) => {
+              const res = await signIn("phone-otp", { phone, code, redirect: false });
+              if (res?.error) return "That code is wrong or has expired. Check it, or send a new one.";
+              router.push("/dashboard");
+              return null;
+            }}
+          />
+          <p style={{ marginTop: 18 }}><button type="button" className="button-link-secondary" onClick={() => setMethod("password")}>Use email or phone and password</button></p>
+        </>
+      ) : (
+      <>
       <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <label>
           Email or phone number (India accounts)
@@ -92,7 +110,10 @@ export default function LoginPage() {
           {loading ? "Logging in..." : "Log in"}
         </button>
       </form>
-      <p style={{ marginTop: 18 }}><a href="/forgot-password">Forgot password?</a> · <a href="/signup">Create an account</a> · <a href="/admin-access">Admin dashboard</a></p>
+      <p style={{ marginTop: 18 }}><button type="button" className="button-link-secondary" onClick={() => setMethod("phone-code")}>India: use a text code instead of a password</button></p>
+      </>
+      )}
+      <p style={{ marginTop: 18 }}><a href="/forgot-password">Forgot password?</a> · <a href="/signup">Create an account</a></p>
       </section>
     </main>
   );

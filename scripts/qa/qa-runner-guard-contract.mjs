@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { isQaRunnerEnabled } from "../../lib/qaRunnerGuard.ts";
+import { isQaRunnerEnabled, isApprovedStagingOrigin } from "../../lib/qaRunnerGuard.ts";
 
 const keys = [
   "POST2DRIVE_QA_MODE",
@@ -29,6 +29,11 @@ function configure(overrides = {}) {
 try {
   configure();
   assert.equal(isQaRunnerEnabled(), true, "valid, allow-listed staging config should enable QA");
+  configure({ QA_BASE_URL: "https://post2drive-web-staging.up.railway.app/" });
+  assert.equal(isQaRunnerEnabled(), true, "a trailing slash on the approved origin is fine");
+  configure({ QA_BASE_URL: "HTTPS://Post2Drive-Web-Staging.up.railway.app" });
+  assert.equal(isQaRunnerEnabled(), true, "scheme and host are case-insensitive");
+  assert.equal(isApprovedStagingOrigin("https://x.test", ["https://x.test"]), true, "explicit allow-lists are honoured");
 
   const rejected = [
     ["QA mode disabled", { POST2DRIVE_QA_MODE: "false" }],
@@ -40,6 +45,13 @@ try {
     ["HTTP URL", { QA_BASE_URL: "http://post2drive-staging.example.test" }],
     ["non-staging host", { QA_BASE_URL: "https://post2drive.example.com" }],
     ["invalid URL", { QA_BASE_URL: "not a URL" }],
+    // Issue #38: lookalikes that passed the old "contains staging" check.
+    ["unrelated host with a staging label", { QA_BASE_URL: "https://attacker-staging.example.com" }],
+    ["approved host used as a subdomain of another domain", { QA_BASE_URL: "https://post2drive-web-staging.up.railway.app.attacker.example" }],
+    ["userinfo before the approved host", { QA_BASE_URL: "https://attacker@post2drive-web-staging.up.railway.app" }],
+    ["non-default port", { QA_BASE_URL: "https://post2drive-web-staging.up.railway.app:8443" }],
+    ["unexpected path", { QA_BASE_URL: "https://post2drive-web-staging.up.railway.app/redirect?to=evil" }],
+    ["other Railway staging app", { QA_BASE_URL: "https://someone-else-staging.up.railway.app" }],
   ];
   for (const [label, overrides] of rejected) {
     configure(overrides);
@@ -113,6 +125,9 @@ try {
   assert.ok(qaWorker.includes("FOR UPDATE SKIP LOCKED"), "worker claims must be atomic across replicas");
   assert.ok(qaWorker.includes("workerHeartbeatAt"), "worker heartbeat must be persisted");
   assert.ok(qaWorker.includes("runQaWorker(job.id, country, workerId, testType, config)"), "worker must dispatch the selected QA workload mode with the claim owner ID");
+  // Issue #38: prove the worker targets the isolated QA database, not production.
+  assert.ok(qaWorker.includes("QA_DATABASE_URL") && qaWorker.includes("process.env.QA_DATABASE_URL !== process.env.DATABASE_URL"), "worker must require QA_DATABASE_URL to equal DATABASE_URL to prove DB isolation");
+  assert.ok(qaRunner.includes("QA_DATABASE_URL") && qaRunner.includes("process.env.QA_DATABASE_URL !== db"), "qaRunner must require QA_DATABASE_URL === DATABASE_URL before campaigns run");
   assert.ok(qaRunner.includes("status='running' AND target_url=$2 AND target_accounts=$4 AND summary->>'workerId'=$3"), "runner must verify the exact worker-owned staging row and configured account count");
   assert.ok(qaRunner.includes("summary=COALESCE(summary,'{}'::jsonb) || $7::jsonb"), "run finalization must preserve worker metadata");
   assert.ok(qaRunner.includes("summary->>'workerId'=$8"), "only the claiming worker may finalize a run");
@@ -125,8 +140,8 @@ try {
 
   console.log(JSON.stringify({
     status: "passed",
-    checks: rejected.length + 31,
-    covered: ["valid Railway staging allow-list", ...rejected.map(([label]) => label), "GET guard before sensitive operations", "raw QA errors not returned", "GET and POST handlers present", "resend endpoint rate-limited", "verification token endpoint rate-limited", "login network/email rate limits", "login throttling fails closed", "QA throttle bypass requires an active run, target and origin", "QA runner is market-parameterized", "synthetic fixtures use market currency", "high-entropy QA run IDs", "bounded configured API route iterations required per run", "cleanup preserves findings, marks data deleted and preserves failure status", "cleanup rejects active runs", "interrupted run finalization timestamps"]
+    checks: rejected.length + 33,
+    covered: ["valid Railway staging allow-list", ...rejected.map(([label]) => label), "GET guard before sensitive operations", "raw QA errors not returned", "GET and POST handlers present", "resend endpoint rate-limited", "verification token endpoint rate-limited", "login network/email rate limits", "login throttling fails closed", "QA throttle bypass requires an active run, target and origin", "QA runner is market-parameterized", "synthetic fixtures use market currency", "high-entropy QA run IDs", "bounded configured API route iterations required per run", "cleanup preserves findings, marks data deleted and preserves failure status", "cleanup rejects active runs", "interrupted run finalization timestamps", "worker requires QA_DATABASE_URL == DATABASE_URL for DB isolation proof", "qaRunner requires QA_DATABASE_URL == DATABASE_URL before campaigns"]
   }, null, 2));
 } finally {
   for (const [key, value] of Object.entries(original)) {

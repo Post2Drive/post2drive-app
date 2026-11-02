@@ -80,3 +80,30 @@ export function resolvePhoneRoute(value: unknown): PhoneRouteResult {
 export function isStagingTestPhoneVerificationEnabled(): boolean {
   return process.env.POST2DRIVE_STAGING_TEST_PHONE_VERIFICATION === "true" && isQaRunnerEnabled();
 }
+
+/**
+ * Turn a phone number as the user typed it into E.164 for their market.
+ * Accepts "+91 98765 43210", "098765 43210" or "9876543210" for India and
+ * "07700 900123" for the UK. Anything ambiguous returns null rather than
+ * guessing a country.
+ */
+export function toE164ForMarket(value: unknown, marketCountry: string | null | undefined): string | null {
+  if (typeof value !== "string") return null;
+  const compact = value.trim().replace(/[\s().-]/g, "");
+  if (compact.startsWith("+")) return normalizeE164Phone(compact);
+  if (compact.startsWith("00")) return normalizeE164Phone("+" + compact.slice(2));
+  if (marketCountry === "IN") {
+    const local = compact.replace(/^0/, "");
+    return /^[6-9]\d{9}$/.test(local) ? "+91" + local : null;
+  }
+  if (marketCountry === "GB") {
+    return /^0\d{10}$/.test(compact) ? normalizeE164Phone("+44" + compact.slice(1)) : null;
+  }
+  return null;
+}
+
+/** Show only the last three digits, e.g. "+91 ••••• ••210". */
+export function maskPhone(e164: string): string {
+  const code = e164.startsWith("+44") ? "+44" : e164.startsWith("+91") ? "+91" : e164.slice(0, 3);
+  return `${code} ••••• ••${e164.slice(-3)}`;
+}

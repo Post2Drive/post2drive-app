@@ -44,9 +44,14 @@ try {
     POST2DRIVE_QA_MODE: "true",
     POST2DRIVE_QA_ENVIRONMENT: "staging",
     POST2DRIVE_QA_DATABASE_ISOLATED: "true",
+    // QA_DATABASE_URL must equal DATABASE_URL to confirm the worker targets the
+    // isolated CI database, not a production connection string (issue #38).
+    QA_DATABASE_URL: process.env.DATABASE_URL,
     RAILWAY_ENVIRONMENT_ID: "ci-qa-worker-contract",
     POST2DRIVE_QA_ALLOWED_ENVIRONMENT_ID: "ci-qa-worker-contract",
-    QA_BASE_URL: "https://post2drive-web-staging.example.test",
+    // Must pass the exact staging allow-list (issue 38). The test rows target
+    // .invalid hosts, so the worker rejects them before any HTTP traffic.
+    QA_BASE_URL: "https://post2drive-web-staging.up.railway.app",
     QA_ACCOUNT_COUNT: "10000",
     QA_MARKET_COUNTRY: "GB",
     QA_WORKER_POLL_MS: "100",

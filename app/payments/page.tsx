@@ -187,7 +187,6 @@ export default function PaymentsPage() {
   if (!data) {
     return (
       <main style={pageStyle}>
-        <Link href="/jobs" className="button-link button-link-secondary">← Back to jobs</Link>
 
         <h1>Payments</h1>
 
@@ -213,7 +212,6 @@ export default function PaymentsPage() {
         }}
       >
         <div>
-          <Link href="/jobs" className="button-link button-link-secondary">← Back to jobs</Link>
 
           <h1 style={{ marginBottom: 6 }}>Payments</h1>
 

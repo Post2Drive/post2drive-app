@@ -5,6 +5,7 @@ import { signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getLocalisationProfile } from "@/lib/localisation";
+import PhoneVerification from "@/components/phone-verification";
 
 
 export default function SettingsPage() {
@@ -128,9 +129,6 @@ export default function SettingsPage() {
 
   return (
     <main className="account-settings-page" style={{ width: "100%", maxWidth: 760, margin: "0 auto", padding: "24px 16px 48px", boxSizing: "border-box" }}>
-      <p>
-        <Link href="/jobs" className="button-link button-link-secondary">← Back to jobs</Link>
-      </p>
       <h1>Account settings</h1>
       <p style={{ color: "var(--color-muted)" }}>{account.displayId}</p>
 
@@ -169,6 +167,8 @@ export default function SettingsPage() {
         {message && <p role="status" aria-live="polite">{message}</p>}
         <button type="submit" disabled={saveBusy}>{saveBusy ? "Saving…" : "Save"}</button>
       </form>
+
+      <PhoneVerification verified={Boolean(account.phoneVerifiedAt)} onVerified={() => void loadAccount()} />
 
       <h2 style={{ marginTop: 32 }}>Change password</h2>
       <form onSubmit={handlePasswordChange} style={{ display: "flex", flexDirection: "column", gap: 12 }}>

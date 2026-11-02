@@ -136,7 +136,6 @@ export default function VehiclesPage() {
 
   return (
     <main style={{ maxWidth: 760, margin: "0 auto", padding: 24 }}>
-      <p><Link href="/settings" className="button-link button-link-secondary">← Back to settings</Link></p>
       <h1>Vehicle onboarding</h1>
       {isTester && <p><strong>Account status: Tester</strong> — verification checks are bypassed for testing; vehicle records remain unverified. {marketProfile?.inspectionLabel} and insurance expiry dates are optional for this test account.</p>}
       {testerApprovalStatus === "pending" && <p><strong>Tester application pending review.</strong> Add the details below for the administrator to review. Tester access is not enabled until approval. {marketProfile?.inspectionLabel} and insurance expiry dates are optional while your application is pending.</p>}
