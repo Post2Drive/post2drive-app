@@ -1,5 +1,11 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { CookieSettingsButton } from "@/components/consent-banner";
+
+export const metadata: Metadata = {
+  title: "Cookie Policy – Post2Drive",
+  description: "How Post2Drive uses cookies and how to manage your preferences.",
+};
 
 export const metadata = { title: "Cookies · Post2Drive" };
 
