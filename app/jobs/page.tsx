@@ -806,11 +806,41 @@ export default function JobsPage() {
         </div>
       )}
 
-      {!loading && !loadError &&
-        visibleJobs.length ===
-          0 && (
-          <p role="status">No jobs in this category.</p>
-        )}
+      {!loading && !loadError && visibleJobs.length === 0 && (() => {
+        // Distinguish why the list is empty so the user knows what to do next.
+        const noJobsAtAll = jobs.length === 0;
+        const filterActive = activeVehicle !== "all";
+        const isOpenTab = tab === "open";
+        const isIndia = accountCountry === "IN";
+
+        if (noJobsAtAll && isOpenTab) {
+          return (
+            <div role="status" className="jobs-empty-state">
+              <p><strong>No loads posted yet in your market.</strong></p>
+              <p>{isIndia
+                ? "Be the first to post a delivery or wait for loads to appear. India marketplace is in early access."
+                : "Be the first to post a delivery job, or check back soon as the marketplace grows."}</p>
+              <Link href="/jobs/new" style={primaryButtonStyle}>Post a load</Link>
+            </div>
+          );
+        }
+
+        if (noJobsAtAll) {
+          return (
+            <div role="status" className="jobs-empty-state">
+              <p>No jobs here yet. Head to the <button type="button" onClick={() => setTab("open")} style={{ background: "none", border: "none", color: "var(--color-primary-action)", cursor: "pointer", fontWeight: 600, padding: 0 }}>Open</button> tab to browse or post loads.</p>
+            </div>
+          );
+        }
+
+        if (filterActive) {
+          return (
+            <p role="status">No {activeVehicle} jobs in this category. <button type="button" onClick={() => setVehicleFilter("all")} style={{ background: "none", border: "none", color: "var(--color-primary-action)", cursor: "pointer", fontWeight: 600, padding: 0 }}>Show all vehicles</button></p>
+          );
+        }
+
+        return <p role="status">No jobs in this category.</p>;
+      })()}
 
       <ul
         style={{
