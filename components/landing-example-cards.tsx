@@ -114,6 +114,7 @@ export default function LandingExampleCards() {
             aria-selected={i === index}
             aria-label={`${e.flag} ${e.market} example`}
             className={"load-ticket-dot-nav" + (i === index ? " load-ticket-dot-nav-active" : "")}
+            style={{ minWidth: 24, minHeight: 24 }}
             onClick={() => advance(i)}
           />
         ))}
