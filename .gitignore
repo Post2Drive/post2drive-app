@@ -21,3 +21,6 @@ tsconfig.tsbuildinfo
 post2drive-source.zip
 .DS_Store
 Thumbs.db
+
+# Generated QA report artifacts
+country-matrix-report.json
