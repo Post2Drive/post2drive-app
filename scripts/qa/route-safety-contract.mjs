@@ -22,7 +22,7 @@ import assert from "node:assert/strict";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
-// ── helpers ─────────────────────────────────────────────────────────────────
+// ── helpers ───────────────────────────────────────────────────────────────
 
 function readRoute(path) {
   try {
@@ -173,11 +173,14 @@ for (const routePath of routePaths) {
 // A few routes intentionally bypass withApiMetrics because they are internal
 // or already use a custom metrics scheme (the NextAuth handler, the QA run
 // handler which is complex and handles its own errors, CSP report which is a
-// simple append-only route).
+// simple append-only route). The retired admin/performance tombstone is also
+// intentionally database-free: it returns a 410 without touching the app DB or
+// the ApiRequestMetric table, so it must not be instrumented.
 const EXEMPT_FROM_METRICS = new Set([
   "app/api/auth/[...nextauth]/route.ts",
   "app/api/security/csp-report/route.ts",
   "app/api/health/route.ts",
+  "app/api/admin/performance/route.ts",
 ]);
 
 const EXPORT_HANDLER = /^export\s+const\s+(?:GET|POST|PATCH|DELETE|PUT)\s*=/m;
@@ -194,7 +197,7 @@ for (const routePath of routePaths) {
     `${rel}: all routes with exported handlers must use withApiMetrics for consistent server-side logging`);
 }
 
-// ── Result ───────────────────────────────────────────────────────────────────
+// ── Result ────────────────────────────────────────────────────────────────
 
 console.log(JSON.stringify({
   status: "passed",
