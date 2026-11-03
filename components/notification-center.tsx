@@ -92,7 +92,8 @@ export default function NotificationCenter() {
               <p>{item.body}</p>
               <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                 {item.jobId && <Link href={item.type.includes("incident") || item.type === "delivery_rejected" ? `/jobs/${item.jobId}/incidents` : "/jobs"}>{item.type.includes("incident") || item.type === "delivery_rejected" ? "Open incident history" : "Open jobs"}</Link>}
-                {!item.readAt && <button disabled={busyId === item.id} onClick={() => markRead(item.id)}>{busyId === item.id ? "Saving…" : "Mark as read"}</button>}
+                {!item.readAt && <button
+                      type="button" disabled={busyId === item.id} onClick={() => markRead(item.id)}>{busyId === item.id ? "Saving…" : "Mark as read"}</button>}
               </div>
             </article>
           ))}
