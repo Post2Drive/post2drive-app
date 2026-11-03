@@ -5,9 +5,10 @@ import { authOptions } from "@/lib/auth";
 import { readBoundedJson } from "@/lib/requestBody";
 import { prisma } from "@/lib/prisma";
 import { requireJobMarketAccess } from "@/lib/jobMarket";
+import { enforceRateLimit } from "@/lib/rateLimit";
 
 // POST /api/ratings — rate the other party on a job you were matched on.
-// Ratings are allowed regardless of the job's final status.
+// Only allowed once a job has reached completed or delivered status.
 async function POSTHandler(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session) {
@@ -18,6 +19,14 @@ async function POSTHandler(req: Request) {
   if (!accountId) {
     return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   }
+
+  const rateLimit = await enforceRateLimit(req, {
+    scope: "rating-submit",
+    identity: accountId,
+    limit: 20,
+    windowMs: 60 * 60 * 1000,
+  });
+  if (rateLimit) return rateLimit;
 
   const parsedBody = await readBoundedJson(req, 8 * 1024);
   if (!parsedBody.ok) {
@@ -52,10 +61,18 @@ async function POSTHandler(req: Request) {
 
   const job = await prisma.job.findUnique({
     where: { id: jobId },
-    select: { id: true, posterId: true, acceptedById: true },
+    select: { id: true, posterId: true, acceptedById: true, status: true },
   });
   if (!job) {
     return NextResponse.json({ error: "Job not found." }, { status: 404 });
+  }
+
+  const rateableStatuses = ["completed", "delivered"];
+  if (!rateableStatuses.includes(job.status)) {
+    return NextResponse.json(
+      { error: "Ratings can only be submitted once the job is completed." },
+      { status: 409 },
+    );
   }
 
   let rateeId: string | null = null;
