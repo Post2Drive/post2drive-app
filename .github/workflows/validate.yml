@@ -173,3 +173,6 @@ jobs:
           exit 1
       - name: Scan rendered public routes for accessibility and responsive regressions
         run: node scripts/qa/rendered-accessibility.mjs
+
+      - name: Validate vehicle registration field limits and fleet count cap
+        run: npm run qa:vehicle-registration-limits
