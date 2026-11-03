@@ -1,4 +1,10 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+
+export const metadata: Metadata = {
+  title: "Privacy Policy – Post2Drive",
+  description: "How Post2Drive collects, uses and protects your personal data.",
+};
 
 export default function PrivacyPage() {
   return <main className="legal-page">
