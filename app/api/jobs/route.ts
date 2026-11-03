@@ -156,7 +156,12 @@ async function GETHandler(req: Request) {
     ...(!requesterIsQaAccount ? { qaTestAccounts: { none: {} } } : {}),
   };
 
+  // Hard cap: fetch one extra row to detect overflow without loading all data.
+  // Existing clients receive up to JOB_LIST_CAP rows; hasMore signals truncation.
+  const JOB_LIST_CAP = 500;
+
   const jobs = await prisma.job.findMany({
+    take: JOB_LIST_CAP + 1,
     where: {
       currency,
       crossBorder: false,
@@ -355,8 +360,12 @@ async function GETHandler(req: Request) {
     return hasFuturePickup(job, actor);
   });
 
+  const hasMore = filtered.length > JOB_LIST_CAP;
+  const page = hasMore ? filtered.slice(0, JOB_LIST_CAP) : filtered;
+
   return NextResponse.json({
-    jobs: filtered,
+    jobs: page,
+    hasMore,
     filters: {
       search,
       vehicleType,
