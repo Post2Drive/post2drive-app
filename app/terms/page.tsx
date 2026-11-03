@@ -1,4 +1,10 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+
+export const metadata: Metadata = {
+  title: "Terms of Service – Post2Drive",
+  description: "Terms and conditions governing use of the Post2Drive freight marketplace.",
+};
 
 export default function TermsPage() {
   return <main className="legal-page">
