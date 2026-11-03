@@ -1,4 +1,10 @@
+import type { Metadata } from "next";
 import SubscriptionPricing from "@/components/subscription-pricing";
+
+export const metadata: Metadata = {
+  title: "Pricing – Post2Drive",
+  description: "Post2Drive plans for businesses and fleets in the UK. Free early access for drivers in India.",
+};
 
 export default function PricingPage() {
   return (
