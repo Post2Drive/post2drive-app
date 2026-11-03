@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { authOptions } from "@/lib/auth";
 import LegalFooter from "@/components/legal-footer";
+import LandingExampleCards from "@/components/landing-example-cards";
 
 /** First screen. Signed-in users skip straight to their Home boxes. */
 export default async function HomePage() {
@@ -30,29 +31,7 @@ export default async function HomePage() {
           <p className="landing-note">Piloting in Manchester and Birmingham. Free early access in India.</p>
         </div>
 
-        <figure className="load-ticket" aria-label="Example of a load listing">
-          <figcaption className="load-ticket-tag">Example load</figcaption>
-          <div className="load-ticket-route">
-            <span className="load-ticket-stop">
-              <span className="load-ticket-dot" aria-hidden="true" />
-              <span><strong>Trafford Park</strong><small>Manchester</small></span>
-            </span>
-            <span className="load-ticket-line" aria-hidden="true" />
-            <span className="load-ticket-stop">
-              <span className="load-ticket-dot load-ticket-dot-end" aria-hidden="true" />
-              <span><strong>Digbeth</strong><small>Birmingham</small></span>
-            </span>
-          </div>
-          <dl className="load-ticket-facts">
-            <div><dt>Vehicle</dt><dd>Luton van</dd></div>
-            <div><dt>Load</dt><dd>4 pallets, 800 kg</dd></div>
-            <div><dt>Collect</dt><dd>Tue, 08:00</dd></div>
-          </dl>
-          <div className="load-ticket-foot">
-            <span>Fixed price</span>
-            <strong>£240</strong>
-          </div>
-        </figure>
+        <LandingExampleCards />
       </section>
 
       <section className="landing-steps" aria-labelledby="landing-steps-title">
