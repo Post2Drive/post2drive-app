@@ -115,6 +115,13 @@ const jobCreate = read("app/jobs/new/page.tsx");
 assert.match(jobCreate, /stepHeadingRef\.current\?\.focus\(\)/, "Job wizard must move focus to each new step");
 assert.match(jobCreate, /<h2 ref=\{stepHeadingRef\} tabIndex=\{-1\}/, "Job wizard headings must be focusable for step transitions");
 
+const jobEdit = read("app/jobs/[id]/edit/page.tsx");
+assert.match(jobEdit, /role="status" aria-live="polite">Loading job/, "Job edit loading state must be announced to screen readers");
+assert.match(jobEdit, /role="alert"/, "Job edit fatal error state must be announced");
+
+const activityHistory = read("app/jobs/activity-history.tsx");
+assert.match(activityHistory, /role="status" aria-live="polite">Loading activity/, "Activity history loading state must be announced to screen readers");
+
 const settings = read("app/settings/page.tsx");
 assert.match(settings, /Could not load account settings\. Try again\./, "Account settings loading must have a recoverable error");
 assert.match(settings, /role="alert">\{saveError\}/, "Account save errors must be announced");
@@ -152,8 +159,6 @@ const login = read("app/login/page.tsx");
 assert.match(login, /autoComplete="email"/, "Login email must support autofill");
 assert.match(login, /autoComplete="current-password"/, "Login password must support password managers");
 
-console.log("Design accessibility source contracts passed (contrast, focus, motion, navigation, forms, requirements, signup, payments, vehicles, settings, admin research privacy, and login).");
-
 // Consent: nothing optional may track a visitor before they allow it.
 {
   const { readdirSync, statSync } = await import("node:fs");
@@ -178,3 +183,5 @@ console.log("Design accessibility source contracts passed (contrast, focus, moti
     }
   }
 }
+
+console.log("Design accessibility source contracts passed (contrast, focus, motion, navigation, forms, requirements, signup, payments, vehicles, settings, admin research privacy, login, and job edit/activity states).");
