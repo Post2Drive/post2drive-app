@@ -1,6 +1,6 @@
 # API route and method access inventory
 
-**Scope:** `app/api/**/route.ts` on the Post2Drive app `main` baseline (57 route files).  
+**Scope:** `app/api/**/route.ts` on the Post2Drive app `main` baseline (62 route files).  
 **Review type:** source-level route inventory. A listed guard is a control observed in the route or its shared helper; it is not a claim that every route has passed a full authenticated adversarial HTTP test. See the evidence matrix below.
 
 ## Route inventory
@@ -51,30 +51,31 @@
 | 42 | `/api/jobs/[id]/unassign` | POST | NextAuth session plus job-market guard; poster ownership and pre-pickup state checks. |
 | 43 | `/api/jobs` | GET, POST | NextAuth session; market is derived from the account record, not client country/currency; POST uses bounded JSON, schema/business validation, rate limit and access checks. |
 | 44 | `/api/notifications/[id]/read` | POST | NextAuth session; update predicate includes both notification ID and the signed-in account ID; foreign record returns not-found. |
-| 45 | `/api/notifications` | GET | NextAuth session; query and unread count are scoped to the signed-in account ID with selected response fields. |
-| 46 | `/api/payments` | GET | NextAuth session; account/market-scoped completed jobs and response allowlist; private no-store response. No live payment-provider settlement is implied. |
-| 47 | `/api/phone-otp/request` | POST | Public; India only. Sends a code only to a number already on exactly one India account; identical reply whether or not the number is registered (cooldown included); per-network and per-number rate limits; fails closed (503) without an SMS adapter. |
-| 48 | `/api/phone-otp/reset` | POST | Public; India only. Sets a new password after a valid account-scoped one-time code (hashed, 5-minute, 5 attempts, single use); bumps sessionVersion to sign out every session and clears email reset tokens; per-network and per-number rate limits; generic error for unknown numbers. |
-| 49 | `/api/pilot/feedback` | GET, POST | Explicit staging/QA-runner guard; NextAuth session; approved UK student-pilot tester cohort only; suspended-account denial and per-account rate limit. |
-| 50 | `/api/profile/[id]` | GET | NextAuth session; target profile lookup is same-market; suspended/deletion-requested viewer is denied and returned fields are allow-listed. |
-| 51 | `/api/promotion/referrals/progress` | GET | NextAuth session; current account identity is taken from the session and referral progress is read for that account. |
-| 52 | `/api/promotion/status` | GET | NextAuth session; current account identity is taken from the session. |
-| 53 | `/api/qa/run` | GET, POST | Explicit QA-runner staging allowlist and constant-time shared-token checks for protected reports/queueing; target URL, market and account-count preflight; destructive cleanup requires durable terminal markers. |
-| 54 | `/api/ratings` | POST | NextAuth session plus job-market guard; rater must be an authorized job party; stars/comment are bounded and unique job/rater constraint prevents duplicate rating. |
-| 55 | `/api/security/csp-report` | POST | Public browser-report endpoint; rate-limited and handles reports as untrusted input. |
-| 56 | `/api/signup` | POST | Public entry point; network rate limit, bounded/typed fields, supported market/currency validation and country-specific verification policy. |
-| 57 | `/api/subscription/create-payment` | POST | NextAuth session; account access, suspension and market/plan eligibility checks before creating a pending provider-payment record. |
-| 58 | `/api/subscription/webhook` | POST | Shared secret in request header with constant-time comparison; validates payment ID/body before applying an idempotent subscription transition. |
-| 59 | `/api/vehicles` | GET, POST | NextAuth session and account-scoped lookup; POST checks account type, suspension, market-specific registration/insurance inputs and bounded data. |
-| 60 | `/api/verification/start` | POST | NextAuth session; person-verification initiation is restricted to GB/GBP; India remains phone-only. |
-| 61 | `/api/verification/start/webhook` | POST | Shared verification secret with constant-time comparison; validates attempt/status/provider reference and delegates to guarded lifecycle transition logic. |
+| 45 | `/api/notifications/read-all` | POST | NextAuth session; marks all unread notifications for the signed-in account as read in a single bulk update; rate-limited per account (60/hour). |
+| 46 | `/api/notifications` | GET | NextAuth session; query and unread count are scoped to the signed-in account ID with selected response fields. |
+| 47 | `/api/payments` | GET | NextAuth session; account/market-scoped completed jobs and response allowlist; private no-store response. No live payment-provider settlement is implied. |
+| 48 | `/api/phone-otp/request` | POST | Public; India only. Sends a code only to a number already on exactly one India account; identical reply whether or not the number is registered (cooldown included); per-network and per-number rate limits; fails closed (503) without an SMS adapter. |
+| 49 | `/api/phone-otp/reset` | POST | Public; India only. Sets a new password after a valid account-scoped one-time code (hashed, 5-minute, 5 attempts, single use); bumps sessionVersion to sign out every session and clears email reset tokens; per-network and per-number rate limits; generic error for unknown numbers. |
+| 50 | `/api/pilot/feedback` | GET, POST | Explicit staging/QA-runner guard; NextAuth session; approved UK student-pilot tester cohort only; suspended-account denial and per-account rate limit. |
+| 51 | `/api/profile/[id]` | GET | NextAuth session; target profile lookup is same-market; suspended/deletion-requested viewer is denied and returned fields are allow-listed. |
+| 52 | `/api/promotion/referrals/progress` | GET | NextAuth session; current account identity is taken from the session and referral progress is read for that account. |
+| 53 | `/api/promotion/status` | GET | NextAuth session; current account identity is taken from the session. |
+| 54 | `/api/qa/run` | GET, POST | Explicit QA-runner staging allowlist and constant-time shared-token checks for protected reports/queueing; target URL, market and account-count preflight; destructive cleanup requires durable terminal markers. |
+| 55 | `/api/ratings` | POST | NextAuth session plus job-market guard; rater must be an authorized job party; stars/comment are bounded and unique job/rater constraint prevents duplicate rating. |
+| 56 | `/api/security/csp-report` | POST | Public browser-report endpoint; rate-limited and handles reports as untrusted input. |
+| 57 | `/api/signup` | POST | Public entry point; network rate limit, bounded/typed fields, supported market/currency validation and country-specific verification policy. |
+| 58 | `/api/subscription/create-payment` | POST | NextAuth session; account access, suspension and market/plan eligibility checks before creating a pending provider-payment record. |
+| 59 | `/api/subscription/webhook` | POST | Shared secret in request header with constant-time comparison; validates payment ID/body before applying an idempotent subscription transition. |
+| 60 | `/api/vehicles` | GET, POST | NextAuth session and account-scoped lookup; POST checks account type, suspension, market-specific registration/insurance inputs and bounded data. |
+| 61 | `/api/verification/start` | POST | NextAuth session; person-verification initiation is restricted to GB/GBP; India remains phone-only. |
+| 62 | `/api/verification/start/webhook` | POST | Shared verification secret with constant-time comparison; validates attempt/status/provider reference and delegates to guarded lifecycle transition logic. |
 
 ## Test evidence map
 
 | Evidence class | Current artefact | What it proves / limitation |
 |---|---|---|
 | Authenticated HTTP + isolated DB | `scripts/qa/lifecycle-api-e2e.mjs` | Creates separate real accounts and NextAuth sessions, starts a production Next server and checks object ownership, protected writes, lifecycle transitions and DB snapshots. The #38 remediation change extends it with GB↔IN reads, India phone-only job creation, forged market/currency rejection, same-market profile checks, India verification-flow rejection, existing-session suspension denial, notification ownership, rating party/idempotency and payment-market isolation. |
-| Route/method matrix | `scripts/qa/lifecycle-auth-matrix.mjs` | 26 method/route denial cases; this is supplementary matrix evidence and must not be represented as exhaustive BOLA coverage of all 57 route files. |
+| Route/method matrix | `scripts/qa/lifecycle-auth-matrix.mjs` | 26 method/route denial cases; this is supplementary matrix evidence and must not be represented as exhaustive BOLA coverage of all 62 route files. |
 | Account/suspension | `scripts/qa/account-api-security-contract.mjs`, `scripts/qa/suspension-access-contract.mjs` | Account API privacy/request validation and shared suspension-policy checks; source assertions and isolated helper execution are not substitutes for HTTP tests on every route. |
 | Privacy | `scripts/qa/job-response-data-minimization-contract.mjs`, `scripts/qa/profile-vehicle-privacy-contract.mjs` | Contract coverage for the response surfaces named by each test; other response paths still require review. |
 | Worker recovery/concurrency | `scripts/qa/worker-concurrency-contract.mjs` | Two worker processes compete for one queued row and test stale-heartbeat finalisation on isolated CI PostgreSQL; stale runs fail rather than being automatically re-queued. |
@@ -91,4 +92,4 @@
 
 ## Current audit boundary
 
-This inventory is the route index for the 57 route files observed on the reviewed baseline. The full application security audit remains open until the remaining route families, worker recovery, broader PII/cache/log/header review and authenticated UX/accessibility checks have the evidence described above.
+This inventory is the route index for the 62 route files observed on the reviewed baseline. The full application security audit remains open until the remaining route families, worker recovery, broader PII/cache/log/header review and authenticated UX/accessibility checks have the evidence described above.
