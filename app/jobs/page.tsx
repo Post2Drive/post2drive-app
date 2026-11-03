@@ -1020,6 +1020,7 @@ export default function JobsPage() {
                   job.priceMode ===
                     "fixed" && (
                     <button
+                      type="button"
                       onClick={() =>
                         handleAccept(job.id)
                       }
@@ -1071,6 +1072,7 @@ export default function JobsPage() {
                       />
 
                       <button
+                      type="button"
                         onClick={() =>
                           handleBid(job.id)
                         }
@@ -1161,6 +1163,7 @@ export default function JobsPage() {
                       }}
                     >
                       <button
+                      type="button"
                         onClick={() =>
                           loadBids(
                             job.id
@@ -1220,6 +1223,7 @@ export default function JobsPage() {
                                   : ""}{" "}
 
                                 <button
+                      type="button"
                                   onClick={() =>
                                     handleAcceptBid(
                                       job.id,
@@ -1386,6 +1390,7 @@ export default function JobsPage() {
                         "accepted" && (
                         <>
                           <button
+                      type="button"
                             onClick={() =>
                               handleConfirmPickup(
                                 job.id
@@ -1397,6 +1402,7 @@ export default function JobsPage() {
 
                           {isAcceptedDriver && (
                             <button
+                      type="button"
                               onClick={() =>
                                 handleDriverCancel(
                                   job.id
@@ -1416,6 +1422,7 @@ export default function JobsPage() {
                       {job.status ===
                         "in_transit" && (
                         <button
+                      type="button"
                           onClick={() =>
                             handleMarkDelivered(
                               job.id
@@ -1431,6 +1438,7 @@ export default function JobsPage() {
                         !iMarkedDelivered && (
                           <>
                             <button
+                      type="button"
                               onClick={() =>
                                 handleConfirmDelivered(
                                   job.id
@@ -1441,6 +1449,7 @@ export default function JobsPage() {
                             </button>
 
                             <button
+                      type="button"
                               onClick={() =>
                                 handleRejectDelivered(
                                   job.id
@@ -1574,6 +1583,7 @@ export default function JobsPage() {
                           />
 
                           <button
+                      type="button"
                             onClick={() =>
                               submitRating(
                                 job.id

@@ -299,7 +299,7 @@ export default function EditJobPage() {
           fontFamily: "Arial, sans-serif",
         }}
       >
-        <p>Loading job...</p>
+        <p role="status" aria-live="polite">Loading job…</p>
       </main>
     );
   }
@@ -315,6 +315,7 @@ export default function EditJobPage() {
         }}
       >
         <div
+          role="alert"
           style={{
             padding: 14,
             borderRadius: 8,

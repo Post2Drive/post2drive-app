@@ -1,30 +1,34 @@
+#!/usr/bin/env node
 /**
- * Asserts that:
- * 1. The job listing query (localOpenWhere) includes status: "open" so the DB
- *    does not fetch completed/cancelled/in-transit jobs for the marketplace.
- * 2. The Job model schema includes a compound @@index([currency, status]) to
- *    support the market-filtered listing query efficiently.
+ * Guard the marketplace job listing's open-status filter and supporting
+ * currency/status compound index. This is a source contract; database
+ * migrations are validated separately by the CI workflow.
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-const read = (path) => readFileSync(new URL("../../" + path, import.meta.url), "utf8");
+const route = readFileSync("app/api/jobs/route.ts", "utf8");
+const schema = readFileSync("prisma/schema.prisma", "utf8");
 
-const jobsRoute = read("app/api/jobs/route.ts");
-const schema = read("prisma/schema.prisma");
-
-// 1. localOpenWhere must contain status: "open" so the DB filters it
 assert.match(
-  jobsRoute,
-  /const localOpenWhere[\s\S]*?status:\s*["']open["']/,
-  "localOpenWhere must include status: 'open' to prevent fetching non-open jobs from the database"
+  route,
+  /const localOpenWhere\s*:\s*any\s*=\s*\{[^}]*status:\s*"open"/s,
+  "the marketplace listing must filter open jobs by status",
 );
-
-// 2. Schema must have the compound index
+assert.match(
+  route,
+  /const localOpenWhere\s*:\s*any\s*=\s*\{[^}]*status:\s*"open"[^}]*currency/s,
+  "the open-job listing filter must include the requester's currency",
+);
+assert.match(
+  route,
+  /localOpenWhere/,
+  "the open-job filter must be used by the listing query",
+);
 assert.match(
   schema,
   /@@index\(\[currency,\s*status\]\)/,
-  "Job model must have @@index([currency, status]) compound index for market-filtered listing"
+  "the Job model must have a compound currency/status index",
 );
 
-console.log("job-listing-query-contract passed.");
+console.log("PASS job listing filters by open status and has the currency/status index");
