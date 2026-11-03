@@ -20,6 +20,7 @@
     "qa:signup-display-id-retry": "node scripts/qa/signup-display-id-retry-contract.mjs",
     "qa:country-matrix": "node --experimental-strip-types scripts/qa/country-matrix-contract.mjs",
     "qa:launch-market-gate": "node --experimental-strip-types scripts/qa/launch-market-gate-contract.mjs",
+    "qa:signup-vehicle-validation": "node --experimental-strip-types scripts/qa/signup-vehicle-validation-contract.mjs",
     "qa:qa-runner-guard": "node --experimental-strip-types scripts/qa/qa-runner-guard-contract.mjs && node --experimental-strip-types scripts/qa/workflow-hardening-contract.mjs",
     "qa:api-route-inventory": "node scripts/qa/api-route-inventory-contract.mjs",
     "qa:job-listing-query": "node scripts/qa/job-listing-query-contract.mjs",
