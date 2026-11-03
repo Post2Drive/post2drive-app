@@ -7,16 +7,23 @@ adb wait-for-device
 
 wait_for_android_services() {
   adb wait-for-device
-  for attempt in $(seq 1 30); do
+  # Cold GitHub-hosted emulators can remain attached-but-offline after the
+  # action reports boot. Allow up to four minutes for Android framework
+  # services to come online before failing the smoke test.
+  for attempt in $(seq 1 120); do
     booted="$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)"
     if [ "$booted" = "1" ] &&
       adb shell pm list packages >/dev/null 2>&1 &&
       adb shell dumpsys activity activities >/dev/null 2>&1; then
       return 0
     fi
+    if (( attempt % 15 == 0 )); then
+      echo "Waiting for Android package/activity services (${attempt}/120 attempts)."
+    fi
     sleep 2
   done
-  echo "Android package/activity services did not become responsive."
+  echo "Android package/activity services did not become responsive after 4 minutes."
+  adb devices -l || true
   return 1
 }
 
