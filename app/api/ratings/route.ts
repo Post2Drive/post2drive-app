@@ -5,9 +5,10 @@ import { authOptions } from "@/lib/auth";
 import { readBoundedJson } from "@/lib/requestBody";
 import { prisma } from "@/lib/prisma";
 import { requireJobMarketAccess } from "@/lib/jobMarket";
+import { enforceRateLimit } from "@/lib/rateLimit";
 
 // POST /api/ratings — rate the other party on a job you were matched on.
-// Ratings require the job to be completed; pre-completion ratings are not allowed.
+// Only allowed once a job has reached completed or delivered status.
 async function POSTHandler(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session) {
@@ -18,6 +19,14 @@ async function POSTHandler(req: Request) {
   if (!accountId) {
     return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   }
+
+  const rateLimit = await enforceRateLimit(req, {
+    scope: "rating-submit",
+    identity: accountId,
+    limit: 20,
+    windowMs: 60 * 60 * 1000,
+  });
+  if (rateLimit) return rateLimit;
 
   const parsedBody = await readBoundedJson(req, 8 * 1024);
   if (!parsedBody.ok) {
@@ -58,9 +67,6 @@ async function POSTHandler(req: Request) {
     return NextResponse.json({ error: "Job not found." }, { status: 404 });
   }
 
-  // Ratings are only meaningful once the job has reached a terminal state.
-  // Allowing ratings on open or in-progress jobs would let a party rate
-  // before the work is done and prevent a genuine post-completion review.
   const rateableStatuses = ["completed", "delivered"];
   if (!rateableStatuses.includes(job.status)) {
     return NextResponse.json(
