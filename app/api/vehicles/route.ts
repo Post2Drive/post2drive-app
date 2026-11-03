@@ -99,6 +99,15 @@ async function POSTHandler(req: Request) {
     if (mamKg !== null && (!Number.isInteger(mamKg) || mamKg < 1 || mamKg > 100000)) {
       return NextResponse.json({ error: "Enter a valid vehicle weight using the unit shown in the form." }, { status: 400 });
     }
+    if (make.length > 60) {
+      return NextResponse.json({ error: "Vehicle make must be 60 characters or fewer." }, { status: 400 });
+    }
+    if (model.length > 80) {
+      return NextResponse.json({ error: "Vehicle model must be 80 characters or fewer." }, { status: 400 });
+    }
+    if (operatorLicenceNo.length > 40) {
+      return NextResponse.json({ error: "Operator licence number must be 40 characters or fewer." }, { status: 400 });
+    }
 
     for (const [name, value] of [[marketProfile?.registrationDocumentLabel ?? "Vehicle registration document", v5cDocumentUrl], ["Insurance document", insuranceDocumentUrl]] as const) {
       if (value) {
@@ -134,6 +143,14 @@ async function POSTHandler(req: Request) {
       });
       if (duplicate) return null;
 
+      // Enforce fleet vehicle count cap (null = uncapped for legacy accounts)
+      if (account.fleetVehicleCount != null) {
+        const existing = await tx.vehicle.count({ where: { accountId: account.id } });
+        if (existing >= account.fleetVehicleCount) {
+          return { limitExceeded: true } as const;
+        }
+      }
+
       return tx.vehicle.create({
         data: {
           accountId: account.id,
@@ -156,6 +173,12 @@ async function POSTHandler(req: Request) {
     });
     if (!vehicle) {
       return NextResponse.json({ error: "This registration is already on your account." }, { status: 409 });
+    }
+    if ("limitExceeded" in vehicle) {
+      return NextResponse.json(
+        { error: `Your account plan allows up to ${account.fleetVehicleCount} vehicle${account.fleetVehicleCount === 1 ? "" : "s"}. Remove an existing vehicle or upgrade your plan.` },
+        { status: 403 },
+      );
     }
 
     return NextResponse.json({
