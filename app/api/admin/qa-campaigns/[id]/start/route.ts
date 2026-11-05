@@ -7,6 +7,7 @@ import { isQaRunnerEnabled } from "@/lib/qaRunnerGuard";
 import { prisma } from "@/lib/prisma";
 import { getMarket } from "@/lib/market";
 import { readBoundedJson } from "@/lib/requestBody";
+import { withApiMetrics } from "@/lib/apiMetrics";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -17,7 +18,7 @@ const SUITE_TYPES: Record<string, "synthetic-accounts" | "api-load" | "workflow-
   workflow: "workflow-e2e",
 };
 
-export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
+async function POSTHandler(request: Request, context: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Not logged in." }, { status: 401 });
   if (!(await isTesterAdmin())) return NextResponse.json({ error: "Admin access required." }, { status: 403 });
@@ -142,3 +143,5 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     return NextResponse.json({ error: "Could not start the campaign. Verify the staging migration and isolated QA worker." }, { status: 503 });
   }
 }
+
+export const POST = withApiMetrics("/api/admin/qa-campaigns/[id]/start", POSTHandler);

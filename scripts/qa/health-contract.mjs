@@ -5,8 +5,12 @@ import { readFileSync, existsSync } from "node:fs";
 const routePath = "app/api/health/route.ts";
 assert.ok(existsSync(routePath), `Missing Railway health endpoint: ${routePath}`);
 const route = readFileSync(routePath, "utf8");
+// Accept either bare export or withApiMetrics-wrapped export
+assert.ok(
+  route.includes('export async function GET()') || route.includes('export const GET'),
+  `${routePath} is missing health contract: export async function GET() or export const GET`
+);
 for (const required of [
-  'export async function GET()',
   'await prisma.$queryRaw`SELECT 1`',
   'status: "ok"',
   'database: "ok"',
