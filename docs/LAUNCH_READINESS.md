@@ -62,7 +62,7 @@
 
 - Do not charge real users until a payment provider is selected and a provider adapter with authentic signature verification, idempotency, replay protection, failure/cancellation/refund handling and reconciliation has been tested.
 - The current provider-neutral payment confirmation boundary is not proof of settlement.
-- Preserve the existing UK/GBP plan rules unless the owner explicitly changes them: individual £9.99 for 7-day access; fleet £16.99 for 2–5 vehicles, £24.99 for 6–15, £36.99 for 16–30, £49.99 for 31–55, and custom pricing for 56+; no automatic recurring billing and no per-job fee in the current implemented model.
+- Owner changed the UK/GBP plan rules on 2026-11-06: poster £12.99/month; individual £14.99 per 7 days; fleet £24.99 (2–5), £39.99 (6–15), £59.99 (16–30), £79.99 (31–55), custom for 56+; no per-job fee. Source of truth `lib/pricing.ts`; rules in PRODUCT_AND_VERIFICATION_POLICY.md §6.
 - The free-trial, pay-weekly, pay-as-you-go, monthly and longer-plan combinations discussed for the Instagram market-research poll are research options, not confirmed commercial entitlements. Do not silently implement or advertise them as live plans.
 
 ### D. Market isolation and job lifecycle — REQUIRED
