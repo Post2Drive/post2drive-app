@@ -168,33 +168,25 @@ async function POSTHandler(
       return NextResponse.json({ error: "Email verification is being configured. Please try again later." }, { status: 503 });
     }
 
-    const selectedPlan = planType || "individual";
     const parsedFleetVehicleCount = Number(fleetVehicleCount);
+
+    // Validate vehicle count server-side; derive plan from it — never trust client planType.
+    if (!Number.isInteger(parsedFleetVehicleCount) || parsedFleetVehicleCount < 1) {
+      return NextResponse.json(
+        { error: "Enter a vehicle count from 1 to 55. Fleets with 56+ vehicles require custom pricing." },
+        { status: 400 }
+      );
+    }
+    if (parsedFleetVehicleCount > 55) {
+      return NextResponse.json(
+        { error: "Fleet signup supports up to 55 vehicles. Fleets with 56+ vehicles require custom pricing." },
+        { status: 400 }
+      );
+    }
+
+    // Derive plan server-side from vehicle count — ignore client-supplied planType entirely.
+    const selectedPlan = parsedFleetVehicleCount === 1 ? "individual" : "fleet";
     const normalizedCompanyName = (typeof companyName === "string" ? companyName.trim() : "") || (country === "IN" || isSoleTrader ? name.trim() : "");
-
-    if (selectedPlan !== "individual" && selectedPlan !== "fleet") {
-      return NextResponse.json(
-        { error: "Choose an account plan." },
-        { status: 400 }
-      );
-    }
-
-    if ((selectedPlan === "individual" && parsedFleetVehicleCount !== 1) ||
-        (selectedPlan === "fleet" && (!Number.isInteger(parsedFleetVehicleCount) || parsedFleetVehicleCount < 2))) {
-      return NextResponse.json({ error: "Your plan must match your vehicle count: one vehicle for Individual, 2–55 for Fleet." }, { status: 400 });
-    }
-
-    if (
-      selectedPlan === "fleet" &&
-      (!Number.isInteger(parsedFleetVehicleCount) ||
-        parsedFleetVehicleCount < 2 ||
-        parsedFleetVehicleCount > 55)
-    ) {
-      return NextResponse.json(
-        { error: "Fleet signup supports 2–55 vehicles. Fleets with 56+ vehicles require custom pricing." },
-        { status: 400 }
-      );
-    }
 
     const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
     if (normalizedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {

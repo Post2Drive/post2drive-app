@@ -64,6 +64,8 @@ jobs:
         run: node scripts/qa/company-verification-contract.mjs
       - name: Validate lifecycle, incident, and market-guard contracts
         run: npm run qa:lifecycle-contract
+      - name: Validate signup vehicle count bounds and server-side plan derivation
+        run: npm run qa:signup-vehicle-validation
       - name: Validate signup display ID collision retries
         run: npm run qa:signup-display-id-retry
       - name: Validate signup, jobs, bidding, status, payments and vehicle workflows
@@ -136,6 +138,8 @@ jobs:
           grep -q "(0 rows)" /tmp/qa-inventory.txt
       - name: Validate API route safety invariants (issue #38)
         run: npm run qa:route-safety
+      - name: Validate job listing query filters by status and has compound DB index
+        run: npm run qa:job-listing-query
       - name: Validate ratings rate limit, completion gate, and party checks
         run: npm run qa:ratings-contract
       - name: Validate privacy-safe application and QA diagnostics
