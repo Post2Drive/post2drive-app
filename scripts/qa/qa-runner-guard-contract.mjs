@@ -59,8 +59,8 @@ try {
   }
 
   const route = readFileSync("app/api/qa/run/route.ts", "utf8");
-  const getStart = route.indexOf("export async function GET");
-  const postStart = route.indexOf("export async function POST");
+  const getStart = route.search(/export\s+async\s+function\s+GET\b|async\s+function\s+GETHandler\b/);
+  const postStart = route.search(/export\s+async\s+function\s+POST\b|async\s+function\s+POSTHandler\b/);
   assert.ok(getStart >= 0 && postStart > getStart, "QA GET and POST handlers must exist");
   const getHandler = route.slice(getStart, postStart);
   assert.ok(!getHandler.includes('url.searchParams.get("token")'), "QA GET authentication must never accept bearer tokens in query strings");

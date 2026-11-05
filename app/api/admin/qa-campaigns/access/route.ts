@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { createOpsQaAdminSessionToken, OPS_QA_ADMIN_COOKIE } from "@/lib/testerAdmin";
 import { readBoundedJson } from "@/lib/requestBody";
+import { withApiMetrics } from "@/lib/apiMetrics";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -46,7 +47,7 @@ function isSameOriginRequest(request: NextRequest) {
   return allowedOrigins.has(origin);
 }
 
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Sign in to Post2Drive first." }, { status: 401 });
   if (!isSameOriginRequest(request)) {
@@ -102,7 +103,7 @@ export async function POST(request: NextRequest) {
   return response;
 }
 
-export async function DELETE(request: NextRequest) {
+async function DELETEHandler(request: NextRequest) {
   const response = NextResponse.json({ success: true }, { headers: { "cache-control": "no-store" } });
   response.cookies.set(OPS_QA_ADMIN_COOKIE, "", {
     httpOnly: true,
@@ -113,3 +114,6 @@ export async function DELETE(request: NextRequest) {
   });
   return response;
 }
+
+export const POST = withApiMetrics("/api/admin/qa-campaigns/access", POSTHandler);
+export const DELETE = withApiMetrics("/api/admin/qa-campaigns/access", DELETEHandler);

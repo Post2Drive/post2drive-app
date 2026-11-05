@@ -4,6 +4,7 @@ import { readBoundedJson } from "@/lib/requestBody";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getMarket } from "@/lib/market";
+import { withApiMetrics } from "@/lib/apiMetrics";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -129,7 +130,7 @@ async function enqueueQaRun(country: string, testType: QaTestType) {
   }, { maxWait: 10000, timeout: 15000 });
 }
 
-export async function GET(req: Request) {
+async function GETHandler(req: Request) {
   const url = new URL(req.url);
   const authorization = req.headers.get("authorization") || "";
   const token = /^Bearer\s+(.+)$/i.exec(authorization)?.[1] || "";
@@ -235,7 +236,7 @@ export async function GET(req: Request) {
   }
 }
 
-export async function POST(req: Request) {
+async function POSTHandler(req: Request) {
   const expectedToken = process.env.QA_RUN_TOKEN || "";
   if (!isQaRunnerEnabled()) {
     return NextResponse.json({ error: "QA actions require an explicitly allow-listed staging deployment and isolated QA database." }, { status: 403 });
@@ -299,3 +300,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unable to enqueue the QA run; verify the isolated staging worker configuration." }, { status: 503 });
   }
 }
+
+export const GET = withApiMetrics("/api/qa/run", GETHandler);
+export const POST = withApiMetrics("/api/qa/run", POSTHandler);
