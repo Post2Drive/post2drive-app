@@ -135,6 +135,7 @@ async function GETHandler(req: Request) {
 
   const localOpenWhere: any = {
     ...searchFilter,
+    status: "open",
     currency,
     crossBorder: false,
     poster: {
@@ -229,10 +230,6 @@ async function GETHandler(req: Request) {
       },
     },
 
-    // Hard cap: prevents OOM on very active accounts. The jobs page renders all
-    // results at once with no client-side pagination, so 200 is well beyond any
-    // realistic single-user view while keeping the payload bounded.
-    take: 200,
     orderBy: [
       {
         jobDate: "asc",
