@@ -1,3 +1,4 @@
+
 #!/usr/bin/env node
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -59,9 +60,15 @@ try {
   }
 
   const route = readFileSync("app/api/qa/run/route.ts", "utf8");
-  const getStart = route.indexOf("export async function GET");
-  const postStart = route.indexOf("export async function POST");
-  assert.ok(getStart >= 0 && postStart > getStart, "QA GET and POST handlers must exist");
+  const getStart = route.indexOf("async function GETHandler");
+  const postStart = route.indexOf("async function POSTHandler");
+  assert.ok(
+    getStart >= 0 &&
+      postStart > getStart &&
+      route.includes('export const GET = withApiMetrics("/api/qa/run", GETHandler);') &&
+      route.includes('export const POST = withApiMetrics("/api/qa/run", POSTHandler);'),
+    "QA GET and POST handlers must exist and be exported through withApiMetrics"
+  );
   const getHandler = route.slice(getStart, postStart);
   assert.ok(!getHandler.includes('url.searchParams.get("token")'), "QA GET authentication must never accept bearer tokens in query strings");
   const guardPosition = getHandler.indexOf("if (!isQaRunnerEnabled())");
