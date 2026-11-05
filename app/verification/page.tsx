@@ -8,12 +8,14 @@ export default function VerificationPage() {
   const [companyNumber, setCompanyNumber] = useState("");
   const [isSoleTrader, setIsSoleTrader] = useState(false);
   const [message, setMessage] = useState("");
+  const [messageIsError, setMessageIsError] = useState(false);
   const [busy, setBusy] = useState(false);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);
     setMessage("");
+    setMessageIsError(false);
     try {
       const response = await fetch("/api/company-verification", {
         method: "POST",
@@ -24,6 +26,7 @@ export default function VerificationPage() {
       if (!response.ok) throw new Error(result.error || "Unable to submit company details.");
       setMessage("Company details submitted for manual review. Posting remains restricted until approval.");
     } catch (error) {
+      setMessageIsError(true);
       setMessage(error instanceof Error ? error.message : "Unable to submit company details.");
     } finally {
       setBusy(false);
@@ -46,7 +49,16 @@ export default function VerificationPage() {
           I operate as a sole trader
         </label>
         <button disabled={busy} type="submit" className="rounded bg-black px-4 py-2 text-white disabled:opacity-50">{busy ? "Submitting…" : "Submit for review"}</button>
-        {message ? <p role="status" className="text-sm">{message}</p> : null}
+        {message ? (
+          <p
+            role={messageIsError ? "alert" : "status"}
+            aria-live={messageIsError ? "assertive" : "polite"}
+            className="text-sm"
+            style={messageIsError ? { color: "var(--color-danger)" } : undefined}
+          >
+            {message}
+          </p>
+        ) : null}
       </form>
     </main>
   );
