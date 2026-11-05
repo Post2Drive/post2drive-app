@@ -60,87 +60,101 @@ async function GETHandler() {
       receivedConfirmedAt: true,
     } as const;
 
-    const [asPoster, asDriver] = await Promise.all([
+    // Lists are capped (PAYMENT_LIST_CAP + 1 fetched to detect truncation), but
+    // every summary total is computed by the database over the same uncapped
+    // where-clause, so accounts with more than PAYMENT_LIST_CAP completed jobs
+    // still see correct totals.
+    const PAYMENT_LIST_CAP = 500;
+    const listOrder = [{ createdAt: "desc" as const }, { id: "desc" as const }];
+    const posterWhere = { ...marketJobWhere, posterId: accountId };
+    const driverWhere = { ...marketJobWhere, acceptedById: accountId };
+    const paid = { paidMarkedAt: { not: null } };
+    const unpaid = { paidMarkedAt: null };
+    const received = { receivedConfirmedAt: { not: null } };
+    const sumPrice = { _sum: { price: true }, _count: { _all: true } } as const;
+
+    const [
+      posterRows,
+      driverRows,
+      posterAll,
+      posterPaidAgg,
+      posterPendingAgg,
+      posterReceiptAgg,
+      driverAll,
+      driverPaidAgg,
+      driverReceivedAgg,
+      driverPendingPaymentAgg,
+      driverPendingReceiptAgg,
+    ] = await Promise.all([
       prisma.job.findMany({
-        where: { ...marketJobWhere, posterId: accountId },
+        where: posterWhere,
         select: {
           ...paymentJobSelect,
           acceptedBy: {
             select: { companyName: true, displayId: true },
           },
         },
-        // Cap: payments page shows all at once; 500 covers any realistic user
-        // while protecting the DB from an unbounded result set.
-        take: 500,
-        orderBy: { createdAt: "desc" },
+        take: PAYMENT_LIST_CAP + 1,
+        orderBy: listOrder,
       }),
       prisma.job.findMany({
-        where: { ...marketJobWhere, acceptedById: accountId },
+        where: driverWhere,
         select: {
           ...paymentJobSelect,
           poster: {
             select: { companyName: true, displayId: true },
           },
         },
-        take: 500,
-        orderBy: { createdAt: "desc" },
+        take: PAYMENT_LIST_CAP + 1,
+        orderBy: listOrder,
+      }),
+      prisma.job.aggregate({ where: posterWhere, ...sumPrice }),
+      prisma.job.aggregate({ where: { ...posterWhere, ...paid }, ...sumPrice }),
+      prisma.job.aggregate({ where: { ...posterWhere, ...unpaid }, ...sumPrice }),
+      prisma.job.aggregate({ where: { ...posterWhere, ...received }, ...sumPrice }),
+      prisma.job.aggregate({ where: driverWhere, ...sumPrice }),
+      prisma.job.aggregate({ where: { ...driverWhere, ...paid }, ...sumPrice }),
+      prisma.job.aggregate({ where: { ...driverWhere, ...received }, ...sumPrice }),
+      prisma.job.aggregate({ where: { ...driverWhere, ...unpaid }, ...sumPrice }),
+      prisma.job.aggregate({
+        where: { ...driverWhere, ...paid, receivedConfirmedAt: null },
+        ...sumPrice,
       }),
     ]);
 
-    const posterTotal = asPoster.reduce((sum, job) => sum + job.price, 0);
-    const posterPaid = asPoster
-      .filter((job) => Boolean(job.paidMarkedAt))
-      .reduce((sum, job) => sum + job.price, 0);
-    const posterPending = asPoster
-      .filter((job) => !job.paidMarkedAt)
-      .reduce((sum, job) => sum + job.price, 0);
-    const posterReceiptConfirmed = asPoster
-      .filter((job) => Boolean(job.receivedConfirmedAt))
-      .reduce((sum, job) => sum + job.price, 0);
+    const posterHasMore = posterRows.length > PAYMENT_LIST_CAP;
+    const driverHasMore = driverRows.length > PAYMENT_LIST_CAP;
+    const asPoster = posterHasMore ? posterRows.slice(0, PAYMENT_LIST_CAP) : posterRows;
+    const asDriver = driverHasMore ? driverRows.slice(0, PAYMENT_LIST_CAP) : driverRows;
 
-    const driverTotal = asDriver.reduce((sum, job) => sum + job.price, 0);
-    const driverPaid = asDriver
-      .filter((job) => Boolean(job.paidMarkedAt))
-      .reduce((sum, job) => sum + job.price, 0);
-    const driverReceived = asDriver
-      .filter((job) => Boolean(job.receivedConfirmedAt))
-      .reduce((sum, job) => sum + job.price, 0);
-    const driverPendingPayment = asDriver
-      .filter((job) => !job.paidMarkedAt)
-      .reduce((sum, job) => sum + job.price, 0);
-    const driverPendingReceipt = asDriver
-      .filter((job) => Boolean(job.paidMarkedAt) && !job.receivedConfirmedAt)
-      .reduce((sum, job) => sum + job.price, 0);
-
-    const jobsPaid = asPoster.filter((job) => Boolean(job.paidMarkedAt)).length;
-    const jobsPaymentPending = asPoster.filter((job) => !job.paidMarkedAt).length;
-    const jobsReceived = asDriver.filter((job) => Boolean(job.receivedConfirmedAt)).length;
-    const jobsAwaitingReceipt = asDriver
-      .filter((job) => Boolean(job.paidMarkedAt) && !job.receivedConfirmedAt).length;
+    const total = (agg: { _sum: { price: number | null } }) => agg._sum.price ?? 0;
 
     return NextResponse.json({
       currency: account.currency,
       country: account.country,
       asPoster,
       asDriver,
+      asPosterHasMore: posterHasMore,
+      asDriverHasMore: driverHasMore,
+      listCap: PAYMENT_LIST_CAP,
       posterSummary: {
-        jobsDone: asPoster.length,
-        totalValue: round(posterTotal),
-        markedPaid: round(posterPaid),
-        awaitingPayment: round(posterPending),
-        receiptConfirmed: round(posterReceiptConfirmed),
-        jobsPaid,
-        jobsPaymentPending,
+        jobsDone: posterAll._count._all,
+        totalValue: round(total(posterAll)),
+        markedPaid: round(total(posterPaidAgg)),
+        awaitingPayment: round(total(posterPendingAgg)),
+        receiptConfirmed: round(total(posterReceiptAgg)),
+        jobsPaid: posterPaidAgg._count._all,
+        jobsPaymentPending: posterPendingAgg._count._all,
       },
       driverSummary: {
-        jobsDone: asDriver.length,
-        totalReceivable: round(driverTotal),
-        markedPaidByPoster: round(driverPaid),
-        confirmedReceived: round(driverReceived),
-        awaitingPaymentFromPoster: round(driverPendingPayment),
-        awaitingReceiptConfirmation: round(driverPendingReceipt),
-        jobsReceived,
-        jobsAwaitingReceipt,
+        jobsDone: driverAll._count._all,
+        totalReceivable: round(total(driverAll)),
+        markedPaidByPoster: round(total(driverPaidAgg)),
+        confirmedReceived: round(total(driverReceivedAgg)),
+        awaitingPaymentFromPoster: round(total(driverPendingPaymentAgg)),
+        awaitingReceiptConfirmation: round(total(driverPendingReceiptAgg)),
+        jobsReceived: driverReceivedAgg._count._all,
+        jobsAwaitingReceipt: driverPendingReceiptAgg._count._all,
       },
     }, {
       headers: { "Cache-Control": "private, no-store" },
