@@ -1,3 +1,4 @@
+
 #!/usr/bin/env node
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -59,9 +60,16 @@ try {
   }
 
   const route = readFileSync("app/api/qa/run/route.ts", "utf8");
-  const getStart = route.indexOf("export async function GET");
-  const postStart = route.indexOf("export async function POST");
-  assert.ok(getStart >= 0 && postStart > getStart, "QA GET and POST handlers must exist");
+  // Inspect the named handlers: GET and POST are exported through withApiMetrics.
+  const getStart = route.indexOf("async function GETHandler");
+  const postStart = route.indexOf("async function POSTHandler");
+  assert.ok(
+    getStart >= 0 &&
+      postStart > getStart &&
+      route.includes('export const GET = withApiMetrics("/api/qa/run", GETHandler);') &&
+      route.includes('export const POST = withApiMetrics("/api/qa/run", POSTHandler);'),
+    "QA GET and POST handlers must exist and be exported through withApiMetrics"
+  );
   const getHandler = route.slice(getStart, postStart);
   assert.ok(!getHandler.includes('url.searchParams.get("token")'), "QA GET authentication must never accept bearer tokens in query strings");
   const guardPosition = getHandler.indexOf("if (!isQaRunnerEnabled())");
@@ -141,7 +149,7 @@ try {
   console.log(JSON.stringify({
     status: "passed",
     checks: rejected.length + 33,
-    covered: ["valid Railway staging allow-list", ...rejected.map(([label]) => label), "GET guard before sensitive operations", "raw QA errors not returned", "GET and POST handlers present", "resend endpoint rate-limited", "verification token endpoint rate-limited", "login network/email rate limits", "login throttling fails closed", "QA throttle bypass requires an active run, target and origin", "QA runner is market-parameterized", "synthetic fixtures use market currency", "high-entropy QA run IDs", "bounded configured API route iterations required per run", "cleanup preserves findings, marks data deleted and preserves failure status", "cleanup rejects active runs", "interrupted run finalization timestamps", "worker requires QA_DATABASE_URL == DATABASE_URL for DB isolation proof", "qaRunner requires QA_DATABASE_URL == DATABASE_URL before campaigns"]
+    covered: ["valid Railway staging allow-list", ...rejected.map(([label]) => label), "GET guard before sensitive operations", "raw QA errors not returned", "GET and POST handlers present and exported through withApiMetrics", "resend endpoint rate-limited", "verification token endpoint rate-limited", "login network/email rate limits", "login throttling fails closed", "QA throttle bypass requires an active run, target and origin", "QA runner is market-parameterized", "synthetic fixtures use market currency", "high-entropy QA run IDs", "bounded configured API route iterations required per run", "cleanup preserves findings, marks data deleted and preserves failure status", "cleanup rejects active runs", "interrupted run finalization timestamps", "worker requires QA_DATABASE_URL == DATABASE_URL for DB isolation proof", "qaRunner requires QA_DATABASE_URL == DATABASE_URL before campaigns"]
   }, null, 2));
 } finally {
   for (const [key, value] of Object.entries(original)) {
