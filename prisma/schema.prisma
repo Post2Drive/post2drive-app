@@ -453,6 +453,7 @@ model Job {
   @@index([acceptedById])
   @@index([vehicleType])
   @@index([createdAt])
+  @@index([currency, status])
 }
 
 model Bid {
