@@ -858,9 +858,10 @@ export default function JobsPage() {
             const isAcceptedDriver = job.isCurrentUserAcceptedDriver;
             const involved = isOwner || isAcceptedDriver;
             const canRate =
-              (isOwner && (job.hasAcceptedDriver || Boolean(job.hasPreviousDrivers))) ||
-              isAcceptedDriver ||
-              Boolean(job.currentUserPreviouslyBackedOut);
+              // Fair rating policy: only the poster and the assigned driver rate each other;
+              // drivers who backed out before pickup are not rated (lib/ratingPolicy.ts).
+              (isOwner && job.hasAcceptedDriver) ||
+              isAcceptedDriver;
             const iMarkedDelivered = job.currentUserMarkedDelivery;
 
             const matched =

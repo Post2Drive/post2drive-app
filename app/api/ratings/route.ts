@@ -88,12 +88,10 @@ async function POSTHandler(req: Request) {
   const latest = (action: string) => prisma.jobActivity.findFirst({
     where: { jobId, action }, orderBy: { createdAt: "desc" }, select: { createdAt: true },
   });
-  const [pickup, marked, confirmed, rejected, incident] = await Promise.all([
+  const [pickup, marked, confirmed] = await Promise.all([
     latest("PICKUP_CONFIRMED"),
     latest("DELIVERY_MARKED"),
     latest("DELIVERY_CONFIRMED"),
-    latest("DELIVERY_REJECTED"),
-    prisma.jobActivity.findFirst({ where: { jobId, action: "INCIDENT_REPORTED" }, orderBy: { createdAt: "asc" }, select: { createdAt: true } }),
   ]);
 
   const now = new Date();
@@ -103,8 +101,6 @@ async function POSTHandler(req: Request) {
     pickupConfirmedAt: pickup?.createdAt ?? null,
     deliveryMarkedAt: marked?.createdAt ?? null,
     deliveryConfirmedAt: confirmed?.createdAt ?? null,
-    latestDeliveryRejectedAt: rejected?.createdAt ?? null,
-    firstIncidentReportedAt: incident?.createdAt ?? null,
   }, now);
   if (!eligibility.allowed) {
     return NextResponse.json(

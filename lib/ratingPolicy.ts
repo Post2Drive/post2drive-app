@@ -2,30 +2,28 @@
  * Fair rating policy (owner decision 2026-11-06). Pure functions only, so the
  * rules are testable without a database. See docs/PRODUCT_AND_VERIFICATION_POLICY.md §11.
  *
- * Who can rate: only the poster and the currently assigned driver of a job.
- * When:
- *  - completed (delivery confirmed)               -> "completed", opens at confirmation
+ * Lifecycle (unchanged, nothing changes automatically): either side confirms pickup;
+ * delivery is marked by one side and must be confirmed by the other; a job that
+ * cannot continue is ended through the incident process (incidents/terminate or an
+ * admin "terminate_with_incident" resolution), which cancels it and keeps the driver.
+ *
+ * Who can rate: only the poster and the assigned driver of the job.
+ * When (a rating never opens while a job is still live):
+ *  - completed (delivery confirmed by both)          -> "completed", opens at confirmation
+ *  - picked up, then ended (cancelled via incident)  -> "not_completed", opens when it ended
  *  - marked delivered, never confirmed by the other side -> "disputed", opens 14 days after the mark
- *    (nothing changes job status automatically: delivery needs both sides)
- *  - picked up, delivery rejected, not completed  -> "disputed", opens 14 days after the latest rejection
- *  - picked up, incident reported, not completed  -> "not_completed", opens 72h after the incident report
- *  - picked up, then cancelled                    -> "not_completed", opens at cancellation
- *  - picked up, stuck in transit for 14 days      -> "not_completed", opens 14 days after pickup
- *  - never picked up (incl. cancelled before pickup) -> no stars; counts in the cancellation record instead
+ *  - never picked up (incl. cancelled/ended before pickup) -> no stars; cancellations are
+ *    handled by the cancellation limits instead
  * Window: rating closes 14 days after it opens.
  * Blind: a rating stays hidden until the other side also rates, or the window closes.
  * Reasons: required for 1-2 stars and for every not_completed / disputed rating.
  */
 
-/** A delivery marked by one side but not confirmed by the other for this long can be rated as disputed. Job status is never changed automatically. */
-export const UNCONFIRMED_DELIVERY_DAYS = 14;
 export const RATING_WINDOW_DAYS = 14;
-export const DISPUTE_SETTLE_DAYS = 14;
-export const STUCK_IN_TRANSIT_DAYS = 14;
-export const INCIDENT_COOL_OFF_HOURS = 72;
+/** A delivery marked by one side but not confirmed by the other for this long can be rated as disputed. Job status is never changed. */
+export const UNCONFIRMED_DELIVERY_DAYS = 14;
 
-const HOUR = 60 * 60 * 1000;
-const DAY = 24 * HOUR;
+const DAY = 24 * 60 * 60 * 1000;
 
 export type RatingOutcome = "completed" | "not_completed" | "disputed";
 
@@ -53,13 +51,11 @@ export type JobRatingFacts = {
   pickupConfirmedAt?: Date | null;
   deliveryMarkedAt?: Date | null;
   deliveryConfirmedAt?: Date | null;
-  latestDeliveryRejectedAt?: Date | null;
-  firstIncidentReportedAt?: Date | null;
 };
 
 export type RatingEligibility =
   | { allowed: true; outcome: RatingOutcome; opensAt: Date | null; closesAt: Date | null }
-  | { allowed: false; code: "not_picked_up" | "not_yet_open" | "window_closed"; message: string; opensAt?: Date };
+  | { allowed: false; code: "not_picked_up" | "in_progress" | "not_yet_open" | "window_closed"; message: string; opensAt?: Date };
 
 const add = (date: Date, ms: number) => new Date(date.getTime() + ms);
 
@@ -81,28 +77,26 @@ export function ratingEligibility(job: JobRatingFacts, now: Date = new Date()): 
   }
 
   if (job.status === "delivered" && job.deliveryMarkedAt) {
-    // Delivery must be confirmed by both sides; the job is never completed automatically.
-    // If the other side never confirms, both may rate after 14 days, labelled disputed.
+    // Delivery needs both sides; the job is never completed automatically.
     return windowFor("disputed", add(job.deliveryMarkedAt, UNCONFIRMED_DELIVERY_DAYS * DAY), now);
   }
 
   if (!job.pickupConfirmedAt) {
     return {
       allowed: false, code: "not_picked_up",
-      message: "Jobs that never reached pickup cannot be rated. Cancellations count in the cancellation record instead.",
+      message: "Jobs that never reached pickup cannot be rated. Cancellations are handled by cancellation limits instead.",
     };
   }
 
-  if (job.latestDeliveryRejectedAt) {
-    return windowFor("disputed", add(job.latestDeliveryRejectedAt, DISPUTE_SETTLE_DAYS * DAY), now);
-  }
-  if (job.firstIncidentReportedAt) {
-    return windowFor("not_completed", add(job.firstIncidentReportedAt, INCIDENT_COOL_OFF_HOURS * HOUR), now);
-  }
   if (job.status === "cancelled") {
+    // Picked up, then ended through the incident process.
     return windowFor("not_completed", job.cancelledAt ?? null, now);
   }
-  return windowFor("not_completed", add(job.pickupConfirmedAt, STUCK_IN_TRANSIT_DAYS * DAY), now);
+
+  return {
+    allowed: false, code: "in_progress",
+    message: "This job is still in progress. If it cannot be completed, report an incident and end the job; both sides can then rate it.",
+  };
 }
 
 /** A reason is required for low ratings and for every rating of a job that did not complete normally. */

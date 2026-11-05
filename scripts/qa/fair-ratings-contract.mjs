@@ -11,10 +11,10 @@ const t0 = new Date("2026-11-01T10:00:00Z");
 const at = (ms) => new Date(t0.getTime() + ms);
 const elig = (facts, now) => p.ratingEligibility(facts, now);
 
-// Constants agreed with the owner.
+// Constants agreed with the owner. Nothing auto-confirms.
+assert.equal(p.RATING_WINDOW_DAYS, 14);
 assert.equal(p.UNCONFIRMED_DELIVERY_DAYS, 14);
 assert.equal(p.AUTO_CONFIRM_HOURS, undefined, "no automatic confirmation: delivery needs both sides");
-assert.equal(p.RATING_WINDOW_DAYS, 14);
 
 // 1. Completed: opens at confirmation, closes 14 days later.
 let r = elig({ status: "completed", pickupConfirmedAt: t0, deliveryMarkedAt: at(H), deliveryConfirmedAt: at(2 * H) }, at(3 * H));
@@ -23,44 +23,27 @@ assert.equal(r.closesAt.getTime(), at(2 * H + 14 * D).getTime());
 r = elig({ status: "completed", deliveryConfirmedAt: t0 }, at(14 * D + 1));
 assert.equal(r.allowed, false); assert.equal(r.code, "window_closed");
 
-// 2. Marked delivered but never confirmed by the other side: closed for 14 days, then disputed.
-//    (Status never changes automatically; delivery needs both sides.)
+// 2. Marked delivered, never confirmed by the other side: closed for 14 days, then disputed.
 r = elig({ status: "delivered", pickupConfirmedAt: t0, deliveryMarkedAt: t0 }, at(72 * H));
 assert.equal(r.allowed, false); assert.equal(r.code, "not_yet_open");
 r = elig({ status: "delivered", pickupConfirmedAt: t0, deliveryMarkedAt: t0 }, at(14 * D));
 assert.equal(r.allowed, true); assert.equal(r.outcome, "disputed");
 
-// 3. Never picked up (accepted or cancelled before pickup): no stars.
+// 3. Never picked up (open, accepted, cancelled or ended before pickup): no stars.
 for (const status of ["open", "accepted", "cancelled"]) {
   r = elig({ status, cancelledAt: t0 }, at(D));
   assert.equal(r.allowed, false, status); assert.equal(r.code, "not_picked_up", status);
 }
 
-// 4. Picked up, delivery rejected, not completed: disputed after 14 days.
-r = elig({ status: "in_transit", pickupConfirmedAt: t0, latestDeliveryRejectedAt: at(D) }, at(14 * D));
-assert.equal(r.allowed, false);
-r = elig({ status: "in_transit", pickupConfirmedAt: t0, latestDeliveryRejectedAt: at(D) }, at(15 * D));
-assert.equal(r.allowed, true); assert.equal(r.outcome, "disputed");
-
-// 5. Picked up, incident reported: not completed after 72h cool-off.
-r = elig({ status: "in_transit", pickupConfirmedAt: t0, firstIncidentReportedAt: at(D) }, at(D + 71 * H));
-assert.equal(r.allowed, false);
-r = elig({ status: "in_transit", pickupConfirmedAt: t0, firstIncidentReportedAt: at(D) }, at(D + 72 * H));
-assert.equal(r.allowed, true); assert.equal(r.outcome, "not_completed");
-
-// 6. Picked up then cancelled: not completed, opens at cancellation.
+// 4. Picked up, then ended through the incident process: not completed, opens when it ended.
 r = elig({ status: "cancelled", pickupConfirmedAt: t0, cancelledAt: at(H) }, at(2 * H));
 assert.equal(r.allowed, true); assert.equal(r.outcome, "not_completed");
 
-// 7. Stuck in transit 14 days: not completed.
-r = elig({ status: "in_transit", pickupConfirmedAt: t0 }, at(13 * D));
-assert.equal(r.allowed, false);
-r = elig({ status: "in_transit", pickupConfirmedAt: t0 }, at(14 * D));
-assert.equal(r.allowed, true); assert.equal(r.outcome, "not_completed");
-
-// 8. Re-marked delivered after an earlier rejection: counted from the latest mark.
-r = elig({ status: "delivered", pickupConfirmedAt: t0, deliveryMarkedAt: at(20 * D), latestDeliveryRejectedAt: at(D) }, at(20 * D + H));
-assert.equal(r.allowed, false);
+// 5. Live jobs are never rateable, however long they run (incl. after a rejected delivery).
+for (const later of [D, 30 * D, 365 * D]) {
+  r = elig({ status: "in_transit", pickupConfirmedAt: t0 }, at(later));
+  assert.equal(r.allowed, false); assert.equal(r.code, "in_progress");
+}
 
 // 9. Reasons.
 assert.equal(p.ratingReasonRequired(5, "completed"), false);
@@ -90,6 +73,8 @@ assert.match(profile, /visibleAfter: \{ lte: now \}/, "profile must hide blind r
 assert.match(profile, /outcome: "completed"/, "average must count completed jobs only");
 const schema = read("prisma/schema.prisma");
 for (const field of ["outcome", "reasonCode", "visibleAfter"]) assert.match(schema, new RegExp(`\\b${field}\\b`), `Rating.${field} missing`);
-assert.match(read("app/jobs/page.tsx"), /RATING_REASONS/, "rating form must offer reasons");
+const jobsPage = read("app/jobs/page.tsx");
+assert.match(jobsPage, /RATING_REASONS/, "rating form must offer reasons");
+assert.doesNotMatch(jobsPage, /currentUserPreviouslyBackedOut\);/, "backed-out drivers must not see the rating form");
 
 console.log("Fair ratings contract passed: eligibility windows, outcomes, reasons, blind visibility and wiring.");
