@@ -5,7 +5,8 @@
  * Who can rate: only the poster and the currently assigned driver of a job.
  * When:
  *  - completed (delivery confirmed)               -> "completed", opens at confirmation
- *  - delivered, poster silent for 72 hours        -> "completed", opens 72h after delivery was marked
+ *  - marked delivered, never confirmed by the other side -> "disputed", opens 14 days after the mark
+ *    (nothing changes job status automatically: delivery needs both sides)
  *  - picked up, delivery rejected, not completed  -> "disputed", opens 14 days after the latest rejection
  *  - picked up, incident reported, not completed  -> "not_completed", opens 72h after the incident report
  *  - picked up, then cancelled                    -> "not_completed", opens at cancellation
@@ -16,7 +17,8 @@
  * Reasons: required for 1-2 stars and for every not_completed / disputed rating.
  */
 
-export const AUTO_CONFIRM_HOURS = 72;
+/** A delivery marked by one side but not confirmed by the other for this long can be rated as disputed. Job status is never changed automatically. */
+export const UNCONFIRMED_DELIVERY_DAYS = 14;
 export const RATING_WINDOW_DAYS = 14;
 export const DISPUTE_SETTLE_DAYS = 14;
 export const STUCK_IN_TRANSIT_DAYS = 14;
@@ -79,14 +81,9 @@ export function ratingEligibility(job: JobRatingFacts, now: Date = new Date()): 
   }
 
   if (job.status === "delivered" && job.deliveryMarkedAt) {
-    const autoConfirmAt = add(job.deliveryMarkedAt, AUTO_CONFIRM_HOURS * HOUR);
-    if (now >= autoConfirmAt) return windowFor("completed", autoConfirmAt, now);
-    if (!job.latestDeliveryRejectedAt && !job.firstIncidentReportedAt) {
-      return {
-        allowed: false, code: "not_yet_open", opensAt: autoConfirmAt,
-        message: `Delivery is awaiting confirmation. Rating opens when it is confirmed, or ${AUTO_CONFIRM_HOURS} hours after delivery was marked.`,
-      };
-    }
+    // Delivery must be confirmed by both sides; the job is never completed automatically.
+    // If the other side never confirms, both may rate after 14 days, labelled disputed.
+    return windowFor("disputed", add(job.deliveryMarkedAt, UNCONFIRMED_DELIVERY_DAYS * DAY), now);
   }
 
   if (!job.pickupConfirmedAt) {

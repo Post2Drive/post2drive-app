@@ -12,7 +12,8 @@ const at = (ms) => new Date(t0.getTime() + ms);
 const elig = (facts, now) => p.ratingEligibility(facts, now);
 
 // Constants agreed with the owner.
-assert.equal(p.AUTO_CONFIRM_HOURS, 72);
+assert.equal(p.UNCONFIRMED_DELIVERY_DAYS, 14);
+assert.equal(p.AUTO_CONFIRM_HOURS, undefined, "no automatic confirmation: delivery needs both sides");
 assert.equal(p.RATING_WINDOW_DAYS, 14);
 
 // 1. Completed: opens at confirmation, closes 14 days later.
@@ -22,11 +23,12 @@ assert.equal(r.closesAt.getTime(), at(2 * H + 14 * D).getTime());
 r = elig({ status: "completed", deliveryConfirmedAt: t0 }, at(14 * D + 1));
 assert.equal(r.allowed, false); assert.equal(r.code, "window_closed");
 
-// 2. Delivered, poster silent: closed until 72h, then opens as completed.
-r = elig({ status: "delivered", pickupConfirmedAt: t0, deliveryMarkedAt: t0 }, at(71 * H));
-assert.equal(r.allowed, false); assert.equal(r.code, "not_yet_open");
+// 2. Marked delivered but never confirmed by the other side: closed for 14 days, then disputed.
+//    (Status never changes automatically; delivery needs both sides.)
 r = elig({ status: "delivered", pickupConfirmedAt: t0, deliveryMarkedAt: t0 }, at(72 * H));
-assert.equal(r.allowed, true); assert.equal(r.outcome, "completed");
+assert.equal(r.allowed, false); assert.equal(r.code, "not_yet_open");
+r = elig({ status: "delivered", pickupConfirmedAt: t0, deliveryMarkedAt: t0 }, at(14 * D));
+assert.equal(r.allowed, true); assert.equal(r.outcome, "disputed");
 
 // 3. Never picked up (accepted or cancelled before pickup): no stars.
 for (const status of ["open", "accepted", "cancelled"]) {
@@ -56,9 +58,9 @@ assert.equal(r.allowed, false);
 r = elig({ status: "in_transit", pickupConfirmedAt: t0 }, at(14 * D));
 assert.equal(r.allowed, true); assert.equal(r.outcome, "not_completed");
 
-// 8. Delivered but rejected earlier and incident: rejection wins (disputed) until 72h auto-confirm.
+// 8. Re-marked delivered after an earlier rejection: counted from the latest mark.
 r = elig({ status: "delivered", pickupConfirmedAt: t0, deliveryMarkedAt: at(20 * D), latestDeliveryRejectedAt: at(D) }, at(20 * D + H));
-assert.equal(r.allowed, true); assert.equal(r.outcome, "disputed");
+assert.equal(r.allowed, false);
 
 // 9. Reasons.
 assert.equal(p.ratingReasonRequired(5, "completed"), false);
