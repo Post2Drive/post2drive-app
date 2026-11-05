@@ -142,3 +142,26 @@ Avoid a single account-level verified boolean as the sole authority for every ac
 ## 10. Decision and status discipline
 
 This document captures the target policy and owner decisions. Before claiming it is live, link the implementation PR, migrations, automated tests, exact CI status, staging behaviour and release evidence. Any unresolved pricing interpretation or market-specific rule must be flagged for owner decision rather than invented.
+
+## 11. Fair rating policy (owner decision 2026-11-06)
+
+Implemented in `lib/ratingPolicy.ts` (rules), `app/api/ratings/route.ts` (enforcement), `app/api/profile/[id]/route.ts` (display). Tested by `npm run qa:fair-ratings`.
+
+**Who:** only the poster and the currently assigned driver of a job rate each other. Drivers who backed out before pickup are not rated; their cancellation counts in the cancellation record.
+
+| What happened | Rating opens | Label |
+| --- | --- | --- |
+| Delivery confirmed (completed) | At confirmation | Completed |
+| Marked delivered, poster does not respond | 72 hours after delivery was marked | Completed |
+| Picked up, delivery rejected, not completed | 14 days after the latest rejection | Disputed |
+| Picked up, incident reported, not completed | 72 hours after the first incident report | Not completed |
+| Picked up, then cancelled | At cancellation | Not completed |
+| Picked up, stuck in transit | 14 days after pickup | Not completed |
+| Never picked up (including cancelled before pickup) | Never | — (cancellation record) |
+
+- **Window:** a rating can be given for 14 days after it opens.
+- **Blind ratings:** a rating stays hidden until the other side also rates, or the window closes.
+- **Reasons:** required for 1–2 stars and for every Not completed / Disputed rating, from a fixed list; "Other" requires a comment.
+- **Average:** the public star average counts Completed ratings only. Not completed and Disputed ratings are shown separately with their label and reason.
+
+**Not yet built (follow-up):** a real status change for a delivered job the poster never confirms (today the 72-hour rule only opens rating), a "failed after pickup" job status (picked-up jobs currently cannot be cancelled), hiding ratings while an incident is under admin review, and one public reply per rating. If both parties submit at the same instant, both ratings stay hidden until the window closes (no data loss).
