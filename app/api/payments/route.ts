@@ -69,6 +69,9 @@ async function GETHandler() {
             select: { companyName: true, displayId: true },
           },
         },
+        // Cap: payments page shows all at once; 500 covers any realistic user
+        // while protecting the DB from an unbounded result set.
+        take: 500,
         orderBy: { createdAt: "desc" },
       }),
       prisma.job.findMany({
@@ -79,6 +82,7 @@ async function GETHandler() {
             select: { companyName: true, displayId: true },
           },
         },
+        take: 500,
         orderBy: { createdAt: "desc" },
       }),
     ]);
