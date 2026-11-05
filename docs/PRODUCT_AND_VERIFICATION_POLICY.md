@@ -40,7 +40,7 @@ These are owner-specified target amounts. Local market/currency handling must be
 | --- | ---: |
 | Step 2 person verification, with applicable company verification where needed | £2.50 |
 | Step 3 person/driver plus first vehicle package, including required MOT and insurance checks | £3.50 |
-| Each additional vehicle during initial verification, where the fee applies | £0.50 |
+| Each additional vehicle, at initial verification **and when added later** (owner decision 2026-11-06) | £0.50 |
 
 Verification charges are separate from subscription charges. The intended package model is £2.50 for Step 2 and £3.50 for Step 3; the Step 3 package includes person/driver and first-vehicle checks. Implementation must reuse an existing valid person check where appropriate and must not silently charge twice for the same check without an explicit approved fee schedule.
 
@@ -48,11 +48,11 @@ Verification charges are separate from subscription charges. The intended packag
 
 - No refunds are issued for verification fees, including after an unsuccessful outcome.
 - An active paid-plan user pays no fee for timely routine rechecks needed to maintain existing eligibility.
-- An active paid-plan user pays no fee to add vehicles; all required vehicle checks still apply.
+- **Superseded 2026-11-06:** adding a vehicle is always charged at the additional-vehicle fee, including on an active paid plan. Reason: a fleet could otherwise verify one vehicle, subscribe, then add the rest free. All required vehicle checks still apply.
+- Verification fees for one action are collected in a **single payment** (never a standalone £0.50 card payment, where the card fee would consume a large share of the fee).
 - Changing the responsible person within the same company carries no new verification fee; the replacement person still has to pass identity checks.
 - A person connecting to a different/new company incurs the applicable new-company verification fee, even if the person was previously verified.
 - A person changing from a company account to a genuinely new sole-person/no-company account is treated as a new account relationship and is subject to the applicable initial fee. Account/identity linking must prevent duplicate-account abuse.
-- New-account and initial additional-vehicle fees must not override the explicit free-addition rule for an active paid-plan user.
 
 ## 4. Failed verification and correction windows
 
@@ -84,17 +84,66 @@ A failed check is not permission to operate. If one vehicle fails, other indepen
 
 For an inactive user who is not covered by the active-paid-plan exemption, the free-return window ends after 90 calendar days. Any new verification fee must follow the applicable package and new-relationship rules. A new company relationship is chargeable under its own rule even within a recheck window unless the owner explicitly changes that policy.
 
-## 6. Subscriptions and access
+## 6. Subscriptions and access — owner-approved matrix (2026-11-06)
 
-The prices below are previously discussed commercial proposals, not evidence of a live payment provider or approved billing configuration:
+Source of truth in code: `lib/pricing.ts`. Pages and APIs must read these values, never hard-code them. Same numbers in each supported non-India market in its local currency. India: free after phone OTP, no verification fee.
 
-- Poster: £9.99/month.
-- Driver: £9.99/week.
-- Market-specific pricing, currencies, trial duration and entitlements must be confirmed in configuration before launch.
-- Step 2 posting payment is optional for driver-only users. It is not optional for users choosing the posting route where the fee applies.
-- A user who wants both posting and driving must have the appropriate entitlement for each activity. Avoid accidental double charging when a driver plan includes posting access only if that inclusion is explicitly approved and implemented.
+| Level | What it allows | Price |
+| --- | --- | ---: |
+| Poster | Post jobs only. Requires email + phone, then person and company (or sole trader) verification. | £12.99 / month |
+| Individual driver | 1 verified person, 1 vehicle. Take jobs **and** post. | £14.99 / 7 days |
+| Fleet 2–5 | Company vehicles, responsible person named by the company. Take jobs and post. | £24.99 / 7 days |
+| Fleet 6–15 | | £39.99 / 7 days |
+| Fleet 16–30 | | £59.99 / 7 days |
+| Fleet 31–55 | | £79.99 / 7 days |
+| 56+ vehicles | Custom plan | — |
+
+No per-job fees, no commission; the platform never handles job payments between posters and drivers.
+
+### 6.1 One unified account
+- Everyone follows the same path: email + phone → person + company (responsible person chosen by the company) → **stop here = poster** | add vehicle(s) with documents → **driver/fleet**.
+- Driver-only and fleet-only users skip only the **poster subscription**. They never skip person, company or vehicle checks.
+- The driver/fleet plan includes posting and **replaces** the poster plan: one subscription per account, never billed twice.
+
+### 6.2 Poster → driver upgrade
+- The account can take jobs as soon as a vehicle passes verification.
+- 7 days after successful vehicle verification, billing switches from monthly to the 7-day price.
+- Proposed default, pending owner confirmation: unused days of the monthly payment are credited to the first 7-day payment.
+
+### 6.3 Driver → poster, and expired documents (proposed defaults, pending owner confirmation)
+- A driver can switch back to poster at the end of the current 7-day period; billing returns to monthly.
+- If vehicle documents expire, driving is locked and posting continues; after 14 days without renewal the account moves to poster monthly.
+
+### 6.4 When billing starts (pending owner confirmation)
+- Proposed: billing starts on first chargeable use, not at verification. First posted job starts the poster plan; first verified vehicle starts the driver/fleet plan. Nothing is charged while an account is verified but unused.
+
+### 6.5 Fleet tier changes
+- Moving between fleet tiers (for example 5 → 6 vehicles) applies from the next 7-day period.
+
+### 6.6 Launch windows (all dates are configuration values, never hard-coded)
+- **Month 0 (pre-launch):** posters register and verify only; no live jobs. Each is told the poster window start date. The UK student QA pilot (`uk-market-student-qa`, staging only) runs in this period.
+- **Poster window:** posters free for 12 months between a fixed start and end date. After it ends, new posters get 1 month free, then the poster price.
+- **Driver window:** drivers and fleets free for the first 3 months of the poster window (fixed dates). The driver window may start later than the poster window.
+- **Driver waitlist (during the driver window):** new drivers are admitted per region only while active drivers ≤ 1 × active posters in that region (ratio is configuration). Others join a waiting list.
+- After the driver window, there is no free period for new drivers.
+- Verification fees apply during launch windows (they also filter fake accounts).
+
+### 6.7 Fleet integrity rules (closing the "friends form a fleet" loophole)
+1. Every fleet vehicle must belong to the company: V5C registered keeper is the company, or a lease/hire agreement is in the company's name.
+2. Every fleet vehicle must be insured by the company: a commercial (hire and reward / fleet) policy with the company as policyholder. Insurance review happens once per policy, not once per vehicle.
+3. One verified person can be a driver on only one account.
+4. Fleet drivers are vouched for by the fleet (licence and right to work are the fleet's responsibility), but every job records which driver (name and licence number) and which vehicle carried it.
+5. Owner-drivers using their own vans join as individual drivers; fleets send them work through private job invites.
+
+### 6.8 Payments
 - No real payment may be collected until a provider, authenticated webhook/signature validation, idempotency/replay handling, settlement reconciliation, failures, cancellations and refunds are implemented and end-to-end tested.
 - Never represent a pending payment record or internal confirmation endpoint as proof of provider settlement.
+
+### 6.9 Transparency before signup
+All of §6 that affects what a user pays or must provide — plans, launch offers with exact dates, verification fees, required documents, fleet rules, no-refund wording ("the fee pays for the check, not for passing it"), correction windows, free rechecks and upgrade/downgrade billing — must be visible on `/pricing` and summarised on signup **before** an account is created. Implemented in `components/subscription-pricing.tsx` and `app/signup/page.tsx`.
+
+### 6.10 Implementation status
+Published in the app: prices, verification fees, launch-offer rules, requirements and transparency copy. **Not yet enforced in code:** billing state machine and upgrade/downgrade timing, launch-window dates and driver waitlist, fleet vehicle ownership/policyholder checks, one-driver-per-person check, per-job fleet driver record, single-payment fee collection. Each needs its own reviewed change with tests.
 
 ## 7. Access decisions by failed check
 
@@ -132,7 +181,10 @@ Avoid a single account-level verified boolean as the sole authority for every ac
 - No refund is issued on failure.
 - Return on day 90 is free; return after day 90 is outside the free-return window. Test calendar-day boundaries and timezone handling.
 - Within 90 days, expired documents are rechecked free but remain ineligible until renewed/approved.
-- Active paid-plan rechecks and vehicle additions are free; failed mandatory checks still block the affected activity.
+- Active paid-plan rechecks are free; adding a vehicle is charged the additional-vehicle fee even on a paid plan; failed mandatory checks still block the affected activity.
+- Published prices on /pricing and signup equal `lib/pricing.ts` (enforced by `npm run qa:approved-pricing`).
+- Fleet vehicle with a personal registered keeper or a non-company insurance policyholder is rejected for fleet use.
+- A verified person cannot be an active driver on two accounts.
 - Changing responsible person within the same company is free; a new company relationship is chargeable.
 - One failed vehicle does not disable another eligible vehicle.
 - Poster/customer account is not blocked solely by an unrelated vehicle check.
