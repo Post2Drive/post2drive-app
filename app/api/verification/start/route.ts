@@ -38,10 +38,6 @@ async function POSTHandler() {
       // Order is enforced server-side: email, then phone OTP, then person ID.
       [ORDER_BLOCK_MESSAGES.email_unverified, { status: 409, error: ORDER_BLOCK_MESSAGES.email_unverified }],
       [ORDER_BLOCK_MESSAGES.phone_unverified, { status: 409, error: ORDER_BLOCK_MESSAGES.phone_unverified }],
-      ["The maximum automated verification attempts have been reached. The account requires final review.", {
-        status: 409,
-        error: "The maximum automated verification attempts have been reached. The account requires final review.",
-      }],
     ]);
     const controlled = controlledErrors.get(message);
     if (controlled) {

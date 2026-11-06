@@ -160,6 +160,59 @@ assert.equal(proc.isSameCompany({ companyName: "Acme Ltd" }, { companyName: "acm
 // A person check for another user on a verified account (needed before naming them) is free.
 assert.equal(proc.decideVerificationStart({ ...base, accountVerified: true, attempts: [successAttempt], lastSuccessAt: at("2025-01-01T00:00:00Z"), now }).reason, "responsible_person_change");
 
+// ---------- 6b. Company resubmission: correction windows, no free loop ----------
+{
+  const failedAt = at("2026-11-06T14:00:00Z");
+  const firstWindow = proc.failureOutcome(1, failedAt, LONDON).correctionDeadline; // 2026-11-20 end of day
+  const finalWindow = proc.failureOutcome(2, failedAt, LONDON).finalEvidenceDeadline; // 2026-11-11 end of day
+  const acme = { companyName: "Acme Ltd", companyNumber: "01234567", responsibleUserId: "u2" };
+  const failedCompany = (position, deadline, now) => proc.decideCompanySubmission({
+    accountId: "acc", companyVerificationStatus: "failed", current: acme,
+    responsibleUser: verifiedUser, next: { companyName: "Acme Ltd", companyNumber: "01234567" },
+    reviewCyclePosition: position, correctionDeadline: deadline, now,
+  });
+  assert.deepEqual(failedCompany(1, firstWindow, at("2026-11-20T23:59:59.999Z")), { kind: "correction", cyclePosition: 2 },
+    "company resubmission inside the 10-working-day window is free");
+  assert.deepEqual(failedCompany(1, firstWindow, at("2026-11-21T00:00:00.000Z")), { kind: "new_attempt_after_failure", cyclePosition: 1 },
+    "company resubmission after the window is charged");
+  assert.deepEqual(failedCompany(2, finalWindow, at("2026-11-11T12:00:00Z")), { kind: "correction", cyclePosition: 3 },
+    "final 3-working-day company correction is free");
+  assert.deepEqual(failedCompany(2, finalWindow, at("2026-11-12T00:00:00Z")), { kind: "new_attempt_after_failure", cyclePosition: 1 });
+  assert.deepEqual(failedCompany(3, null, at("2026-11-12T00:00:00Z")), { kind: "new_attempt_after_failure", cyclePosition: 1 },
+    "after the final evidence fails there is no further free correction");
+  assert.deepEqual(failedCompany(1, null, at("2026-11-07T00:00:00Z")), { kind: "new_attempt_after_failure", cyclePosition: 1 },
+    "a failed company with no recorded window (legacy) is charged");
+  assert.deepEqual(proc.decideCompanySubmission({
+    accountId: "acc", companyVerificationStatus: "failed", current: acme, responsibleUser: verifiedUser,
+    next: { companyName: "Other Ltd", companyNumber: "07654321" }, reviewCyclePosition: 1, correctionDeadline: firstWindow, now: at("2026-11-10T00:00:00Z"),
+  }), { kind: "new_attempt_after_failure", cyclePosition: 1 }, "a different company inside a window is charged, never a free correction");
+  // While a review is in progress the company cannot be swapped (that was the free loop).
+  for (const status of ["pending", "manual_review"]) {
+    assert.equal(proc.decideCompanySubmission({
+      accountId: "acc", companyVerificationStatus: status, current: acme, responsibleUser: verifiedUser,
+      next: { companyName: "Other Ltd", companyNumber: "07654321" }, reviewCyclePosition: 1, correctionDeadline: null, now,
+    }).status, 409, status + ": switching company during review is rejected");
+    assert.equal(proc.decideCompanySubmission({
+      accountId: "acc", companyVerificationStatus: status, current: acme, responsibleUser: verifiedUser,
+      next: { companyName: "Acme Limited", companyNumber: "01234567" }, reviewCyclePosition: 2, correctionDeadline: null, now,
+    }).kind, "in_review_update", status + ": same-company edits during review are free and keep the cycle");
+  }
+  // End to end: charge -> reject -> windows elapse -> charged again (no infinite free loop).
+  const state = { status: "verified", position: 1, deadline: null, current: acme };
+  const decide = (company, at_) => proc.decideCompanySubmission({ accountId: "acc", companyVerificationStatus: state.status, current: state.current,
+    responsibleUser: verifiedUser, next: company, reviewCyclePosition: state.position, correctionDeadline: state.deadline, now: at_ });
+  const other = { companyName: "Other Ltd", companyNumber: "07654321" };
+  assert.equal(decide(other, failedAt).kind, "new_company_relationship");
+  Object.assign(state, { status: "failed", position: 1, deadline: firstWindow, current: { ...other, responsibleUserId: "u2" } });
+  const r1 = decide(other, at("2026-11-09T09:00:00Z"));
+  assert.equal(r1.kind, "correction");
+  Object.assign(state, { status: "failed", position: r1.cyclePosition, deadline: proc.failureOutcome(r1.cyclePosition, at("2026-11-10T09:00:00Z"), LONDON).finalEvidenceDeadline });
+  const r2 = decide(other, at("2026-11-11T09:00:00Z"));
+  assert.equal(r2.kind, "correction");
+  Object.assign(state, { status: "failed", position: r2.cyclePosition, deadline: proc.failureOutcome(r2.cyclePosition, at("2026-11-12T09:00:00Z"), LONDON).finalEvidenceDeadline });
+  assert.equal(decide(other, at("2026-11-12T10:00:00Z")).kind, "new_attempt_after_failure", "third resubmission after two failed corrections is charged");
+}
+
 // ---------- 7. createVerificationAttempt end to end (Prisma stub) ----------
 const verificationSource = read("lib/verification.ts");
 const compiled = ts.transpileModule(verificationSource, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText;
@@ -245,15 +298,74 @@ const ukAccount = (overrides = {}) => ({
 }
 assert.equal(loadVerification(fakePrisma(ukAccount())).getVerificationFeeMinorUnits({ type: "poster", country: "IN", currency: "INR" }), 0, "India fee is zero");
 
+// ---------- 7b. Company route: concurrent submissions return 409, never 500 ----------
+{
+  const routeOut = ts.transpileModule(read("app/api/company-verification/route.ts"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText;
+  async function submitWith(transactionBehaviour) {
+    const companyAccount = {
+      country: "GB", currency: "GBP", verificationStatus: "verified", companyVerificationStatus: "verified",
+      companyName: "Acme Ltd", companyNumber: "01234567", companyVerifiedAt: at("2026-10-01T00:00:00Z"), companyResponsibleUserId: "u1",
+      phoneVerifiedAt: now, isTester: false, qaTestAccounts: [], companyVerificationSubmittedAt: at("2026-09-30T00:00:00Z"),
+      companyReviewCyclePosition: 1, companyCorrectionDeadline: null,
+    };
+    const prisma = {
+      account: { findUnique: async () => companyAccount, update: async () => ({}) },
+      user: { findFirst: async () => ({ id: "u1", accountId: "acc", personVerifiedAt: now }) },
+      $transaction: transactionBehaviour(companyAccount),
+    };
+    const mod = { exports: {} };
+    vm.runInNewContext(routeOut, { module: mod, exports: mod.exports, Promise, Date, require: (name) => ({
+      "next/server": { NextResponse: { json: (body, init) => ({ status: init?.status ?? 200, body }) } },
+      "next-auth": { getServerSession: async () => ({ user: { accountId: "acc", id: "u1" } }) },
+      "@/lib/auth": { authOptions: {} },
+      "@/lib/prisma": { prisma },
+      "@/lib/requestBody": { readBoundedJson: async () => ({ ok: true, value: { companyName: "Other Ltd", companyNumber: "07654321" } }) },
+      "@/lib/rateLimit": { enforceRateLimit: async () => null },
+      "@/lib/uk": { isUkAccount: (a) => a.country === "GB" && a.currency === "GBP" },
+      "@/lib/apiMetrics": { withApiMetrics: (_name, handler) => handler },
+      "@/lib/verification": { isStagingPilotQaAccount: () => false },
+      "@/lib/verificationProcess": proc,
+      "@/lib/verificationFees": fees,
+    })[name] ?? (() => { throw new Error("unexpected dependency " + name); })() });
+    return mod.exports.POST(new Request("http://localhost/api/company-verification", { method: "POST" }));
+  }
+  const uniqueRace = await submitWith(() => async () => { const error = new Error("Unique constraint failed"); error.code = "P2002"; throw error; });
+  assert.equal(uniqueRace.status, 409, "idempotency-key unique violation from a concurrent submission is a clean 409");
+  const stateRace = await submitWith((acct) => async (fn) => fn({
+    $queryRawUnsafe: async () => [],
+    account: { findUnique: async () => ({ companyVerificationStatus: "pending", companyVerificationSubmittedAt: new Date() }), update: async () => ({}) },
+    verificationFeePayment: { findUnique: async () => null, findMany: async () => [], create: async ({ data }) => data },
+  }));
+  assert.equal(stateRace.status, 409, "a submission whose state changed under the lock is a clean 409");
+  const ok = await submitWith((acct) => async (fn) => fn({
+    $queryRawUnsafe: async () => [],
+    account: { findUnique: async () => ({ companyVerificationStatus: acct.companyVerificationStatus, companyVerificationSubmittedAt: acct.companyVerificationSubmittedAt }),
+      update: async () => ({ companyVerificationStatus: "pending" }) },
+    verificationFeePayment: { findUnique: async () => null, findMany: async () => [], create: async ({ data }) => ({ id: "fee", ...data }) },
+  }));
+  assert.equal(ok.status, 202);
+  assert.equal(ok.body.company.feeMinorUnits, 250, "new company relationship records 2.50");
+}
+
 // ---------- 8. Static wiring ----------
 const startRoute = read("app/api/verification/start/route.ts");
 assert.match(startRoute, /createVerificationAttempt\(accountId, userId\)/);
 assert.match(startRoute, /ORDER_BLOCK_MESSAGES\.phone_unverified/);
+assert.doesNotMatch(startRoute, /maximum automated verification attempts/, "attempt caps were replaced by correction windows; no dead error path");
+assert.doesNotMatch(verificationSource, /maximum automated verification attempts/);
+const adminCompanyRoute = read("app/api/admin/company-verification/route.ts");
+assert.match(adminCompanyRoute, /failureOutcome\(account\.companyReviewCyclePosition/, "a failed company review records the correction window");
+assert.match(adminCompanyRoute, /companyReviewCyclePosition: 1, companyCorrectionDeadline: null/, "approval resets the company cycle");
 const companyRoute = read("app/api/company-verification/route.ts");
 assert.match(companyRoute, /decideCompanySubmission\(/);
 assert.match(companyRoute, /!stagingPilotQa && !account\.phoneVerifiedAt/, "company route enforces phone OTP before company");
 assert.match(companyRoute, /companyResponsibleUserId: responsibleUserId/);
-assert.match(companyRoute, /action: "new_company_relationship"/);
+assert.match(companyRoute, /action: decision.kind === "new_company_relationship" \? "new_company_relationship"/);
+assert.match(companyRoute, /"company_reverification"/, "resubmission after the windows records a new fee");
+assert.match(companyRoute, /reviewCyclePosition: account\.companyReviewCyclePosition/);
+assert.match(companyRoute, /FOR UPDATE/, "company submissions are serialized per account");
+assert.match(companyRoute, /prismaCode === "P2002"/, "a unique idempotency-key race returns 409, not 500");
+assert.match(companyRoute, /COMPANY_SUBMISSION_CONFLICT[\s\S]*status: 409/);
 assert.ok(companyRoute.indexOf("isUkAccount(account)") < companyRoute.indexOf("decideCompanySubmission("), "India rejected before company processing");
 assert.match(verificationSource, /failureOutcome\(attempt\.cyclePosition/);
 assert.doesNotMatch(verificationSource, /addWorkingDays\(now, attempt\.attemptNumber === 1 \? 14 : 7\)/, "old 14/7 windows removed");

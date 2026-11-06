@@ -16,6 +16,7 @@ export type VerificationFeeAction =
   | "driver_verification"
   | "driver_upgrade"
   | "new_company_relationship"
+  | "company_reverification"
   | "vehicle_added";
 
 type FeeRecord = { id: string; amountMinorUnits: number; currency: string; status: string; vehicleIds: string[] };

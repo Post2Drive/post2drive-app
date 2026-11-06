@@ -57,6 +57,9 @@ function marketTimeZone(account: { country?: string | null; currency?: string | 
  * Start (or resume) person-ID verification for the signed-in user.
  * Order (non-India): email verified -> phone OTP verified -> person ID (+ company).
  * Fees are recorded as ONE pending VerificationFeePayment per charged attempt.
+ * Pending fees do NOT block approval until a payment provider is connected.
+ * Attempts and correction cycles are per ACCOUNT, not per user: latent today
+ * (one owner per account) but a member user's failure would share the cycle.
  */
 export async function createVerificationAttempt(accountId: string, userId?: string) {
   const account = await prisma.account.findUnique({

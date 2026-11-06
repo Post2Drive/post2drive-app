@@ -22,6 +22,7 @@ async function POSTHandler(req: Request) {
       country: true, currency: true, verificationStatus: true, companyVerificationStatus: true,
       companyName: true, companyNumber: true, companyVerifiedAt: true, companyResponsibleUserId: true,
       phoneVerifiedAt: true, isTester: true, qaTestAccounts: { select: { runId: true } },
+      companyVerificationSubmittedAt: true, companyReviewCyclePosition: true, companyCorrectionDeadline: true,
     },
   });
   if (!account) return NextResponse.json({ error: "Account not found." }, { status: 404 });
@@ -69,6 +70,9 @@ async function POSTHandler(req: Request) {
     next: { companyName, companyNumber: companyNumber || null },
     responsibleUser: stagingPilotQa && responsibleUser ? { ...responsibleUser, personVerifiedAt: responsibleUser.personVerifiedAt ?? new Date(0) } : responsibleUser,
     accountId,
+    reviewCyclePosition: account.companyReviewCyclePosition,
+    correctionDeadline: account.companyCorrectionDeadline,
+    now: new Date(),
   });
   if (decision.kind === "reject") return NextResponse.json({ error: decision.error }, { status: decision.status });
   const responsibleUserId = responsibleUser!.id;
@@ -83,33 +87,64 @@ async function POSTHandler(req: Request) {
     return NextResponse.json({ success: true, company: changed, feeMinorUnits: 0 });
   }
 
-  const updated = await prisma.$transaction(async (tx) => {
-    let feeMinorUnits = 0;
-    // A new company relationship is re-reviewed and charged (one pending record).
-    if (decision.kind === "new_company_relationship") {
-      const fee = await recordVerificationFee(tx as never, {
-        accountId, country: account.country, currency: account.currency,
-        action: "new_company_relationship",
-        lines: verificationPathFeeLines("poster"),
-        idempotencyKey: `company-relationship:${accountId}:${account.companyVerifiedAt?.toISOString() ?? "none"}`,
+  // Charged: a new company relationship, or a resubmission after the free correction
+  // windows closed (or for a different company). Corrections inside a window are free.
+  const charged = decision.kind === "new_company_relationship" ||
+    (decision.kind === "new_attempt_after_failure" && !stagingPilotQa);
+  const nextCyclePosition = decision.kind === "correction" ? decision.cyclePosition
+    : decision.kind === "in_review_update" ? account.companyReviewCyclePosition : 1;
+  const snapshotSubmittedAt = account.companyVerificationSubmittedAt?.getTime() ?? null;
+
+  let updated;
+  try {
+    updated = await prisma.$transaction(async (tx) => {
+      // Serialize concurrent submissions: the state the decision was made on must
+      // still hold, otherwise the later request gets a clean 409 (never a 500).
+      await tx.$queryRawUnsafe('SELECT "id" FROM "Account" WHERE "id" = $1 FOR UPDATE', accountId);
+      const locked = await tx.account.findUnique({
+        where: { id: accountId },
+        select: { companyVerificationStatus: true, companyVerificationSubmittedAt: true },
       });
-      feeMinorUnits = fee?.record.amountMinorUnits ?? 0;
-    }
-    const company = await tx.account.update({
-      where: { id: accountId },
-      data: {
-        companyName,
-        companyNumber: companyNumber || null,
-        isSoleTrader,
-        companyResponsibleUserId: responsibleUserId,
-        companyVerificationStatus: "pending",
-        companyVerificationSubmittedAt: new Date(),
-        companyVerifiedAt: null,
-      },
-      select: { companyName: true, companyNumber: true, isSoleTrader: true, companyVerificationStatus: true, companyVerificationSubmittedAt: true, companyResponsibleUserId: true },
+      if (!locked || locked.companyVerificationStatus !== account.companyVerificationStatus ||
+          (locked.companyVerificationSubmittedAt?.getTime() ?? null) !== snapshotSubmittedAt) {
+        throw new Error("COMPANY_SUBMISSION_CONFLICT");
+      }
+      let feeMinorUnits = 0;
+      if (charged) {
+        const fee = await recordVerificationFee(tx as never, {
+          accountId, country: account.country, currency: account.currency,
+          action: decision.kind === "new_company_relationship" ? "new_company_relationship" : "company_reverification",
+          lines: verificationPathFeeLines("poster"),
+          idempotencyKey: decision.kind === "new_company_relationship"
+            ? `company-relationship:${accountId}:${account.companyVerifiedAt?.toISOString() ?? "none"}`
+            : `company-reattempt:${accountId}:${account.companyVerificationSubmittedAt?.toISOString() ?? "none"}`,
+        });
+        feeMinorUnits = fee?.record.amountMinorUnits ?? 0;
+      }
+      const company = await tx.account.update({
+        where: { id: accountId },
+        data: {
+          companyName,
+          companyNumber: companyNumber || null,
+          isSoleTrader,
+          companyResponsibleUserId: responsibleUserId,
+          companyVerificationStatus: "pending",
+          companyVerificationSubmittedAt: new Date(),
+          companyVerifiedAt: null,
+          companyReviewCyclePosition: nextCyclePosition,
+          companyCorrectionDeadline: null,
+        },
+        select: { companyName: true, companyNumber: true, isSoleTrader: true, companyVerificationStatus: true, companyVerificationSubmittedAt: true, companyResponsibleUserId: true },
+      });
+      return { ...company, feeMinorUnits };
     });
-    return { ...company, feeMinorUnits };
-  });
+  } catch (error) {
+    const prismaCode = (error as { code?: unknown } | null)?.code;
+    if ((error instanceof Error && error.message === "COMPANY_SUBMISSION_CONFLICT") || prismaCode === "P2002") {
+      return NextResponse.json({ error: "Another company submission for this account was just processed. Refresh and check its status." }, { status: 409 });
+    }
+    throw error;
+  }
   return NextResponse.json({ success: true, company: updated }, { status: 202 });
 }
 

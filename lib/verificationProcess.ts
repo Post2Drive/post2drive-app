@@ -217,13 +217,25 @@ export function isSameCompany(
 export type CompanySubmissionDecision =
   | { kind: "reject"; status: number; error: string }
   | { kind: "initial" }
+  | { kind: "in_review_update" }
+  | { kind: "correction"; cyclePosition: number }
+  | { kind: "new_attempt_after_failure"; cyclePosition: 1 }
   | { kind: "responsible_person_change" }
   | { kind: "new_company_relationship" };
 
 /**
  * The responsible person must be a user of this account whose person ID passed.
- * On a verified company: same company + different person = free change;
- * a different company = new relationship, re-reviewed and charged.
+ * Company reviews mirror the person-verification correction windows:
+ * - verified: same company + different person = free change; a different company
+ *   = new relationship, re-reviewed and charged.
+ * - pending / manual_review: same-company edits are free; switching company is
+ *   rejected until the review decides (otherwise a charged review could be swapped
+ *   for another company for free).
+ * - failed: a resubmission of the SAME company inside the window recorded at the
+ *   failure (10 working days after the first, final 3 after the second) is a free
+ *   correction. A different company, an expired window, or a failure after the
+ *   final evidence needs a new fee.
+ * - not_started: the first submission, covered by the Step 2 person fee.
  */
 export function decideCompanySubmission(input: {
   companyVerificationStatus: string;
@@ -231,6 +243,9 @@ export function decideCompanySubmission(input: {
   next: { companyName: string; companyNumber?: string | null };
   responsibleUser: { id: string; accountId: string; personVerifiedAt?: Date | null } | null;
   accountId: string;
+  reviewCyclePosition?: number | null;
+  correctionDeadline?: Date | null;
+  now?: Date;
 }): CompanySubmissionDecision {
   const user = input.responsibleUser;
   if (!user || user.accountId !== input.accountId) {
@@ -239,12 +254,30 @@ export function decideCompanySubmission(input: {
   if (!user.personVerifiedAt) {
     return { kind: "reject", status: 409, error: "The responsible person must pass identity verification first." };
   }
-  if (input.companyVerificationStatus !== "verified") return { kind: "initial" };
-  if (isSameCompany(input.current, input.next)) {
-    if (input.current.responsibleUserId === user.id) {
-      return { kind: "reject", status: 409, error: "This company is already verified with this responsible person." };
+  const sameCompany = isSameCompany(input.current, input.next);
+  const status = input.companyVerificationStatus;
+  if (status === "verified") {
+    if (sameCompany) {
+      if (input.current.responsibleUserId === user.id) {
+        return { kind: "reject", status: 409, error: "This company is already verified with this responsible person." };
+      }
+      return { kind: "responsible_person_change" };
     }
-    return { kind: "responsible_person_change" };
+    return { kind: "new_company_relationship" };
   }
-  return { kind: "new_company_relationship" };
+  if (status === "pending" || status === "manual_review" || status === "payment_pending") {
+    if (!sameCompany) {
+      return { kind: "reject", status: 409, error: "A company review is in progress. Wait for the decision before submitting a different company." };
+    }
+    return { kind: "in_review_update" };
+  }
+  if (status === "failed") {
+    const position = input.reviewCyclePosition ?? 1;
+    const now = input.now ?? new Date();
+    if (sameCompany && position < 3 && input.correctionDeadline && now <= input.correctionDeadline) {
+      return { kind: "correction", cyclePosition: position + 1 };
+    }
+    return { kind: "new_attempt_after_failure", cyclePosition: 1 };
+  }
+  return { kind: "initial" };
 }

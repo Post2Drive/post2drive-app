@@ -64,6 +64,14 @@ Verification charges are separate from subscription charges. The intended packag
 - Store the failure reasons, attempt number, timestamps, correction deadlines, fee status and reviewer outcome. Use server time and explicit deadline semantics; display the deadline clearly.
 - The exact count of initial review vs correction review must be represented consistently in UI, API, database and tests. Do not create a new fee merely because a user submitted corrected evidence within an allowed correction window.
 
+**Implementation notes (2026-11-06):**
+
+- **Working days** are Monday-Friday in the account market's time zone, and a deadline is the end of that local day. UK bank holidays are **not yet excluded**: the official gov.uk list could not be fetched while this was built, so no dates were embedded. Other non-India markets count weekends only.
+- **Company reviews follow the same windows.** A failed company review records a correction deadline: 10 working days after the first failure, then a final 3 after the second. Resubmitting the **same** company inside the window is free. A different company, an expired window, or a failure after the final evidence needs a new fee (one pending record). While a review is pending, a different company cannot be submitted until the review is decided.
+- **Attempts are counted per account, not per user.** This only matters once member users exist (today one owner per account): a second user's failed person check shares the account's correction cycle.
+- **Fees are recorded as pending and do not block approval** until a payment provider is connected. No record is ever marked paid without a verified provider event.
+- **Rollout:** existing verified UK accounts with no `phoneVerifiedAt` lose posting (and bid awarding) until they verify their phone by OTP. Tell these users before deploying.
+
 ## 5. Free rechecks and inactivity
 
 ### 90-day return window
