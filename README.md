@@ -75,13 +75,13 @@ A single account may post jobs, carry jobs, or do both. Role choice guides onboa
 | --- | ---: |
 | Step 2: person, with applicable company verification | £2.50 |
 | Step 3: person/driver plus first vehicle, including required MOT/insurance checks | £3.50 |
-| Additional vehicle during initial verification, where applicable | £0.50 |
+| Each additional vehicle, including vehicles added later | £0.50 |
 
 No refunds. First failure: 10 working days to submit corrections. Next failure: final 3 working days. Another failure generally requires a new verification fee, subject to the active-paid-plan maintenance exemption. The free inactive-return window is **90 calendar days from successful verification**; checks are free inside it even if documents expired, but the findings still govern eligibility. Active paid users pay no fee for routine rechecks or adding vehicles. Changing the responsible person within the same company is free; a new company relationship incurs the applicable fee. See the complete policy document for edge cases and required tests.
 
-## Commercial rules: do not silently merge conflicting price models
+## Commercial rules
 
-The existing repository's launch-readiness notes describe UK/euro weekly access: individual £9.99 for 7 days; fleet £16.99 (2–5 vehicles), £24.99 (6–15), £36.99 (16–30), £49.99 (31–55), and custom pricing for 56+; no automatic recurring billing and no per-job fee in that documented model. A more recent product discussion proposes poster £9.99/month and driver £9.99/week. These models conflict and need one explicit approved pricing matrix before implementation or advertising. See [Application Workflows and Dashboards](docs/APP_WORKFLOWS_AND_DASHBOARDS.md). Payment records or a provider-neutral confirmation boundary do not prove live payment-provider settlement.
+**Approved pricing (owner decision 2026-11-06):** poster £12.99/month (post only); individual driver £14.99 per 7 days (1 person, 1 vehicle, posting included); fleets £24.99 (2–5 vehicles), £39.99 (6–15), £59.99 (16–30), £79.99 (31–55) per 7 days; custom for 56+. One subscription per account; the driver/fleet plan replaces the poster plan. No per-job fees or commission. Same numbers in each non-India market's currency; India free after phone OTP. Source of truth: `lib/pricing.ts`. Full rules, launch windows, fleet integrity rules and what is not yet enforced: [Product and verification policy §6](docs/PRODUCT_AND_VERIFICATION_POLICY.md). Payment checkout is not connected; no live settlement.
 
 ## Technology and capabilities
 

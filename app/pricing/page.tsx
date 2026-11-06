@@ -3,7 +3,7 @@ import SubscriptionPricing from "@/components/subscription-pricing";
 
 export const metadata: Metadata = {
   title: "Pricing – Post2Drive",
-  description: "Post2Drive plans for businesses and fleets in the UK. Free early access for drivers in India.",
+  description: "Everything Post2Drive costs, before you sign up: plans, launch offers, verification fees and what you need.",
 };
 
 export default function PricingPage() {
@@ -23,7 +23,7 @@ export default function PricingPage() {
             color: "var(--color-primary)",
           }}
         >
-          Pricing by market
+          Pricing and requirements
         </h1>
 
         <p
@@ -32,7 +32,7 @@ export default function PricingPage() {
             color: "var(--color-muted)",
           }}
         >
-          The configured 7-day access model and numeric price tiers apply across supported non-India markets, displayed in each market’s local currency. India pricing remains separate. These are planning prices only; checkout is not connected.
+          Everything you could pay and everything you will need, shown before you create an account. No per-job fees, no commission, no hidden charges. Checkout is not connected yet, so nothing is charged today.
         </p>
       </div>
 
