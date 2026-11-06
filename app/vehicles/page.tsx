@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { VEHICLE_TYPES, vehicleTypeLabel } from "@/lib/vehicles";
-import { minorUnitsToMajorUnits } from "@/lib/currencyMinorUnits";
 import { getLocalisationProfile, formatMarketDate, getJurisdictionOptions, getJurisdictionAuthority } from "@/lib/localisation";
 
 type Vehicle = {
