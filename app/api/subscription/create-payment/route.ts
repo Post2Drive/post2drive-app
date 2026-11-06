@@ -10,6 +10,7 @@ const SAFE_CLIENT_ERRORS = new Set([
   "Account must be successfully verified before purchasing access.",
   "This account does not have a valid weekly subscription price.",
   "Account is suspended.",
+  "No payment is due yet. Billing starts with your first posted job or first approved vehicle, after any free launch period.",
 ]);
 
 async function POSTHandler() {

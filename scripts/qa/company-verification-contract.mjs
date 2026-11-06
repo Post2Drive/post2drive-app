@@ -122,7 +122,6 @@ const verificationModule = { exports: {} };
 const mockRequire = (name) => {
   if (name === "@/lib/prisma") return { prisma: fakePrisma };
   if (name === "@/lib/uk") return { isUkAccount: (account) => account.country === "GB" && account.currency === "GBP" };
-  if (name === "@/lib/promotion") return { startPromotionForVerifiedAccount: async () => {} };
   if (name === "@/lib/referrals") return { markReferralVerified: async () => {} };
   if (name === "@/lib/market") return { marketForAccount: () => ({ timeZone: "Europe/London" }) };
   if (name === "@/lib/qaRunnerGuard") return { isQaRunnerEnabled: () => false };

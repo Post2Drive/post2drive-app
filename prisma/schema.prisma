@@ -148,7 +148,10 @@ model Account {
   lastActivityAt DateTime  @default(now())
   inactiveSince  DateTime?
 
-  // Promotional membership.
+  // Promotional membership. DEPRECATED for public launch access (replaced by LaunchConfig
+  // windows, 2026-11-06). Still read for the staging UK student pilot / approved testers
+  // (isTester + promotionParticipant + freeEndsAt = 90-day pilot access). freeMonthsEarned,
+  // extensionCount and graceUsed are no longer written; kept so older rows stay readable.
   promotionParticipant Boolean   @default(false)
   trialStartedAt       DateTime?
   trialEndsAt          DateTime?
@@ -162,6 +165,16 @@ model Account {
   subscriptionPlanKey   String?
   subscriptionStartedAt DateTime?
   subscriptionEndsAt    DateTime?
+
+  // Launch windows / driver waitlist (EXECUTION_PLAN §3–§4).
+  // UK postcode area (e.g. "LS", "M", "SW"); required for driver/fleet DRIVE in the driver window.
+  operatingRegion           String?
+  // Joined the driver waitlist (first DRIVE evaluation in the window without room). Orders the queue.
+  driverWaitlistedAt        DateTime?
+  // Admitted to free driving for the driver window. Persisted so admission is never revoked by counts.
+  driverAdmittedAt          DateTime?
+  // Driver -> poster switch request; effective at the end of the current 7-day period.
+  switchToPosterRequestedAt DateTime?
 
   createdAt DateTime @default(now())
 
@@ -203,6 +216,7 @@ model Account {
   moderationReportsReviewed ModerationReport[] @relation("ModerationReportReviewer")
 
   @@index([companyVerificationStatus])
+  @@index([operatingRegion, driverWaitlistedAt])
 }
 
 model SubscriptionPayment {
@@ -232,7 +246,24 @@ model SubscriptionPayment {
   @@index([accountId, status])
 }
 
+// Launch windows (EXECUTION_PLAN §4). Single row id "global", set by an operator.
+// There are NO defaults for the dates: a missing row fails closed (no free windows,
+// no Month 0 gate) and is reported by /api/launch/status and the dashboard.
+model LaunchConfig {
+  id                  String   @id @default("global")
+  posterWindowStart   DateTime
+  posterWindowEnd     DateTime
+  driverWindowStart   DateTime
+  driverWindowEnd     DateTime
+  newPosterTrialDays  Int      @default(30)
+  driverWaitlistRatio Float    @default(1.0)
+  updatedAt           DateTime @updatedAt
+  createdAt           DateTime @default(now())
+}
+
 model PromotionConfig {
+  // DEPRECATED (2026-11-06): replaced by LaunchConfig. Kept only so the table is not dropped
+  // while older deployments still read it. Only the tester-application gate reads it.
   // There is one active global promotion configuration.
   id        String   @id @default("global")
   name      String   @default("Launch Promotion")
@@ -810,6 +841,8 @@ model ApiRequestMetric {
   @@index([qaRunId, createdAt])
 }
 
+// DEPRECATED (2026-11-06): trial-cycle extensions are removed. Rows are retained for audit;
+// no code writes this table any more (QA cleanup still deletes QA rows).
 model TrialCycle {
   id        String  @id @default(cuid())
   account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)

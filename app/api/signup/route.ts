@@ -1,7 +1,8 @@
 import { withApiMetrics } from "@/lib/apiMetrics";
 import { NextResponse } from "next/server";
 import { createHash } from "crypto";
-import { getPromotion } from "@/lib/promotion";
+import { getLaunchConfig } from "@/lib/launchConfig";
+import { normalizeOperatingRegion } from "@/lib/launchWindows";
 import { hashPilotAccessCode, isPilotTesterCode, PILOT_ACCESS_CODE_TTL_MS } from "@/lib/pilotAccess";
 import { isQaRunnerEnabled } from "@/lib/qaRunnerGuard";
 import bcrypt from "bcryptjs";
@@ -68,6 +69,7 @@ async function POSTHandler(
       termsAccepted?: unknown;
       termsVersion?: unknown;
       marketResearch?: unknown;
+      operatingRegion?: unknown;
     };
 
     const {
@@ -87,6 +89,7 @@ async function POSTHandler(
       termsAccepted,
       termsVersion,
       marketResearch,
+      operatingRegion,
     } = body;
 
     if (
@@ -158,10 +161,10 @@ async function POSTHandler(
       testerCodeHash = isPilotAccess ? hashPilotAccessCode(suppliedTesterCode) : createHash("sha256").update(suppliedTesterCode).digest("hex");
     }
     if (testerCodeHash && !isPilotAccess) {
-      const promotion = await getPromotion();
-      const now = new Date();
-      if (!promotion.active || now < promotion.startAt || now > promotion.endAt) {
-        return NextResponse.json({ error: "Tester applications are only accepted while the UK promotional programme is active." }, { status: 400 });
+      // Tester applications are accepted until the configured poster window ends (fails closed when unconfigured).
+      const launch = await getLaunchConfig();
+      if (!launch.config || new Date() >= launch.config.posterWindowEnd) {
+        return NextResponse.json({ error: "Tester applications are only accepted before the UK launch window ends." }, { status: 400 });
       }
     }
     if (verificationRequired && !emailDeliveryConfigured() && !isPilotAccess) {
@@ -182,6 +185,13 @@ async function POSTHandler(
         { error: "Fleet signup supports up to 55 vehicles. Fleets with 56+ vehicles require custom pricing." },
         { status: 400 }
       );
+    }
+
+    // Operating region (UK postcode area, e.g. "LS") drives the regional driver waitlist (EXECUTION_PLAN §4).
+    // Optional at signup for posters; required before a driver/fleet can drive during the driver window.
+    const normalizedRegion = normalizeOperatingRegion(country, operatingRegion);
+    if (normalizedRegion === "invalid") {
+      return NextResponse.json({ error: country === "GB" ? "Enter your operating area as a UK postcode area: 1 or 2 letters, for example LS, M or SW." : "Enter a valid operating region code." }, { status: 400 });
     }
 
     // Derive plan server-side from vehicle count — ignore client-supplied planType entirely.
@@ -336,6 +346,8 @@ async function POSTHandler(
                 country,
 
                 currency,
+
+                operatingRegion: normalizedRegion,
 
                 displayId,
                 isTester: isPilotAccess,

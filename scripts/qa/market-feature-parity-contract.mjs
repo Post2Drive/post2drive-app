@@ -88,7 +88,7 @@ contains("app/api/jobs/[id]/accept/route.ts", "requireJobMarketAccess", "job acc
 contains("app/api/subscription/create-payment/route.ts", "createPendingSubscriptionPayment", "all eligible markets need the shared subscription request path");
 contains("lib/subscription.ts", "isWeeklyPricingEligible(account)", "paid access eligibility must use the shared market policy");
 contains("app/api/promotion/status/route.ts", "paidPlan:\n      isWeeklyPricingEligible(account)", "paid plan details must not be hidden from eligible non-GB markets");
-contains("app/api/promotion/status/route.ts", "active:\n        ukEligible &&\n        promotion.active", "the GB-only launch promotion must remain GB-only");
+contains("app/api/promotion/status/route.ts", "ukLaunchEligible: ukEligible", "UK launch status must stay explicitly GB-scoped");
 contains("app/api/account/access/route.ts", "minorUnitsToMajorUnits(priceMinorUnits, access.account.currency)", "access API must convert minor units using the account currency");
 contains("lib/subscription.ts", "majorUnitsToMinorUnits(price, currency)", "subscription price must use currency-specific minor units");
 contains("components/subscription-pricing.tsx", "checkout is not connected", "pricing must not imply that real checkout is live");
@@ -144,7 +144,7 @@ contains("app/jobs/page.tsx", "setOpenBids((current) => ({", "bid loading must m
 
 // These are explicit cross-market exceptions, not feature parity gaps: India
 // pricing is separate, the UK trial is UK-only, and compliance can vary locally.
-contains("lib/promotion.ts", "if (!isUkAccount(account))", "UK promotion rules must remain explicit");
+contains("lib/access.ts", 'if (account.country === "IN" && account.currency === "INR") return "india";', "India market rules must remain explicit");
 contains("app/terms/page.tsx", "Draft for product testing", "terms must not be presented as launch-approved");
 contains("app/privacy/page.tsx", "Draft for product testing", "privacy notice must not be presented as launch-approved");
 

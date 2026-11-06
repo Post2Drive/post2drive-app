@@ -23,7 +23,7 @@ export default function SignupPage() {
   const [form, setForm] = useState({
     name: "", email: "", phone: "", password: "", companyName: "", companyNumber: "",
     planType: "individual", fleetVehicleCount: "1", isSoleTrader: false,
-    country: "", currency: "", referralCode: "", testerCode: "",
+    country: "", currency: "", referralCode: "", testerCode: "", operatingRegion: "",
     termsAccepted: false, marketResearch: {
       role: "", currentDiscovery: "", biggestChallenge: "", preferredAccess: "",
     } as ResearchAnswers,
@@ -64,6 +64,7 @@ export default function SignupPage() {
     if (step === 0 && !form.country) return "Choose your market to continue.";
     if (!isIndia && step === 0 && !form.isSoleTrader && !form.companyName.trim()) return "Enter your registered company name, or select sole trader.";
     if (step === 1 && (!Number.isInteger(vehicleCount) || vehicleCount < 1 || vehicleCount > 55)) return "Enter a vehicle count from 1 to 55. Fleets with 56+ vehicles need custom pricing.";
+    if (step === 1 && form.country === "GB" && form.operatingRegion.trim() && !/^[A-Za-z]{1,2}$/.test(form.operatingRegion.trim())) return "Enter your operating area as a UK postcode area: 1 or 2 letters, for example LS, M or SW.";
     if (step === 2) {
       if (!form.name.trim() || (!isIndia && !form.email.trim()) || !form.phone.trim() || form.password.length < 8) return "Complete all required account fields. Password must contain at least 8 characters.";
       if (new TextEncoder().encode(form.password).byteLength > 72) return "Password must be no more than 72 UTF-8 bytes.";
@@ -86,6 +87,7 @@ export default function SignupPage() {
         companyName: isIndia ? form.name.trim() : form.companyName.trim() || (form.isSoleTrader ? form.name.trim() : ""),
         termsVersion: TERMS_VERSION,
         marketResearch: isIndia ? form.marketResearch : undefined,
+        operatingRegion: isIndia ? undefined : form.operatingRegion.trim().toUpperCase() || undefined,
       };
       const res = await fetch("/api/signup", {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
@@ -149,6 +151,7 @@ export default function SignupPage() {
 
       {step === 1 && <div className="signup-fields">
         <label>How many vehicles will use this account?<input type="number" min="1" max="55" step="1" required value={form.fleetVehicleCount} onChange={(e) => { const v = e.target.value; setForm((current) => ({ ...current, fleetVehicleCount: v, planType: Number(v) === 1 ? "individual" : "fleet" })); }} /></label>
+        {form.country === "GB" && <label>Operating area (postcode area)<input value={form.operatingRegion} onChange={(e) => update("operatingRegion", e.target.value.toUpperCase())} maxLength={2} autoCapitalize="characters" autoComplete="off" spellCheck={false} placeholder="e.g. LS, M or SW" aria-describedby="signup-region-help" /><small id="signup-region-help">The first letters of the postcode where you mainly work. Required before you can take jobs as a driver or fleet: during the launch driver window, free driving places are limited per area and may have a waitlist. You can change it later in settings.</small></label>}
         {isIndia ? (
           <div className="signup-plan-card"><span className="signup-plan-label">YOUR CAPACITY</span><h3>{vehicleCount === 1 ? "1 vehicle" : `${vehicleCount} vehicles`}</h3><p className="signup-plan-price">Free · ₹0</p><small>India accounts get free access after phone OTP verification. Post jobs, browse, call and negotiate — no subscription needed.</small></div>
         ) : (

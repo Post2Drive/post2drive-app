@@ -2,7 +2,7 @@ import { enforceRateLimit } from "@/lib/rateLimit";
 import { withApiMetrics } from "@/lib/apiMetrics";
 import { requireJobMarketAccess } from "@/lib/jobMarket";
 import { getJobPickupAtForAccount, pickupAccessError } from "@/lib/jobAccess";
-import { getAccountAccess } from "@/lib/access";
+import { getDriveAccess } from "@/lib/access";
 import { NextResponse } from "next/server";
 import { readBoundedJson } from "@/lib/requestBody";
 import { getServerSession } from "next-auth";
@@ -64,7 +64,7 @@ async function POSTHandler(
     );
   }
 
-  const marketplaceAccessCheck = await getAccountAccess(accountId);
+  const marketplaceAccessCheck = await getDriveAccess(accountId);
 
   if (!marketplaceAccessCheck.allowed) {
     return NextResponse.json(

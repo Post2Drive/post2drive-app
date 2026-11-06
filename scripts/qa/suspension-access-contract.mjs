@@ -46,14 +46,16 @@ assert.equal(getSuspendedAccountAccess(activeIndia), null, "active India account
 assert.equal(getSuspendedAccountAccess(activeUkTester), null, "active tester account must not be blocked by the suspension guard");
 
 const accessSource = readFileSync("lib/access.ts", "utf8");
-const firstGuard = accessSource.indexOf("getSuspendedAccountAccess(account)");
-const indiaBranch = accessSource.indexOf('if (account.country === "IN" && account.currency === "INR")');
-assert.ok(firstGuard >= 0 && firstGuard < indiaBranch,
-  "suspension must be checked before the India phone-only access path");
-const refreshAccount = accessSource.indexOf("account = await prisma.account.findUnique");
-const secondGuard = accessSource.indexOf("getSuspendedAccountAccess(account)", firstGuard + 1);
-assert.ok(refreshAccount >= 0 && secondGuard > refreshAccount,
-  "suspension must be rechecked after refreshing account state following trial-cycle evaluation");
+// Launch windows (2026-11-06): every POST/DRIVE evaluation runs preflight() first, which denies
+// suspended accounts before any India, pilot, launch-window or subscription rule is applied.
+const preflightSource = accessSource.slice(accessSource.indexOf("async function preflight"), accessSource.indexOf("function shape("));
+assert.match(preflightSource, /getSuspendedAccountAccess\(account\)/, "preflight must apply the suspension guard");
+for (const fn of ["export async function getPostAccess", "export async function getDriveAccess"]) {
+  const body = accessSource.slice(accessSource.indexOf(fn));
+  assert.ok(body.indexOf("await preflight(accountId)") >= 0 && body.indexOf("await preflight(accountId)") < body.indexOf("gatherFacts("),
+    `${fn} must run the suspension preflight before evaluating market or launch-window rules`);
+}
+assert.match(accessSource, /verificationStatus: \{ not: "suspended" \}/, "suspended accounts must not count toward or hold driver waitlist places");
 
 const subscriptionSource = readFileSync("lib/subscription.ts", "utf8");
 const createPaymentSource = subscriptionSource.slice(
@@ -94,14 +96,10 @@ assert.ok(createPaymentRoute.includes('"Account is pending deletion."'),
   "subscription API must expose a controlled deletion-requested denial");
 assert.ok(createPaymentRoute.includes('["Account is suspended.", "Account is pending deletion."]'),
   "suspended and deletion-requested access errors must map to HTTP 403");
-const promotionSource = readFileSync("lib/promotion.ts", "utf8");
-const promotionStartup = promotionSource.slice(
-  promotionSource.indexOf("export async function startPromotionForVerifiedAccount"),
-);
-assert.match(promotionStartup, /account\.verificationStatus === "suspended"/,
-  "a delayed verification side effect must not start promotion for a suspended tester account");
-assert.match(promotionStartup, /account\.deletionRequestedAt/,
-  "a delayed verification side effect must not start promotion for a deletion-requested account");
+// lib/promotion.ts was removed with the launch-window change: verification no longer starts any
+// per-account free period, so there is no delayed side effect that could grant a suspended account access.
+assert.ok(!readFileSync("lib/verification.ts", "utf8").includes("startPromotionForVerifiedAccount"),
+  "verification must not start a per-account promotion");
 
 const jobMarketSource = readFileSync("lib/jobMarket.ts", "utf8");
 assert.match(jobMarketSource, /verificationStatus:\s*true/,

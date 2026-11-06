@@ -1,6 +1,6 @@
 import { withApiMetrics } from "@/lib/apiMetrics";
 import { getJobPickupAt, pickupAccessError } from "@/lib/jobAccess";
-import { getAccountAccess } from "@/lib/access";
+import { getDriveAccess, getPostAccess } from "@/lib/access";
 import { NextResponse } from "next/server";
 import { readBoundedJson } from "@/lib/requestBody";
 import { getServerSession } from "next-auth";
@@ -45,7 +45,8 @@ async function GETHandler(req: Request) {
     );
   }
 
-  const marketplaceAccessCheck = await getAccountAccess(accountId);
+  // Browsing other posters' open jobs is a DRIVE action (EXECUTION_PLAN §3).
+  const driveAccessCheck = await getDriveAccess(accountId);
 
   /*
    * Expired accounts may still see their own posted jobs and
@@ -53,7 +54,7 @@ async function GETHandler(req: Request) {
    * to new open marketplace activity.
    */
   const canBrowseOpenMarketplace =
-    marketplaceAccessCheck.allowed;
+    driveAccessCheck.allowed;
 
   const actor = await prisma.account.findUnique({
     where: { id: accountId },
@@ -422,7 +423,8 @@ async function POSTHandler(req: Request) {
     return NextResponse.json({ error: validation.error }, { status: 400 });
   }
 
-  const marketplaceAccessCheck = await getAccountAccess(accountId);
+  // Creating a job is a POST action (EXECUTION_PLAN §3); blocked in Month 0.
+  const marketplaceAccessCheck = await getPostAccess(accountId);
   let pickupAt: Date;
   try {
     pickupAt = getJobPickupAt(validation.data.jobDate, validation.data.pickupTime, account, validation.data.pickupTimeZone);
