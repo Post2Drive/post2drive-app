@@ -728,6 +728,7 @@ model JobActivity {
   @@index([jobId, createdAt])
   @@index([actorId, createdAt])
   @@index([action, createdAt])
+  @@index([actorId, action, createdAt])
 }
 
 
