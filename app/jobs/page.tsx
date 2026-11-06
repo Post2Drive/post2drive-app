@@ -59,7 +59,11 @@ type Job = {
   dropoffContactPhone: string | null;
   poster: Contact;
   acceptedBy: Contact | null;
+  driverRecord?: { driverName: string; licenceLast4: string | null; vehicleRegPlate: string } | null;
 };
+
+type FleetDriverForm = { driverName: string; driverLicenceNumber: string; vehicleId: string };
+type OwnVehicle = { id: string; regPlate: string; vehicleType: string; verificationStatus: string };
 
 type Bid = {
   id: string;
@@ -240,6 +244,11 @@ export default function JobsPage() {
   const [tab, setTab] =
     useState("open");
 
+  // Fleet accounts name the driver, licence and vehicle for every job they take (§6).
+  const [isFleet, setIsFleet] = useState(false);
+  const [ownVehicles, setOwnVehicles] = useState<OwnVehicle[]>([]);
+  const [fleetDrivers, setFleetDrivers] = useState<Record<string, FleetDriverForm>>({});
+
   const [vehicleFilter, setVehicleFilter] = useState("all");
   const [sortBy, setSortBy] = useState<"newest" | "pickup" | "price">("newest");
 
@@ -316,9 +325,57 @@ export default function JobsPage() {
     loadJobs();
   }, []);
 
+  useEffect(() => {
+    fetch("/api/vehicles")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!data) return;
+        setIsFleet(Boolean(data.fleet));
+        setOwnVehicles((data.vehicles || []).filter((vehicle: OwnVehicle) => vehicle.verificationStatus === "verified"));
+      })
+      .catch(() => undefined);
+  }, []);
+
+  function fleetDriverFor(jobId: string): FleetDriverForm {
+    return fleetDrivers[jobId] ?? { driverName: "", driverLicenceNumber: "", vehicleId: "" };
+  }
+
+  function updateFleetDriver(jobId: string, field: keyof FleetDriverForm, value: string) {
+    setFleetDrivers((current) => ({ ...current, [jobId]: { ...fleetDriverFor(jobId), [field]: value } }));
+  }
+
+  function renderFleetDriverFields(job: Job) {
+    if (!isFleet) return null;
+    const form = fleetDriverFor(job.id);
+    const vehicles = ownVehicles.filter((vehicle) => vehicle.vehicleType === job.vehicleType);
+    return (
+      <fieldset style={{ border: "1px solid var(--color-border)", borderRadius: 8, padding: 12, margin: "8px 0", display: "grid", gap: 8 }}>
+        <legend style={{ fontSize: 14, fontWeight: 600 }}>Driver for this job</legend>
+        <label style={{ display: "grid", gap: 4, fontSize: 14 }}>
+          Driver name
+          <input value={form.driverName} maxLength={100} autoComplete="off" onChange={(e) => updateFleetDriver(job.id, "driverName", e.target.value)} />
+        </label>
+        <label style={{ display: "grid", gap: 4, fontSize: 14 }}>
+          Driving licence number
+          <input value={form.driverLicenceNumber} maxLength={24} autoComplete="off" onChange={(e) => updateFleetDriver(job.id, "driverLicenceNumber", e.target.value)} />
+        </label>
+        <label style={{ display: "grid", gap: 4, fontSize: 14 }}>
+          Vehicle
+          <select value={form.vehicleId} onChange={(e) => updateFleetDriver(job.id, "vehicleId", e.target.value)}>
+            <option value="">Select an approved vehicle</option>
+            {vehicles.map((vehicle) => <option key={vehicle.id} value={vehicle.id}>{vehicle.regPlate}</option>)}
+          </select>
+        </label>
+        {vehicles.length === 0 && <small>No approved vehicle of this type on your account.</small>}
+        <small>The poster sees the driver name, the last 4 characters of the licence and the registration after the job is matched.</small>
+      </fieldset>
+    );
+  }
+
   async function post(
     path: string,
-    confirmMsg?: string
+    confirmMsg?: string,
+    body?: unknown
   ) {
     if (actionInFlight.current) {
       setMessage("Another job action is still in progress. Please wait.");
@@ -342,6 +399,7 @@ export default function JobsPage() {
       const res =
         await fetch(path, {
           method: "POST",
+          ...(body === undefined ? {} : { headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }),
         });
 
       const data =
@@ -373,7 +431,9 @@ export default function JobsPage() {
   ) {
     if (
       await post(
-        `/api/jobs/${jobId}/accept`
+        `/api/jobs/${jobId}/accept`,
+        undefined,
+        isFleet ? fleetDriverFor(jobId) : undefined
       )
     ) {
       setMessage(
@@ -541,6 +601,7 @@ export default function JobsPage() {
             body:
               JSON.stringify({
                 amount,
+                ...(isFleet ? fleetDriverFor(jobId) : {}),
               }),
           }
         );
@@ -1024,15 +1085,18 @@ export default function JobsPage() {
                     "open" &&
                   job.priceMode ===
                     "fixed" && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        handleAccept(job.id)
-                      }
-                      style={primaryButtonStyle}
-                    >
-                      Accept this job
-                    </button>
+                    <div>
+                      {renderFleetDriverFields(job)}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleAccept(job.id)
+                        }
+                        style={primaryButtonStyle}
+                      >
+                        Accept this job
+                      </button>
+                    </div>
                   )}
 
                 {canAccept &&
@@ -1042,6 +1106,8 @@ export default function JobsPage() {
                   accountCountry !== "IN" &&
                   job.priceMode ===
                     "bid" && (
+                    <div>
+                    {renderFleetDriverFields(job)}
                     <div
                       style={{
                         display:
@@ -1085,6 +1151,7 @@ export default function JobsPage() {
                       >
                         Place bid
                       </button>
+                    </div>
                     </div>
                   )}
 
@@ -1291,6 +1358,15 @@ export default function JobsPage() {
                             }
                           </p>
                         )}
+
+                      {isOwner && job.driverRecord && (
+                        <p>
+                          <strong>Assigned driver:</strong>{" "}
+                          {job.driverRecord.driverName}
+                          {job.driverRecord.licenceLast4 ? ` · licence ending ${job.driverRecord.licenceLast4}` : ""}
+                          {` · vehicle ${job.driverRecord.vehicleRegPlate}`}
+                        </p>
+                      )}
 
                       {isAcceptedDriver && (
                         <p>
