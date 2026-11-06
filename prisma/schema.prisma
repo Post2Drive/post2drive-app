@@ -169,6 +169,8 @@ model Account {
   bids         Bid[]
 
   vehicles Vehicle[]
+  insurancePolicyReviews InsurancePolicyReview[]
+  driverIdentity DriverIdentity?
 
   ratingsGiven    Rating[] @relation("RatingsGiven")
   ratingsReceived Rating[] @relation("RatingsReceived")
@@ -322,10 +324,88 @@ model Vehicle {
   motValidUntil       DateTime?
   insuranceValidUntil DateTime?
 
+  // Ownership and insurance evidence checked at admin approval (EXECUTION_PLAN §6).
+  registeredKeeperType      String? // company | individual
+  registeredKeeperName      String?
+  leaseAgreementUrl         String?
+  insurancePolicyholderName String?
+  insuranceCoverType        String? // hire_and_reward | fleet | other
+  insurancePolicyNumber     String?
+
+  // Admin review outcome. A rejection opens a free correction window.
+  reviewedAt         DateTime?
+  rejectionReason    String?
+  rejectionCount     Int       @default(0)
+  correctionDeadline DateTime?
+
+  // Pending 0.50 fee for a vehicle beyond the first (never marked paid here).
+  // Interim storage until the shared verification-fee record from #176 lands.
+  additionalVehicleFeeMinorUnits Int?
+  additionalVehicleFeeCurrency   String?
+  additionalVehicleFeeStatus     VerificationFeeStatus?
+
+  jobDriverAssignments JobDriverAssignment[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([regPlate])
+  @@index([accountId])
+  @@index([verificationStatus, createdAt])
+}
+
+/// One insurance policy reviewed once per account; later vehicles on the same
+/// policy (same policyholder + policy number) show it as already reviewed.
+model InsurancePolicyReview {
+  id        String  @id @default(cuid())
+  account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  accountId String
+
+  policyKey        String
+  policyholderName String
+  policyNumber     String
+  coverType        String
+  reviewedBy       String
+  reviewedAt       DateTime @default(now())
+
+  @@unique([accountId, policyKey])
+}
+
+/// The one verified person who drives for an account. The licence number is
+/// stored only as a keyed hash (unique across accounts) plus its last 4 characters.
+model DriverIdentity {
+  id        String  @id @default(cuid())
+  account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  accountId String  @unique
+
+  licenceHash  String @unique
+  licenceLast4 String
+
+  createdAt DateTime @default(now())
+}
+
+/// Who drives a matched job and in which vehicle. Fleets declare it per job;
+/// individual drivers get their own identity and approved vehicle recorded.
+model JobDriverAssignment {
+  id    String @id @default(cuid())
+  job   Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  jobId String @unique
+
+  accountId String
+
+  vehicle         Vehicle? @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  vehicleId       String?
+  vehicleRegPlate String
+  vehicleType     String
+
+  driverName   String
+  licenceHash  String?
+  licenceLast4 String?
+  source       String // fleet_declared | account_driver
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([accountId])
 }
 
@@ -446,6 +526,7 @@ model Job {
   receivedConfirmedAt   DateTime?
 
   bids Bid[]
+  driverAssignment JobDriverAssignment?
 
   ratings Rating[]
 
@@ -476,6 +557,12 @@ model Bid {
   amount Float
 
   status BidStatus @default(active)
+
+  // Fleet bids declare the driver and vehicle up front; copied to the job on award.
+  fleetDriverName         String?
+  fleetDriverLicenceHash  String?
+  fleetDriverLicenceLast4 String?
+  fleetVehicleId          String?
 
   createdAt DateTime @default(now())
 
