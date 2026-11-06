@@ -1,4 +1,5 @@
 import { withApiMetrics } from "@/lib/apiMetrics";
+import { enforceRateLimit } from "@/lib/rateLimit";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -7,7 +8,7 @@ import {
 } from "@/lib/verification";
 import { ORDER_BLOCK_MESSAGES } from "@/lib/verificationProcess";
 
-async function POSTHandler() {
+async function POSTHandler(req: Request) {
   const session = await getServerSession(authOptions);
 
   if (!session) {
@@ -18,6 +19,8 @@ async function POSTHandler() {
   if (!accountId) {
     return NextResponse.json({ error: "Account not found." }, { status: 404 });
   }
+  const writeLimit = await enforceRateLimit(req, { scope: "verification-start", identity: accountId, limit: 10, windowMs: 60 * 60 * 1000 });
+  if (writeLimit) return writeLimit;
 
   try {
     const userId = (session.user as any)?.id as string | undefined;

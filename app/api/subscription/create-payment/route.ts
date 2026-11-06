@@ -1,4 +1,5 @@
 import { withApiMetrics } from "@/lib/apiMetrics";
+import { enforceRateLimit } from "@/lib/rateLimit";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -13,7 +14,7 @@ const SAFE_CLIENT_ERRORS = new Set([
   "No payment is due yet. Billing starts with your first posted job or first approved vehicle, after any free launch period.",
 ]);
 
-async function POSTHandler() {
+async function POSTHandler(req: Request) {
   const session = await getServerSession(authOptions);
 
   if (!session?.user?.accountId) {
@@ -22,6 +23,9 @@ async function POSTHandler() {
       { status: 401 }
     );
   }
+  const accountId = session.user.accountId;
+  const writeLimit = await enforceRateLimit(req, { scope: "subscription-create-payment", identity: accountId, limit: 10, windowMs: 60 * 60 * 1000 });
+  if (writeLimit) return writeLimit;
 
   try {
     const payment = await createPendingSubscriptionPayment(

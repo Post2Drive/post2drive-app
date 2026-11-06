@@ -1,4 +1,5 @@
 import { withApiMetrics } from "@/lib/apiMetrics";
+import { enforceRateLimit } from "@/lib/rateLimit";
 import { requireJobMarketAccess } from "@/lib/jobMarket";
 import { NextResponse } from "next/server";
 import { readBoundedJson } from "@/lib/requestBody";
@@ -21,6 +22,8 @@ async function POSTHandler(req: Request, { params }: RouteContext) {
   }
   const marketAccessError = await requireJobMarketAccess(accountId, jobId);
   if (marketAccessError) return marketAccessError;
+  const writeLimit = await enforceRateLimit(req, { scope: "job-incident-update", identity: accountId, limit: 30, windowMs: 60 * 60 * 1000 });
+  if (writeLimit) return writeLimit;
 
   const job = await prisma.job.findUnique({ where: { id: jobId } });
   if (!job) return NextResponse.json({ error: "Job not found." }, { status: 404 });

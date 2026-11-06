@@ -1,4 +1,5 @@
 import { withApiMetrics } from "@/lib/apiMetrics";
+import { enforceRateLimit } from "@/lib/rateLimit";
 import { NextResponse } from "next/server";
 import { timingSafeEqual } from "node:crypto";
 import { readBoundedJson } from "@/lib/requestBody";
@@ -16,6 +17,8 @@ function constantTimeSecretEqual(expected: string, supplied: string) {
 }
 
 async function POSTHandler(req: Request) {
+  const webhookLimit = await enforceRateLimit(req, { scope: "verification-webhook", limit: 300, windowMs: 60 * 1000 });
+  if (webhookLimit) return webhookLimit;
   const secret = process.env.VERIFICATION_WEBHOOK_SECRET;
   if (!secret) {
     return NextResponse.json({ error: "Verification webhook is not configured." }, { status: 503 });
