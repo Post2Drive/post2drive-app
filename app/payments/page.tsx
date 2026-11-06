@@ -28,6 +28,9 @@ type PaymentData = {
   country: string;
   asPoster: PaymentJob[];
   asDriver: PaymentJob[];
+  asPosterHasMore?: boolean;
+  asDriverHasMore?: boolean;
+  listCap?: number;
 
   posterSummary: {
     jobsDone: number;
@@ -304,6 +307,13 @@ export default function PaymentsPage() {
           </span>
         </div>
 
+        {data.asPosterHasMore ? (
+          <p style={muted}>
+            Showing your {data.asPoster.length} most recent jobs. Totals above include all{" "}
+            {data.posterSummary.jobsDone} completed jobs.
+          </p>
+        ) : null}
+
         {data.asPoster.length === 0 ? (
           <Empty text="No completed jobs as poster yet." />
         ) : (
@@ -398,6 +408,13 @@ export default function PaymentsPage() {
             </strong>
           </span>
         </div>
+
+        {data.asDriverHasMore ? (
+          <p style={muted}>
+            Showing your {data.asDriver.length} most recent jobs. Totals above include all{" "}
+            {data.driverSummary.jobsDone} completed jobs.
+          </p>
+        ) : null}
 
         {data.asDriver.length === 0 ? (
           <Empty text="No completed jobs as driver yet." />
