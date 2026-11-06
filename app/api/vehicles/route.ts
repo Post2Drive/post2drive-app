@@ -7,6 +7,76 @@ import { prisma } from "@/lib/prisma";
 import { VEHICLE_TYPES } from "@/lib/vehicles";
 import { getLocalisationProfile, getJurisdictionOptions } from "@/lib/localisation";
 import { marketDateKey, parseOptionalDateField } from "@/lib/vehicleDates";
+import { VERIFICATION_FEES } from "@/lib/pricing";
+import { majorUnitsToMinorUnits } from "@/lib/currencyMinorUnits";
+import { chargesAdditionalVehicleFee, isFleetAccount, isInsuranceCoverType, isKeeperType } from "@/lib/vehicleApproval";
+
+/**
+ * 0.50 fee for every vehicle beyond the first (EXECUTION_PLAN §5), recorded as
+ * pending/unpaid and never marked paid here. Interim storage on the Vehicle row.
+ * TODO: switch to recordVerificationFee from lib/verificationFees.ts (#176) after merge
+ * (action "vehicle_added", line additionalVehicle x1, idempotencyKey per vehicle).
+ */
+function additionalVehicleFeeData(existingVehicleCount: number, account: { country: string; currency: string }) {
+  if (!chargesAdditionalVehicleFee(existingVehicleCount, account)) return {};
+  return {
+    additionalVehicleFeeMinorUnits: majorUnitsToMinorUnits(VERIFICATION_FEES.additionalVehicle, account.currency),
+    additionalVehicleFeeCurrency: account.currency,
+    additionalVehicleFeeStatus: "unpaid" as const,
+  };
+}
+
+function validHttpUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Ownership and insurance evidence (EXECUTION_PLAN §6). Optional at submission so
+ * a vehicle can be saved and completed later; required by the admin approval rules.
+ */
+function parseOwnershipEvidence(body: Record<string, unknown>) {
+  const text = (key: string, max: number) => {
+    const value = body[key];
+    if (value === undefined || value === null) return { value: undefined as string | null | undefined };
+    if (typeof value !== "string") return { error: true as const };
+    const trimmed = value.trim();
+    if (trimmed.length > max) return { error: true as const };
+    return { value: trimmed || null };
+  };
+  const keeperType = text("registeredKeeperType", 20);
+  const keeperName = text("registeredKeeperName", 120);
+  const leaseUrl = text("leaseAgreementUrl", 500);
+  const policyholder = text("insurancePolicyholderName", 120);
+  const coverType = text("insuranceCoverType", 20);
+  const policyNumber = text("insurancePolicyNumber", 60);
+  if ("error" in keeperType || (keeperType.value && !isKeeperType(keeperType.value))) {
+    return { error: "Select whether the registered keeper is a company or an individual." };
+  }
+  if ("error" in keeperName) return { error: "Registered keeper name must be 120 characters or fewer." };
+  if ("error" in leaseUrl || (leaseUrl.value && !validHttpUrl(leaseUrl.value))) {
+    return { error: "Lease or hire agreement must be a valid HTTP or HTTPS URL." };
+  }
+  if ("error" in policyholder) return { error: "Insurance policyholder name must be 120 characters or fewer." };
+  if ("error" in coverType || (coverType.value && !isInsuranceCoverType(coverType.value))) {
+    return { error: "Select the insurance cover type." };
+  }
+  if ("error" in policyNumber) return { error: "Insurance policy number must be 60 characters or fewer." };
+  return {
+    data: {
+      registeredKeeperType: keeperType.value,
+      registeredKeeperName: keeperName.value,
+      leaseAgreementUrl: leaseUrl.value,
+      insurancePolicyholderName: policyholder.value,
+      insuranceCoverType: coverType.value,
+      insurancePolicyNumber: policyNumber.value,
+    },
+  };
+}
 
 async function currentAccount() {
   const session = await getServerSession(authOptions);
@@ -29,7 +99,8 @@ async function GETHandler() {
       orderBy: { createdAt: "desc" },
     });
 
-    return NextResponse.json({ vehicles, isTester: account.isTester, testerApprovalStatus: account.testerApprovalStatus, market: { country: account.country, currency: account.currency } });
+    // Same rule the accept/bid routes use to require a per-job driver declaration.
+    return NextResponse.json({ vehicles, fleet: isFleetAccount(account), isTester: account.isTester, testerApprovalStatus: account.testerApprovalStatus, market: { country: account.country, currency: account.currency } });
   } catch (error) {
     console.error("Vehicle list failed.", { errorName: error instanceof Error ? error.name : "UnknownError" });
     return NextResponse.json({ error: "Could not load vehicles." }, { status: 500 });
@@ -79,6 +150,8 @@ async function POSTHandler(req: Request) {
     if (insuranceDate.error) return NextResponse.json({ error: insuranceDate.error }, { status: 400 });
     const motValidUntil = motDate.date;
     const insuranceValidUntil = insuranceDate.date;
+    const evidence = parseOwnershipEvidence(body);
+    if ("error" in evidence) return NextResponse.json({ error: evidence.error }, { status: 400 });
 
     if (!(VEHICLE_TYPES as readonly string[]).includes(vehicleType)) {
       return NextResponse.json({ error: "Select a valid vehicle type." }, { status: 400 });
@@ -144,8 +217,8 @@ async function POSTHandler(req: Request) {
       if (duplicate) return null;
 
       // Enforce fleet vehicle count cap (null = uncapped for legacy accounts)
+      const existing = await tx.vehicle.count({ where: { accountId: account.id } });
       if (account.fleetVehicleCount != null) {
-        const existing = await tx.vehicle.count({ where: { accountId: account.id } });
         if (existing >= account.fleetVehicleCount) {
           return { limitExceeded: true } as const;
         }
@@ -166,6 +239,8 @@ async function POSTHandler(req: Request) {
           operatorLicenceNo: operatorLicenceNo || null,
           motValidUntil,
           insuranceValidUntil,
+          ...evidence.data,
+          ...additionalVehicleFeeData(existing, account),
           verificationStatus: "pending",
           verifiedAt: null,
         },
@@ -192,5 +267,81 @@ async function POSTHandler(req: Request) {
   }
 }
 
+/**
+ * Owner updates documents/evidence on their own vehicle. Any change sends the vehicle
+ * back to admin review (a verified vehicle stops qualifying until re-approved). A
+ * rejected vehicle can be corrected free of charge only inside its correction window.
+ */
+async function PATCHHandler(req: Request) {
+  try {
+    const account = await currentAccount();
+    if (!account) {
+      return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+    }
+    if (account.verificationStatus === "suspended") {
+      return NextResponse.json({ error: "Suspended accounts cannot update vehicles." }, { status: 403 });
+    }
+    const parsedBody = await readBoundedJson(req, 16 * 1024);
+    if (!parsedBody.ok) {
+      return NextResponse.json(
+        { error: parsedBody.status === 413 ? "Request body is too large." : "Invalid request body." },
+        { status: parsedBody.status },
+      );
+    }
+    if (!parsedBody.value || typeof parsedBody.value !== "object" || Array.isArray(parsedBody.value)) {
+      return NextResponse.json({ error: "Request body must be valid JSON." }, { status: 400 });
+    }
+    const body = parsedBody.value as Record<string, unknown>;
+    const vehicleId = typeof body.vehicleId === "string" ? body.vehicleId.trim() : "";
+    if (!vehicleId || vehicleId.length > 40) {
+      return NextResponse.json({ error: "Choose a vehicle to update." }, { status: 400 });
+    }
+    const evidence = parseOwnershipEvidence(body);
+    if ("error" in evidence) return NextResponse.json({ error: evidence.error }, { status: 400 });
+
+    const documents: Record<string, string | null> = {};
+    for (const key of ["v5cDocumentUrl", "insuranceDocumentUrl"] as const) {
+      if (body[key] === undefined) continue;
+      const value = typeof body[key] === "string" ? (body[key] as string).trim() : "";
+      if (value && (value.length > 500 || !validHttpUrl(value))) {
+        return NextResponse.json({ error: "Document links must be valid HTTP or HTTPS URLs." }, { status: 400 });
+      }
+      documents[key] = value || null;
+    }
+    const dates: Record<string, Date | null> = {};
+    for (const [key, label] of [["motValidUntil", "Inspection expiry date"], ["insuranceValidUntil", "Insurance expiry date"]] as const) {
+      if (body[key] === undefined) continue;
+      const parsed = parseOptionalDateField(body[key], label);
+      if (parsed.error) return NextResponse.json({ error: parsed.error }, { status: 400 });
+      dates[key] = parsed.date;
+    }
+
+    const vehicle = await prisma.vehicle.findFirst({
+      where: { id: vehicleId, accountId: account.id },
+      select: { id: true, verificationStatus: true, correctionDeadline: true },
+    });
+    if (!vehicle) return NextResponse.json({ error: "Vehicle not found." }, { status: 404 });
+    if (vehicle.verificationStatus === "failed" && (!vehicle.correctionDeadline || vehicle.correctionDeadline < new Date())) {
+      return NextResponse.json({ error: "The free correction window for this vehicle has closed. A new check is needed; contact support to start one." }, { status: 409 });
+    }
+
+    const updated = await prisma.vehicle.update({
+      where: { id: vehicle.id },
+      data: {
+        ...Object.fromEntries(Object.entries(evidence.data).filter(([, value]) => value !== undefined)),
+        ...documents,
+        ...dates,
+        verificationStatus: "pending",
+        verifiedAt: null,
+      },
+    });
+    return NextResponse.json({ success: true, vehicle: updated, message: "Vehicle updated and sent for review. It cannot qualify for jobs until approved." });
+  } catch (error) {
+    console.error("Vehicle update failed.", { errorName: error instanceof Error ? error.name : "UnknownError" });
+    return NextResponse.json({ error: "Could not update vehicle." }, { status: 500 });
+  }
+}
+
 export const GET = withApiMetrics("/api/vehicles", GETHandler);
+export const PATCH = withApiMetrics("/api/vehicles", PATCHHandler);
 export const POST = withApiMetrics("/api/vehicles", POSTHandler);

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { VEHICLE_TYPES, vehicleTypeLabel } from "@/lib/vehicles";
+import { minorUnitsToMajorUnits } from "@/lib/currencyMinorUnits";
 import { getLocalisationProfile, formatMarketDate, getJurisdictionOptions, getJurisdictionAuthority } from "@/lib/localisation";
 
 type Vehicle = {
@@ -20,6 +21,19 @@ type Vehicle = {
   motValidUntil: string | null;
   insuranceValidUntil: string | null;
   verificationStatus: string;
+  registeredKeeperType: string | null;
+  registeredKeeperName: string | null;
+  insurancePolicyholderName: string | null;
+  insuranceCoverType: string | null;
+  rejectionReason: string | null;
+  correctionDeadline: string | null;
+  additionalVehicleFeeMinorUnits: number | null;
+};
+
+const COVER_LABELS: Record<string, string> = {
+  hire_and_reward: "Hire and reward (goods in transit for payment)",
+  fleet: "Fleet policy with commercial use",
+  other: "Other (for example social, domestic or business use only)",
 };
 
 const initialForm = {
@@ -35,6 +49,12 @@ const initialForm = {
   operatorLicenceNo: "",
   motValidUntil: "",
   insuranceValidUntil: "",
+  registeredKeeperType: "individual",
+  registeredKeeperName: "",
+  leaseAgreementUrl: "",
+  insurancePolicyholderName: "",
+  insuranceCoverType: "hire_and_reward",
+  insurancePolicyNumber: "",
 };
 
 export default function VehiclesPage() {
@@ -50,6 +70,11 @@ export default function VehiclesPage() {
   const [error, setError] = useState("");
   const [loadError, setLoadError] = useState("");
   const [message, setMessage] = useState("");
+  const [isFleet, setIsFleet] = useState(false);
+  const [licence, setLicence] = useState<{ recorded: boolean; licenceLast4: string | null } | null>(null);
+  const [licenceInput, setLicenceInput] = useState("");
+  const [licenceStatus, setLicenceStatus] = useState<{ text: string; error: boolean } | null>(null);
+  const [licenceSaving, setLicenceSaving] = useState(false);
 
   const loadVehicles = useCallback(async () => {
     setLoading(true);
@@ -61,6 +86,7 @@ export default function VehiclesPage() {
       setVehicles(data.vehicles || []);
       if (data.market) setMarket({ country: data.market.country, currency: data.market.currency });
       setIsTester(Boolean(data.isTester));
+      setIsFleet(Boolean(data.fleet));
       setTesterApprovalStatus(data.testerApprovalStatus || null);
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : "Could not load vehicles.");
@@ -72,6 +98,35 @@ export default function VehiclesPage() {
   useEffect(() => {
     void loadVehicles();
   }, [loadVehicles]);
+
+  useEffect(() => {
+    fetch("/api/account/driver-licence")
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => { if (data) setLicence({ recorded: Boolean(data.recorded), licenceLast4: data.licenceLast4 ?? null }); })
+      .catch(() => undefined);
+  }, []);
+
+  async function saveLicence(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setLicenceSaving(true);
+    setLicenceStatus(null);
+    try {
+      const response = await fetch("/api/account/driver-licence", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ licenceNumber: licenceInput }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Could not record the driving licence.");
+      setLicence({ recorded: true, licenceLast4: data.licenceLast4 });
+      setLicenceInput("");
+      setLicenceStatus({ text: "Driving licence recorded.", error: false });
+    } catch (err) {
+      setLicenceStatus({ text: err instanceof Error ? err.message : "Could not record the driving licence.", error: true });
+    } finally {
+      setLicenceSaving(false);
+    }
+  }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -147,6 +202,27 @@ export default function VehiclesPage() {
       {loadError && <p role="alert" style={{ color: "var(--color-danger, #b91c1c)" }}>Could not refresh your vehicles: {loadError} <button type="button" onClick={() => void loadVehicles()} disabled={loading}>{loading ? "Retrying…" : "Retry"}</button></p>}
       {message && <p role="status">{message}</p>}
 
+      {market.country !== "IN" && !isFleet && (
+        <form aria-labelledby="driver-licence-heading" onSubmit={saveLicence} style={{ border: "1px solid var(--color-border)", borderRadius: 12, padding: 20, marginBottom: 20 }}>
+          <h2 id="driver-licence-heading" style={{ marginTop: 0 }}>Your driving licence</h2>
+          {licence?.recorded ? (
+            <p role="status">Recorded: licence ending {licence.licenceLast4}. Contact support to change it.</p>
+          ) : (
+            <>
+              <p style={{ fontSize: 14 }}>A licence can be the driver licence on only one Post2Drive account. We store a protected fingerprint and the last 4 characters, never the full number.</p>
+              <label style={{ display: "block", fontSize: 14 }}>
+                Driving licence number
+                <input style={fieldStyle} value={licenceInput} onChange={(event) => setLicenceInput(event.target.value)} required maxLength={24} autoComplete="off" />
+              </label>
+              <button type="submit" disabled={licenceSaving} style={{ padding: "11px 18px", minHeight: 44, borderRadius: 8, fontWeight: 650 }}>
+                {licenceSaving ? "Saving…" : "Record driving licence"}
+              </button>
+            </>
+          )}
+          {licenceStatus && <p role={licenceStatus.error ? "alert" : "status"} style={licenceStatus.error ? { color: "var(--color-danger, #b91c1c)" } : undefined}>{licenceStatus.text}</p>}
+        </form>
+      )}
+
       <form aria-labelledby="vehicle-registration-heading" onSubmit={submit} style={{ border: "1px solid var(--color-border)", borderRadius: 12, padding: 20 }}>
         <h2 id="vehicle-registration-heading" style={{ marginTop: 0 }}>Register a vehicle</h2>
         <label style={{ display: "block", fontSize: 14 }}>
@@ -191,8 +267,32 @@ export default function VehiclesPage() {
         {field("Model", "model")}
         {field(marketProfile?.vehicleMassLabel ?? "Maximum vehicle weight", "mamKg", "number")}
         {market.country !== "IN" && <>
-          {field(`${marketProfile?.registrationDocumentLabel ?? "Vehicle registration document"} URL (optional)`, "v5cDocumentUrl", "url")}
-          {field("Insurance document URL (optional)", "insuranceDocumentUrl", "url")}
+          {field(`${marketProfile?.registrationDocumentLabel ?? "Vehicle registration document"} URL (needed for approval)`, "v5cDocumentUrl", "url")}
+          {field("Insurance document URL (needed for approval)", "insuranceDocumentUrl", "url")}
+          <fieldset style={{ border: "1px solid var(--color-border)", borderRadius: 8, padding: 12, marginBottom: 14 }}>
+            <legend style={{ fontSize: 14, fontWeight: 600 }}>Ownership and insurance</legend>
+            <p style={{ fontSize: 14, marginTop: 0 }}>
+              Approval needs commercial cover (hire and reward, or a fleet policy).
+              {isFleet ? " For fleet accounts the registered keeper must be your company, or you must add a lease or hire agreement in the company's name, and the insurance policyholder must be the company." : ""}
+            </p>
+            <label style={{ display: "block", fontSize: 14 }}>
+              Registered keeper is
+              <select style={fieldStyle} value={form.registeredKeeperType} onChange={(event) => setForm((current) => ({ ...current, registeredKeeperType: event.target.value }))}>
+                <option value="individual">An individual</option>
+                <option value="company">A company</option>
+              </select>
+            </label>
+            {field("Registered keeper name (as on the registration document)", "registeredKeeperName")}
+            {field("Lease or hire agreement URL (if not kept by your company)", "leaseAgreementUrl", "url")}
+            {field("Insurance policyholder name", "insurancePolicyholderName")}
+            {field("Insurance policy number", "insurancePolicyNumber")}
+            <label style={{ display: "block", fontSize: 14 }}>
+              Insurance cover type
+              <select style={fieldStyle} value={form.insuranceCoverType} onChange={(event) => setForm((current) => ({ ...current, insuranceCoverType: event.target.value }))}>
+                {Object.entries(COVER_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+              </select>
+            </label>
+          </fieldset>
           {field("Operator licence number (if applicable)", "operatorLicenceNo")}
           {field(marketProfile?.inspectionLabel ?? "Inspection valid until (if required)", "motValidUntil", "date", !expiryDatesOptional && Boolean(marketProfile?.inspectionRequiredAtCountryLevel))}
           <small>{marketProfile?.inspectionHelp}</small>
@@ -213,6 +313,11 @@ export default function VehiclesPage() {
           <section key={vehicle.id} style={{ border: "1px solid var(--color-border)", borderRadius: 10, padding: 16 }}>
             <strong>{vehicleTypeLabel(vehicle.vehicleType, market.country)} — {vehicle.regPlate}</strong>{vehicle.registrationRegion ? <span> · {getJurisdictionOptions(market.country).find((region) => region.code === vehicle.registrationRegion)?.label ?? vehicle.registrationRegion}</span> : null}
             <p>Status: <strong>{vehicle.verificationStatus}</strong></p>
+            {vehicle.verificationStatus === "failed" && vehicle.rejectionReason && (
+              <p role="note">Not approved: {vehicle.rejectionReason}{vehicle.correctionDeadline ? ` Correct it free of charge by ${formatMarketDate(vehicle.correctionDeadline, market)}.` : " A new check is needed."}</p>
+            )}
+            <p>Cover: {vehicle.insuranceCoverType ? COVER_LABELS[vehicle.insuranceCoverType] ?? vehicle.insuranceCoverType : "Not recorded"} · Keeper: {vehicle.registeredKeeperName || "Not recorded"}</p>
+            {vehicle.additionalVehicleFeeMinorUnits ? <p>Additional vehicle check fee: {minorUnitsToMajorUnits(vehicle.additionalVehicleFeeMinorUnits, market.currency)} {market.currency} (payable; checkout not yet connected).</p> : null}
             <p>{[vehicle.make, vehicle.model, vehicle.mamKg ? `${marketProfile?.weightUnit === "lb" ? Math.round(vehicle.mamKg / 0.45359237).toLocaleString("en-US") + " lb GVWR" : vehicle.mamKg + " kg"}` : null].filter(Boolean).join(" · ") || "No additional vehicle details"}</p>
             <p>{marketProfile?.inspectionLabel ?? "Inspection expiry"}: {vehicle.motValidUntil ? formatMarketDate(vehicle.motValidUntil, market) : "Not recorded"}</p>
             <p>Insurance expiry: {vehicle.insuranceValidUntil ? formatMarketDate(vehicle.insuranceValidUntil, market) : "Not recorded"}</p>

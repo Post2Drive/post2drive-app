@@ -6,9 +6,11 @@ import { readBoundedJson } from "@/lib/requestBody";
 import { prisma } from "@/lib/prisma";
 import { requireJobMarketAccess } from "@/lib/jobMarket";
 import { enforceRateLimit } from "@/lib/rateLimit";
+import { initialVisibleAfter, isRatingReasonCode, ratingEligibility, ratingReasonRequired, RATING_REASONS } from "@/lib/ratingPolicy";
 
 // POST /api/ratings — rate the other party on a job you were matched on.
-// Only allowed once a job has reached completed or delivered status.
+// When a job can be rated, with what outcome label, and whether a reason is
+// required are decided by lib/ratingPolicy.ts (fair rating policy, §11).
 async function POSTHandler(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session) {
@@ -39,7 +41,7 @@ async function POSTHandler(req: Request) {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
   }
   const body = parsedBody.value as Record<string, unknown>;
-  const { jobId, stars, comment } = body;
+  const { jobId, stars, comment, reasonCode } = body;
   const numericStars = Number(stars);
 
   if (
@@ -56,66 +58,97 @@ async function POSTHandler(req: Request) {
     return NextResponse.json({ error: "Comments must be 1,000 characters or fewer." }, { status: 400 });
   }
 
+  if (reasonCode != null && !isRatingReasonCode(reasonCode)) {
+    return NextResponse.json({ error: "Choose a reason from the list." }, { status: 400 });
+  }
+
   const marketAccessError = await requireJobMarketAccess(accountId, jobId);
   if (marketAccessError) return marketAccessError;
 
   const job = await prisma.job.findUnique({
     where: { id: jobId },
-    select: { id: true, posterId: true, acceptedById: true, status: true },
+    select: { id: true, posterId: true, acceptedById: true, status: true, cancelledAt: true },
   });
   if (!job) {
     return NextResponse.json({ error: "Job not found." }, { status: 404 });
   }
 
-  const rateableStatuses = ["completed", "delivered"];
-  if (!rateableStatuses.includes(job.status)) {
-    return NextResponse.json(
-      { error: "Ratings can only be submitted once the job is completed." },
-      { status: 409 },
-    );
-  }
-
+  // Only the two parties who actually worked the job may rate each other.
+  // Drivers who backed out before pickup are handled by the cancellation record, not ratings.
   let rateeId: string | null = null;
-
-  if (job.posterId === accountId) {
-    rateeId = job.acceptedById;
-    if (!rateeId) {
-      const previousMatch = await prisma.jobActivity.findFirst({
-        where: { jobId, action: "DRIVER_BACKED_OUT", actorId: { not: null } },
-        orderBy: { createdAt: "desc" },
-        select: { actorId: true },
-      });
-      rateeId = previousMatch?.actorId ?? null;
-    }
-  } else if (job.acceptedById === accountId) {
-    rateeId = job.posterId;
-  } else {
-    const previousMatch = await prisma.jobActivity.findFirst({
-      where: { jobId, action: "DRIVER_BACKED_OUT", actorId: accountId },
-      select: { id: true },
-    });
-    if (previousMatch) rateeId = job.posterId;
-  }
-  if (!rateeId) {
+  if (job.posterId === accountId) rateeId = job.acceptedById;
+  else if (job.acceptedById && job.acceptedById === accountId) rateeId = job.posterId;
+  if (!rateeId || rateeId === accountId) {
     return NextResponse.json(
       { error: "You can only rate someone you were actually matched with on this job." },
       { status: 403 }
     );
   }
 
+  const latest = (action: string) => prisma.jobActivity.findFirst({
+    where: { jobId, action }, orderBy: { createdAt: "desc" }, select: { createdAt: true },
+  });
+  const [pickup, marked, confirmed] = await Promise.all([
+    latest("PICKUP_CONFIRMED"),
+    latest("DELIVERY_MARKED"),
+    latest("DELIVERY_CONFIRMED"),
+  ]);
+
+  const now = new Date();
+  const eligibility = ratingEligibility({
+    status: job.status,
+    cancelledAt: job.cancelledAt,
+    pickupConfirmedAt: pickup?.createdAt ?? null,
+    deliveryMarkedAt: marked?.createdAt ?? null,
+    deliveryConfirmedAt: confirmed?.createdAt ?? null,
+  }, now);
+  if (!eligibility.allowed) {
+    return NextResponse.json(
+      { error: eligibility.message, reason: eligibility.code, opensAt: eligibility.opensAt ?? null },
+      { status: 409 },
+    );
+  }
+
+  if (ratingReasonRequired(numericStars, eligibility.outcome) && !reasonCode) {
+    return NextResponse.json({
+      error: eligibility.outcome === "completed"
+        ? "Please choose a reason for a 1 or 2 star rating."
+        : "Please choose a reason: this job did not complete normally.",
+      reasons: RATING_REASONS,
+    }, { status: 400 });
+  }
+  const trimmedComment = typeof comment === "string" && comment.trim() ? comment.trim() : null;
+  if (reasonCode === "other" && !trimmedComment) {
+    return NextResponse.json({ error: "Please explain the reason in the comment." }, { status: 400 });
+  }
+
   // Use INSERT ... ON CONFLICT DO NOTHING through Prisma's PostgreSQL
   // skipDuplicates support. The unique (jobId, raterId) constraint remains
   // the final concurrency guard, without turning expected racing duplicates
   // into noisy Prisma P2002 error logs.
-  const result = await prisma.rating.createMany({
-    data: [{
-      jobId,
-      raterId: accountId,
-      rateeId,
-      stars: numericStars,
-      comment: typeof comment === "string" && comment.trim() ? comment.trim() : null,
-    }],
-    skipDuplicates: true,
+  const result = await prisma.$transaction(async (tx) => {
+    const counterpart = await tx.rating.findUnique({
+      where: { jobId_raterId: { jobId, raterId: rateeId! } },
+      select: { id: true },
+    });
+    const created = await tx.rating.createMany({
+      data: [{
+        jobId,
+        raterId: accountId,
+        rateeId: rateeId!,
+        stars: numericStars,
+        comment: trimmedComment,
+        outcome: eligibility.outcome,
+        reasonCode: typeof reasonCode === "string" ? reasonCode : null,
+        visibleAfter: initialVisibleAfter(eligibility, Boolean(counterpart), now),
+      }],
+      skipDuplicates: true,
+    });
+    // Blind ratings: once both sides have rated, both become visible.
+    if (created.count === 1 && counterpart) {
+      await tx.rating.update({ where: { id: counterpart.id }, data: { visibleAfter: now } });
+    }
+    return created;
   });
 
   if (result.count !== 1) {
