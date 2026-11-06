@@ -230,3 +230,19 @@ Implemented in `lib/ratingPolicy.ts` (rules), `app/api/ratings/route.ts` (enforc
 - **Average:** the public star average counts Completed ratings only. Not completed and Disputed ratings are shown separately with their label and reason.
 
 **Not yet built (follow-up):** showing cancellation history on profiles (the cancellation limit currently keeps only the latest canceller per job), hiding ratings while an incident is under admin review, and one public reply per rating. If both parties submit at the same instant, both ratings stay hidden until the window closes (no data loss).
+
+## 12. Notifications and reminders
+
+All notifications are stored in-app (`Notification`) through one helper, `lib/notify.ts`. A repeated `eventKey` is skipped silently, so retries and re-runs never duplicate. After storing, the helper offers the message to an optional push provider (`lib/pushProvider.ts`). **No push, SMS, email or payment provider is connected**; the push interface (`PushNotificationProvider` in `lib/providerContracts.ts`) is structure only and `getPushProvider()` returns `null`.
+
+**Two-party job steps** always notify the other party and say who acted; the actor is never notified:
+job accepted (to poster, "by the driver"), bid placed (to poster), bid accepted (to driver, "by the poster"), pickup confirmed by the poster/driver, delivery marked by the poster/driver ("please confirm" to the other side), delivery confirmed, delivery disputed, job cancelled by the poster, driver backed out, driver removed by the poster, incident reported / updated / job terminated by the poster/driver.
+
+**Matching job posted:** when a job is created, up to 200 drivers in the same market are told. A driver qualifies when person-verified, not deleted or suspended, has active drive access (not waitlisted), and has an approved vehicle of the job's type with current insurance and any required inspection. The poster is excluded. Failures never fail job creation.
+
+**Reminders** (`runScheduledNotifications`, using each account's market timezone for "today"/"tomorrow"):
+- Vehicle insurance and MOT/inspection expiry: 7 days before, 1 day before and on the expiry day, to the vehicle's owner.
+- Free correction deadlines (vehicle, identity check, company): 1 day before.
+- Plan billing: 1 day before a chargeable period renews ("Your plan renews tomorrow: <price> will be due") and 1 day before a free window or trial ends. While `PAYMENT_PROVIDER_CONNECTED` is false the wording says "will be due", never "will be charged".
+
+**Scheduler setup:** call `POST /api/internal/notifications/run` once a day (for example a Railway cron) with header `x-scheduler-secret: $POST2DRIVE_SCHEDULER_SECRET`. The route returns 503 when the secret is not set, 401 on a wrong secret, and is rate limited. Running it more often is harmless because every reminder has a unique `eventKey`. No cron service is created by this code.

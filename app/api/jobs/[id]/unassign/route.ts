@@ -1,3 +1,4 @@
+import { notify } from "@/lib/notify";
 import { withApiMetrics } from "@/lib/apiMetrics";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { requireJobMarketAccess } from "@/lib/jobMarket";
@@ -107,15 +108,14 @@ async function POSTHandler(
     });
 
     if (previousDriverId && previousDriverId !== accountId) {
-      await tx.notification.create({
-        data: {
-          accountId: previousDriverId,
-          type: "driver_unassigned",
-          title: "You were removed from an assigned job",
-          body: `The poster reopened job ${routeParams.id} before pickup. The job is available for another driver.`,
-          jobId: routeParams.id,
-          eventKey: `job-unassigned:${routeParams.id}:${cancelledAt.toISOString()}`,
-        },
+      await notify(tx, {
+        accountId: previousDriverId,
+        type: "driver_unassigned",
+        title: "You were removed from the job by the poster",
+        body: `The poster reopened job ${routeParams.id} before pickup. The job is available for another driver.`,
+        jobId: routeParams.id,
+        eventKey: `job-unassigned:${routeParams.id}:${cancelledAt.toISOString()}`,
+        metadata: { actorRole: "poster" },
       });
     }
 

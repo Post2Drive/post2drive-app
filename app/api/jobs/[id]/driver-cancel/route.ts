@@ -1,3 +1,4 @@
+import { notify } from "@/lib/notify";
 import { withApiMetrics } from "@/lib/apiMetrics";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { requireJobMarketAccess } from "@/lib/jobMarket";
@@ -111,15 +112,14 @@ async function POSTHandler(
       },
     });
 
-    await tx.notification.create({
-      data: {
-        accountId: job.posterId,
-        type: "driver_withdrew",
-        title: "The assigned driver backed out",
-        body: `The driver withdrew from job ${routeParams.id} before pickup. The job is open for another driver.`,
-        jobId: routeParams.id,
-        eventKey: `driver-backed-out:${routeParams.id}:${cancelledAt.toISOString()}`,
-      },
+    await notify(tx, {
+      accountId: job.posterId,
+      type: "driver_withdrew",
+      title: "The driver backed out",
+      body: `The driver withdrew from job ${routeParams.id} before pickup. The job is open for another driver.`,
+      jobId: routeParams.id,
+      eventKey: `driver-backed-out:${routeParams.id}:${cancelledAt.toISOString()}`,
+      metadata: { actorRole: "driver" },
     });
 
     return tx.job.findUniqueOrThrow({ where: { id: routeParams.id } });

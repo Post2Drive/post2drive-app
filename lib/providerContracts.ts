@@ -76,3 +76,21 @@ export type ProviderReadiness =
  * successful verification, a captured payment, or a settled payout. Those
  * state transitions belong to the relevant verified callback/workflow.
  */
+
+/**
+ * Push notifications (FCM/APNs/web push). Structure only: no adapter is
+ * connected. In-app Notification rows are the source of truth; a push is a
+ * best-effort extra that must never fail or roll back the business action.
+ */
+export interface PushNotificationMessage {
+  accountId: string;
+  title: string;
+  body: string;
+  jobId?: string | null;
+  type: string;
+}
+
+export interface PushNotificationProvider {
+  readonly providerId: string;
+  send(message: PushNotificationMessage): Promise<DeliveryResult>;
+}

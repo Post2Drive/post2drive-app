@@ -1,3 +1,4 @@
+import { notify } from "@/lib/notify";
 import { withApiMetrics } from "@/lib/apiMetrics";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { requireJobMarketAccess } from "@/lib/jobMarket";
@@ -89,18 +90,16 @@ async function POSTHandler(
 
     const recipientId = job.posterId === accountId ? job.acceptedById : job.posterId;
     if (recipientId && recipientId !== accountId) {
+      const actorRole = job.posterId === accountId ? "poster" : "driver";
       const eventKey = `delivery-marked:${routeParams.id}:${accountId}`;
-      await tx.notification.upsert({
-        where: { eventKey },
-        update: {},
-        create: {
-          accountId: recipientId,
-          type: "delivery_marked",
-          title: "Delivery awaiting confirmation",
-          body: `Job ${routeParams.id} was marked delivered. Please review and confirm or report a delivery issue.`,
-          jobId: routeParams.id,
-          eventKey,
-        },
+      await notify(tx, {
+        accountId: recipientId,
+        type: "delivery_marked",
+        title: `Delivery marked by the ${actorRole} - please confirm`,
+        body: `Job ${routeParams.id} was marked delivered by the ${actorRole}. Please confirm the delivery in the app, or report a problem if it has not arrived.`,
+        jobId: routeParams.id,
+        eventKey,
+        metadata: { actorRole, actionRequired: "confirm_delivery" },
       });
     }
 

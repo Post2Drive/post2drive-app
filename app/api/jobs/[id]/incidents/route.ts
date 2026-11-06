@@ -1,3 +1,4 @@
+import { notify } from "@/lib/notify";
 import { withApiMetrics } from "@/lib/apiMetrics";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { requireJobMarketAccess } from "@/lib/jobMarket";
@@ -168,16 +169,14 @@ async function POSTHandler(req: Request, { params }: RouteContext) {
     });
 
     if (targetAccountId && targetAccountId !== accountId) {
-      await tx.notification.create({
-        data: {
-          accountId: targetAccountId,
-          type: "job_incident",
-          title: "New incident reported on a job",
-          body: `An incident was reported for job ${id}. Open the job incident history to review the details.`,
-          jobId: id,
-          eventKey: `incident:${created.id}:reported:${targetAccountId}`,
-          metadata: { incidentId: created.id, reason, reporterRole },
-        },
+      await notify(tx, {
+        accountId: targetAccountId,
+        type: "job_incident",
+        title: `Incident reported by the ${reporterRole}`,
+        body: `The ${reporterRole} reported an incident for job ${id}. Open the job incident history to review the details.`,
+        jobId: id,
+        eventKey: `incident:${created.id}:reported:${targetAccountId}`,
+        metadata: { incidentId: created.id, reason, reporterRole },
       });
     }
     return created;
