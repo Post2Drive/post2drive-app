@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { RATING_REASONS, type RatingReasonCode } from "@/lib/ratingPolicy";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { COUNTRIES } from "@/lib/currency";
@@ -61,7 +62,7 @@ export default function ProfilePage() {
     );
   }
 
-  const { account, avgRating, ratingCount, recentRatings, jobsPosted, jobsCompleted } = data;
+  const { account, avgRating, ratingCount, recentRatings, jobsPosted, jobsCompleted, notCompletedRatingCount = 0, disputedRatingCount = 0 } = data;
   const days = Math.floor((Date.now() - new Date(account.createdAt).getTime()) / (1000 * 60 * 60 * 24));
   const countryName = COUNTRIES.find((market) => market.code === account.country)?.name ?? account.country;
 
@@ -78,6 +79,11 @@ export default function ProfilePage() {
 
       <p>
         {avgRating ? `★ ${avgRating.toFixed(1)} (${ratingCount} rating${ratingCount === 1 ? "" : "s"})` : "No ratings yet"}
+        {(notCompletedRatingCount > 0 || disputedRatingCount > 0) && (
+          <span style={{ display: "block", fontSize: 13, color: "var(--color-muted)" }}>
+            Not counted in the average: {notCompletedRatingCount} not completed · {disputedRatingCount} disputed
+          </span>
+        )}
         {" · "}
         {jobsCompleted} job{jobsCompleted === 1 ? "" : "s"} completed · {jobsPosted} posted
       </p>
@@ -100,7 +106,15 @@ export default function ProfilePage() {
       <ul style={{ listStyle: "none", padding: 0 }}>
         {recentRatings.map((r: any, i: number) => (
           <li key={i} style={{ borderBottom: "1px solid var(--color-border)", padding: "8px 0" }}>
-            {"★".repeat(r.stars)}
+            <span aria-label={`${r.stars} out of 5 stars`}>{"★".repeat(r.stars)}</span>
+            {r.outcome && r.outcome !== "completed" && (
+              <span style={{ marginLeft: 8, fontSize: 12, fontWeight: 700, color: "var(--color-muted)" }}>
+                {r.outcome === "disputed" ? "Disputed job" : "Job not completed"}
+              </span>
+            )}
+            {r.reasonCode && RATING_REASONS[r.reasonCode as RatingReasonCode] && (
+              <p style={{ margin: "4px 0 0", fontSize: 13 }}>Reason: {RATING_REASONS[r.reasonCode as RatingReasonCode]}</p>
+            )}
             {r.comment && <p>{r.comment}</p>}
             <p style={{ color: "var(--color-muted)", fontSize: 12 }}>{formatMarketDate(r.createdAt, { country: account.country, currency: account.currency })}</p>
           </li>

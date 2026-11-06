@@ -285,9 +285,17 @@ model Rating {
   stars   Int
   comment String?
 
+  /// "completed" | "not_completed" | "disputed" (lib/ratingPolicy.ts)
+  outcome    String  @default("completed")
+  /// Required for 1-2 stars and for not_completed / disputed ratings.
+  reasonCode String?
+  /// Blind ratings: hidden from the ratee's profile until this time.
+  visibleAfter DateTime @default(now())
+
   createdAt DateTime @default(now())
 
   @@unique([jobId, raterId])
+  @@index([rateeId, visibleAfter])
 }
 
 model Vehicle {
