@@ -1,7 +1,7 @@
 import { withApiMetrics } from "@/lib/apiMetrics";
 import { requireJobMarketAccess } from "@/lib/jobMarket";
 import { getJobPickupAtForAccount, pickupAccessError } from "@/lib/jobAccess";
-import { getAccountAccess } from "@/lib/access";
+import { getDriveAccess } from "@/lib/access";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -49,7 +49,7 @@ async function POSTHandler(
   const marketAccessError = await requireJobMarketAccess(accountId, id);
   if (marketAccessError) return marketAccessError;
 
-  const marketplaceAccessCheck = await getAccountAccess(accountId);
+  const marketplaceAccessCheck = await getDriveAccess(accountId);
 
   if (!marketplaceAccessCheck.allowed) {
     return NextResponse.json(

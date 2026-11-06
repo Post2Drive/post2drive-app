@@ -1,7 +1,7 @@
 import { withApiMetrics } from "@/lib/apiMetrics";
 import { requireJobMarketAccess } from "@/lib/jobMarket";
 import { getJobPickupAtForAccount, pickupAccessError } from "@/lib/jobAccess";
-import { getAccountAccess } from "@/lib/access";
+import { getDriveAccess, getPostAccess } from "@/lib/access";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -31,7 +31,7 @@ async function POSTHandler(
   const marketAccessError = await requireJobMarketAccess(accountId, routeParams.id);
   if (marketAccessError) return marketAccessError;
 
-  const marketplaceAccessCheck = await getAccountAccess(accountId);
+  const marketplaceAccessCheck = await getPostAccess(accountId);
 
   const job = await prisma.job.findUnique({
     where: { id: routeParams.id },
@@ -106,7 +106,7 @@ async function POSTHandler(
     );
   }
 
-  const bidderAccess = await getAccountAccess(bid.bidderId);
+  const bidderAccess = await getDriveAccess(bid.bidderId);
   if (!bidderAccess.allowed) {
     return NextResponse.json(
       { error: "The bidder no longer has active marketplace access." },

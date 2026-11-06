@@ -1,8 +1,5 @@
 import { prisma } from "@/lib/prisma";
 import { isUkAccount } from "@/lib/uk";
-import {
-  startPromotionForVerifiedAccount,
-} from "@/lib/promotion";
 import { markReferralVerified } from "@/lib/referrals";
 
 export function getVerificationFeeMinorUnits(
@@ -157,13 +154,8 @@ export async function markVerificationSuccessful(attemptId: string, providerRefe
   // Keep these side effects retryable and outside the DB transaction.
   // Their own helpers must remain idempotent.
   if (isUkAccount(account)) {
-    try {
-      await startPromotionForVerifiedAccount(account.id);
-    } catch (error) {
-      console.error("Promotion startup error:", {
-        errorName: error instanceof Error ? error.name : "UnknownError",
-      });
-    }
+    // Launch windows replace the per-account promotion (EXECUTION_PLAN §4): free access now
+    // comes from LaunchConfig dates evaluated in lib/access.ts, so nothing starts here.
     await markReferralVerified(account.id);
   }
   return account;

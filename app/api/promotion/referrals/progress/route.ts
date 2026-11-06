@@ -3,7 +3,6 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getReferralProgress } from "@/lib/referrals";
-import { getTrialCycleStatus } from "@/lib/trialCycles";
 import { prisma } from "@/lib/prisma";
 import { isUkAccount } from "@/lib/uk";
 
@@ -45,10 +44,6 @@ async function GETHandler() {
         displayId: true,
         country: true,
         currency: true,
-        promotionParticipant:
-          true,
-        extensionCount: true,
-        freeEndsAt: true,
       },
     });
 
@@ -73,46 +68,17 @@ async function GETHandler() {
     });
   }
 
+  // Referrals are recorded for transparency only. Since the launch-window change (2026-11-06)
+  // they no longer extend free time; there are no referral targets.
   const lifetimeProgress = await getReferralProgress(accountId);
-  const trialCycle =
-    account.promotionParticipant
-      ? await getTrialCycleStatus(accountId)
-      : null;
-  const cycleProgress = trialCycle?.eligible ? trialCycle.actual : {
-    verifiedReferrals: 0,
-    completedReferrals: 0,
-  };
-  const referralTargetsReached =
-    cycleProgress.verifiedReferrals >= 15 &&
-    cycleProgress.completedReferrals >= 5;
 
   return NextResponse.json({
     ukEligible: true,
     referralCode: account.displayId,
-    promotionParticipant: account.promotionParticipant,
-    extensionCount: account.extensionCount,
-    maximumExtensions: 3,
-    freeEndsAt: account.freeEndsAt,
-    required: {
-      verifiedReferrals: 15,
-      completedReferredJobs: 5,
-    },
-    // Only referrals created and qualified in the active trial cycle count
-    // toward an extension. Lifetime totals remain visible for transparency.
-    progress: {
-      verifiedReferrals: cycleProgress.verifiedReferrals,
-      completedReferredJobs: cycleProgress.completedReferrals,
-    },
+    extendsFreeTime: false,
     lifetimeProgress: {
       verifiedReferrals: lifetimeProgress.verifiedReferrals,
       completedReferredJobs: lifetimeProgress.completedReferrals,
-    },
-    referralTargetsReached,
-    qualified: Boolean(trialCycle?.eligible && trialCycle.qualified),
-    trialCycle,
-    remaining: {
-      verifiedReferrals: Math.max(0, 15 - cycleProgress.verifiedReferrals),
-      completedReferredJobs: Math.max(0, 5 - cycleProgress.completedReferrals),
     },
   });
 }

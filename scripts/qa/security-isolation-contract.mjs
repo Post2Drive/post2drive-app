@@ -138,6 +138,7 @@ const malformedDeleteModule = loadTypeScriptModule("app/api/account/route.ts", {
   "@/lib/prisma": { prisma: fakePrisma },
   "@/lib/uk": { isUkAccount: () => false, isUkPromotionLocked: () => false },
   "@/lib/phoneVerification": { toE164ForMarket: () => null },
+  "@/lib/launchWindows": { normalizeOperatingRegion: () => null },
   "@/lib/requestBody": {
     readBoundedJson: async (request, maxBytes) => {
       const text = await request.text();
@@ -578,7 +579,7 @@ const bidAcceptRoute = loadTypeScriptModule("app/api/jobs/[id]/bids/[bidId]/acce
     getJobPickupAtForAccount: async () => new Date("2026-11-01T10:00:00.000Z"),
     pickupAccessError: () => null,
   },
-  "@/lib/access": { getAccountAccess: async () => ({ allowed: true }) },
+  "@/lib/access": { getAccountAccess: async () => ({ allowed: true }), getPostAccess: async () => ({ allowed: true }), getDriveAccess: async () => ({ allowed: true }) },
   "next/server": { NextResponse: { json: (body, init = {}) => new Response(JSON.stringify(body), { status: init.status ?? 200, headers: { "content-type": "application/json" } }) } },
   "next-auth": { getServerSession: async () => ({ user: { accountId: bidAcceptSessionAccountId } }) },
   "@/lib/auth": { authOptions: {} },
@@ -636,7 +637,7 @@ const acceptRoute = loadTypeScriptModule("app/api/jobs/[id]/accept/route.ts", {
     getJobPickupAtForAccount: async () => new Date("2026-11-01T10:00:00.000Z"),
     pickupAccessError: () => null,
   },
-  "@/lib/access": { getAccountAccess: async () => ({ allowed: true }) },
+  "@/lib/access": { getAccountAccess: async () => ({ allowed: true }), getPostAccess: async () => ({ allowed: true }), getDriveAccess: async () => ({ allowed: true }) },
   "next/server": { NextResponse: { json: (body, init = {}) => new Response(JSON.stringify(body), { status: init.status ?? 200, headers: { "content-type": "application/json" } }) } },
   "next-auth": { getServerSession: async () => ({ user: { accountId: acceptSessionAccountId } }) },
   "@/lib/auth": { authOptions: {} },

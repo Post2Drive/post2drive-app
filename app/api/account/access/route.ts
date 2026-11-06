@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getAccountAccess } from "@/lib/access";
+import { getEntitlementStatus } from "@/lib/access";
 import { getPaidPriceMinorUnits } from "@/lib/subscription";
 import { marketForAccount } from "@/lib/market";
 import { minorUnitsToMajorUnits } from "@/lib/currencyMinorUnits";
@@ -21,7 +21,9 @@ async function GETHandler() {
   }
 
   const accountId = session.user.accountId;
-  const access = await getAccountAccess(accountId);
+  const status = await getEntitlementStatus(accountId);
+  // "Any access" view kept for existing UI; job actions use the separate POST/DRIVE entitlements below.
+  const access = status.post.allowed || !status.drive.allowed ? status.post : status.drive;
 
   if (!access.account) {
     return NextResponse.json(
@@ -48,7 +50,7 @@ async function GETHandler() {
     },
   });
 
-  const priceMinorUnits = getPaidPriceMinorUnits(access.account);
+  const priceMinorUnits = getPaidPriceMinorUnits(access.account, status.billing?.plan);
   const market = marketForAccount(access.account);
   const price = priceMinorUnits === null ? null : minorUnitsToMajorUnits(priceMinorUnits, access.account.currency);
 
@@ -65,7 +67,12 @@ async function GETHandler() {
     subscriptionStatus: access.account.subscriptionStatus,
     subscriptionEndsAt: access.account.subscriptionEndsAt,
     subscriptionPlanKey: access.account.subscriptionPlanKey,
-    endsAt: "endsAt" in access ? access.endsAt : null,
+    endsAt: access.endsAt ?? null,
+    opensAt: access.opensAt ?? null,
+    post: { allowed: status.post.allowed, reason: status.post.reason, endsAt: status.post.endsAt ?? null, opensAt: status.post.opensAt },
+    drive: { allowed: status.drive.allowed, reason: status.drive.reason, endsAt: status.drive.endsAt ?? null, opensAt: status.drive.opensAt, waitlistPosition: status.drive.waitlistPosition },
+    launch: status.launch,
+    billing: status.billing,
     price,
     currency: access.account.currency,
     marketLabel: market?.label ?? "Marketplace",

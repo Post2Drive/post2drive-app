@@ -105,7 +105,7 @@ function loadRoute(path) {
     if (name === "@/lib/prisma") return { prisma };
     if (name === "@/lib/apiMetrics") return { withApiMetrics: (_name, handler) => handler };
     if (name === "@/lib/jobMarket") return { requireJobMarketAccess: async () => null };
-    if (name === "@/lib/access") return { getAccountAccess: async () => ({ allowed: true }) };
+    if (name === "@/lib/access") return { getAccountAccess: async () => ({ allowed: true }), getPostAccess: async () => ({ allowed: true }), getDriveAccess: async () => ({ allowed: true }) };
     if (name === "@/lib/vehicles") return { VEHICLE_TYPES: ["van", "truck", "car"] };
     if (name === "@/lib/requestBody") return {
       readBoundedJson: async (request, maxBytes) => {
