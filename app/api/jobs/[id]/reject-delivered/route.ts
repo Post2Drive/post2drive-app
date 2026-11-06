@@ -1,3 +1,4 @@
+import { notify } from "@/lib/notify";
 import { withApiMetrics } from "@/lib/apiMetrics";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { requireJobMarketAccess } from "@/lib/jobMarket";
@@ -137,15 +138,15 @@ async function POSTHandler(
 
     const recipientId = job.deliveryMarkedById;
     if (recipientId && recipientId !== accountId) {
-      await tx.notification.create({
-        data: {
-          accountId: recipientId,
-          type: "delivery_rejected",
-          title: "Delivery confirmation was disputed",
-          body: `The other party disputed delivery for job ${routeParams.id}. The job is back in transit; review the incident history and contact support if needed.`,
-          jobId: routeParams.id,
-          eventKey: `delivery-rejected:${routeParams.id}:${accountId}:${Date.now()}`,
-        },
+      const actorRole = job.posterId === accountId ? "poster" : "driver";
+      await notify(tx, {
+        accountId: recipientId,
+        type: "delivery_rejected",
+        title: `Delivery disputed by the ${actorRole}`,
+        body: `The ${actorRole} disputed delivery for job ${routeParams.id}. The job is back in transit; review the incident history and contact support if needed.`,
+        jobId: routeParams.id,
+        eventKey: `delivery-rejected:${routeParams.id}:${accountId}:${Date.now()}`,
+        metadata: { actorRole },
       });
     }
     return changedJob;

@@ -1,3 +1,4 @@
+import { notify } from "@/lib/notify";
 import { withApiMetrics } from "@/lib/apiMetrics";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { requireJobMarketAccess } from "@/lib/jobMarket";
@@ -124,16 +125,15 @@ async function POSTHandler(req: Request, { params }: RouteContext) {
 
     const recipientId = job.posterId === accountId ? job.acceptedById : job.posterId;
     if (recipientId && recipientId !== accountId) {
-      await tx.notification.create({
-        data: {
-          accountId: recipientId,
-          type: "job_terminated_with_incident",
-          title: "Job terminated due to an incident",
-          body: `Job ${jobId} was terminated through its incident workflow. The original pickup/delivery history remains recorded. Review the incident details and contact support if needed.`,
-          jobId,
-          eventKey: `job-terminated-incident:${jobId}:${cancelledAt.toISOString()}`,
-          metadata: { incidentId, reason, terminatedByAccountId: accountId },
-        },
+      const actorRole = job.posterId === accountId ? "poster" : "driver";
+      await notify(tx, {
+        accountId: recipientId,
+        type: "job_terminated_with_incident",
+        title: `Job terminated by the ${actorRole} due to an incident`,
+        body: `The ${actorRole} terminated job ${jobId} through its incident workflow. The original pickup/delivery history remains recorded. Review the incident details and contact support if needed.`,
+        jobId,
+        eventKey: `job-terminated-incident:${jobId}:${cancelledAt.toISOString()}`,
+        metadata: { incidentId, reason, terminatedByAccountId: accountId, actorRole },
       });
     }
 

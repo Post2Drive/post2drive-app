@@ -1,3 +1,4 @@
+import { notify } from "@/lib/notify";
 import { withApiMetrics } from "@/lib/apiMetrics";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { requireJobMarketAccess } from "@/lib/jobMarket";
@@ -86,16 +87,15 @@ async function POSTHandler(req: Request, { params }: RouteContext) {
     });
 
     if (targetAccountId && targetAccountId !== accountId) {
-      await tx.notification.create({
-        data: {
-          accountId: targetAccountId,
-          type: "job_incident_update",
-          title: "New update on a job incident",
-          body: `A new update was added to the incident for job ${jobId}.`,
-          jobId,
-          eventKey: `incident-update:${created.id}:${targetAccountId}`,
-          metadata: { incidentId, updateId: created.id },
-        },
+      const actorRole = job.posterId === accountId ? "poster" : "driver";
+      await notify(tx, {
+        accountId: targetAccountId,
+        type: "job_incident_update",
+        title: `Incident updated by the ${actorRole}`,
+        body: `The ${actorRole} added an update to the incident for job ${jobId}.`,
+        jobId,
+        eventKey: `incident-update:${created.id}:${targetAccountId}`,
+        metadata: { incidentId, updateId: created.id, actorRole },
       });
     }
     return created;

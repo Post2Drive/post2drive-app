@@ -1,3 +1,4 @@
+import { notify } from "@/lib/notify";
 import { withApiMetrics } from "@/lib/apiMetrics";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { requireJobMarketAccess } from "@/lib/jobMarket";
@@ -138,15 +139,15 @@ async function POSTHandler(
 
     const recipientId = job.deliveryMarkedById;
     if (recipientId && recipientId !== accountId) {
-      await tx.notification.create({
-        data: {
-          accountId: recipientId,
-          type: "job_completed",
-          title: "Delivery confirmed — job completed",
-          body: `The other party confirmed delivery for job ${routeParams.id}; the job is now completed.`,
-          jobId: routeParams.id,
-          eventKey: `job-completed:${routeParams.id}`,
-        },
+      const actorRole = job.posterId === accountId ? "poster" : "driver";
+      await notify(tx, {
+        accountId: recipientId,
+        type: "job_completed",
+        title: `Delivery confirmed by the ${actorRole} - job completed`,
+        body: `The ${actorRole} confirmed delivery for job ${routeParams.id}; the job is now completed.`,
+        jobId: routeParams.id,
+        eventKey: `job-completed:${routeParams.id}`,
+        metadata: { actorRole },
       });
     }
 
