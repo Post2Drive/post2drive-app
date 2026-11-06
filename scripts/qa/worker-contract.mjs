@@ -73,6 +73,8 @@ console.log("QA durable-worker contract checks passed (static source checks; dat
   assert.equal(guard.qaLiveDatabaseMatches("post2drive_qa", ok), true);
   assert.equal(guard.qaLiveDatabaseMatches("other", ok), false);
   assert.match(worker, /qaDatabaseConfigError\(\)/, "worker must run the static database proof");
+assert.match(worker, /if \(databaseError\) throw new QaWorkerDisabled\(/, "database proof failure must disable the worker");
+assert.match(worker, /error instanceof QaWorkerDisabled[\s\S]*?while \(!stopping\)/, "a disabled worker must stay idle and claim no runs instead of crash-looping");
   assert.match(worker, /qaLiveDatabaseMatches\(/, "worker must run the live current_database() proof before claiming runs");
 }
 console.log("QA worker database-target proof contract passed.");
