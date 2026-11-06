@@ -12,6 +12,8 @@ import { getLocalisationProfile } from "@/lib/localisation";
 import { marketDateKey } from "@/lib/vehicleDates";
 import { isIndiaPhoneVerifiedAccount } from "@/lib/eligibility";
 import { isQaRunnerEnabled } from "@/lib/qaRunnerGuard";
+import { readBoundedText } from "@/lib/requestBody";
+import { DRIVER_VEHICLE_ERROR, parseDriverDeclaration, resolveJobDriverAssignment } from "@/lib/jobDriverAssignment";
 
 async function POSTHandler(
   req: Request,
@@ -105,6 +107,8 @@ async function POSTHandler(
         country: true,
         currency: true,
         phoneVerifiedAt: true,
+        planType: true,
+        fleetVehicleCount: true,
         qaTestAccounts: { select: { runId: true } },
       },
     });
@@ -146,6 +150,24 @@ async function POSTHandler(
       );
     }
   }
+
+  // Fleet accounts declare the driver, licence and vehicle for this job (§6).
+  // Individual drivers may send an empty body; their own record is used.
+  const rawBody = req.body ? await readBoundedText(req, 4 * 1024) : { ok: true as const, text: "" };
+  if (!rawBody.ok) {
+    return NextResponse.json({ error: rawBody.status === 413 ? "Request body is too large." : "Invalid request body." }, { status: rawBody.status });
+  }
+  let acceptBody: unknown = {};
+  if (rawBody.text.trim()) {
+    try { acceptBody = JSON.parse(rawBody.text); } catch { return NextResponse.json({ error: "Invalid request body." }, { status: 400 }); }
+  }
+  const declaration = isIndiaPhoneVerifiedAccount(account)
+    ? { ok: true as const, value: { fleet: false as const } }
+    : parseDriverDeclaration(account, acceptBody);
+  if (!declaration.ok) {
+    return NextResponse.json({ error: declaration.error }, { status: declaration.status });
+  }
+  const recordsDriverVehicle = (!account.isTester || isPilotQaAccount) && !isIndiaPhoneVerifiedAccount(account) && !stagingQaTester;
 
   try {
     const result =
@@ -189,6 +211,14 @@ async function POSTHandler(
             });
             if (!matchingVehicle) throw new Error("DRIVER_VEHICLE_NOT_VERIFIED");
           }
+
+          const driverAssignment = await resolveJobDriverAssignment(tx, {
+            accountId,
+            declaration: declaration.value,
+            vehicleType: job.vehicleType,
+            market: { country: currentDriver.country, currency: currentDriver.currency },
+            requireEligibleVehicle: recordsDriverVehicle,
+          });
 
           let pickupAt: Date;
 
@@ -251,6 +281,15 @@ async function POSTHandler(
             throw new Error(
               "JOB_ALREADY_TAKEN"
             );
+          }
+
+          if (driverAssignment) {
+            // Upsert: a job reopened by unassign/driver back-out may be accepted again.
+            await tx.jobDriverAssignment.upsert({
+              where: { jobId: id },
+              create: { jobId: id, ...driverAssignment },
+              update: driverAssignment,
+            });
           }
 
           await tx.jobActivity.create({
@@ -352,7 +391,7 @@ async function POSTHandler(
     }
 
     if (message === "DRIVER_VEHICLE_NOT_VERIFIED") {
-      return NextResponse.json({ error: "You need a verified vehicle of the required type with current insurance and any required inspection before accepting it." }, { status: 403 });
+      return NextResponse.json({ error: declaration.value.fleet ? DRIVER_VEHICLE_ERROR : "You need a verified vehicle of the required type with current insurance and any required inspection before accepting it." }, { status: 403 });
     }
 
     if (

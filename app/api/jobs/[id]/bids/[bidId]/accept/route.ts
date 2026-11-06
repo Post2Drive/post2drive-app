@@ -10,6 +10,8 @@ import { expireJobOpportunities } from "@/lib/opportunities";
 import { getLocalisationProfile } from "@/lib/localisation";
 import { marketDateKey } from "@/lib/vehicleDates";
 import { canPostJobs } from "@/lib/eligibility";
+import { isFleetAccount } from "@/lib/vehicleApproval";
+import { resolveJobDriverAssignment, type DriverDeclaration } from "@/lib/jobDriverAssignment";
 
 // POST /api/jobs/[id]/bids/[bidId]/accept
 // Poster accepts one bid and assigns the job to that driver.
@@ -194,6 +196,36 @@ async function POSTHandler(
       if (!matchingVehicle) throw new Error("BID_NO_LONGER_ELIGIBLE");
     }
 
+    // Per-job driver record (EXECUTION_PLAN §6). Fleets declared driver + vehicle on
+    // the bid; individual drivers use their own recorded identity and approved vehicle.
+    const bidderPlan = await tx.account.findUnique({
+      where: { id: currentBid.bidderId },
+      select: { planType: true, fleetVehicleCount: true },
+    });
+    let bidDeclaration: DriverDeclaration = { fleet: false };
+    if (bidderPlan && isFleetAccount(bidderPlan)) {
+      if (!currentBid.fleetDriverName || !currentBid.fleetDriverLicenceHash || !currentBid.fleetDriverLicenceLast4 || !currentBid.fleetVehicleId) {
+        throw new Error("BID_DRIVER_RECORD_MISSING");
+      }
+      bidDeclaration = {
+        fleet: true,
+        driverName: currentBid.fleetDriverName,
+        licenceHash: currentBid.fleetDriverLicenceHash,
+        licenceLast4: currentBid.fleetDriverLicenceLast4,
+        vehicleId: currentBid.fleetVehicleId,
+      };
+    }
+    const driverAssignment = await resolveJobDriverAssignment(tx, {
+      accountId: currentBid.bidderId,
+      declaration: bidDeclaration,
+      vehicleType: currentJob.vehicleType,
+      market: { country: currentBidder.country, currency: currentBidder.currency },
+      requireEligibleVehicle: !currentBidder.isTester,
+    }).catch((error) => {
+      if (error instanceof Error && error.message === "DRIVER_VEHICLE_NOT_VERIFIED") throw new Error("BID_NO_LONGER_ELIGIBLE");
+      throw error;
+    });
+
     // Atomically claim the job only if it is still open.
     const claimed = await tx.job.updateMany({
       where: {
@@ -211,6 +243,14 @@ async function POSTHandler(
 
     if (claimed.count !== 1) {
       throw new Error("JOB_ALREADY_TAKEN");
+    }
+
+    if (driverAssignment) {
+      await tx.jobDriverAssignment.upsert({
+        where: { jobId: routeParams.id },
+        create: { jobId: routeParams.id, ...driverAssignment },
+        update: driverAssignment,
+      });
     }
 
     const otherBids = await tx.bid.findMany({
@@ -294,11 +334,21 @@ async function POSTHandler(
     if (error instanceof Error && error.message === "POSTER_NOT_VERIFIED") {
       return "POSTER_NOT_VERIFIED" as const;
     }
+    if (error instanceof Error && error.message === "BID_DRIVER_RECORD_MISSING") {
+      return "BID_DRIVER_RECORD_MISSING" as const;
+    }
     throw error;
   });
 
   if (updated === "POSTER_NOT_VERIFIED") {
     return NextResponse.json({ error: "Complete identity verification and obtain company approval before awarding a job." }, { status: 403 });
+  }
+
+  if (updated === "BID_DRIVER_RECORD_MISSING") {
+    return NextResponse.json(
+      { error: "This fleet bid does not name a driver and vehicle. Ask the fleet to withdraw and re-bid with driver details." },
+      { status: 409 }
+    );
   }
 
   if (updated === "BID_NO_LONGER_ELIGIBLE") {

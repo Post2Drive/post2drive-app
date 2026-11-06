@@ -12,6 +12,7 @@ import { markDriverOpportunityBid } from "@/lib/opportunities";
 import { getLocalisationProfile } from "@/lib/localisation";
 import { marketDateKey } from "@/lib/vehicleDates";
 import { isQaRunnerEnabled } from "@/lib/qaRunnerGuard";
+import { DRIVER_VEHICLE_ERROR, parseDriverDeclaration, resolveJobDriverAssignment } from "@/lib/jobDriverAssignment";
 
 async function POSTHandler(
   req: Request,
@@ -43,7 +44,7 @@ async function POSTHandler(
 
   const bidderAccount = await prisma.account.findUnique({
     where: { id: accountId },
-    select: { type: true, verificationStatus: true, companyVerificationStatus: true, isTester: true, country: true, currency: true, qaTestAccounts: { select: { runId: true } } },
+    select: { type: true, verificationStatus: true, companyVerificationStatus: true, isTester: true, country: true, currency: true, planType: true, fleetVehicleCount: true, qaTestAccounts: { select: { runId: true } } },
   });
   if (bidderAccount?.country === "IN" && bidderAccount?.currency === "INR") {
     return NextResponse.json({ error: "Bidding is not available in India. Contact the poster about the fixed quote." }, { status: 403 });
@@ -203,6 +204,13 @@ async function POSTHandler(
     );
   }
 
+  // Fleet bids name the driver and vehicle now, so the record exists when the bid is awarded (§6).
+  const declaration = bidderAccount ? parseDriverDeclaration(bidderAccount, body) : { ok: true as const, value: { fleet: false as const } };
+  if (!declaration.ok) {
+    return NextResponse.json({ error: declaration.error }, { status: declaration.status });
+  }
+  const requireEligibleVehicle = Boolean(bidderAccount && (!bidderAccount.isTester || (isPilotQaAccount && !stagingQaTester)));
+
   let bid;
   try {
     bid = await prisma.$transaction(async (tx) => {
@@ -235,12 +243,33 @@ async function POSTHandler(
       });
       if (activeBidCount >= MAX_ACTIVE_BIDS_PER_JOB) return "bid_limit_reached" as const;
 
+      let fleetDriver = {};
+      if (declaration.value.fleet && bidderAccount) {
+        const declared = await resolveJobDriverAssignment(tx, {
+          accountId,
+          declaration: declaration.value,
+          vehicleType: job.vehicleType,
+          market: { country: bidderAccount.country, currency: bidderAccount.currency },
+          requireEligibleVehicle,
+        });
+        if (declared) {
+          fleetDriver = {
+            fleetDriverName: declared.driverName,
+            fleetDriverLicenceHash: declared.licenceHash,
+            fleetDriverLicenceLast4: declared.licenceLast4,
+            fleetVehicleId: declared.vehicleId,
+          };
+        }
+      }
+
       const createdBid = await tx.bid.create({
         data: {
           jobId: routeParams.id,
           bidderId: accountId,
           amount,
+          ...fleetDriver,
         },
+        select: { id: true, jobId: true, amount: true, status: true, createdAt: true },
       });
 
       await tx.jobActivity.create({
@@ -270,6 +299,9 @@ async function POSTHandler(
       return createdBid;
     });
   } catch (error) {
+    if (error instanceof Error && error.message === "DRIVER_VEHICLE_NOT_VERIFIED") {
+      return NextResponse.json({ error: DRIVER_VEHICLE_ERROR }, { status: 403 });
+    }
     console.error("Place bid failed.", { errorName: error instanceof Error ? error.name : "UnknownError" });
     return NextResponse.json({ error: "Unable to place bid right now. Please retry." }, { status: 500 });
   }

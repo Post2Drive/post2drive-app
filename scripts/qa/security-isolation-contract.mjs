@@ -239,6 +239,9 @@ const routeModule = loadTypeScriptModule("app/api/vehicles/route.ts", {
   "@/lib/vehicles": { VEHICLE_TYPES: ["van", "truck", "car"] },
   "@/lib/localisation": { getLocalisationProfile: () => null, getJurisdictionOptions: () => [] },
   "@/lib/vehicleDates": { marketDateKey: () => "2026-10-20", parseOptionalDateField: () => ({ date: null, dateKey: null, error: null }) },
+  "@/lib/pricing": { VERIFICATION_FEES: { additionalVehicle: 0.5 } },
+  "@/lib/currencyMinorUnits": { majorUnitsToMinorUnits: (amount) => Math.round(amount * 100) },
+  "@/lib/vehicleApproval": { chargesAdditionalVehicleFee: () => false, isFleetAccount: () => false, isInsuranceCoverType: () => true, isKeeperType: () => true },
   "@/lib/requestBody": {
     readBoundedJson: async (request, maxBytes) => {
       const text = await request.text();
@@ -594,6 +597,8 @@ const bidAcceptRoute = loadTypeScriptModule("app/api/jobs/[id]/bids/[bidId]/acce
   "@/lib/localisation": { getLocalisationProfile: () => ({ timeZone: "Europe/London" }) },
   "@/lib/vehicleDates": { marketDateKey: () => "2026-11-01" },
   "@/lib/eligibility": { canPostJobs: async () => true },
+  "@/lib/vehicleApproval": { isFleetAccount: () => false },
+  "@/lib/jobDriverAssignment": { resolveJobDriverAssignment: async () => null },
 });
 const outsiderBidAccept = await bidAcceptRoute.POST(
   new Request("https://fixture.invalid/api/jobs/job-bid-private/bids/bid-1/accept", { method: "POST" }),
@@ -656,6 +661,13 @@ const acceptRoute = loadTypeScriptModule("app/api/jobs/[id]/accept/route.ts", {
   "@/lib/vehicleDates": { marketDateKey: () => "2026-11-01" },
   "@/lib/eligibility": { isIndiaPhoneVerifiedAccount: () => false },
   "@/lib/qaRunnerGuard": { isQaRunnerEnabled: () => false },
+  // Tester driver on an individual plan: no fleet declaration, no driver record.
+  "@/lib/requestBody": { readBoundedText: async () => ({ ok: true, text: "" }) },
+  "@/lib/jobDriverAssignment": {
+    DRIVER_VEHICLE_ERROR: "fixture",
+    parseDriverDeclaration: () => ({ ok: true, value: { fleet: false } }),
+    resolveJobDriverAssignment: async () => null,
+  },
 });
 const acceptRequest = () => acceptRoute.POST(
   new Request("https://fixture.invalid/api/jobs/job-accept-race/accept", { method: "POST" }),
