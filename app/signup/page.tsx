@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { COUNTRIES, currencyForCountry } from "@/lib/currency";
+import { POSTER_MONTHLY_PRICE_GBP, VERIFICATION_FEES, driverVerificationTotal, weeklyPriceForVehicleCount } from "@/lib/pricing";
 
 const TERMS_VERSION = "2026-10-16";
 type ResearchAnswers = { role: string; currentDiscovery: string; biggestChallenge: string; preferredAccess: string };
@@ -151,7 +152,7 @@ export default function SignupPage() {
         {isIndia ? (
           <div className="signup-plan-card"><span className="signup-plan-label">YOUR CAPACITY</span><h3>{vehicleCount === 1 ? "1 vehicle" : `${vehicleCount} vehicles`}</h3><p className="signup-plan-price">Free · ₹0</p><small>India accounts get free access after phone OTP verification. Post jobs, browse, call and negotiate — no subscription needed.</small></div>
         ) : (
-          <div className="signup-plan-card"><span className="signup-plan-label">YOUR PLAN TYPE</span><h3>{selectedPlan === "individual" ? "Individual · 1 vehicle" : "Fleet · 2–55 vehicles"}</h3>{hasWeeklyPricing ? <><p className="signup-plan-price">{formatMarketPrice(selectedPlan === "individual" ? 9.99 : vehicleCount <= 5 ? 16.99 : vehicleCount <= 15 ? 24.99 : vehicleCount <= 30 ? 36.99 : 49.99)} / 7 days</p><small>Prices shown for your selected market. Unlimited legitimate marketplace activity; no per-job charges. No payment is taken at signup and checkout is not yet connected.</small></> : <><p>{`Pricing for ${marketLabel} will be confirmed before any paid plan becomes available.`}</p><small>Creating an account does not charge you.</small></>}</div>
+          <div className="signup-plan-card"><span className="signup-plan-label">YOUR PLAN TYPE</span><h3>{selectedPlan === "individual" ? "Individual · 1 vehicle" : "Fleet · 2–55 vehicles"}</h3>{hasWeeklyPricing ? <><p className="signup-plan-price">{formatMarketPrice(weeklyPriceForVehicleCount(vehicleCount) ?? 0)} / 7 days</p><small>Driver and fleet price for your selected market, once your vehicles are verified (posting included). Posting jobs only, with no vehicle: {formatMarketPrice(POSTER_MONTHLY_PRICE_GBP)} / month. One-off verification for this setup: {formatMarketPrice(driverVerificationTotal(vehicleCount) ?? 0)} ({formatMarketPrice(VERIFICATION_FEES.personAndCompany)} if you only post). Unlimited legitimate marketplace activity; no per-job charges. No payment is taken at signup and checkout is not yet connected. <a href="/pricing" target="_blank" rel="noopener">Full costs, launch offers and requirements</a>.</small></> : <><p>{`Pricing for ${marketLabel} will be confirmed before any paid plan becomes available.`}</p><small>Creating an account does not charge you.</small></>}</div>
         )}
         <p className="signup-muted">{isIndia ? "One account supports both posting and fulfilling jobs. Vehicle count sets your capacity — not whether you are a driver or business posting deliveries." : "One account supports both posting and fulfilling jobs. Vehicle count determines the account plan—not whether you are a driver or a business posting deliveries. Fleets above 55 vehicles require custom pricing."}</p>
       </div>}

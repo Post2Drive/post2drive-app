@@ -51,7 +51,7 @@ Users manage vehicles and the documents required for their market. Eligibility i
 
 Verification charges and subscription charges are different. Prices, duration, currency, included features, trial rules, renewal behaviour and expiry must agree across policy, UI and server logic. A successful verification is not a subscription; a recorded payment is not proof of provider settlement.
 
-**Pricing decision required:** Repository launch-readiness notes describe individual UK/euro access at £9.99 for 7 days and fleet bands (£16.99 for 2–5 vehicles, £24.99 for 6–15, £36.99 for 16–30, £49.99 for 31–55, custom for 56+), with no automatic recurring billing or per-job fee in that documented model. A later proposal describes poster access at £9.99/month and driver access at £9.99/week. These models conflict. Do not silently choose one, advertise it as live or implement a new billing model until the owner approves one canonical price/entitlement matrix.
+**Approved pricing (owner decision 2026-11-06):** poster £12.99/month (post only); individual driver £14.99 per 7 days (1 person, 1 vehicle, posting included); fleets £24.99 (2–5 vehicles), £39.99 (6–15), £59.99 (16–30), £79.99 (31–55) per 7 days; custom for 56+. One subscription per account; the driver/fleet plan replaces the poster plan. No per-job fees or commission. Same numbers in each non-India market's currency; India free after phone OTP. Source of truth: `lib/pricing.ts`. Full rules, launch windows, fleet integrity rules and what is not yet enforced: [Product and verification policy §6](PRODUCT_AND_VERIFICATION_POLICY.md). Payment checkout is not connected; no live settlement.
 
 ### Notifications and account support
 **Goal:** Tell the right person when they need to act.
