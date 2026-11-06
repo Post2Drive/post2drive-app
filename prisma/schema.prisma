@@ -135,6 +135,9 @@ model Account {
   companyVerificationStatus VerificationStatus @default(not_started)
   companyVerificationSubmittedAt DateTime?
   companyVerifiedAt DateTime?
+  // The one user on this account named as the company's responsible person.
+  // Must be a user of this account whose person ID passed (User.personVerifiedAt).
+  companyResponsibleUserId String?
   verifiedAt         DateTime?
   // India marketplace access is unlocked only after phone OTP verification.
   phoneVerifiedAt     DateTime?
@@ -174,6 +177,7 @@ model Account {
   ratingsReceived Rating[] @relation("RatingsReceived")
 
   verificationAttempts VerificationAttempt[]
+  verificationFeePayments VerificationFeePayment[]
 
 
   referralsGiven   Referral[] @relation("Referrer")
@@ -243,6 +247,13 @@ model VerificationAttempt {
   accountId String
 
   attemptNumber Int
+  // Position inside one paid cycle: 1 = paid check, 2 = free correction after the
+  // first failure (10 working days), 3 = free final evidence after the second (3 working days).
+  cyclePosition Int @default(1)
+  // The user whose person ID this attempt checks (null on legacy attempts).
+  userId String?
+  // The pending fee record that charged this attempt (null when free).
+  feePaymentId String?
 
   status VerificationAttemptStatus @default(awaiting_payment)
 
@@ -268,6 +279,36 @@ model VerificationAttempt {
   createdAt DateTime @default(now())
 
   @@unique([accountId, attemptNumber])
+  @@index([accountId, status])
+}
+
+/// One payable record per fee-bearing action (verification start, new company
+/// relationship, vehicle added). Always created as "pending": only a verified
+/// provider payment event may ever mark it paid. Not refundable.
+model VerificationFeePayment {
+  id        String  @id @default(cuid())
+  account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  accountId String
+
+  // e.g. poster_verification, driver_verification, driver_upgrade, new_company_relationship, vehicle_added.
+  action String
+  // [{ code: "personAndCompany" | "driverAndFirstVehicle" | "additionalVehicle", quantity, unitMinorUnits }]
+  lineItems Json
+  amountMinorUnits Int
+  currency String
+  // Vehicles whose check this record pays for, so no vehicle is charged twice.
+  vehicleIds String[] @default([])
+
+  status String @default("pending")
+  // Caller-supplied key; one action can only ever create one record.
+  idempotencyKey String @unique
+
+  provider          String?
+  providerPaymentId String? @unique
+
+  createdAt DateTime  @default(now())
+  paidAt    DateTime?
+
   @@index([accountId, status])
 }
 
@@ -339,6 +380,9 @@ model User {
   passwordChangedAt DateTime?
 
   role UserRole @default(owner)
+
+  // Set when this user's person ID check passes (verification provider event).
+  personVerifiedAt DateTime?
 
   createdAt DateTime @default(now())
 

@@ -54,8 +54,15 @@ export function isIndiaPhoneVerifiedAccount(account: {
   return account.country === "IN" && account.currency === "INR" && Boolean(account.phoneVerifiedAt);
 }
 
-/** Posting and awarding a bid require the market's applicable verification policy. */
+/**
+ * Posting and awarding a bid require the market's applicable verification policy.
+ * India: phone OTP only. Elsewhere the full order must be complete: phone OTP
+ * verified, person ID verified and company verified (person ID can only start
+ * after email + phone, see lib/verificationProcess.ts). Tester exemptions stay
+ * explicit at the call sites.
+ */
 export function canPostJobs(account: { verificationStatus: string; companyVerificationStatus: string; country?: string | null; currency?: string | null; phoneVerifiedAt?: Date | string | null }) {
   if (isIndiaPhoneVerifiedAccount(account)) return true;
-  return account.verificationStatus === "verified" && account.companyVerificationStatus === "verified";
+  if (account.country === "IN") return false;
+  return Boolean(account.phoneVerifiedAt) && account.verificationStatus === "verified" && account.companyVerificationStatus === "verified";
 }
