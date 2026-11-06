@@ -19,6 +19,13 @@ const HEARTBEAT_MS = Number(process.env.QA_WORKER_HEARTBEAT_MS || 15000);
 const STALE_AFTER_MS = Number(process.env.QA_WORKER_STALE_AFTER_MS || Math.max(HEARTBEAT_MS * 4, 5 * 60 * 1000));
 const workerId = `${hostname()}-${process.pid}-${randomUUID()}`;
 let stopping = false;
+
+/** Fail-closed configuration error: the worker stays up but idle and claims no runs. */
+class QaWorkerDisabled extends Error {
+  /** Fixed configuration text naming variables only; safe to log. */
+  readonly reason: string;
+  constructor(reason: string) { super(reason); this.name = "QaWorkerDisabled"; this.reason = reason; }
+}
 let activeJob = false;
 
 function safeErrorName(error: unknown): string {
@@ -40,10 +47,10 @@ function validateWorkerConfig() {
   // forces the operator to explicitly wire the QA worker to the isolated database
   // service rather than accidentally inheriting the production connection string.
   if (!process.env.QA_DATABASE_URL || process.env.QA_DATABASE_URL !== process.env.DATABASE_URL) {
-    throw new Error("QA_DATABASE_URL must be set and must equal DATABASE_URL to confirm the worker targets the isolated QA database.");
+    throw new QaWorkerDisabled("QA_DATABASE_URL must be set and must equal DATABASE_URL to confirm the worker targets the isolated QA database.");
   }
   const databaseError = qaDatabaseConfigError();
-  if (databaseError) throw new Error("QA worker database proof failed: " + databaseError);
+  if (databaseError) throw new QaWorkerDisabled("QA worker database proof failed: " + databaseError);
   if (!Number.isSafeInteger(HEARTBEAT_MS) || HEARTBEAT_MS < 250 ||
       !Number.isSafeInteger(STALE_AFTER_MS) || STALE_AFTER_MS < HEARTBEAT_MS * 2) {
     throw new Error("QA worker heartbeat/stale timeout configuration is invalid.");
@@ -293,7 +300,7 @@ async function main() {
   validateWorkerConfig();
   const live = await prisma.$queryRaw<{ current_database: string }[]>`SELECT current_database() AS current_database`;
   if (!qaLiveDatabaseMatches(live[0]?.current_database)) {
-    throw new Error("QA worker database proof failed: the connected database is not the declared isolated QA database.");
+    throw new QaWorkerDisabled("QA worker database proof failed: the connected database is not the declared isolated QA database.");
   }
   console.log("Post2Drive staging QA worker started", JSON.stringify({ workerId, pollMs: POLL_MS, heartbeatMs: HEARTBEAT_MS }));
   while (!stopping) {
@@ -319,6 +326,14 @@ async function main() {
 }
 
 main().catch(async error => {
+  if (error instanceof QaWorkerDisabled) {
+    // Messages name configuration variables only, never their values.
+    console.error("QA worker disabled (fail-closed, no runs will be claimed): " + error.reason);
+    await prisma.$disconnect().catch(() => {});
+    // Stay idle instead of crash-looping the service until the operator fixes the configuration.
+    while (!stopping) await new Promise(resolve => setTimeout(resolve, 60_000));
+    return;
+  }
   console.error("QA worker failed to start", safeErrorName(error));
   await prisma.$disconnect().catch(() => {});
   process.exitCode = 1;
