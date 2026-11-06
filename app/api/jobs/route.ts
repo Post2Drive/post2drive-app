@@ -14,6 +14,7 @@ import { isSupportedMarket, marketForAccount } from "@/lib/market";
 import { getTimeZoneOptions } from "@/lib/localisation";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { canPostJobs } from "@/lib/eligibility";
+import { driverRecordView } from "@/lib/vehicleApproval";
 
 function hasFuturePickup(
   job: { jobDate: Date; pickupTime: string | null; pickupTimeZone: string | null },
@@ -223,6 +224,7 @@ async function GETHandler(req: Request) {
           },
         },
       },
+      driverAssignment: { select: { driverName: true, licenceLast4: true, vehicleRegPlate: true } },
       activities: {
         where: { action: "DRIVER_BACKED_OUT" },
         select: { actorId: true, createdAt: true },
@@ -346,6 +348,8 @@ async function GETHandler(req: Request) {
               createdAt: job.acceptedBy.createdAt,
             }
         : null,
+      // Driver name, licence last 4 and vehicle registration: job parties only, after acceptance.
+      driverRecord: driverRecordView(job.driverAssignment, job, accountId),
     };
 
     return jobView;
