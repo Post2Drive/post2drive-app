@@ -4,6 +4,7 @@
 // lib/vehicleApproval.ts and lib/driverLicence.ts; route wiring is checked at source level.
 import assert from "node:assert/strict";
 import { readFileSync, existsSync } from "node:fs";
+import { register } from "node:module";
 
 const read = (path) => readFileSync(new URL(`../../${path}`, import.meta.url), "utf8");
 const rules = await import("../../lib/vehicleApproval.ts");
@@ -22,8 +23,8 @@ const vehicle = (overrides = {}) => ({
   insuranceCoverType: "hire_and_reward",
   ...overrides,
 });
-const individual = { companyName: "Sam Driver", planType: "individual", fleetVehicleCount: 1, hasDriverIdentity: true };
-const fleet = { companyName: "Acme Haulage Limited", planType: "fleet", fleetVehicleCount: 5, hasDriverIdentity: false };
+const individual = { companyName: "Sam Driver", planType: "individual", fleetVehicleCount: 1, hasDriverIdentity: true, inspectionRequired: false };
+const fleet = { companyName: "Acme Haulage Limited", planType: "fleet", fleetVehicleCount: 5, hasDriverIdentity: false, inspectionRequired: false };
 const fleetVehicle = (overrides = {}) => vehicle({
   registeredKeeperType: "company", registeredKeeperName: "ACME HAULAGE LTD",
   insurancePolicyholderName: "Acme Haulage Ltd.", insuranceCoverType: "fleet", ...overrides,
@@ -144,11 +145,12 @@ assert.equal(rules.chargesAdditionalVehicleFee(1, { country: "GB", currency: "GB
 assert.equal(rules.chargesAdditionalVehicleFee(9, { country: "IE", currency: "EUR" }), true, "every later vehicle charged");
 assert.equal(rules.chargesAdditionalVehicleFee(3, { country: "IN", currency: "INR" }), false, "India is fee-free");
 const vehiclesRoute = read("app/api/vehicles/route.ts");
-assert.match(vehiclesRoute, /switch to recordVerificationFee from lib\/verificationFees\.ts \(#176\) after merge/,
-  "interim fee storage is isolated and flagged for #176");
-assert.match(vehiclesRoute, /VERIFICATION_FEES\.additionalVehicle/, "fee amount comes from lib/pricing.ts");
-assert.match(vehiclesRoute, /additionalVehicleFeeStatus: "unpaid"/, "fee is recorded pending, never paid");
-assert.doesNotMatch(vehiclesRoute, /additionalVehicleFeeStatus: "paid"/);
+const verificationSource = read("lib/verification.ts");
+assert.match(verificationSource, /export async function recordVehicleAddedFees/, "vehicle fees live in the shared verification fee module");
+assert.match(verificationSource, /code: "additionalVehicle", quantity: 1/, "extra vehicles are charged the additionalVehicle line (amount from lib/pricing.ts)");
+assert.match(verificationSource, /idempotencyKey: `vehicle-added:\$\{vehicleId\}`/, "one fee per vehicle, idempotent");
+assert.match(vehiclesRoute, /recordVehicleAddedFees\(tx, account, created\.id\)/, "vehicle fees go through the shared pending-fee helper in the create transaction");
+assert.doesNotMatch(vehiclesRoute, /status: "paid"/, "the vehicles route never marks a fee paid");
 assert.match(vehiclesRoute, /insuranceCoverType/);
 assert.match(vehiclesRoute, /registeredKeeperType/);
 assert.match(vehiclesRoute, /async function PATCHHandler/);
@@ -168,4 +170,156 @@ assert.match(adminRoute, /withApiMetrics\("\/api\/admin\/vehicles", GETHandler\)
 assert.match(adminRoute, /withApiMetrics\("\/api\/admin\/vehicles", POSTHandler\)/);
 assert.ok(existsSync(new URL("../../app/admin/vehicles/page.tsx", import.meta.url)), "admin review page exists");
 
-console.log("Vehicle approval and fleet rules contract passed: approval rules, fleet keeper/policyholder, policy review key, correction windows, licence hashing, fleet driver record, poster visibility, 0.50 fee, admin-only access.");
+
+// =========================================================================
+// Review fixes (PR #177 review, integration branch). Items 1-7 and nits.
+// =========================================================================
+// Load lib/jobDriverAssignment.ts with the "@/" alias and a Prisma stub (no DB here).
+const root = new URL("../../", import.meta.url).href;
+register(`data:text/javascript,${encodeURIComponent(`
+  export async function resolve(specifier, context, next) {
+    if (specifier === "@/lib/prisma") return { url: "data:text/javascript,export const prisma = {};", shortCircuit: true };
+    if (specifier.startsWith("@/")) return next(${JSON.stringify(root)} + specifier.slice(2) + ".ts", context);
+    return next(specifier, context);
+  }`)}`);
+process.env.POST2DRIVE_LICENCE_HASH_SECRET ||= "contract-only-secret-".padEnd(40, "x");
+const assignment = await import("../../lib/jobDriverAssignment.ts");
+const stripComments = (src) => src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+
+// ---- 1. Fleet rules bypass: approved as individual, then a 2nd vehicle is added ----
+const soleVehicle = { id: "v1", regPlate: "AB12 CDE", verificationStatus: "verified", rejectionCount: 0, ...vehicle() };
+const acme = { companyName: "Acme Haulage Ltd", planType: "individual", fleetVehicleCount: null };
+assert.deepEqual(rules.vehiclesFailingFleetRevalidation(acme, [soleVehicle]), [], "1 vehicle: still an individual, nothing re-checked");
+const afterSecond = rules.vehiclesFailingFleetRevalidation(acme, [soleVehicle, { ...soleVehicle, id: "v2", verificationStatus: "pending" }]);
+assert.deepEqual(afterSecond.map((entry) => entry.vehicle.id), ["v1"], "2nd vehicle makes a fleet: the earlier individually-approved vehicle fails fleet rules");
+assert.ok(afterSecond[0].problems.some((p) => /kept by the company/.test(p)) && afterSecond[0].problems.some((p) => /held by the company/.test(p)));
+assert.deepEqual(rules.vehiclesFailingFleetRevalidation(acme, [
+  { ...soleVehicle, ...fleetVehicle({ registeredKeeperName: "Acme Haulage Ltd", insurancePolicyholderName: "Acme Haulage Ltd" }) },
+  { ...soleVehicle, id: "v2" },
+].map((v, n) => ({ ...v, id: "c" + n, verificationStatus: "verified" }))).map((e) => e.vehicle.id), ["c1"], "only non-compliant verified vehicles are moved");
+
+// Execute revalidateFleetVehicles against an in-memory transaction.
+const memory = { updates: [], notifications: [], audits: [] };
+const fakeTx = {
+  account: { findUnique: async () => ({ id: "acct", ...acme }) },
+  vehicle: {
+    findMany: async () => [soleVehicle, { ...soleVehicle, id: "v2", verificationStatus: "pending" }],
+    update: async (args) => { memory.updates.push(args); return {}; },
+  },
+  notification: { create: async (args) => { memory.notifications.push(args); return {}; } },
+  adminAuditEvent: { create: async (args) => { memory.audits.push(args); return {}; } },
+};
+const moved = await assignment.revalidateFleetVehicles(fakeTx, "acct", "system:test", new Date("2026-11-06T12:00:00Z"));
+assert.deepEqual(moved, ["v1"]);
+assert.equal(memory.updates[0].data.verificationStatus, "failed", "non-compliant vehicle leaves verified");
+assert.equal(memory.updates[0].data.verifiedAt, null);
+assert.equal(memory.updates[0].data.correctionDeadline.toISOString().slice(0, 10), "2026-11-20", "§5 correction window applies (10 working days)");
+assert.match(memory.updates[0].data.rejectionReason, /now a fleet/);
+assert.equal(memory.notifications.length, 1, "owner is notified");
+assert.equal(memory.audits[0].data.action, "VEHICLE_FLEET_REVALIDATION_FAILED", "change is audited");
+const vehiclesSrc = stripComments(read("app/api/vehicles/route.ts"));
+assert.match(vehiclesSrc, /recordVehicleAddedFees\(tx, account, created\.id\);\s*await revalidateFleetVehicles\(tx, account\.id,/,
+  "adding a vehicle re-validates verified vehicles in the same transaction");
+const adminSrc = stripComments(read("app/api/admin/vehicles/route.ts"));
+assert.match(adminSrc, /revalidateFleetVehicles\(tx, account\.id, reviewer, now\)/, "approval also re-validates on current account state (legacy fleets)");
+assert.match(adminSrc, /account\._count\.vehicles,\s*now,/, "approval rules use the current registered vehicle count");
+
+// ---- 2. One fleet definition everywhere, including legacy fleetVehicleCount null ----
+assert.equal(rules.isFleetAccount({ planType: "individual", fleetVehicleCount: null }, 2), true, "legacy account with 2 vehicles is a fleet");
+assert.equal(rules.isFleetAccount({ planType: "individual", fleetVehicleCount: null }, 1), false);
+assert.equal(rules.isFleetAccount({ planType: "fleet", fleetVehicleCount: null }, 0), true);
+const counted = await assignment.loadFleetStatus({ vehicle: { count: async ({ where }) => (where.accountId === "legacy" ? 3 : 0) } },
+  { id: "legacy", planType: "individual", fleetVehicleCount: null });
+assert.deepEqual(counted, { fleet: true, registeredVehicleCount: 3 }, "loader counts registered vehicles");
+assert.deepEqual(assignment.parseDriverDeclaration({ fleet: true }, {}).ok, false, "fleet status from the loader requires a declaration");
+assert.deepEqual(assignment.parseDriverDeclaration({ fleet: false }, {}), { ok: true, value: { fleet: false } });
+const routeSources = {
+  accept: stripComments(read("app/api/jobs/[id]/accept/route.ts")),
+  bid: stripComments(read("app/api/jobs/[id]/bid/route.ts")),
+  bidAccept: stripComments(read("app/api/jobs/[id]/bids/[bidId]/accept/route.ts")),
+  vehicles: vehiclesSrc,
+  admin: adminSrc,
+};
+for (const [name, src] of Object.entries(routeSources)) {
+  assert.doesNotMatch(src, /isFleetAccount\([^,()]*\)/, name + ": isFleetAccount must always receive the registered vehicle count");
+}
+for (const name of ["accept", "bid", "bidAccept"]) {
+  assert.match(routeSources[name], /loadFleetStatus\(/, name + ": fleet status comes from the shared loader");
+}
+assert.doesNotMatch(routeSources.bidAccept, /bidderPlan/, "bid award no longer uses a plan-only fleet check");
+
+// ---- 3. Fleet-declared licence must not belong to another account's driver ----
+const declared = assignment.parseDriverDeclaration({ fleet: true }, { driverName: "Jo Smith", driverLicenceNumber: "SMITH71113JO9AB", vehicleId: "veh_1" });
+assert.equal(declared.ok, true);
+const assignmentDb = (identityOwner) => ({
+  driverIdentity: { findUnique: async () => (identityOwner ? { accountId: identityOwner } : null) },
+  vehicle: { findFirst: async () => ({ id: "veh_1", regPlate: "AB12 CDE", vehicleType: "van" }) },
+  user: { findFirst: async () => null },
+});
+const assignArgs = { accountId: "fleet-acct", declaration: declared.value, vehicleType: "van", market: { country: "GB", currency: "GBP" }, requireEligibleVehicle: false };
+await assert.rejects(assignment.resolveJobDriverAssignment(assignmentDb("other-acct"), assignArgs), /DRIVER_LICENCE_NOT_ACCEPTED/,
+  "licence registered to another account's driver is refused");
+assert.equal((await assignment.resolveJobDriverAssignment(assignmentDb(null), assignArgs)).source, "fleet_declared", "unregistered licence is accepted");
+assert.equal((await assignment.resolveJobDriverAssignment(assignmentDb("fleet-acct"), assignArgs)).source, "fleet_declared", "the fleet's own registered driver is accepted");
+assert.doesNotMatch(assignment.FLEET_LICENCE_NOT_ACCEPTED, /another account|already|registered/i, "neutral wording");
+for (const name of ["accept", "bid"]) {
+  assert.match(routeSources[name], /DRIVER_LICENCE_NOT_ACCEPTED[\s\S]{0,120}FLEET_LICENCE_NOT_ACCEPTED[\s\S]{0,40}status: 409/, name + ": neutral 409");
+}
+assert.match(routeSources.bidAccept, /DRIVER_LICENCE_NOT_ACCEPTED"\)\) throw new Error\("BID_NO_LONGER_ELIGIBLE"\)/, "bid award re-checks the licence");
+
+// ---- 4. Licence claim abuse ----
+const licenceRoute = stripComments(read("app/api/account/driver-licence/route.ts"));
+const postBody = licenceRoute.slice(licenceRoute.indexOf("async function POSTHandler"));
+const at = (needle) => { const i = postBody.indexOf(needle); assert.ok(i >= 0, "missing: " + needle); return i; };
+assert.ok(at('account.verificationStatus !== "verified"') < at("enforceRateLimit("), "person ID must be verified before a licence can be claimed");
+assert.ok(at("enforceRateLimit(") < at("readBoundedJson("), "rate limit counts every attempt, including malformed and refused ones");
+assert.ok(at("enforceRateLimit(") < at("driverIdentity.findUnique"), "rate limit is spent before any lookup");
+assert.doesNotMatch(postBody, /already recorded for this account/, "no distinguishable 'different licence on this account' message");
+assert.equal((postBody.match(/return notAccepted\(\)/g) || []).length, 2, "own-account mismatch and duplicate/storage failure share one response");
+assert.match(postBody, /const notAccepted = \(\) => NextResponse\.json\(\{ error: LICENCE_NOT_ACCEPTED_MESSAGE \}, \{ status: 409 \}\)/);
+assert.doesNotMatch(postBody, /status: 500/, "storage failures are not distinguishable from duplicates");
+const releaseRoute = stripComments(read("app/api/admin/driver-licence/release/route.ts"));
+assert.match(releaseRoute, /if \(!session\)[\s\S]{0,120}status: 401/);
+assert.match(releaseRoute, /if \(!\(await isTesterAdmin\(\)\)\)[\s\S]{0,120}status: 403/, "release is admin-only");
+assert.match(releaseRoute, /action: "DRIVER_LICENCE_RELEASED"/, "release is audited");
+assert.match(releaseRoute, /tx\.driverIdentity\.delete/);
+assert.match(releaseRoute, /enforceRateLimit/);
+assert.doesNotMatch(releaseRoute, /licenceHash[^:]*:\s*true|NextResponse\.json\(\{[^}]*licenceHash/, "release never returns the hash");
+assert.match(releaseRoute, /withApiMetrics\("\/api\/admin\/driver-licence\/release", POSTHandler\)/);
+assert.match(read("lib/driverLicence.ts"), /admin release route/, "comment matches behaviour");
+
+// ---- 5. MOT expiry checked at approval where the market requires inspection ----
+const expiredMot = vehicle({ motValidUntil: new Date("2026-01-01") });
+assert.ok(rules.vehicleApprovalProblems(expiredMot, { ...individual, inspectionRequired: true }, 1, now).some((p) => /MOT/.test(p)), "expired MOT blocks approval");
+assert.ok(rules.vehicleApprovalProblems(vehicle({ motValidUntil: null }), { ...individual, inspectionRequired: true }, 1, now).some((p) => /MOT/.test(p)), "missing MOT blocks approval");
+assert.deepEqual(rules.vehicleApprovalProblems(vehicle({ motValidUntil: future }), { ...individual, inspectionRequired: true }, 1, now), []);
+assert.deepEqual(rules.vehicleApprovalProblems(expiredMot, { ...individual, inspectionRequired: false }, 1, now), [], "markets without inspection are not blocked");
+assert.match(adminSrc, /inspectionRequired: Boolean\(getLocalisationProfile\(\{ country: account\.country, currency: account\.currency \}\)\?\.inspectionRequiredAtCountryLevel\)/);
+
+// ---- 6. Pilot QA accounts treated the same at bid and bid award ----
+assert.equal(assignment.bidderRequiresEligibleVehicle({ isTester: false }, false, false), true, "real accounts need a vehicle");
+assert.equal(assignment.bidderRequiresEligibleVehicle({ isTester: true }, false, false), false, "plain testers exempt");
+assert.equal(assignment.bidderRequiresEligibleVehicle({ isTester: true }, true, false), true, "pilot QA outside a staging run needs a vehicle");
+assert.equal(assignment.bidderRequiresEligibleVehicle({ isTester: true }, true, true), false, "pilot QA in an enabled staging run exempt");
+assert.match(routeSources.bid, /bidderRequiresEligibleVehicle\(bidderAccount, isPilotQaAccount, stagingQaTester\)/);
+assert.match(routeSources.bidAccept, /bidderRequiresEligibleVehicle\(currentBidder, bidderIsPilotQa, bidderStagingQa\)/);
+assert.match(routeSources.bidAccept, /requireEligibleVehicle: bidderNeedsVehicle/);
+assert.doesNotMatch(routeSources.bidAccept, /requireEligibleVehicle: !currentBidder\.isTester/, "bid award no longer exempts every tester");
+
+// ---- 7. India: per-job driver record intentionally not required ----
+const acceptRaw = read("app/api/jobs/[id]/accept/route.ts");
+assert.match(acceptRaw, /India is intentionally exempt from the per-job driver record/, "documented intentional exemption");
+assert.match(routeSources.accept, /isIndiaPhoneVerifiedAccount\(account\)\s*\?\s*\{ ok: true as const, value: \{ fleet: false as const \} \}/,
+  "India accepts declare no fleet driver (EXECUTION_PLAN §1: India unchanged)");
+assert.match(routeSources.accept, /requireEligibleVehicle: recordsDriverVehicle/);
+assert.match(routeSources.accept, /recordsDriverVehicle = [^;]*!isIndiaPhoneVerifiedAccount\(account\)/, "India records no driver/vehicle");
+
+// ---- Nits ----
+const patchBody = vehiclesSrc.slice(vehiclesSrc.indexOf("async function PATCHHandler"));
+assert.ok(patchBody.indexOf("enforceRateLimit(") > 0 && patchBody.indexOf("enforceRateLimit(") < patchBody.indexOf("readBoundedJson("), "PATCH /api/vehicles is rate limited");
+assert.match(adminSrc, /if \(account\.deletionRequestedAt\)[\s\S]{0,140}status: 409/, "admin cannot review vehicles of accounts pending deletion");
+const adminPage = stripComments(read("app/admin/vehicles/page.tsx"));
+assert.doesNotMatch(adminPage, /aria-describedby/, "no aria-describedby on a disabled (unfocusable) button");
+assert.match(adminPage, /Approve is unavailable until the problems listed above are fixed\./, "visible helper text instead");
+
+console.log("Vehicle approval and fleet rules contract passed: approval rules, fleet keeper/policyholder, policy review key, correction windows, licence hashing, fleet driver record, poster visibility, 0.50 fee, admin-only access, review fixes 1-7.");

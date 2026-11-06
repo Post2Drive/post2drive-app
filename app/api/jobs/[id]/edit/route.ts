@@ -2,7 +2,7 @@ import { withApiMetrics } from "@/lib/apiMetrics";
 import { requireJobMarketAccess } from "@/lib/jobMarket";
 import { getJobPickupAtForAccount, pickupAccessError } from "@/lib/jobAccess";
 import { isSupportedMarket } from "@/lib/market";
-import { getAccountAccess } from "@/lib/access";
+import { getPostAccess } from "@/lib/access";
 import { NextResponse } from "next/server";
 import { readBoundedJson } from "@/lib/requestBody";
 import { getServerSession } from "next-auth";
@@ -79,7 +79,7 @@ async function PATCHHandler(
     validation.data;
 
   const marketplaceAccessCheck =
-    await getAccountAccess(accountId);
+    await getPostAccess(accountId);
 
   if (!marketplaceAccessCheck.allowed) {
     return NextResponse.json(

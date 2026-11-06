@@ -5,6 +5,8 @@ import { isTesterAdmin } from "@/lib/testerAdmin";
 import { prisma } from "@/lib/prisma";
 import { readBoundedJson } from "@/lib/requestBody";
 import { withApiMetrics } from "@/lib/apiMetrics";
+import { failureOutcome } from "@/lib/verificationProcess";
+import { marketForAccount } from "@/lib/market";
 
 async function GETHandler() {
   const session = await getServerSession(authOptions);
@@ -44,7 +46,7 @@ async function POSTHandler(req: Request) {
 
   const account = await prisma.account.findUnique({
     where: { id: accountId },
-    select: { id: true, companyVerificationStatus: true, country: true, currency: true },
+    select: { id: true, companyVerificationStatus: true, country: true, currency: true, companyReviewCyclePosition: true },
   });
   if (!account) return NextResponse.json({ error: "Account not found." }, { status: 404 });
   if (account.country !== "GB" || account.currency !== "GBP") {
@@ -56,12 +58,19 @@ async function POSTHandler(req: Request) {
 
   const status = decision as "verified" | "failed" | "manual_review";
   const reviewer = session.user?.email?.trim().toLowerCase() || "admin";
+  // A failed review opens the same correction windows as person verification:
+  // 10 working days after the first failure, a final 3 after the second, then none.
+  const now = new Date();
+  const timeZone = marketForAccount(account)?.timeZone ?? "UTC";
+  const outcome = status === "failed" ? failureOutcome(account.companyReviewCyclePosition, now, timeZone) : null;
   const updated = await prisma.$transaction(async (tx) => {
     const result = await tx.account.update({
       where: { id: accountId },
       data: {
         companyVerificationStatus: status,
-        companyVerifiedAt: status === "verified" ? new Date() : null,
+        companyVerifiedAt: status === "verified" ? now : null,
+        ...(status === "verified" ? { companyReviewCyclePosition: 1, companyCorrectionDeadline: null } : {}),
+        ...(outcome ? { companyCorrectionDeadline: outcome.correctionDeadline ?? outcome.finalEvidenceDeadline } : {}),
       },
       select: { id: true, companyName: true, companyVerificationStatus: true, companyVerificationSubmittedAt: true, companyVerifiedAt: true },
     });

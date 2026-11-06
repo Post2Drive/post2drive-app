@@ -2,15 +2,16 @@ import { withApiMetrics } from "@/lib/apiMetrics";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import {
-  getPromotion,
-  getMaximumExtensionCount,
-} from "@/lib/promotion";
-import { getTrialCycleStatus } from "@/lib/trialCycles";
+import { getEntitlementStatus } from "@/lib/access";
 import { getPlanDisplay, isWeeklyPricingEligible } from "@/lib/pricing";
 import { prisma } from "@/lib/prisma";
 import { isUkAccount } from "@/lib/uk";
 
+/**
+ * Launch-window status (replaces the per-account promotion and trial cycles, 2026-11-06).
+ * Window dates come from LaunchConfig; when it is missing the response says so instead of
+ * inventing dates (`launch.configured: false`).
+ */
 async function GETHandler() {
   const session =
     await getServerSession(authOptions);
@@ -34,8 +35,17 @@ async function GETHandler() {
 
   const account =
     await prisma.account.findUnique({
-      where: {
-        id: accountId,
+      where: { id: accountId },
+      select: {
+        id: true,
+        country: true,
+        currency: true,
+        planType: true,
+        fleetVehicleCount: true,
+        verificationStatus: true,
+        isTester: true,
+        subscriptionStatus: true,
+        subscriptionPlanKey: true,
       },
     });
 
@@ -46,125 +56,47 @@ async function GETHandler() {
     );
   }
 
-  const promotion =
-    await getPromotion();
-
-  const ukEligible =
-    isUkAccount(account);
-
-  // Keep launch-promotion eligibility GB-only, but expose the paid plan to
-  // every supported non-India market that uses weekly pricing.
-
+  const ukEligible = isUkAccount(account);
+  const status = await getEntitlementStatus(account.id);
+  const billingPlan = status.billing?.plan;
   const planKey =
-    account.subscriptionPlanKey ===
-      "fleet" ||
-    account.subscriptionPlanKey ===
-      "individual"
-      ? account.subscriptionPlanKey
-      : account.planType ===
-        "fleet"
+    billingPlan === "poster" || billingPlan === "individual" || billingPlan === "fleet"
+      ? billingPlan
+      : account.planType === "fleet"
       ? "fleet"
       : "individual";
-
-  const plan =
-    getPlanDisplay(
-      planKey,
-      account
-    );
-
-  const trialCycle =
-    ukEligible && account.promotionParticipant && account.trialStartedAt
-      ? await getTrialCycleStatus(account.id)
-      : null;
+  const plan = getPlanDisplay(planKey, account);
+  const posterPlan = getPlanDisplay("poster", account);
 
   return NextResponse.json({
-    promotion: {
-      active:
-        ukEligible &&
-        promotion.active,
-
-      startAt:
-        ukEligible
-          ? promotion.startAt
-          : null,
-
-      endAt:
-        ukEligible
-          ? promotion.endAt
-          : null,
+    launch: status.launch,
+    entitlements: {
+      post: { allowed: status.post.allowed, reason: status.post.reason, endsAt: status.post.endsAt ?? null, opensAt: status.post.opensAt },
+      drive: { allowed: status.drive.allowed, reason: status.drive.reason, endsAt: status.drive.endsAt ?? null, opensAt: status.drive.opensAt, waitlistPosition: status.drive.waitlistPosition },
     },
-
+    billing: status.billing,
     account: {
-      country:
-        account.country,
-
-      currency:
-        account.currency,
-
-      ukPromotionEligible:
-        ukEligible,
-
-      planType:
-        account.planType,
-
-      promotionParticipant:
-        ukEligible &&
-        account.promotionParticipant,
-
-      verificationStatus:
-        account.verificationStatus,
-
-      isTester:
-        account.isTester,
-
-      subscriptionStatus:
-        account.subscriptionStatus,
-
-      trialStartedAt:
-        ukEligible
-          ? account.trialStartedAt
-          : null,
-
-      trialEndsAt:
-        ukEligible
-          ? account.trialEndsAt
-          : null,
-
-      freeEndsAt:
-        ukEligible
-          ? account.freeEndsAt
-          : null,
-
-      freeMonthsEarned:
-        ukEligible
-          ? account.freeMonthsEarned
-          : 0,
-
-      extensionCount:
-        ukEligible
-          ? account.extensionCount
-          : 0,
-
-      maximumExtensionCount:
-        ukEligible
-          ? getMaximumExtensionCount(
-              account.planType
-            )
-          : 0,
+      country: account.country,
+      currency: account.currency,
+      ukLaunchEligible: ukEligible,
+      planType: account.planType,
+      verificationStatus: account.verificationStatus,
+      isTester: account.isTester,
+      subscriptionStatus: account.subscriptionStatus,
     },
-
-    trialCycle,
     paidPlan:
       isWeeklyPricingEligible(account)
         ? {
             key: plan.key,
             name: plan.name,
             price: plan.price,
-            currency:
-              plan.currency,
-            description:
-              plan.description,
+            currency: plan.currency,
+            description: plan.description,
           }
+        : null,
+    posterPlan:
+      isWeeklyPricingEligible(account)
+        ? { key: posterPlan.key, name: posterPlan.name, price: posterPlan.price, currency: posterPlan.currency, description: posterPlan.description }
         : null,
   });
 }

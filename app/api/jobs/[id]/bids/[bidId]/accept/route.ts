@@ -1,7 +1,7 @@
 import { withApiMetrics } from "@/lib/apiMetrics";
 import { requireJobMarketAccess } from "@/lib/jobMarket";
 import { getJobPickupAtForAccount, pickupAccessError } from "@/lib/jobAccess";
-import { getAccountAccess } from "@/lib/access";
+import { getDriveAccess, getPostAccess } from "@/lib/access";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -10,8 +10,8 @@ import { expireJobOpportunities } from "@/lib/opportunities";
 import { getLocalisationProfile } from "@/lib/localisation";
 import { marketDateKey } from "@/lib/vehicleDates";
 import { canPostJobs } from "@/lib/eligibility";
-import { isFleetAccount } from "@/lib/vehicleApproval";
-import { resolveJobDriverAssignment, type DriverDeclaration } from "@/lib/jobDriverAssignment";
+import { isQaRunnerEnabled } from "@/lib/qaRunnerGuard";
+import { bidderRequiresEligibleVehicle, loadFleetStatus, resolveJobDriverAssignment, type DriverDeclaration } from "@/lib/jobDriverAssignment";
 
 // POST /api/jobs/[id]/bids/[bidId]/accept
 // Poster accepts one bid and assigns the job to that driver.
@@ -33,7 +33,7 @@ async function POSTHandler(
   const marketAccessError = await requireJobMarketAccess(accountId, routeParams.id);
   if (marketAccessError) return marketAccessError;
 
-  const marketplaceAccessCheck = await getAccountAccess(accountId);
+  const marketplaceAccessCheck = await getPostAccess(accountId);
 
   const job = await prisma.job.findUnique({
     where: { id: routeParams.id },
@@ -84,7 +84,7 @@ async function POSTHandler(
 
   const posterVerification = await prisma.account.findUnique({
     where: { id: accountId },
-    select: { verificationStatus: true, companyVerificationStatus: true, isTester: true },
+    select: { verificationStatus: true, companyVerificationStatus: true, isTester: true, country: true, currency: true, phoneVerifiedAt: true },
   });
   if (!posterVerification || (!posterVerification.isTester && !canPostJobs(posterVerification))) {
     return NextResponse.json({ error: "Complete identity verification and obtain company approval before awarding a job." }, { status: 403 });
@@ -108,7 +108,7 @@ async function POSTHandler(
     );
   }
 
-  const bidderAccess = await getAccountAccess(bid.bidderId);
+  const bidderAccess = await getDriveAccess(bid.bidderId);
   if (!bidderAccess.allowed) {
     return NextResponse.json(
       { error: "The bidder no longer has active marketplace access." },
@@ -136,7 +136,7 @@ async function POSTHandler(
 
     const currentPoster = await tx.account.findUnique({
       where: { id: accountId },
-      select: { verificationStatus: true, companyVerificationStatus: true, isTester: true },
+      select: { verificationStatus: true, companyVerificationStatus: true, isTester: true, country: true, currency: true, phoneVerifiedAt: true },
     });
     if (!currentPoster || (!currentPoster.isTester && !canPostJobs(currentPoster))) {
       throw new Error("POSTER_NOT_VERIFIED");
@@ -174,12 +174,17 @@ async function POSTHandler(
     // immediately before awarding the bid.
     const currentBidder = await tx.account.findUnique({
       where: { id: currentBid.bidderId },
-      select: { country: true, currency: true, verificationStatus: true, isTester: true },
+      select: { country: true, currency: true, verificationStatus: true, isTester: true, planType: true, fleetVehicleCount: true, qaTestAccounts: { select: { runId: true } } },
     });
-    if (!currentBidder || (currentBidder.verificationStatus !== "verified" && !currentBidder.isTester)) {
+    // Same QA treatment as the bid route (bidderRequiresEligibleVehicle).
+    const bidderIsPilotQa = Boolean(currentBidder?.isTester && currentBidder.country === "GB" && currentBidder.currency === "GBP" &&
+      Array.isArray(currentBidder.qaTestAccounts) && currentBidder.qaTestAccounts.some((entry) => entry.runId === "uk-market-student-qa"));
+    const bidderStagingQa = Boolean(isQaRunnerEnabled() && bidderIsPilotQa);
+    const bidderNeedsVehicle = Boolean(currentBidder && bidderRequiresEligibleVehicle(currentBidder, bidderIsPilotQa, bidderStagingQa));
+    if (!currentBidder || (currentBidder.verificationStatus !== "verified" && bidderNeedsVehicle)) {
       throw new Error("BID_NO_LONGER_ELIGIBLE");
     }
-    if (!currentBidder.isTester) {
+    if (bidderNeedsVehicle) {
       const bidderMarket = getLocalisationProfile({ country: currentBidder.country, currency: currentBidder.currency });
       const marketToday = marketDateKey(new Date(), bidderMarket?.timeZone ?? "UTC");
       const dateCutoff = new Date(marketToday + "T00:00:00.000Z");
@@ -198,12 +203,10 @@ async function POSTHandler(
 
     // Per-job driver record (EXECUTION_PLAN §6). Fleets declared driver + vehicle on
     // the bid; individual drivers use their own recorded identity and approved vehicle.
-    const bidderPlan = await tx.account.findUnique({
-      where: { id: currentBid.bidderId },
-      select: { planType: true, fleetVehicleCount: true },
-    });
+    // Single fleet definition (includes registered vehicle count for legacy accounts).
+    const bidderFleet = await loadFleetStatus(tx, { id: currentBid.bidderId, ...currentBidder });
     let bidDeclaration: DriverDeclaration = { fleet: false };
-    if (bidderPlan && isFleetAccount(bidderPlan)) {
+    if (bidderFleet.fleet) {
       if (!currentBid.fleetDriverName || !currentBid.fleetDriverLicenceHash || !currentBid.fleetDriverLicenceLast4 || !currentBid.fleetVehicleId) {
         throw new Error("BID_DRIVER_RECORD_MISSING");
       }
@@ -220,9 +223,9 @@ async function POSTHandler(
       declaration: bidDeclaration,
       vehicleType: currentJob.vehicleType,
       market: { country: currentBidder.country, currency: currentBidder.currency },
-      requireEligibleVehicle: !currentBidder.isTester,
+      requireEligibleVehicle: bidderNeedsVehicle,
     }).catch((error) => {
-      if (error instanceof Error && error.message === "DRIVER_VEHICLE_NOT_VERIFIED") throw new Error("BID_NO_LONGER_ELIGIBLE");
+      if (error instanceof Error && (error.message === "DRIVER_VEHICLE_NOT_VERIFIED" || error.message === "DRIVER_LICENCE_NOT_ACCEPTED")) throw new Error("BID_NO_LONGER_ELIGIBLE");
       throw error;
     });
 

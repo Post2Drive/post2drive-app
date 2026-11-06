@@ -15,6 +15,7 @@ type AccessData = {
   subscriptionEndsAt: string | null;
   subscriptionPlanKey: string | null;
   endsAt: string | null;
+  opensAt?: string | null;
   price: number | null;
   currency: string;
   marketLabel: string;
@@ -59,9 +60,10 @@ export default function SubscriptionStatus() {
 
   if (!data) return null;
 
+  // Free access now comes from launch windows (poster/driver window, new-poster trial) or the staging pilot.
   const trialActive =
-    data.reason === "promotional" &&
-    Boolean(data.freeEndsAt || data.trialEndsAt);
+    ["poster_window", "new_poster_trial", "driver_window", "pilot"].includes(data.reason);
+  const month0 = data.reason === "month_0";
 
   const paidActive =
     data.reason === "paid" &&
@@ -73,21 +75,23 @@ export default function SubscriptionStatus() {
       ? "Paid access active"
       : data.reason === "verification_required"
         ? "Verification required"
-        : "Access needs renewal";
+        : month0
+          ? "Marketplace opens soon"
+          : "Access needs renewal";
 
   const statusColor = trialActive
     ? "var(--color-positive)"
     : paidActive
       ? "var(--color-primary-action)"
-      : data.reason === "verification_required"
+      : data.reason === "verification_required" || month0
         ? "var(--color-warning)"
         : "var(--color-danger)";
-  const statusTextColor = data.reason === "verification_required"
+  const statusTextColor = data.reason === "verification_required" || month0
     ? "var(--color-text)"
     : statusColor;
 
   const endsAt = formatDate(
-    data.endsAt || data.freeEndsAt || data.subscriptionEndsAt,
+    month0 ? data.opensAt ?? null : data.endsAt || data.subscriptionEndsAt,
     data.locale,
     data.timeZone,
   );
@@ -150,7 +154,7 @@ export default function SubscriptionStatus() {
             }}
           >
             {planName}
-            {endsAt ? ` · until ${endsAt}` : ""}
+            {endsAt ? (month0 ? ` · opens ${endsAt}` : ` · until ${endsAt}`) : ""}
           </p>
         </div>
 
@@ -167,7 +171,9 @@ export default function SubscriptionStatus() {
           }}
         >
           {trialActive
-            ? "FREE TRIAL"
+            ? "FREE"
+            : month0
+            ? "SOON"
             : paidActive
               ? "ACTIVE"
               : data.reason === "verification_required"

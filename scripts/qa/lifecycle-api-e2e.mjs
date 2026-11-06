@@ -34,7 +34,7 @@ const jobIds = [];
 let server;
 let serverOutput = "";
 let base = "";
-let poster, driver, outsider, indiaPoster, suspendedGbPoster, suspendedGbUser, suspendedGbJob, pendingCompanyAccount, lifecycleJob, bidJob, bid, incident, evidence, posterVehicle, indiaVehicle, incidentJob, cancelJob, acceptJob, unassignJob, rejectJob, indiaJob, notification;
+let poster, driver, outsider, phonelessPoster, phonelessPosterUser, indiaPoster, suspendedGbPoster, suspendedGbUser, suspendedGbJob, pendingCompanyAccount, lifecycleJob, bidJob, bid, incident, evidence, posterVehicle, indiaVehicle, incidentJob, cancelJob, acceptJob, unassignJob, rejectJob, indiaJob, notification;
 
 async function snapshot() {
   // Compare complete isolated fixture rows rather than counts alone. A denied
@@ -203,19 +203,21 @@ const denyStatuses = new Set([400, 401, 403, 404, 409, 422]);
 try {
   poster = await prisma.account.create({ data: {
     type: "poster", companyName: "CI lifecycle poster", displayId: "CIP-" + suffix,
-    country: "GB", currency: "GBP", verificationStatus: "verified",
+    country: "GB", currency: "GBP", phoneVerifiedAt: new Date(), verificationStatus: "verified",
     companyVerificationStatus: "verified", companyVerifiedAt: new Date(),
     subscriptionStatus: "active", subscriptionPlanKey: "individual",
     subscriptionStartedAt: new Date(), subscriptionEndsAt: new Date("2035-12-31T00:00:00.000Z"),
   }});
   driver = await prisma.account.create({ data: {
     type: "driver", companyName: "CI lifecycle driver", displayId: "CID-" + suffix,
-    country: "GB", currency: "GBP", verificationStatus: "verified",
+    country: "GB", currency: "GBP", phoneVerifiedAt: new Date(), verificationStatus: "verified",
     subscriptionStatus: "active", subscriptionPlanKey: "individual",
     subscriptionStartedAt: new Date(), subscriptionEndsAt: new Date("2035-12-31T00:00:00.000Z"),
   }});
   outsider = await prisma.account.create({ data: {
     type: "both", companyName: "CI unrelated account", displayId: "CIO-" + suffix,
+    // No verified phone: this account never posts, and the phone-verification probe below
+    // must exercise an unverified number (a verified one returns 200 "already verified").
     country: "GB", currency: "GBP", verificationStatus: "verified",
     subscriptionStatus: "active", subscriptionPlanKey: "individual",
     subscriptionStartedAt: new Date(), subscriptionEndsAt: new Date("2035-12-31T00:00:00.000Z"),
@@ -228,17 +230,26 @@ try {
   }});
   suspendedGbPoster = await prisma.account.create({ data: {
     type: "poster", companyName: "CI suspended GB poster", displayId: "CIS-" + suffix,
-    country: "GB", currency: "GBP", verificationStatus: "suspended",
+    country: "GB", currency: "GBP", phoneVerifiedAt: new Date(), verificationStatus: "suspended",
     isTester: true, testerApprovalStatus: "approved",
     subscriptionStatus: "active", subscriptionPlanKey: "individual",
     subscriptionStartedAt: new Date(), subscriptionEndsAt: new Date("2035-12-31T00:00:00.000Z"),
   } });
   pendingCompanyAccount = await prisma.account.create({ data: {
     type: "poster", companyName: "CI pending company review", displayId: "CIPC-" + suffix,
-    country: "GB", currency: "GBP", verificationStatus: "verified",
+    country: "GB", currency: "GBP", phoneVerifiedAt: new Date(), verificationStatus: "verified",
     companyVerificationStatus: "pending", companyVerificationSubmittedAt: new Date(),
   } });
-  accountIds.push(poster.id, driver.id, outsider.id, indiaPoster.id, suspendedGbPoster.id, pendingCompanyAccount.id);
+  // Person + company verified with an active plan, but no phone OTP: posting must be denied
+  // (verification order email -> phone -> person ID + company, EXECUTION_PLAN §1).
+  phonelessPoster = await prisma.account.create({ data: {
+    type: "poster", companyName: "CI phoneless verified poster", displayId: "CIPN-" + suffix,
+    country: "GB", currency: "GBP", verificationStatus: "verified",
+    companyVerificationStatus: "verified", companyVerifiedAt: new Date(),
+    subscriptionStatus: "active", subscriptionPlanKey: "individual",
+    subscriptionStartedAt: new Date(), subscriptionEndsAt: new Date("2035-12-31T00:00:00.000Z"),
+  } });
+  accountIds.push(poster.id, driver.id, outsider.id, indiaPoster.id, suspendedGbPoster.id, pendingCompanyAccount.id, phonelessPoster.id);
   const passwordHash = await bcrypt.hash("ci-e2e-password-12345", 8);
   const posterUser = await prisma.user.create({ data: {
     accountId: poster.id, name: "CI Poster", email: "ci-poster-" + suffix + "@example.invalid",
@@ -251,6 +262,10 @@ try {
   const outsiderUser = await prisma.user.create({ data: {
     accountId: outsider.id, name: "CI Outsider", email: "ci-outsider-" + suffix + "@example.invalid",
     phone: "outsider-" + suffix, passwordHash, emailVerifiedAt: new Date(),
+  }});
+  phonelessPosterUser = await prisma.user.create({ data: {
+    accountId: phonelessPoster.id, name: "CI Phoneless Poster", email: "ci-phoneless-" + suffix + "@example.invalid",
+    phone: "phoneless-" + suffix, passwordHash, emailVerifiedAt: new Date(),
   }});
   const indiaUser = await prisma.user.create({ data: {
     accountId: indiaPoster.id, name: "CI India Poster", email: "ci-india-" + suffix + "@example.invalid",
@@ -681,7 +696,7 @@ try {
 
   const verificationAccount = await prisma.account.create({ data: {
     type: "both", companyName: "CI verification webhook", displayId: "CIV-" + suffix,
-    country: "GB", currency: "GBP", verificationStatus: "pending",
+    country: "GB", currency: "GBP", phoneVerifiedAt: new Date(), verificationStatus: "pending",
   } });
   accountIds.push(verificationAccount.id);
   const verificationAttempt = await prisma.verificationAttempt.create({ data: {
@@ -811,6 +826,20 @@ try {
     "GB job creation must reject a client-supplied INR/India market");
   assert.equal(await prisma.job.count({ where: { posterId: poster.id } }), jobsBeforeForgedMarket,
     "rejected market tampering must not create a job");
+
+  const phonelessCookie = await signIn(phonelessPosterUser.email);
+  const phonelessPost = await api("/api/jobs", "POST", phonelessCookie, {
+    pickup: "CI phoneless pickup", dropoff: "CI phoneless dropoff",
+    jobDate: new Date(Date.now() + 4 * 86_400_000).toISOString().slice(0, 10),
+    pickupTime: "10:00", dropoffTime: "14:00",
+    pickupTimeZone: "Europe/London", dropoffTimeZone: "Europe/London",
+    vehicleType: "Small van (SWB)", price: 100, priceMode: "fixed",
+    currency: "GBP", country: "GB", crossBorder: false,
+  });
+  assert.equal(phonelessPost.status, 403,
+    "a person+company verified GB account on an active plan without phone OTP must not post jobs");
+  assert.equal(await prisma.job.count({ where: { posterId: phonelessPoster.id } }), 0,
+    "denied phoneless posting must not create a job");
 
   const indiaPersonVerification = await api("/api/verification/start", "POST", indiaCookie, {});
   assert.equal(indiaPersonVerification.status, 403,

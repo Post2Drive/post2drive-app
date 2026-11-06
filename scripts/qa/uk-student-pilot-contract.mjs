@@ -8,6 +8,7 @@ const auth = read("../../lib/auth.ts");
 const signupPage = read("../../app/signup/page.tsx");
 const testerAdmin = read("../../app/api/admin/testers/route.ts");
 const bid = read("../../app/api/jobs/[id]/bid/route.ts");
+const jobDriverAssignment = read("../../lib/jobDriverAssignment.ts");
 const directAccept = read("../../app/api/jobs/[id]/accept/route.ts");
 const opportunities = read("../../lib/opportunities.ts");
 const feedback = read("../../app/api/pilot/feedback/route.ts");
@@ -51,7 +52,8 @@ assert.match(signupPage, /Tester mode skips real identity, company and vehicle e
 assert.match(bid, /isQaRunnerEnabled\(\)/);
 assert.match(bid, /const stagingQaTester = Boolean/);
 assert.match(bid, /qaTestAccounts: \{ select: \{ runId: true \} \}/, "bid route must identify the pilot cohort explicitly");
-assert.match(bid, /bidderAccount && \(!bidderAccount\.isTester \|\| \(isPilotQaAccount && !stagingQaTester\)\)/, "pilot vehicle bypass must stop when the staging guard is off");
+assert.match(jobDriverAssignment, /return !bidder\.isTester \|\| \(isPilotQaAccount && !stagingQaTester\);/, "pilot vehicle bypass must stop when the staging guard is off");
+assert.match(bid, /bidderAccount && bidderRequiresEligibleVehicle\(bidderAccount, isPilotQaAccount, stagingQaTester\)/, "bid route must apply the shared pilot vehicle rule");
 assert.match(bid, /!stagingQaTester && bidderAccount\.type !== "driver"/);
 assert.match(directAccept, /isQaRunnerEnabled\(\)/);
 assert.match(directAccept, /const stagingQaTester = Boolean/);

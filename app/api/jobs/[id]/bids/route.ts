@@ -1,6 +1,5 @@
 import { withApiMetrics } from "@/lib/apiMetrics";
 import { requireJobMarketAccess } from "@/lib/jobMarket";
-import { getAccountAccess } from "@/lib/access";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";

@@ -18,6 +18,7 @@ export default function SettingsPage() {
     country: "GB",
     currency: "GBP",
     marketingConsent: false,
+    operatingRegion: "",
   });
   const [pwForm, setPwForm] = useState({ currentPassword: "", newPassword: "" });
   const [message, setMessage] = useState("");
@@ -50,6 +51,7 @@ export default function SettingsPage() {
         country: data.account.country,
         currency: data.account.currency,
         marketingConsent: data.account.marketingConsent,
+        operatingRegion: data.account.operatingRegion || "",
       });
     } catch (error) {
       setLoadError(error instanceof Error ? error.message : "Could not load account settings. Try again.");
@@ -72,7 +74,7 @@ export default function SettingsPage() {
       const response = await fetch("/api/account", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: form.name, phone: form.phone, companyName: form.companyName, marketingConsent: form.marketingConsent }),
+        body: JSON.stringify({ name: form.name, phone: form.phone, companyName: form.companyName, marketingConsent: form.marketingConsent, ...(account.country !== "IN" ? { operatingRegion: form.operatingRegion.trim() || null } : {}) }),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
@@ -155,6 +157,23 @@ export default function SettingsPage() {
           <p style={{ margin: "6px 0 0" }}>{marketProfile ? `${marketProfile.marketplaceLabel} · ${marketProfile.currency} · ${marketProfile.timeZone}` : "Market configuration unavailable"}</p>
           <small>Country and currency are fixed at signup so your public job marketplace remains separate from the other market.</small>
         </div>
+        {account.country !== "IN" && (
+          <label>
+            {account.country === "GB" ? "Operating area (postcode area)" : "Operating region"}
+            <input
+              type="text"
+              value={form.operatingRegion}
+              onChange={(e) => setForm({ ...form, operatingRegion: e.target.value.toUpperCase() })}
+              maxLength={account.country === "GB" ? 2 : 10}
+              autoCapitalize="characters"
+              autoComplete="off"
+              spellCheck={false}
+              placeholder={account.country === "GB" ? "e.g. LS, M or SW" : ""}
+              aria-describedby="settings-region-help"
+            />
+            <small id="settings-region-help">Required before you can take jobs as a driver or fleet. During the launch driver window, free driving places are limited per area; changing your area puts you at the back of that area&apos;s waitlist.</small>
+          </label>
+        )}
         <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <input
             type="checkbox"

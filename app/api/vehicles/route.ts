@@ -1,4 +1,5 @@
 import { withApiMetrics } from "@/lib/apiMetrics";
+import { recordVehicleAddedFees } from "@/lib/verification";
 import { NextResponse } from "next/server";
 import { readBoundedJson } from "@/lib/requestBody";
 import { getServerSession } from "next-auth";
@@ -7,24 +8,10 @@ import { prisma } from "@/lib/prisma";
 import { VEHICLE_TYPES } from "@/lib/vehicles";
 import { getLocalisationProfile, getJurisdictionOptions } from "@/lib/localisation";
 import { marketDateKey, parseOptionalDateField } from "@/lib/vehicleDates";
-import { VERIFICATION_FEES } from "@/lib/pricing";
-import { majorUnitsToMinorUnits } from "@/lib/currencyMinorUnits";
-import { chargesAdditionalVehicleFee, isFleetAccount, isInsuranceCoverType, isKeeperType } from "@/lib/vehicleApproval";
+import { isFleetAccount, isInsuranceCoverType, isKeeperType } from "@/lib/vehicleApproval";
+import { revalidateFleetVehicles } from "@/lib/jobDriverAssignment";
+import { enforceRateLimit } from "@/lib/rateLimit";
 
-/**
- * 0.50 fee for every vehicle beyond the first (EXECUTION_PLAN §5), recorded as
- * pending/unpaid and never marked paid here. Interim storage on the Vehicle row.
- * TODO: switch to recordVerificationFee from lib/verificationFees.ts (#176) after merge
- * (action "vehicle_added", line additionalVehicle x1, idempotencyKey per vehicle).
- */
-function additionalVehicleFeeData(existingVehicleCount: number, account: { country: string; currency: string }) {
-  if (!chargesAdditionalVehicleFee(existingVehicleCount, account)) return {};
-  return {
-    additionalVehicleFeeMinorUnits: majorUnitsToMinorUnits(VERIFICATION_FEES.additionalVehicle, account.currency),
-    additionalVehicleFeeCurrency: account.currency,
-    additionalVehicleFeeStatus: "unpaid" as const,
-  };
-}
 
 function validHttpUrl(value: string) {
   try {
@@ -100,7 +87,7 @@ async function GETHandler() {
     });
 
     // Same rule the accept/bid routes use to require a per-job driver declaration.
-    return NextResponse.json({ vehicles, fleet: isFleetAccount(account), isTester: account.isTester, testerApprovalStatus: account.testerApprovalStatus, market: { country: account.country, currency: account.currency } });
+    return NextResponse.json({ vehicles, fleet: isFleetAccount(account, vehicles.length), isTester: account.isTester, testerApprovalStatus: account.testerApprovalStatus, market: { country: account.country, currency: account.currency } });
   } catch (error) {
     console.error("Vehicle list failed.", { errorName: error instanceof Error ? error.name : "UnknownError" });
     return NextResponse.json({ error: "Could not load vehicles." }, { status: 500 });
@@ -224,7 +211,7 @@ async function POSTHandler(req: Request) {
         }
       }
 
-      return tx.vehicle.create({
+      const created = await tx.vehicle.create({
         data: {
           accountId: account.id,
           vehicleType,
@@ -240,11 +227,17 @@ async function POSTHandler(req: Request) {
           motValidUntil,
           insuranceValidUntil,
           ...evidence.data,
-          ...additionalVehicleFeeData(existing, account),
           verificationStatus: "pending",
           verifiedAt: null,
         },
       });
+      // Verification fees for this vehicle (EXECUTION_PLAN §5): driver upgrade or 0.50,
+      // recorded as pending in the same transaction, idempotent per account/vehicle.
+      await recordVehicleAddedFees(tx, account, created.id);
+      // Adding a vehicle can turn the account into a fleet (2+ vehicles): re-check
+      // already verified vehicles against the fleet rules in the same transaction.
+      await revalidateFleetVehicles(tx, account.id, "system:vehicle-added");
+      return created;
     });
     if (!vehicle) {
       return NextResponse.json({ error: "This registration is already on your account." }, { status: 409 });
@@ -281,6 +274,8 @@ async function PATCHHandler(req: Request) {
     if (account.verificationStatus === "suspended") {
       return NextResponse.json({ error: "Suspended accounts cannot update vehicles." }, { status: 403 });
     }
+    const updateLimit = await enforceRateLimit(req, { scope: "vehicle-update", identity: account.id, limit: 30, windowMs: 60 * 60 * 1000 });
+    if (updateLimit) return updateLimit;
     const parsedBody = await readBoundedJson(req, 16 * 1024);
     if (!parsedBody.ok) {
       return NextResponse.json(

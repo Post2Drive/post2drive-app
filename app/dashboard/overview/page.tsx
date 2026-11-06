@@ -1,11 +1,12 @@
 import { getServerSession } from "next-auth";
 import SubscriptionStatus from "@/components/subscription-status";
+import PlanSwitchControl from "@/components/plan-switch-control";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatMarketCurrency, formatMarketDate, getLocalisationProfile } from "@/lib/localisation";
-import { getTrialCycleStatus } from "@/lib/trialCycles";
+import { getEntitlementStatus } from "@/lib/access";
 import {
   getPlanDisplay,
 } from "@/lib/pricing";
@@ -91,13 +92,17 @@ export default async function DashboardOverviewPage() {
     isUkAccount(account);
   const weeklyPricingEligible = isWeeklyPricingEligible(account);
 
-  const trialCycleStatus =
-    ukEligible
-      ? await getTrialCycleStatus(account.id)
+  // Launch windows, separate POST/DRIVE entitlements, waitlist and billing (EXECUTION_PLAN §3–§4).
+  const entitlementStatus =
+    weeklyPricingEligible
+      ? await getEntitlementStatus(account.id)
       : null;
+  const billingPlan = entitlementStatus?.billing?.plan;
 
   const planKey =
-    account.planType === "fleet"
+    billingPlan === "poster" || billingPlan === "individual" || billingPlan === "fleet"
+      ? billingPlan
+      : account.planType === "fleet"
       ? "fleet"
       : "individual";
 
@@ -534,6 +539,7 @@ export default async function DashboardOverviewPage() {
       {ukEligible && (
         <section
           className="ops-section ops-section-promotion"
+          aria-labelledby="launch-status-heading"
           style={{
             marginTop: 28,
             padding: 20,
@@ -542,8 +548,8 @@ export default async function DashboardOverviewPage() {
             borderRadius: 12,
           }}
         >
-          <h2>
-            UK launch promotion
+          <h2 id="launch-status-heading">
+            UK launch status
           </h2>
 
           <p>
@@ -551,63 +557,68 @@ export default async function DashboardOverviewPage() {
             <strong>{account.isTester ? "Tester" : account.testerApprovalStatus === "pending" ? "Tester application pending review" : account.testerApprovalStatus === "rejected" ? "Tester application rejected" : account.verificationStatus}</strong>
           </p>
 
-          {account.promotionParticipant ? (
-            <>
-              <p>
-                Free access until:{" "}
-                {account.freeEndsAt
-                  ? formatMarketDate(account.freeEndsAt, { country: account.country, currency: account.currency })
-                  : "Not started"}
-              </p>
-
-              <p>
-                Extensions earned:{" "}
-                {account.extensionCount} / 3
-              </p>
-            </>
+          {!entitlementStatus?.launch?.configured ? (
+            <p role="status">
+              Launch dates have not been published yet. Free launch access is not available until they are; you can still complete verification.
+            </p>
           ) : (
+            <>
+              {entitlementStatus.post.reason === "month_0" && entitlementStatus.post.opensAt && (
+                <p role="status">
+                  <strong>Pre-launch:</strong> you can register and complete verification now. Posting jobs opens on{" "}
+                  <strong>{formatMarketDate(entitlementStatus.post.opensAt, { country: account.country, currency: account.currency })}</strong>.
+                </p>
+              )}
+              {(entitlementStatus.post.reason === "poster_window" || entitlementStatus.post.reason === "new_poster_trial" || entitlementStatus.post.reason === "pilot") && entitlementStatus.post.endsAt && (
+                <p>
+                  Posting jobs is free until <strong>{formatMarketDate(entitlementStatus.post.endsAt, { country: account.country, currency: account.currency })}</strong>.
+                </p>
+              )}
+              {entitlementStatus.drive.reason === "driver_window" && entitlementStatus.drive.endsAt && (
+                <p>
+                  Taking jobs is free until <strong>{formatMarketDate(entitlementStatus.drive.endsAt, { country: account.country, currency: account.currency })}</strong>.
+                </p>
+              )}
+              {entitlementStatus.drive.reason === "waitlisted" && (
+                <p role="status">
+                  Waitlist position: <strong>{entitlementStatus.drive.waitlistPosition ?? "pending"}</strong> in {account.operatingRegion}. Free driving places in each area are limited while the launch driver window runs; you are admitted automatically when a place opens.
+                </p>
+              )}
+              {entitlementStatus.drive.reason === "region_required" && (
+                <p role="status">
+                  Add your operating area in <Link href="/settings">account settings</Link> to join the free driving waitlist for your area.
+                </p>
+              )}
+              {entitlementStatus.drive.reason === "driver_window_not_open" && entitlementStatus.drive.opensAt && (
+                <p>
+                  Free driving opens on <strong>{formatMarketDate(entitlementStatus.drive.opensAt, { country: account.country, currency: account.currency })}</strong>.
+                </p>
+              )}
+            </>
+          )}
+
+          {entitlementStatus?.billing?.nextBillingAt && (
             <p>
-              {account.isTester
-                ? "Your tester account follows the normal promotional duration, extension and subscription rules."
-                : account.testerApprovalStatus === "pending"
-                ? "Your tester application is awaiting administrator review. Access and the normal promotional trial will begin only after approval."
-                : account.testerApprovalStatus === "rejected"
-                ? "Your tester application was not approved. Tester access is not enabled; contact the administrator if you need clarification."
-                : "Complete verification to become eligible for the UK promotional programme."}
+              Next billing date: <strong>{formatMarketDate(entitlementStatus.billing.nextBillingAt, { country: account.country, currency: account.currency })}</strong>
+              {entitlementStatus.billing.period ? ` (${entitlementStatus.billing.plan === "poster" ? "monthly" : "every 7 days"})` : ""}. Checkout is not connected yet, so nothing is charged in the app.
             </p>
           )}
 
-          {trialCycleStatus?.eligible ? (
-            <div style={{ marginTop: 18, paddingTop: 16, borderTop: "1px solid var(--color-border)" }}>
-              <h3>Trial qualification · Cycle {trialCycleStatus.cycleNumber + 1} of 4</h3>
-              <p>
-                Cycle status: <strong>{String(trialCycleStatus.status).replaceAll("_", " ")}</strong>
-                {trialCycleStatus.status === "active" ? ` · ${trialCycleStatus.daysRemaining} days remaining` : ""}
-              </p>
-              <p>Jobs posted: <strong>{trialCycleStatus.actual.posterPosted} / {trialCycleStatus.targets.posterPostedAdjusted}</strong> (normal target {trialCycleStatus.targets.posterPosted})</p>
-              <p>Jobs completed as poster: <strong>{trialCycleStatus.actual.posterCompleted} / {trialCycleStatus.targets.posterCompleted}</strong></p>
-              <p>Jobs completed as driver: <strong>{trialCycleStatus.actual.driverCompleted} / {trialCycleStatus.targets.driverCompletedAdjusted}</strong> (normal target {trialCycleStatus.targets.driverCompleted})</p>
-              <p>Verified referrals: <strong>{trialCycleStatus.actual.verifiedReferrals} / {trialCycleStatus.targets.verifiedReferrals}</strong></p>
-              <p>Referred accounts completing a genuine job: <strong>{trialCycleStatus.actual.completedReferrals} / {trialCycleStatus.targets.completedReferrals}</strong></p>
-              {trialCycleStatus.status === "grace" && trialCycleStatus.graceEndsAt && (
-                <p role="status"><strong>30-day grace period:</strong> finish the remaining targets by {formatMarketDate(trialCycleStatus.graceEndsAt, { country: account.country, currency: account.currency })}.</p>
-              )}
-              {trialCycleStatus.status === "failed" && (
-                <p role="alert">The targets were not completed within this cycle and its grace period. Free access has ended; choose the paid plan below to continue.</p>
-              )}
-              {trialCycleStatus.status === "promotion_ended" && (
-                <p role="alert">The promotional programme has ended. Free access cannot be extended further.</p>
-              )}
-              {trialCycleStatus.status === "max_extensions_complete" && (
-                <p>The maximum of three extensions has been reached. Your free access ends on the date shown above; a paid plan is needed afterwards.</p>
-              )}
-            </div>
-          ) : (
-            <p>Your cycle-based qualification targets begin when your three-month promotional period starts.</p>
+          {(entitlementStatus?.billing?.plan === "individual" || entitlementStatus?.billing?.plan === "fleet") && (
+            <PlanSwitchControl
+              requestedAt={account.switchToPosterRequestedAt ? account.switchToPosterRequestedAt.toISOString() : null}
+              effectiveLabel={
+                account.switchToPosterRequestedAt && entitlementStatus.billing.driverPlanEndsAt
+                  ? formatMarketDate(entitlementStatus.billing.driverPlanEndsAt, { country: account.country, currency: account.currency })
+                  : entitlementStatus.billing.currentPeriod
+                  ? formatMarketDate(entitlementStatus.billing.currentPeriod.end, { country: account.country, currency: account.currency })
+                  : null
+              }
+            />
           )}
 
           {!account.testerApprovalStatus && (
-            <p style={{ marginTop: 16 }}>Your referral code: <strong>{account.displayId}</strong>. Referrals count toward the active cycle only.</p>
+            <p style={{ marginTop: 16 }}>Your referral code: <strong>{account.displayId}</strong>. Referrals are recorded but do not add free time.</p>
           )}
         </section>
       )}
@@ -636,7 +647,7 @@ export default async function DashboardOverviewPage() {
                 Paid plan:{" "}
                 <strong>
                   {formatMarketCurrency(plan.price, { country: account.country, currency: account.currency })}
-                  /7 days
+                  {plan.key === "poster" ? "/month" : "/7 days"}
                 </strong>
               </p>
             )}

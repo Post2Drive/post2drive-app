@@ -145,7 +145,6 @@ export default function VehicleReviewAdminPage() {
                 className="mt-1 w-full rounded border px-3 py-2" style={{ borderColor: "var(--color-border)" }} />
               <div className="mt-3 flex flex-wrap gap-2">
                 <button type="button" disabled={Boolean(busyId) || vehicle.approvalProblems.length > 0}
-                  aria-describedby={vehicle.approvalProblems.length > 0 ? problemsId : undefined}
                   onClick={() => void review(vehicle, "approve")}
                   className="rounded px-3 py-2 text-sm disabled:opacity-50" style={{ minHeight: 44, background: "var(--color-primary-action)", color: "#fff" }}>
                   Approve
@@ -156,6 +155,13 @@ export default function VehicleReviewAdminPage() {
                   Reject with reason
                 </button>
               </div>
+              {/* Visible helper text instead of aria-describedby on a disabled (unfocusable) button. */}
+              <p className="mt-2 text-sm" style={{ color: "var(--color-muted)" }}>
+                {vehicle.approvalProblems.length > 0
+                  ? "Approve is unavailable until the problems listed above are fixed."
+                  : "Approve checks every rule again on the server."}
+                {" "}Reject needs a reason of at least 5 characters.
+              </p>
             </section>
           );
         })}

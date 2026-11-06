@@ -20,7 +20,9 @@ assert.ok(bridge.includes('action: "tester_application_approved"') && bridge.inc
 assert.ok(signup.includes("claimedAt: null, claimedByAccountId: null") && signup.includes("claim.count !== 1"), "tester codes must remain single-use under concurrent claims");
 assert.ok(signup.includes("isTester: isPilotAccess") && signup.includes('testerApprovalStatus: isPilotAccess ? "approved" : testerCodeHash ? "pending" : undefined'), "only guarded UK QA codes may grant pilot tester status; ordinary tester codes must remain pending approval");
 assert.ok(jobRoute.includes("if (!account.isTester && !canPostJobs(account))"), "tester-specific posting exemption must remain explicit");
-assert.ok(bidRoute.includes("bidderAccount?.verificationStatus !== \"verified\" && (!bidderAccount?.isTester || isPilotQaAccount) && !stagingQaTester") && bidRoute.includes("isPilotQaAccount && !stagingQaTester"), "legacy tester exemption must remain explicit and the UK QA exemption must fail closed when the staging guard is off");
+assert.ok(bidRoute.includes("bidderAccount?.verificationStatus !== \"verified\" && (!bidderAccount?.isTester || isPilotQaAccount) && !stagingQaTester") && bidRoute.includes("bidderRequiresEligibleVehicle(bidderAccount, isPilotQaAccount, stagingQaTester)"), "legacy tester exemption must remain explicit and the UK QA exemption must fail closed when the staging guard is off");
+// The vehicle rule is shared by bid and bid award (lib/jobDriverAssignment.ts) so pilot QA accounts are treated the same at both steps.
+assert.ok(read("lib/jobDriverAssignment.ts").includes("return !bidder.isTester || (isPilotQaAccount && !stagingQaTester);"), "shared bidder vehicle rule must keep the UK QA exemption fail-closed");
 assert.ok(!directAdmin.includes('verificationStatus: "verified"') && !directAdmin.includes('companyVerificationStatus: "verified"'), "tester approval must never forge identity, company or vehicle verification");
 
 console.log(JSON.stringify({

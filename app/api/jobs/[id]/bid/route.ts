@@ -2,7 +2,7 @@ import { enforceRateLimit } from "@/lib/rateLimit";
 import { withApiMetrics } from "@/lib/apiMetrics";
 import { requireJobMarketAccess } from "@/lib/jobMarket";
 import { getJobPickupAtForAccount, pickupAccessError } from "@/lib/jobAccess";
-import { getAccountAccess } from "@/lib/access";
+import { getDriveAccess } from "@/lib/access";
 import { NextResponse } from "next/server";
 import { readBoundedJson } from "@/lib/requestBody";
 import { getServerSession } from "next-auth";
@@ -12,7 +12,7 @@ import { markDriverOpportunityBid } from "@/lib/opportunities";
 import { getLocalisationProfile } from "@/lib/localisation";
 import { marketDateKey } from "@/lib/vehicleDates";
 import { isQaRunnerEnabled } from "@/lib/qaRunnerGuard";
-import { DRIVER_VEHICLE_ERROR, parseDriverDeclaration, resolveJobDriverAssignment } from "@/lib/jobDriverAssignment";
+import { DRIVER_VEHICLE_ERROR, FLEET_LICENCE_NOT_ACCEPTED, bidderRequiresEligibleVehicle, loadFleetStatus, parseDriverDeclaration, resolveJobDriverAssignment } from "@/lib/jobDriverAssignment";
 
 async function POSTHandler(
   req: Request,
@@ -64,7 +64,7 @@ async function POSTHandler(
     );
   }
 
-  const marketplaceAccessCheck = await getAccountAccess(accountId);
+  const marketplaceAccessCheck = await getDriveAccess(accountId);
 
   if (!marketplaceAccessCheck.allowed) {
     return NextResponse.json(
@@ -145,7 +145,7 @@ async function POSTHandler(
     );
   }
 
-  if (bidderAccount && (!bidderAccount.isTester || (isPilotQaAccount && !stagingQaTester))) {
+  if (bidderAccount && bidderRequiresEligibleVehicle(bidderAccount, isPilotQaAccount, stagingQaTester)) {
     const bidderMarket = getLocalisationProfile({ country: bidderAccount.country, currency: bidderAccount.currency });
     const marketToday = marketDateKey(new Date(), bidderMarket?.timeZone ?? "UTC");
     const dateCutoff = new Date(marketToday + "T00:00:00.000Z");
@@ -205,11 +205,14 @@ async function POSTHandler(
   }
 
   // Fleet bids name the driver and vehicle now, so the record exists when the bid is awarded (§6).
-  const declaration = bidderAccount ? parseDriverDeclaration(bidderAccount, body) : { ok: true as const, value: { fleet: false as const } };
+  // India cannot bid (rejected above), so no India exemption is needed here.
+  const declaration = bidderAccount
+    ? parseDriverDeclaration(await loadFleetStatus(prisma, { id: accountId, ...bidderAccount }), body)
+    : { ok: true as const, value: { fleet: false as const } };
   if (!declaration.ok) {
     return NextResponse.json({ error: declaration.error }, { status: declaration.status });
   }
-  const requireEligibleVehicle = Boolean(bidderAccount && (!bidderAccount.isTester || (isPilotQaAccount && !stagingQaTester)));
+  const requireEligibleVehicle = Boolean(bidderAccount && bidderRequiresEligibleVehicle(bidderAccount, isPilotQaAccount, stagingQaTester));
 
   let bid;
   try {
@@ -299,6 +302,9 @@ async function POSTHandler(
       return createdBid;
     });
   } catch (error) {
+    if (error instanceof Error && error.message === "DRIVER_LICENCE_NOT_ACCEPTED") {
+      return NextResponse.json({ error: FLEET_LICENCE_NOT_ACCEPTED }, { status: 409 });
+    }
     if (error instanceof Error && error.message === "DRIVER_VEHICLE_NOT_VERIFIED") {
       return NextResponse.json({ error: DRIVER_VEHICLE_ERROR }, { status: 403 });
     }

@@ -7,12 +7,28 @@ import { readBoundedJson } from "@/lib/requestBody";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { withApiMetrics } from "@/lib/apiMetrics";
 import { insurancePolicyKey, vehicleApprovalProblems, vehicleCorrectionDeadline } from "@/lib/vehicleApproval";
+import { getLocalisationProfile } from "@/lib/localisation";
+import { revalidateFleetVehicles } from "@/lib/jobDriverAssignment";
 
 /*
  * Admin vehicle review (EXECUTION_PLAN §6). Without this no vehicle can become
  * verified, so no real driver can accept jobs. Approval re-checks every rule
  * server-side; the admin UI only displays the same result.
  */
+
+/** Account facts the approval rules need, from the account's current state. */
+function approvalAccount(account: {
+  companyName: string; planType: string | null; fleetVehicleCount: number | null;
+  country: string; currency: string; driverIdentity: { licenceLast4: string } | null;
+}) {
+  return {
+    companyName: account.companyName,
+    planType: account.planType,
+    fleetVehicleCount: account.fleetVehicleCount,
+    hasDriverIdentity: Boolean(account.driverIdentity),
+    inspectionRequired: Boolean(getLocalisationProfile({ country: account.country, currency: account.currency })?.inspectionRequiredAtCountryLevel),
+  };
+}
 
 const vehicleReviewSelect = {
   id: true, vehicleType: true, regPlate: true, registrationRegion: true, ownershipType: true,
@@ -25,6 +41,7 @@ const vehicleReviewSelect = {
   account: {
     select: {
       id: true, displayId: true, companyName: true, planType: true, fleetVehicleCount: true, country: true, currency: true,
+      deletionRequestedAt: true,
       driverIdentity: { select: { licenceLast4: true } },
       _count: { select: { vehicles: true } },
       insurancePolicyReviews: { select: { policyKey: true, reviewedAt: true } },
@@ -57,7 +74,7 @@ async function GETHandler() {
       insurancePolicyReviewedAt: account.insurancePolicyReviews.find((review) => review.policyKey === policyKey)?.reviewedAt ?? null,
       approvalProblems: vehicleApprovalProblems(
         vehicle,
-        { companyName: account.companyName, planType: account.planType, fleetVehicleCount: account.fleetVehicleCount, hasDriverIdentity: Boolean(account.driverIdentity) },
+        approvalAccount(account),
         account._count.vehicles,
       ),
     };
@@ -100,12 +117,17 @@ async function POSTHandler(req: Request) {
       return { status: 409, error: "Only vehicles awaiting review can be reviewed." } as const;
     }
     const { account } = vehicle;
+    if (account.deletionRequestedAt) {
+      return { status: 409, error: "This account is pending deletion; its vehicles cannot be reviewed." } as const;
+    }
     const now = new Date();
 
     if (decision === "approve") {
       const problems = vehicleApprovalProblems(
         vehicle,
-        { companyName: account.companyName, planType: account.planType, fleetVehicleCount: account.fleetVehicleCount, hasDriverIdentity: Boolean(account.driverIdentity) },
+        approvalAccount(account),
+        // Current registered count (includes this vehicle), so a vehicle that makes
+        // the account a fleet is judged against the fleet rules.
         account._count.vehicles,
         now,
       );
@@ -116,6 +138,10 @@ async function POSTHandler(req: Request) {
         data: { verificationStatus: "verified", verifiedAt: now, reviewedAt: now, rejectionReason: null, correctionDeadline: null },
         select: { id: true, regPlate: true, verificationStatus: true, verifiedAt: true },
       });
+      // Fleet state is judged on the account as it is now: any other verified vehicle that
+      // was approved while the account was an individual (including legacy accounts that
+      // already had 2+ vehicles) is re-checked against the fleet rules.
+      await revalidateFleetVehicles(tx, account.id, reviewer, now);
       // Insurance is reviewed once per policy: later vehicles on the same
       // policyholder + policy number show it as already reviewed.
       const policyKey = insurancePolicyKey(vehicle.insurancePolicyholderName, vehicle.insurancePolicyNumber);

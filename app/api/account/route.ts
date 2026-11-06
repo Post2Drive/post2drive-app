@@ -14,6 +14,7 @@ import {
   isUkAccount,
   isUkPromotionLocked,
 } from "@/lib/uk";
+import { normalizeOperatingRegion } from "@/lib/launchWindows";
 
 async function GETHandler() {
   const session = await getServerSession(authOptions);
@@ -41,6 +42,7 @@ async function GETHandler() {
       displayId: true,
       marketingConsent: true,
       phoneVerifiedAt: true,
+      operatingRegion: true,
       users: {
         where: { id: userId },
         select: { id: true, name: true, email: true, phone: true },
@@ -92,6 +94,7 @@ async function PATCHHandler(req: Request) {
     marketingConsent,
     currentPassword,
     newPassword,
+    operatingRegion,
   } = body as {
     name?: string;
     phone?: string;
@@ -101,6 +104,7 @@ async function PATCHHandler(req: Request) {
     marketingConsent?: boolean;
     currentPassword?: string;
     newPassword?: string;
+    operatingRegion?: string | null;
   };
 
   const boundedString = (value: unknown, maxLength: number) =>
@@ -114,7 +118,8 @@ async function PATCHHandler(req: Request) {
     !boundedString(currentPassword, 1024) ||
     !boundedString(newPassword, 1024) ||
     (typeof newPassword === "string" && newPassword.length > 0 && Buffer.byteLength(newPassword, "utf8") > 72) ||
-    (marketingConsent !== undefined && typeof marketingConsent !== "boolean")
+    (marketingConsent !== undefined && typeof marketingConsent !== "boolean") ||
+    (operatingRegion !== undefined && operatingRegion !== null && !boundedString(operatingRegion, 10))
   ) {
     return NextResponse.json({ error: "One or more settings fields are invalid." }, { status: 400 });
   }
@@ -211,6 +216,18 @@ async function PATCHHandler(req: Request) {
     if (typeof marketingConsent === "boolean") {
       accountData.marketingConsent = marketingConsent;
       accountData.marketingConsentAt = new Date();
+    }
+    if (operatingRegion !== undefined) {
+      const region = normalizeOperatingRegion(account.country, operatingRegion);
+      if (region === "invalid") {
+        return { status: 400, error: account.country === "GB" ? "Enter your operating area as a UK postcode area: 1 or 2 letters, for example LS, M or SW." : "Enter a valid operating region code." } as const;
+      }
+      if (region !== account.operatingRegion) {
+        accountData.operatingRegion = region;
+        // The driver waitlist is per region: a move rejoins the new region's queue.
+        accountData.driverWaitlistedAt = null;
+        accountData.driverAdmittedAt = null;
+      }
     }
 
     if (Object.keys(accountData).length > 0) {

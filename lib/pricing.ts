@@ -150,8 +150,13 @@ export function getFleetPrice(vehicleCount: number, account?: PricingAccount) {
   return prices.fleet["31-55"];
 }
 
+/** Poster monthly price for the account market (same number in local currency); null when the market has no configured pricing. */
+export function getPosterMonthlyPrice(account?: PricingAccount) {
+  return pricesFor(account) ? POSTER_MONTHLY_PRICE_GBP : null;
+}
+
 export function getPlanDisplay(
-  planKey: PricingPlan | null,
+  planKey: PricingPlan | "poster" | null,
   account?: PricingAccount,
 ) {
   if (account?.country === "IN" && account?.currency === "INR") {
@@ -171,6 +176,16 @@ export function getPlanDisplay(
       price: null,
       currency: account?.currency ?? null,
       description: "Pricing for this country will be configured separately.",
+    };
+  }
+
+  if (planKey === "poster") {
+    return {
+      key: "poster",
+      name: "Poster",
+      price: POSTER_MONTHLY_PRICE_GBP,
+      currency: prices.currency,
+      description: `${prices.format(POSTER_MONTHLY_PRICE_GBP)} per month to post jobs (no vehicle). Billing starts with your first posted job, after any free launch period. No per-job charges.`,
     };
   }
 

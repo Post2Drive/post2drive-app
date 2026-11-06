@@ -64,6 +64,14 @@ Verification charges are separate from subscription charges. The intended packag
 - Store the failure reasons, attempt number, timestamps, correction deadlines, fee status and reviewer outcome. Use server time and explicit deadline semantics; display the deadline clearly.
 - The exact count of initial review vs correction review must be represented consistently in UI, API, database and tests. Do not create a new fee merely because a user submitted corrected evidence within an allowed correction window.
 
+**Implementation notes (2026-11-06):**
+
+- **Working days** are Monday-Friday in the account market's time zone, and a deadline is the end of that local day. UK bank holidays are **not yet excluded**: the official gov.uk list could not be fetched while this was built, so no dates were embedded. Other non-India markets count weekends only.
+- **Company reviews follow the same windows.** A failed company review records a correction deadline: 10 working days after the first failure, then a final 3 after the second. Resubmitting the **same** company inside the window is free. A different company, an expired window, or a failure after the final evidence needs a new fee (one pending record). While a review is pending, a different company cannot be submitted until the review is decided.
+- **Attempts are counted per account, not per user.** This only matters once member users exist (today one owner per account): a second user's failed person check shares the account's correction cycle.
+- **Fees are recorded as pending and do not block approval** until a payment provider is connected. No record is ever marked paid without a verified provider event.
+- **Rollout:** existing verified UK accounts with no `phoneVerifiedAt` lose posting (and bid awarding) until they verify their phone by OTP. Tell these users before deploying.
+
 ## 5. Free rechecks and inactivity
 
 ### 90-day return window
@@ -127,6 +135,8 @@ No per-job fees, no commission; the platform never handles job payments between 
 - **Driver waitlist (during the driver window):** new drivers are admitted per region only while active drivers ≤ 1 × active posters in that region (ratio is configuration). Others join a waiting list.
 - After the driver window, there is no free period for new drivers.
 - Verification fees apply during launch windows (they also filter fake accounts).
+- **How the dates are stored (LaunchConfig):** every window date is an instant in **UTC**. To start a window at UK local midnight, convert it first: 1 January 00:00 UK = `00:00Z` (GMT), but 1 June 00:00 UK = `23:00Z` on 31 May (BST, UTC+1). **End dates are exclusive**: access stops at that instant, so "free through 31 March" is entered as the next day's local midnight. `newPosterTrialDays` is a number of **days** (default 30), not a calendar month. A missing or invalid row disables free windows (fail closed) and is shown to the account and in `/api/promotion/status`; it never falls back to built-in dates.
+- **Operating region (known limitation):** the waitlist region is the UK postcode area the account **declares** at signup or in settings. It is self-declared and is not tied to where jobs are actually posted or driven; changing it puts the account at the back of the new area's queue. Waitlist places and active-driver counts include only person-verified, non-deleted accounts with an approved vehicle whose insurance is current.
 
 ### 6.7 Fleet integrity rules (closing the "friends form a fleet" loophole)
 1. Every fleet vehicle must belong to the company: V5C registered keeper is the company, or a lease/hire agreement is in the company's name.
@@ -143,7 +153,10 @@ No per-job fees, no commission; the platform never handles job payments between 
 All of §6 that affects what a user pays or must provide — plans, launch offers with exact dates, verification fees, required documents, fleet rules, no-refund wording ("the fee pays for the check, not for passing it"), correction windows, free rechecks and upgrade/downgrade billing — must be visible on `/pricing` and summarised on signup **before** an account is created. Implemented in `components/subscription-pricing.tsx` and `app/signup/page.tsx`.
 
 ### 6.10 Implementation status
-Published in the app: prices, verification fees, launch-offer rules, requirements and transparency copy. **Not yet enforced in code:** billing state machine and upgrade/downgrade timing, launch-window dates and driver waitlist, fleet vehicle ownership/policyholder checks, one-driver-per-person check, per-job fleet driver record, single-payment fee collection. Each needs its own reviewed change with tests.
+Enforced in code (release/execution-plan): price constants (`lib/pricing.ts`); separate POST/DRIVE entitlements, Month 0, fixed launch windows from `LaunchConfig`, new-poster trial, driver waitlist by operating region, poster→driver switch with credit, driver→poster at period end, 14-day no-eligible-vehicle fallback (`lib/launchWindows.ts`, `lib/access.ts`); verification order, responsible person, path-based fees, correction windows and free rechecks (`lib/verificationProcess.ts`, `lib/verificationFees.ts`, `lib/verification.ts`); admin vehicle approval, commercial cover, fleet keeper/lease and company-policyholder rules, licence uniqueness, per-job driver and vehicle record (`lib/vehicleApproval.ts`, `lib/driverLicence.ts`, `lib/jobDriverAssignment.ts`); cancellation counting from history (`lib/cancellationPolicy.ts`).
+Fee path: an account with no vehicle at verification pays the poster fee; with a vehicle, the driver fee (no poster fee). A verified poster's first vehicle records the one-off driver upgrade fee; later vehicles 0.50 each.
+**Operator setup required:** insert the `LaunchConfig` row (dates, trial days, waitlist ratio) — with no row there are no free windows; set `POST2DRIVE_LICENCE_HASH_SECRET` (32+ characters); connect an SMS provider (UK phone verification is now required before verification) and a payment provider (fees and plans are recorded as pending only).
+**Not built:** private job invites, account-wide activity log, account health view, ratings hidden during incident review, public replies.
 
 ## 7. Access decisions by failed check
 

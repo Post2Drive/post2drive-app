@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
 import ts from "typescript";
+import { register } from "node:module";
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
 const schema = read("../../prisma/schema.prisma");
@@ -34,7 +35,8 @@ const publicProfile = read("../../app/api/profile/[id]/route.ts");
 // Company verification is a UK-only workflow; India must remain free of
 // person/company verification gates. Suspended accounts cannot submit it.
 assert.match(submit, /import \{ isUkAccount \} from "@\/lib\/uk"/);
-assert.match(submit, /select: \{ country: true, currency: true, verificationStatus: true, companyVerificationStatus: true \}/);
+// The select now also loads company/responsible-person/phone fields (verification-process contract).
+assert.match(submit, /select: \{\s*country: true, currency: true, verificationStatus: true, companyVerificationStatus: true,/);
 assert.match(submit, /verificationStatus === "suspended"/);
 assert.match(submit, /if \(!isUkAccount\(account\)\)/);
 assert.ok(submit.indexOf('verificationStatus === "suspended"') < submit.indexOf("isUkAccount(account)"),
@@ -50,7 +52,7 @@ assert.ok(
   verificationSource.indexOf('account.verificationStatus === "suspended"') <
     verificationSource.indexOf("if (!isUkAccount(account))") &&
     verificationSource.indexOf("if (!isUkAccount(account))") <
-    verificationSource.indexOf("prisma.verificationAttempt.findMany"),
+    verificationSource.indexOf("verificationAttempt.findMany"),
   "person-verification suspension and UK market checks must run before attempt reads or writes",
 );
 assert.match(verificationRoute, /Person verification is only available to GB \+ GBP accounts/);
@@ -90,7 +92,24 @@ const fakePrisma = {
     findMany: async () => { attemptReads++; return []; },
     create: async ({ data }) => { attemptCreates++; return { id: "isolated-attempt", ...data }; },
   },
+  verificationFeePayment: {
+    findUnique: async () => null,
+    findMany: async () => [],
+    create: async ({ data }) => ({ id: "isolated-fee", ...data }),
+  },
+  vehicle: { findMany: async () => [] },
+  $queryRawUnsafe: async () => [],
+  $transaction: async (fn) => fn(fakePrisma),
 };
+// Load the real pure verification-process modules (they only import lib/pricing etc.).
+const repoRoot = new URL("../../", import.meta.url).href;
+register(`data:text/javascript,${encodeURIComponent(`
+  export async function resolve(specifier, context, next) {
+    if (specifier.startsWith("@/")) return next(${JSON.stringify(repoRoot)} + specifier.slice(2) + ".ts", context);
+    return next(specifier, context);
+  }`)}`);
+const verificationProcess = await import(new URL("../../lib/verificationProcess.ts", import.meta.url));
+const verificationFees = await import(new URL("../../lib/verificationFees.ts", import.meta.url));
 const compiledVerification = ts.transpileModule(verificationSource, {
   compilerOptions: {
     module: ts.ModuleKind.CommonJS,
@@ -103,8 +122,11 @@ const verificationModule = { exports: {} };
 const mockRequire = (name) => {
   if (name === "@/lib/prisma") return { prisma: fakePrisma };
   if (name === "@/lib/uk") return { isUkAccount: (account) => account.country === "GB" && account.currency === "GBP" };
-  if (name === "@/lib/promotion") return { startPromotionForVerifiedAccount: async () => {} };
   if (name === "@/lib/referrals") return { markReferralVerified: async () => {} };
+  if (name === "@/lib/market") return { marketForAccount: () => ({ timeZone: "Europe/London" }) };
+  if (name === "@/lib/qaRunnerGuard") return { isQaRunnerEnabled: () => false };
+  if (name === "@/lib/verificationProcess") return verificationProcess;
+  if (name === "@/lib/verificationFees") return verificationFees;
   throw new Error("Unexpected person-verification test dependency: " + name);
 };
 vm.runInNewContext(compiledVerification, {
@@ -142,6 +164,7 @@ await assertVerificationDenied(
 accountFixture = {
   id: "active-uk-account", country: "GB", currency: "GBP",
   verificationStatus: "not_started", planType: "individual", type: "both",
+  phoneVerifiedAt: new Date(), users: [{ id: "owner", role: "owner", emailVerifiedAt: new Date(), personVerifiedAt: null }],
 };
 const activeAttempt = await createVerificationAttempt(accountFixture.id);
 assert.equal(activeAttempt.alreadyVerified, false, "active UK accounts retain person-verification access");
