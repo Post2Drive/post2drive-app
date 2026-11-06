@@ -58,6 +58,7 @@
     "qa:api-pagination-safety": "node scripts/qa/api-pagination-safety-contract.mjs",
     "qa:job-listing-query": "node scripts/qa/job-listing-query-contract.mjs",
     "qa:ratings-contract": "node scripts/qa/ratings-contract.mjs",
+    "qa:approved-pricing": "node --experimental-strip-types scripts/qa/approved-pricing-contract.mjs",
     "qa:fair-ratings": "node --experimental-strip-types scripts/qa/fair-ratings-contract.mjs",
     "qa:vehicle-registration-limits": "node scripts/qa/vehicle-registration-limits-contract.mjs",
     "qa:approved-pricing": "node --experimental-strip-types scripts/qa/approved-pricing-contract.mjs",
