@@ -545,6 +545,7 @@ const pickupTx = {
   notification: { create: async () => ({}) },
 };
 const pickupRoute = loadTypeScriptModule("app/api/jobs/[id]/confirm-pickup/route.ts", {
+  "@/lib/notify": { notify: async (db, input) => db.notification.create({ data: input }) },
   "@/lib/rateLimit": { enforceRateLimit: async () => null },
   "@/lib/apiMetrics": { withApiMetrics: (_name, handler) => handler },
   "@/lib/jobMarket": { requireJobMarketAccess: async () => null },
@@ -584,6 +585,7 @@ const bidAcceptJob = {
 };
 let bidAcceptTransactions = 0;
 const bidAcceptRoute = loadTypeScriptModule("app/api/jobs/[id]/bids/[bidId]/accept/route.ts", {
+  "@/lib/notify": { notify: async (db, input) => db.notification.create({ data: input }) },
   "@/lib/rateLimit": { enforceRateLimit: async () => null },
   "@/lib/apiMetrics": { withApiMetrics: (_name, handler) => handler },
   "@/lib/jobMarket": { requireJobMarketAccess: async () => null },
@@ -646,6 +648,7 @@ const acceptTx = {
   notification: { create: async () => ({}) },
 };
 const acceptRoute = loadTypeScriptModule("app/api/jobs/[id]/accept/route.ts", {
+  "@/lib/notify": { notify: async (db, input) => db.notification.create({ data: input }) },
   "@/lib/rateLimit": { enforceRateLimit: async () => null },
   "@/lib/apiMetrics": { withApiMetrics: (_name, handler) => handler },
   "@/lib/jobMarket": { requireJobMarketAccess: async () => null },
