@@ -10,7 +10,7 @@ import { prisma } from "@/lib/prisma";
 import { generateDisplayId } from "@/lib/displayId";
 import { isUkAccount } from "@/lib/uk";
 import { createEmailVerificationToken, emailDeliveryConfigured, emailVerificationRequiredForCountry, sendVerificationEmail } from "@/lib/emailVerification";
-import { marketForAccount } from "@/lib/market";
+import { isLaunchMarket, marketForAccount } from "@/lib/market";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { readBoundedJson } from "@/lib/requestBody";
 import { toE164ForMarket } from "@/lib/phoneVerification";
@@ -132,7 +132,7 @@ async function POSTHandler(
     }
 
     const market = marketForAccount({ country, currency });
-    if (!market) {
+    if (!market || !isLaunchMarket(country)) {
       return NextResponse.json({ error: "Choose one of the supported markets and its matching currency." }, { status: 400 });
     }
 

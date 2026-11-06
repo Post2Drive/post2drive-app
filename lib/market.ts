@@ -58,22 +58,15 @@ export type MarketCurrency = (typeof MARKETS)[SupportedCountry]["currency"];
 export type MarketIdentity = { country?: string | null; currency?: string | null };
 
 /**
- * Countries currently open for signup. Defaults to GB and IN only.
- * Set NEXT_PUBLIC_LAUNCH_COUNTRIES=GB,IN,US (comma-separated) to override in
- * dev/staging when testing other markets. Production deployments must not
- * widen this without a matching market readiness review.
+ * Launch gate (owner decision 2026-11-06): only the UK (GB) and India (IN) are
+ * live. This is the ONE constant to edit to re-enable another market, together
+ * with a market readiness review. It is deliberately not environment-driven so
+ * a deployment variable cannot widen production. The MARKETS catalogue above is
+ * kept as data; signup and market selection are gated by this list.
  */
-const _rawLaunchCountries =
-  process.env.NEXT_PUBLIC_LAUNCH_COUNTRIES ??
-  process.env.LAUNCH_COUNTRIES ??
-  "GB,IN";
+export const LAUNCH_COUNTRY_CODES = ["GB", "IN"] as const;
 
-export const LAUNCH_COUNTRIES: ReadonlySet<string> = new Set(
-  _rawLaunchCountries
-    .split(",")
-    .map((c) => c.trim().toUpperCase())
-    .filter((c) => Object.prototype.hasOwnProperty.call(MARKETS, c))
-);
+export const LAUNCH_COUNTRIES: ReadonlySet<string> = new Set<string>(LAUNCH_COUNTRY_CODES);
 
 /** True when a country code is part of the current launch set. */
 export function isLaunchMarket(country: unknown): boolean {

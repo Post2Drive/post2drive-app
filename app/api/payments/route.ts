@@ -2,6 +2,7 @@ import { withApiMetrics } from "@/lib/apiMetrics";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { NO_PROVIDER_NOTICE, PAYMENT_PROVIDER_CONNECTED } from "@/lib/paymentProvider";
 import { prisma } from "@/lib/prisma";
 
 function round(value: number) {
@@ -132,6 +133,10 @@ async function GETHandler() {
     return NextResponse.json({
       currency: account.currency,
       country: account.country,
+      // Marketplace tracking only: no money is processed, held, refunded or paid out here.
+      trackingOnly: true,
+      providerConnected: PAYMENT_PROVIDER_CONNECTED,
+      notice: NO_PROVIDER_NOTICE,
       asPoster,
       asDriver,
       asPosterHasMore: posterHasMore,

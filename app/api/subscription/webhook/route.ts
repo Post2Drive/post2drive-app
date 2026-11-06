@@ -36,8 +36,20 @@ async function POSTHandler(request: Request) {
     return NextResponse.json({ error: "paymentId is required or invalid." }, { status: 400 });
   }
 
+  if (typeof body.providerPaymentId !== "string" || body.providerPaymentId.length < 1 || body.providerPaymentId.length > 200) {
+    return NextResponse.json({ error: "providerPaymentId is required or invalid." }, { status: 400 });
+  }
+  if ((body.accountId !== undefined && (typeof body.accountId !== "string" || body.accountId.length > 200)) ||
+      (body.amountMinorUnits !== undefined && !Number.isSafeInteger(body.amountMinorUnits)) ||
+      (body.currency !== undefined && (typeof body.currency !== "string" || body.currency.length > 8))) {
+    return NextResponse.json({ error: "accountId, amountMinorUnits or currency is invalid." }, { status: 400 });
+  }
+
   try {
     const payment = await confirmSubscriptionPayment(body.paymentId, {
+      expectedAccountId: body.accountId as string | undefined,
+      expectedAmountMinorUnits: body.amountMinorUnits as number | undefined,
+      expectedCurrency: body.currency as string | undefined,
       provider: typeof body.provider === "string" && body.provider.length <= 80 ? body.provider : undefined,
       providerPaymentId: typeof body.providerPaymentId === "string" && body.providerPaymentId.length <= 200
         ? body.providerPaymentId
@@ -62,11 +74,15 @@ async function POSTHandler(request: Request) {
       "Subscription payment is not payable.",
       "Payment currency does not match the account market.",
       "This account is not eligible for paid weekly access.",
-    ].includes(message)) {
+      "Subscription event does not match the payment.",
+    ].includes(message) || (error as { code?: string } | null)?.code === "P2002") {
       return NextResponse.json(
         { error: "This subscription payment can no longer be confirmed." },
         { status: 409 },
       );
+    }
+    if (message === "Subscription payment not found.") {
+      return NextResponse.json({ error: "Unknown subscription payment." }, { status: 404 });
     }
     console.error("Subscription webhook could not confirm payment.", {
       errorName: error instanceof Error ? error.name : "UnknownError",
