@@ -2,7 +2,8 @@ import { getPushProvider } from "@/lib/pushProvider";
 
 type NotifyDb = {
   notification: {
-    createMany(args: { data: Array<Record<string, unknown>>; skipDuplicates?: boolean }): Promise<{ count: number }>;
+    // Prisma's generated createMany arg type is model-specific (Json fields); keep this structural.
+    createMany(args: any): Promise<{ count: number }>;
   };
 };
 
