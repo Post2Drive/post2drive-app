@@ -24,7 +24,12 @@ export function licenceLast4(normalised: string) {
   return normalised.slice(-4);
 }
 
-/** Same response for "already used elsewhere" and any storage failure: no account enumeration. */
+/**
+ * The one refusal used (409) for: a different licence already on the caller's account,
+ * a licence registered to another account, and any storage failure. Identical status
+ * and wording, so a response never confirms a licence exists elsewhere. Disputes go
+ * to support, who can free a licence via the admin release route (audited).
+ */
 export const LICENCE_NOT_ACCEPTED_MESSAGE =
   "We could not record this driving licence. Check the number, or contact support if you think it is correct.";
 

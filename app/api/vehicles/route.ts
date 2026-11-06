@@ -9,6 +9,8 @@ import { VEHICLE_TYPES } from "@/lib/vehicles";
 import { getLocalisationProfile, getJurisdictionOptions } from "@/lib/localisation";
 import { marketDateKey, parseOptionalDateField } from "@/lib/vehicleDates";
 import { isFleetAccount, isInsuranceCoverType, isKeeperType } from "@/lib/vehicleApproval";
+import { revalidateFleetVehicles } from "@/lib/jobDriverAssignment";
+import { enforceRateLimit } from "@/lib/rateLimit";
 
 
 function validHttpUrl(value: string) {
@@ -85,7 +87,7 @@ async function GETHandler() {
     });
 
     // Same rule the accept/bid routes use to require a per-job driver declaration.
-    return NextResponse.json({ vehicles, fleet: isFleetAccount(account), isTester: account.isTester, testerApprovalStatus: account.testerApprovalStatus, market: { country: account.country, currency: account.currency } });
+    return NextResponse.json({ vehicles, fleet: isFleetAccount(account, vehicles.length), isTester: account.isTester, testerApprovalStatus: account.testerApprovalStatus, market: { country: account.country, currency: account.currency } });
   } catch (error) {
     console.error("Vehicle list failed.", { errorName: error instanceof Error ? error.name : "UnknownError" });
     return NextResponse.json({ error: "Could not load vehicles." }, { status: 500 });
@@ -232,6 +234,9 @@ async function POSTHandler(req: Request) {
       // Verification fees for this vehicle (EXECUTION_PLAN §5): driver upgrade or 0.50,
       // recorded as pending in the same transaction, idempotent per account/vehicle.
       await recordVehicleAddedFees(tx, account, created.id);
+      // Adding a vehicle can turn the account into a fleet (2+ vehicles): re-check
+      // already verified vehicles against the fleet rules in the same transaction.
+      await revalidateFleetVehicles(tx, account.id, "system:vehicle-added");
       return created;
     });
     if (!vehicle) {
@@ -269,6 +274,8 @@ async function PATCHHandler(req: Request) {
     if (account.verificationStatus === "suspended") {
       return NextResponse.json({ error: "Suspended accounts cannot update vehicles." }, { status: 403 });
     }
+    const updateLimit = await enforceRateLimit(req, { scope: "vehicle-update", identity: account.id, limit: 30, windowMs: 60 * 60 * 1000 });
+    if (updateLimit) return updateLimit;
     const parsedBody = await readBoundedJson(req, 16 * 1024);
     if (!parsedBody.ok) {
       return NextResponse.json(

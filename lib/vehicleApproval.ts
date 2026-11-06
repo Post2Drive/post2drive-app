@@ -24,8 +24,15 @@ export function isInsuranceCoverType(value: unknown): value is InsuranceCoverTyp
   return typeof value === "string" && (INSURANCE_COVER_TYPES as readonly string[]).includes(value);
 }
 
-/** A FLEET account is a fleet plan, or any account running 2+ vehicles. */
-export function isFleetAccount(account: { planType?: string | null; fleetVehicleCount?: number | null }, registeredVehicleCount = 0) {
+/**
+ * THE fleet definition, used everywhere (approval, re-validation, fixed accept, bid,
+ * bid award, vehicles page). A FLEET account is a fleet plan, a plan sized for 2+
+ * vehicles, or any account with 2+ registered vehicles. The registered count is
+ * required so legacy accounts (fleetVehicleCount null, planType individual) that
+ * have grown to 2+ vehicles are still treated as fleets. Load it with
+ * loadFleetStatus (lib/jobDriverAssignment.ts) rather than computing it ad hoc.
+ */
+export function isFleetAccount(account: { planType?: string | null; fleetVehicleCount?: number | null }, registeredVehicleCount: number) {
   return account.planType === "fleet" || (account.fleetVehicleCount ?? 0) >= 2 || registeredVehicleCount >= 2;
 }
 
@@ -59,6 +66,7 @@ export type ApprovalVehicle = {
   v5cDocumentUrl: string | null;
   insuranceDocumentUrl: string | null;
   insuranceValidUntil: Date | null;
+  motValidUntil: Date | null;
   registeredKeeperType: string | null;
   registeredKeeperName: string | null;
   leaseAgreementUrl: string | null;
@@ -71,7 +79,31 @@ export type ApprovalAccount = {
   planType?: string | null;
   fleetVehicleCount?: number | null;
   hasDriverIdentity: boolean;
+  /** Market requires a roadworthiness inspection (MOT in GB); from the localisation profile. */
+  inspectionRequired: boolean;
 };
+
+/**
+ * Fleet-only ownership rules: company keeper (or a lease/hire agreement) and the
+ * company as insurance policyholder. Also used to re-validate already verified
+ * vehicles when an account becomes a fleet.
+ */
+export function fleetOwnershipProblems(
+  vehicle: Pick<ApprovalVehicle, "registeredKeeperType" | "registeredKeeperName" | "leaseAgreementUrl" | "insurancePolicyholderName">,
+  companyName: string,
+) {
+  const problems: string[] = [];
+  const companyKeeper = vehicle.registeredKeeperType === "company" && namesMatch(vehicle.registeredKeeperName, companyName);
+  if (!companyKeeper && !vehicle.leaseAgreementUrl) {
+    problems.push("Fleet vehicles must be kept by the company, or have a lease/hire agreement in the company's name.");
+  }
+  if (!namesMatch(vehicle.insurancePolicyholderName, companyName)) {
+    problems.push("Fleet insurance must be held by the company named on the account.");
+  }
+  return problems;
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Server-side approval rules. Returns the reasons a vehicle cannot be approved;
@@ -86,8 +118,11 @@ export function vehicleApprovalProblems(
   const problems: string[] = [];
   if (!vehicle.v5cDocumentUrl) problems.push("Registration document is missing.");
   if (!vehicle.insuranceDocumentUrl) problems.push("Insurance document is missing.");
-  if (!vehicle.insuranceValidUntil || vehicle.insuranceValidUntil.getTime() < now.getTime() - 24 * 60 * 60 * 1000) {
+  if (!vehicle.insuranceValidUntil || vehicle.insuranceValidUntil.getTime() < now.getTime() - DAY_MS) {
     problems.push("Insurance expiry is missing or has passed.");
+  }
+  if (account.inspectionRequired && (!vehicle.motValidUntil || vehicle.motValidUntil.getTime() < now.getTime() - DAY_MS)) {
+    problems.push("MOT / inspection expiry is missing or has passed.");
   }
   if (!isKeeperType(vehicle.registeredKeeperType) || !vehicle.registeredKeeperName?.trim()) {
     problems.push("Registered keeper type and name are required.");
@@ -98,17 +133,28 @@ export function vehicleApprovalProblems(
   }
 
   if (isFleetAccount(account, registeredVehicleCount)) {
-    const companyKeeper = vehicle.registeredKeeperType === "company" && namesMatch(vehicle.registeredKeeperName, account.companyName);
-    if (!companyKeeper && !vehicle.leaseAgreementUrl) {
-      problems.push("Fleet vehicles must be kept by the company, or have a lease/hire agreement in the company's name.");
-    }
-    if (!namesMatch(vehicle.insurancePolicyholderName, account.companyName)) {
-      problems.push("Fleet insurance must be held by the company named on the account.");
-    }
+    problems.push(...fleetOwnershipProblems(vehicle, account.companyName));
   } else if (!account.hasDriverIdentity) {
     problems.push("The driver's licence number has not been recorded for this account.");
   }
   return problems;
+}
+
+/**
+ * Blocker fix: a vehicle approved while the account was an individual must not stay
+ * verified once the account becomes a fleet. Given the account state AFTER the change
+ * (plan or vehicle count), returns every verified vehicle that now fails the fleet
+ * ownership rules, with its reasons. An empty list when the account is not a fleet.
+ */
+export function vehiclesFailingFleetRevalidation<V extends { id: string; verificationStatus: string } & Parameters<typeof fleetOwnershipProblems>[0]>(
+  account: { companyName: string; planType?: string | null; fleetVehicleCount?: number | null },
+  vehicles: V[],
+) {
+  if (!isFleetAccount(account, vehicles.length)) return [];
+  return vehicles
+    .filter((vehicle) => vehicle.verificationStatus === "verified")
+    .map((vehicle) => ({ vehicle, problems: fleetOwnershipProblems(vehicle, account.companyName) }))
+    .filter((entry) => entry.problems.length > 0);
 }
 
 /** Add working days (Mon–Fri), in UTC. Bank holidays are not modelled. */

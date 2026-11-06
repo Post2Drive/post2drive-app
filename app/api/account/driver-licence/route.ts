@@ -50,7 +50,14 @@ async function POSTHandler(req: Request) {
   if (account.type !== "driver" && account.type !== "both") {
     return NextResponse.json({ error: "Your account is not registered for driving." }, { status: 403 });
   }
-  const limited = await enforceRateLimit(req, { scope: "driver-licence-record", identity: account.id, limit: 5, windowMs: 60 * 60 * 1000 });
+  // A licence can only be claimed by a person whose ID check has passed, so an
+  // unverified sign-up cannot squat on someone else's licence number.
+  if (account.verificationStatus !== "verified") {
+    return NextResponse.json({ error: "Complete identity verification before recording a driving licence." }, { status: 403 });
+  }
+  // Counted BEFORE any validation or lookup, so every attempt (including refused
+  // and malformed ones) uses up the allowance: 5 per account per 24 hours.
+  const limited = await enforceRateLimit(req, { scope: "driver-licence-record", identity: account.id, limit: 5, windowMs: 24 * 60 * 60 * 1000 });
   if (limited) return limited;
 
   const parsed = await readBoundedJson(req, 2 * 1024);
@@ -70,11 +77,16 @@ async function POSTHandler(req: Request) {
   }
   const licenceHash = hashLicenceNumber(normalised, secret);
 
+  // Every refusal past this point (a different licence already on this account, the
+  // licence held by another account, or a storage failure) returns the SAME status
+  // and wording, so a response never confirms that a licence is registered elsewhere.
+  const notAccepted = () => NextResponse.json({ error: LICENCE_NOT_ACCEPTED_MESSAGE }, { status: 409 });
+
   const existing = await prisma.driverIdentity.findUnique({ where: { accountId: account.id }, select: { licenceHash: true } });
   if (existing) {
-    // Re-submitting the same licence is idempotent; changing it needs support review.
+    // Re-submitting the same licence is idempotent; changing it needs support (admin release).
     if (existing.licenceHash === licenceHash) return NextResponse.json({ success: true, licenceLast4: licenceLast4(normalised) });
-    return NextResponse.json({ error: "A driving licence is already recorded for this account. Contact support to change it." }, { status: 409 });
+    return notAccepted();
   }
 
   try {
@@ -82,11 +94,10 @@ async function POSTHandler(req: Request) {
       data: { accountId: account.id, licenceHash, licenceLast4: licenceLast4(normalised) },
     });
   } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      return NextResponse.json({ error: LICENCE_NOT_ACCEPTED_MESSAGE }, { status: 409 });
+    if (!(error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002")) {
+      console.error("Driver licence record failed.", { errorName: error instanceof Error ? error.name : "UnknownError" });
     }
-    console.error("Driver licence record failed.", { errorName: error instanceof Error ? error.name : "UnknownError" });
-    return NextResponse.json({ error: "Could not record the driving licence." }, { status: 500 });
+    return notAccepted();
   }
   return NextResponse.json({ success: true, licenceLast4: licenceLast4(normalised) }, { status: 201 });
 }

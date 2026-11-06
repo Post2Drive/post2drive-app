@@ -243,6 +243,8 @@ const routeModule = loadTypeScriptModule("app/api/vehicles/route.ts", {
   "@/lib/currencyMinorUnits": { majorUnitsToMinorUnits: (amount) => Math.round(amount * 100) },
   "@/lib/vehicleApproval": { chargesAdditionalVehicleFee: () => false, isFleetAccount: () => false, isInsuranceCoverType: () => true, isKeeperType: () => true },
   "@/lib/verification": { recordVehicleAddedFees: async () => null },
+  "@/lib/jobDriverAssignment": { revalidateFleetVehicles: async () => [] },
+  "@/lib/rateLimit": { enforceRateLimit: async () => null },
   "@/lib/requestBody": {
     readBoundedJson: async (request, maxBytes) => {
       const text = await request.text();
@@ -599,7 +601,8 @@ const bidAcceptRoute = loadTypeScriptModule("app/api/jobs/[id]/bids/[bidId]/acce
   "@/lib/vehicleDates": { marketDateKey: () => "2026-11-01" },
   "@/lib/eligibility": { canPostJobs: async () => true },
   "@/lib/vehicleApproval": { isFleetAccount: () => false },
-  "@/lib/jobDriverAssignment": { resolveJobDriverAssignment: async () => null },
+  "@/lib/jobDriverAssignment": { resolveJobDriverAssignment: async () => null, loadFleetStatus: async () => ({ fleet: false, registeredVehicleCount: 1 }), bidderRequiresEligibleVehicle: () => false },
+  "@/lib/qaRunnerGuard": { isQaRunnerEnabled: () => false },
 });
 const outsiderBidAccept = await bidAcceptRoute.POST(
   new Request("https://fixture.invalid/api/jobs/job-bid-private/bids/bid-1/accept", { method: "POST" }),
@@ -667,6 +670,8 @@ const acceptRoute = loadTypeScriptModule("app/api/jobs/[id]/accept/route.ts", {
   "@/lib/jobDriverAssignment": {
     DRIVER_VEHICLE_ERROR: "fixture",
     parseDriverDeclaration: () => ({ ok: true, value: { fleet: false } }),
+    FLEET_LICENCE_NOT_ACCEPTED: "fixture",
+    loadFleetStatus: async () => ({ fleet: false, registeredVehicleCount: 1 }),
     resolveJobDriverAssignment: async () => null,
   },
 });

@@ -13,7 +13,7 @@ import { marketDateKey } from "@/lib/vehicleDates";
 import { isIndiaPhoneVerifiedAccount } from "@/lib/eligibility";
 import { isQaRunnerEnabled } from "@/lib/qaRunnerGuard";
 import { readBoundedText } from "@/lib/requestBody";
-import { DRIVER_VEHICLE_ERROR, parseDriverDeclaration, resolveJobDriverAssignment } from "@/lib/jobDriverAssignment";
+import { DRIVER_VEHICLE_ERROR, FLEET_LICENCE_NOT_ACCEPTED, loadFleetStatus, parseDriverDeclaration, resolveJobDriverAssignment } from "@/lib/jobDriverAssignment";
 
 async function POSTHandler(
   req: Request,
@@ -161,9 +161,11 @@ async function POSTHandler(
   if (rawBody.text.trim()) {
     try { acceptBody = JSON.parse(rawBody.text); } catch { return NextResponse.json({ error: "Invalid request body." }, { status: 400 }); }
   }
+  // India is intentionally exempt from the per-job driver record: EXECUTION_PLAN §1 keeps
+  // India unchanged (phone-only), and a separate India driver model comes later.
   const declaration = isIndiaPhoneVerifiedAccount(account)
     ? { ok: true as const, value: { fleet: false as const } }
-    : parseDriverDeclaration(account, acceptBody);
+    : parseDriverDeclaration(await loadFleetStatus(prisma, { id: accountId, ...account }), acceptBody);
   if (!declaration.ok) {
     return NextResponse.json({ error: declaration.error }, { status: declaration.status });
   }
@@ -388,6 +390,10 @@ async function POSTHandler(
 
     if (message === "DRIVER_NOT_VERIFIED") {
       return NextResponse.json({ error: "Your account must be verified before accepting jobs." }, { status: 403 });
+    }
+
+    if (message === "DRIVER_LICENCE_NOT_ACCEPTED") {
+      return NextResponse.json({ error: FLEET_LICENCE_NOT_ACCEPTED }, { status: 409 });
     }
 
     if (message === "DRIVER_VEHICLE_NOT_VERIFIED") {
