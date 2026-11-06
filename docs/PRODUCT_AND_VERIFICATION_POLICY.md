@@ -127,6 +127,8 @@ No per-job fees, no commission; the platform never handles job payments between 
 - **Driver waitlist (during the driver window):** new drivers are admitted per region only while active drivers ≤ 1 × active posters in that region (ratio is configuration). Others join a waiting list.
 - After the driver window, there is no free period for new drivers.
 - Verification fees apply during launch windows (they also filter fake accounts).
+- **How the dates are stored (LaunchConfig):** every window date is an instant in **UTC**. To start a window at UK local midnight, convert it first: 1 January 00:00 UK = `00:00Z` (GMT), but 1 June 00:00 UK = `23:00Z` on 31 May (BST, UTC+1). **End dates are exclusive**: access stops at that instant, so "free through 31 March" is entered as the next day's local midnight. `newPosterTrialDays` is a number of **days** (default 30), not a calendar month. A missing or invalid row disables free windows (fail closed) and is shown to the account and in `/api/promotion/status`; it never falls back to built-in dates.
+- **Operating region (known limitation):** the waitlist region is the UK postcode area the account **declares** at signup or in settings. It is self-declared and is not tied to where jobs are actually posted or driven; changing it puts the account at the back of the new area's queue. Waitlist places and active-driver counts include only person-verified, non-deleted accounts with an approved vehicle whose insurance is current.
 
 ### 6.7 Fleet integrity rules (closing the "friends form a fleet" loophole)
 1. Every fleet vehicle must belong to the company: V5C registered keeper is the company, or a lease/hire agreement is in the company's name.

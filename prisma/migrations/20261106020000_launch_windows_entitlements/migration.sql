@@ -2,7 +2,7 @@
 -- Hand-written (Prisma engines are unavailable in the authoring environment); additive only.
 -- Deprecated, NOT dropped: Account.freeMonthsEarned/extensionCount/graceUsed, PromotionConfig, TrialCycle.
 -- No launch dates are inserted: until an operator inserts the "global" LaunchConfig row, free windows
--- are disabled (fail closed) and the missing configuration is reported by /api/launch/status.
+-- are disabled (fail closed) and the missing configuration is reported by /api/promotion/status and /api/account/access.
 
 CREATE TABLE "LaunchConfig" (
     "id" TEXT NOT NULL DEFAULT 'global',

@@ -77,7 +77,9 @@ export async function createPendingSubscriptionPayment(accountId: string) {
       throw new Error("Account must be successfully verified before purchasing access.");
     }
 
-    if (!billing || billing.plan === "none" || !billing.chargeableFrom) {
+    // A payment is only created for a chargeable period running NOW: never ahead of a free
+    // window/trial, and never for a driver waiting on the driver-window waitlist.
+    if (!billing || billing.plan === "none" || !billing.chargeableFrom || !billing.paymentDue) {
       throw new Error("No payment is due yet. Billing starts with your first posted job or first approved vehicle, after any free launch period.");
     }
     const planKey = getPaidPlanKey(account, billing.plan);

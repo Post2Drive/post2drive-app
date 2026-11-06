@@ -164,6 +164,8 @@ export type EntitlementFacts = {
   paid: { planKey: string | null; endsAt: Date } | null;
   /** Driver -> poster switch request; effective at the end of the current 7-day period. */
   switchToPosterRequestedAt: Date | null;
+  /** Confirmed (provider-settled) poster-plan payments: the access periods they paid for. Only these earn a switch credit. */
+  paidPosterPeriods?: Array<{ start: Date; end: Date }>;
 };
 
 export type EntitlementReason =
@@ -228,20 +230,24 @@ export function computeDriveEntitlement(facts: EntitlementFacts, config: LaunchC
   if (!facts.vehicleEligibleUntil || facts.vehicleEligibleUntil <= now) return deny("no_eligible_vehicle");
 
   const grants: Entitlement[] = [];
-  if (facts.paid && facts.paid.endsAt > now && (facts.paid.planKey === "individual" || facts.paid.planKey === "fleet")) {
+  // During the driver window, free driving is governed by the regional waitlist (§4); a paid
+  // driver plan must not jump the queue (admitted drivers are free anyway). Paid access applies
+  // outside the window, or to an account already admitted.
+  const inDriverWindow = isInDriverWindow(config, now);
+  if (facts.paid && facts.paid.endsAt > now && (facts.paid.planKey === "individual" || facts.paid.planKey === "fleet") && !inDriverWindow) {
     grants.push(grant("paid", facts.paid.endsAt));
   }
   // Poster -> driver: jobs can be taken as soon as a vehicle is approved; for the first 7 days the
   // account stays on its poster entitlement before billing switches to 7-day. Inside the driver
   // window the waitlist governs instead, so this cannot be used to jump the regional queue.
   const switchAt = driverSwitchAt(facts);
-  if (switchAt && switchAt > facts.firstVehicleApprovedAt && now < switchAt && !isInDriverWindow(config, now)) {
+  if (switchAt && switchAt > facts.firstVehicleApprovedAt && now < switchAt && !inDriverWindow) {
     const posterOnly = computePostEntitlement(facts, config, now);
     if (posterOnly.allowed) grants.push(grant("switch_period", posterOnly.endsAt && posterOnly.endsAt < switchAt ? posterOnly.endsAt : switchAt));
   }
   let waitlistOutcome: Entitlement | null = null;
   let admit = false;
-  if (config && isInDriverWindow(config, now)) {
+  if (config && inDriverWindow) {
     if (facts.driverAdmittedAt) {
       grants.push(grant("driver_window", config.driverWindowEnd));
     } else if (!facts.operatingRegion) {
@@ -338,17 +344,24 @@ export function posterPeriodContaining(anchor: Date, at: Date) {
 
 /**
  * Unused days of the poster month credited to the first 7-day payment when billing switches
- * from poster to driver. Zero when the poster plan was still free (nothing was paid).
+ * from poster to driver. Only a poster period that was actually PAID (a confirmed poster
+ * SubscriptionPayment whose access period contains the switch) earns credit; free or unpaid
+ * time never does.
  */
-export function posterCreditOnSwitch(config: LaunchConfig | null, facts: Pick<EntitlementFacts, "firstJobPostedAt" | "firstVehicleApprovedAt">) {
+export function posterCreditOnSwitch(
+  config: LaunchConfig | null,
+  facts: Pick<EntitlementFacts, "firstJobPostedAt" | "firstVehicleApprovedAt" | "paidPosterPeriods">,
+) {
+  const none = { creditDays: 0, periodDays: 0 };
   const switchAt = driverSwitchAt(facts);
   const posterAnchor = posterChargeableFrom(config, facts.firstJobPostedAt);
   if (!switchAt || !posterAnchor || switchAt <= posterAnchor || facts.firstJobPostedAt! > facts.firstVehicleApprovedAt!) {
-    return { creditDays: 0, periodDays: 0 };
+    return none;
   }
-  const period = posterPeriodContaining(posterAnchor, switchAt);
-  const periodDays = Math.round((period.end.getTime() - period.start.getTime()) / DAY_MS);
-  const creditDays = Math.floor((period.end.getTime() - switchAt.getTime()) / DAY_MS);
+  const paid = (facts.paidPosterPeriods ?? []).find((period) => period.start <= switchAt && switchAt < period.end);
+  if (!paid) return none;
+  const periodDays = Math.round((paid.end.getTime() - paid.start.getTime()) / DAY_MS);
+  const creditDays = Math.floor((paid.end.getTime() - switchAt.getTime()) / DAY_MS);
   return { creditDays, periodDays };
 }
 
@@ -374,10 +387,12 @@ export type BillingSummary = {
   creditPeriodDays: number;
   /** Driver -> poster (requested switch or 14-day fallback). */
   driverPlanEndsAt: Date | null;
+  /** True only when a chargeable period is running now; create-payment requires it. */
+  paymentDue: boolean;
 };
 
 export function computeBilling(facts: EntitlementFacts, config: LaunchConfig | null, now: Date): BillingSummary {
-  const none: BillingSummary = { plan: "none", period: null, chargeableFrom: null, currentPeriod: null, nextBillingAt: null, switchToDriverAt: null, creditDays: 0, creditPeriodDays: 0, driverPlanEndsAt: null };
+  const none: BillingSummary = { plan: "none", period: null, chargeableFrom: null, currentPeriod: null, nextBillingAt: null, switchToDriverAt: null, creditDays: 0, creditPeriodDays: 0, driverPlanEndsAt: null, paymentDue: false };
   if (facts.market !== "weekly") return none;
   if (facts.pilotFreeEndsAt && facts.pilotFreeEndsAt > now) return none;
 
@@ -386,8 +401,12 @@ export function computeBilling(facts: EntitlementFacts, config: LaunchConfig | n
   const switchToDriverAt = driverSwitchAt(facts);
   const credit = posterCreditOnSwitch(config, facts);
 
+  // During the driver window, a driver who has not been admitted (waitlisted / no region) is not on
+  // the driver plan and is not billable for it: they cannot drive, and payment cannot buy a place.
+  const waitingInWindow = isInDriverWindow(config, now) && !facts.driverAdmittedAt;
+
   // Driver/fleet plan. During the first 7 days after approval a poster stays on monthly billing.
-  if (onDriverPlan && switchToDriverAt && now >= switchToDriverAt) {
+  if (onDriverPlan && !waitingInWindow && switchToDriverAt && now >= switchToDriverAt) {
     const anchor = driverBillingAnchor(facts, config)!;
     const period = DRIVER_PERIOD_DAYS * DAY_MS;
     const currentPeriod = now >= anchor
@@ -397,6 +416,7 @@ export function computeBilling(facts: EntitlementFacts, config: LaunchConfig | n
       plan: facts.drivePlanKey, period: "7 days", chargeableFrom: anchor, currentPeriod,
       nextBillingAt: currentPeriod ? currentPeriod.end : anchor,
       switchToDriverAt, creditDays: credit.creditDays, creditPeriodDays: credit.periodDays, driverPlanEndsAt: driverEnd,
+      paymentDue: currentPeriod !== null,
     };
   }
 
@@ -404,14 +424,16 @@ export function computeBilling(facts: EntitlementFacts, config: LaunchConfig | n
   const posterAnchor = posterChargeableFrom(config, facts.firstJobPostedAt);
   const resumedAt = driverEnd && now >= driverEnd ? driverEnd : null;
   const anchor = posterAnchor && resumedAt ? maxDate(posterAnchor, resumedAt) : posterAnchor ?? resumedAt;
-  const usedPosting = Boolean(facts.firstJobPostedAt) || (onDriverPlan && switchToDriverAt !== null && now < switchToDriverAt) || Boolean(resumedAt);
+  const usedPosting = Boolean(facts.firstJobPostedAt) || (onDriverPlan && !waitingInWindow && switchToDriverAt !== null && now < switchToDriverAt) || Boolean(resumedAt);
   if (!anchor || !usedPosting) {
-    return { ...none, switchToDriverAt, driverPlanEndsAt: driverEnd, plan: onDriverPlan ? "poster" : "none", period: onDriverPlan ? "month" : null };
+    const posterLike = onDriverPlan && !waitingInWindow;
+    return { ...none, switchToDriverAt, driverPlanEndsAt: driverEnd, plan: posterLike ? "poster" : "none", period: posterLike ? "month" : null };
   }
   const currentPeriod = now >= anchor ? posterPeriodContaining(anchor, now) : null;
   return {
     plan: "poster", period: "month", chargeableFrom: anchor, currentPeriod,
     nextBillingAt: currentPeriod ? currentPeriod.end : anchor,
     switchToDriverAt, creditDays: credit.creditDays, creditPeriodDays: credit.periodDays, driverPlanEndsAt: driverEnd,
+    paymentDue: currentPeriod !== null,
   };
 }

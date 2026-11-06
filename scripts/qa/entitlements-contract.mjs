@@ -59,7 +59,7 @@ assert.equal(lw.isInDriverWindow(C, C.driverWindowEnd), false);
 const base = {
   market: "weekly", phoneVerified: true, verified: true, pilotFreeEndsAt: null, drivePlanKey: "individual",
   firstJobPostedAt: null, firstVehicleApprovedAt: null, vehicleEligibleUntil: null, operatingRegion: "LS",
-  driverAdmittedAt: null, waitlist: null, paid: null, switchToPosterRequestedAt: null,
+  driverAdmittedAt: null, waitlist: null, paid: null, switchToPosterRequestedAt: null, paidPosterPeriods: [],
 };
 const facts = (extra) => ({ ...base, ...extra });
 const post = (f, now, config = C) => lw.computePostEntitlement(f, config, now);
@@ -182,7 +182,7 @@ const drive = (f, now, config = C) => lw.computeDriveEntitlement(f, config, now)
   const firstPost = d("2028-01-10T00:00:00Z");
   const posterAnchor = plus(firstPost, 30); // 2028-02-09
   const approvedAt = d("2028-03-01T00:00:00Z");
-  const f = facts({ firstJobPostedAt: firstPost, firstVehicleApprovedAt: approvedAt, vehicleEligibleUntil: d("2029-01-01T00:00:00Z"), paid: { planKey: "poster", endsAt: d("2028-03-09T00:00:00Z") } });
+  const f = facts({ firstJobPostedAt: firstPost, firstVehicleApprovedAt: approvedAt, vehicleEligibleUntil: d("2029-01-01T00:00:00Z"), paid: { planKey: "poster", endsAt: d("2028-03-09T00:00:00Z") }, paidPosterPeriods: [{ start: posterAnchor, end: d("2028-03-09T00:00:00Z") }] });
   // Can take jobs immediately on approval (outside the driver window) under the poster entitlement.
   const immediate = drive(f, approvedAt);
   assert.equal(immediate.allowed, true); assert.equal(immediate.reason, "switch_period");
@@ -312,6 +312,74 @@ assert.equal(lw.normalizeOperatingRegion("IN", "LS"), "invalid", "India does not
   const plan = pricing.getPlanDisplay("poster", { country: "GB", currency: "GBP" });
   assert.equal(plan.key, "poster"); assert.equal(plan.price, pricing.POSTER_MONTHLY_PRICE_GBP);
   assert.equal(pricing.getPlanDisplay("poster", { country: "IN", currency: "INR" }).price, 0, "India stays free");
+}
+
+// ---------- 15. Review fixes (integration PR #179) ----------
+{
+  // (1) No payment is due while the poster is still free: chargeableFrom in the future.
+  const inWindow = plus(C.posterWindowStart, 30);
+  const freePoster = facts({ firstJobPostedAt: plus(C.posterWindowStart, 5) });
+  const b1 = lw.computeBilling(freePoster, C, inWindow);
+  assert.equal(b1.paymentDue, false, "a poster inside the free window must not be able to create a payment");
+  assert.equal(b1.nextBillingAt.toISOString(), C.posterWindowEnd.toISOString(), "next billing is the end of the free window");
+  const b1b = lw.computeBilling(freePoster, C, C.posterWindowEnd);
+  assert.equal(b1b.paymentDue, true, "payment becomes due when the free window ends");
+  assert.equal(lw.computeBilling(facts({}), C, inWindow).paymentDue, false, "unused accounts owe nothing");
+  const sub = read("lib/subscription.ts");
+  assert.match(sub, /!billing\.paymentDue/, "create-payment must require a current chargeable period");
+
+  // (2) Switch credit only for a poster period that was actually paid.
+  const firstPost = d("2028-01-10T00:00:00Z");
+  const approvedAt = d("2028-03-01T00:00:00Z");
+  const unpaid = facts({ firstJobPostedAt: firstPost, firstVehicleApprovedAt: approvedAt, vehicleEligibleUntil: d("2029-01-01T00:00:00Z") });
+  assert.equal(lw.posterCreditOnSwitch(C, unpaid).creditDays, 0, "no credit without a confirmed poster payment");
+  const paidOther = { ...unpaid, paidPosterPeriods: [{ start: d("2028-02-09T00:00:00Z"), end: d("2028-03-07T00:00:00Z") }] };
+  assert.equal(lw.posterCreditOnSwitch(C, paidOther).creditDays, 0, "a paid period that ended before the switch earns no credit");
+  const paidCovering = { ...unpaid, paidPosterPeriods: [{ start: d("2028-02-09T00:00:00Z"), end: d("2028-03-09T00:00:00Z") }] };
+  assert.deepEqual(lw.posterCreditOnSwitch(C, paidCovering), { creditDays: 1, periodDays: 29 });
+  assert.equal(lw.computeBilling(unpaid, C, plus(approvedAt, 7)).creditDays, 0);
+
+  // (3) During the driver window a waitlisted driver is not billable and paying cannot bypass the queue.
+  const w = plus(C.driverWindowStart, 10);
+  const queued = facts({ firstVehicleApprovedAt: plus(w, -2), vehicleEligibleUntil: plus(w, 200), waitlist: { position: 3, activeDrivers: 4, activePosters: 4 } });
+  const qb = lw.computeBilling(queued, C, w);
+  assert.notEqual(qb.plan, "individual", "a waitlisted driver must not be on the 7-day plan during the driver window");
+  assert.equal(qb.paymentDue, false, "a waitlisted driver owes nothing during the driver window");
+  const queuedPaid = { ...queued, paid: { planKey: "individual", endsAt: plus(w, 5) } };
+  const qd = lw.computeDriveEntitlement(queuedPaid, C, w);
+  assert.equal(qd.allowed, false, "paying must not bypass the driver waitlist");
+  assert.equal(qd.reason, "waitlisted");
+  // Admitted drivers are free until driverWindowEnd and billed from then.
+  const admitted = { ...queued, driverAdmittedAt: plus(w, -1), waitlist: null };
+  assert.equal(lw.computeBilling(admitted, C, w).paymentDue, false);
+  assert.equal(lw.computeBilling(admitted, C, C.driverWindowEnd).paymentDue, true);
+  // After the window a paid driver plan works as before.
+  const late = plus(C.driverWindowEnd, 3);
+  assert.equal(lw.computeDriveEntitlement(facts({ firstVehicleApprovedAt: plus(late, -1), vehicleEligibleUntil: plus(late, 200), paid: { planKey: "individual", endsAt: plus(late, 7) } }), C, late).reason, "paid");
+
+  // (4) Switch-to-poster endpoint and dashboard control exist and are wired.
+  const route = read("app/api/account/plan/switch-to-poster/route.ts");
+  assert.match(route, /withApiMetrics\("\/api\/account\/plan\/switch-to-poster"/);
+  assert.match(route, /enforceRateLimit\(/);
+  assert.match(route, /getServerSession\(authOptions\)/);
+  assert.match(route, /switchToPosterRequestedAt: now/);
+  assert.match(route, /switchToPosterRequestedAt: null/, "the request can be cancelled before it takes effect");
+  assert.match(route, /driverPlanEndsAt/, "cancelling is only allowed before the switch takes effect");
+  assert.match(read("docs/security/api-route-access-inventory.md"), /`\/api\/account\/plan\/switch-to-poster` \| POST, DELETE/);
+  assert.match(read("app/dashboard/overview/page.tsx"), /PlanSwitchControl/);
+  assert.match(read("components/plan-switch-control.tsx"), /\/api\/account\/plan\/switch-to-poster/);
+
+  // (5) Waitlist queries exclude stale entries.
+  const access = read("lib/access.ts");
+  const staleFilter = access.slice(access.indexOf("function waitlistEligibleWhere"), access.indexOf("function waitlistEligibleWhere") + 900);
+  assert.match(staleFilter, /verificationStatus: "verified"/, "only person-verified accounts hold waitlist places or count as active drivers");
+  assert.match(staleFilter, /deletionRequestedAt: null/);
+  assert.match(staleFilter, /insuranceValidUntil: \{ gte:/, "accounts without a currently eligible vehicle are excluded");
+  assert.match(access.slice(access.indexOf("async function regionCounts")), /waitlistEligibleWhere\(/);
+  assert.match(access.slice(access.indexOf("async function waitlistPosition")), /waitlistEligibleWhere\(/);
+
+  // (6) The waitlist transaction is idempotent and runs only when state actually changes.
+  assert.match(access, /driverWaitlistedAt: null/, "joining the waitlist uses a conditional (idempotent) write");
 }
 
 console.log("Entitlements contract passed: config fail-closed, Month 0, poster window, 30-day new-poster trial, driver window + waitlist ratio, 14-day fallback, poster->driver +7d with credit, driver->poster at period end, India, pilot, POST/DRIVE wiring.");

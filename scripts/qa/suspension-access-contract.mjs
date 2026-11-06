@@ -50,12 +50,14 @@ const accessSource = readFileSync("lib/access.ts", "utf8");
 // suspended accounts before any India, pilot, launch-window or subscription rule is applied.
 const preflightSource = accessSource.slice(accessSource.indexOf("async function preflight"), accessSource.indexOf("function shape("));
 assert.match(preflightSource, /getSuspendedAccountAccess\(account\)/, "preflight must apply the suspension guard");
-for (const fn of ["export async function getPostAccess", "export async function getDriveAccess"]) {
+for (const fn of ["export async function getPostAccess", "export async function getDriveAccess", "export async function getEntitlementStatus", "export async function getAccountAccess"]) {
   const body = accessSource.slice(accessSource.indexOf(fn));
-  assert.ok(body.indexOf("await preflight(accountId)") >= 0 && body.indexOf("await preflight(accountId)") < body.indexOf("gatherFacts("),
+  assert.ok(body.indexOf("await preflight(accountId)") >= 0 && body.indexOf("await preflight(accountId)") < body.indexOf("loadContext("),
     `${fn} must run the suspension preflight before evaluating market or launch-window rules`);
 }
-assert.match(accessSource, /verificationStatus: \{ not: "suspended" \}/, "suspended accounts must not count toward or hold driver waitlist places");
+const waitlistWhere = accessSource.slice(accessSource.indexOf("function waitlistEligibleWhere"), accessSource.indexOf("async function regionCounts"));
+assert.match(waitlistWhere, /verificationStatus: "verified"/,
+  "suspended accounts must not count toward or hold driver waitlist places (only person-verified accounts do)");
 
 const subscriptionSource = readFileSync("lib/subscription.ts", "utf8");
 const createPaymentSource = subscriptionSource.slice(

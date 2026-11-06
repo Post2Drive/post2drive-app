@@ -248,7 +248,7 @@ model SubscriptionPayment {
 
 // Launch windows (EXECUTION_PLAN §4). Single row id "global", set by an operator.
 // There are NO defaults for the dates: a missing row fails closed (no free windows,
-// no Month 0 gate) and is reported by /api/launch/status and the dashboard.
+// no Month 0 gate) and is reported by /api/promotion/status, /api/account/access and the dashboard.
 model LaunchConfig {
   id                  String   @id @default("global")
   posterWindowStart   DateTime
@@ -263,7 +263,7 @@ model LaunchConfig {
 
 model PromotionConfig {
   // DEPRECATED (2026-11-06): replaced by LaunchConfig. Kept only so the table is not dropped
-  // while older deployments still read it. Only the tester-application gate reads it.
+  // while older deployments still read it. No current code reads it (the tester-application gate uses LaunchConfig.posterWindowEnd).
   // There is one active global promotion configuration.
   id        String   @id @default("global")
   name      String   @default("Launch Promotion")

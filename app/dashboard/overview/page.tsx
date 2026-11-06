@@ -1,5 +1,6 @@
 import { getServerSession } from "next-auth";
 import SubscriptionStatus from "@/components/subscription-status";
+import PlanSwitchControl from "@/components/plan-switch-control";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { authOptions } from "@/lib/auth";
@@ -601,6 +602,19 @@ export default async function DashboardOverviewPage() {
               Next billing date: <strong>{formatMarketDate(entitlementStatus.billing.nextBillingAt, { country: account.country, currency: account.currency })}</strong>
               {entitlementStatus.billing.period ? ` (${entitlementStatus.billing.plan === "poster" ? "monthly" : "every 7 days"})` : ""}. Checkout is not connected yet, so nothing is charged in the app.
             </p>
+          )}
+
+          {(entitlementStatus?.billing?.plan === "individual" || entitlementStatus?.billing?.plan === "fleet") && (
+            <PlanSwitchControl
+              requestedAt={account.switchToPosterRequestedAt ? account.switchToPosterRequestedAt.toISOString() : null}
+              effectiveLabel={
+                account.switchToPosterRequestedAt && entitlementStatus.billing.driverPlanEndsAt
+                  ? formatMarketDate(entitlementStatus.billing.driverPlanEndsAt, { country: account.country, currency: account.currency })
+                  : entitlementStatus.billing.currentPeriod
+                  ? formatMarketDate(entitlementStatus.billing.currentPeriod.end, { country: account.country, currency: account.currency })
+                  : null
+              }
+            />
           )}
 
           {!account.testerApprovalStatus && (
