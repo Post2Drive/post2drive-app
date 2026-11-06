@@ -18,9 +18,30 @@
 >
 # Post2Drive Launch Readiness — Staging Verification
 
-**Review date:** 18 October 2026  
+**Review date:** 18 October 2026 (status update 6 November 2026, §0)  
 **Repository:** `Post2Drive/post2drive-app`  
 **Release posture:** **Not cleared for public launch. The staging web application is deployed from `feature/country-localisation-audit`; its current successful deployment does not waive the remaining production launch gates.**
+
+## 0. Status update — 6 November 2026
+
+Verified today (GitHub checks and Railway API); this supersedes older staging notes below where they conflict.
+
+- Railway staging (`Post2Drive Staging`) deploys `Post2Drive Web` and the QA worker (service still named `Post2Drive Infra Smoke Test`) automatically from **`main`**. Web latest deployment: SUCCESS.
+- Merged to `main` today, each with all five required checks green: #179 (execution plan: pricing, launch windows, verification fees, vehicle approval and fleet rules, cancellation limits), #180 (rate limits), #181 (UK + India launch gate, payment honesty, webhook binding, safe errors, QA database proof), #182 (HTTP isolation matrix: 226 probes, no leaks), #183 (notifications and reminders), #184 (QA worker idles instead of crash-looping).
+- QA worker: deployment SUCCESS but **disabled by design** — log: "QA worker database proof failed: POST2DRIVE_QA_DATABASE_NAME must name the isolated QA database". QA campaigns stay paused until an isolated QA database exists and that variable names it.
+- Providers (email, SMS, payments, push) are deferred by owner decision; code contracts are ready (`lib/providerContracts.ts`). Subscription charges and verification fees are recorded as pending; the app states nothing is charged.
+- Launch markets: UK and India only (`LAUNCH_COUNTRY_CODES` in `lib/market.ts`).
+
+Owner setup still required before go-live:
+1. `LaunchConfig` row with the launch window dates (UTC).
+2. `POST2DRIVE_LICENCE_HASH_SECRET` (32+ characters) on Railway.
+3. SMS provider: UK accounts now need a verified phone to post; existing verified UK accounts without a phone cannot post until they verify it.
+4. Payment provider (then make webhook account/amount/currency mandatory, see #38).
+5. Daily scheduler calling `POST /api/internal/notifications/run` with `POST2DRIVE_SCHEDULER_SECRET`.
+6. Legal name, address, privacy contact and lawyer review.
+7. Clean-up: old GitHub branches/tags (backup bundle of all 133 refs made 2026-11-06), auto-delete merged branches, empty "Post2Drive AI Headquarters" project, unused `REDIS_URL` and detached `redis-volume`.
+
+Still open in code (#38): enforcing CSP after report review; authenticated-screen accessibility review in a browser; UK bank holidays in working-day deadlines (needs the official gov.uk list). New screens (plan switch button, admin vehicle review) have not yet been checked in a browser.
 
 ## 1. Current staging state
 
