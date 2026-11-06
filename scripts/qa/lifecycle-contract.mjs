@@ -22,9 +22,14 @@ contains("app/api/jobs/[id]/cancel/route.ts", [
 ]);
 
 contains("lib/cancellationLimits.ts", [
-  "JOB_TERMINATED_WITH_INCIDENT",
-  "incidentTerminatedJobIds",
+  "prisma.jobActivity.findMany",
+  "SELF_INITIATED_CANCELLATION_ACTIONS",
   "ordinary cancellation/unassignment allowance",
+]);
+
+contains("lib/cancellationPolicy.ts", [
+  "JOB_TERMINATED_WITH_INCIDENT",
+  "intentionally absent",
 ]);
 
 contains("app/api/jobs/[id]/incidents/route.ts", [
