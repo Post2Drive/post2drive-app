@@ -144,6 +144,8 @@ jobs:
         run: npm run qa:ratings-contract
       - name: Validate privacy-safe application and QA diagnostics
         run: npm run qa:security-log-redaction
+      - name: Validate payment honesty, webhook binding and safe errors
+        run: npm run qa:payment-error-safety
       - name: Validate account API privacy and request validation
         run: npm run qa:account-api-security
       - name: Validate job and payment response data minimization

@@ -118,6 +118,10 @@ export async function confirmSubscriptionPayment(
     provider?: string;
     providerPaymentId?: string;
     providerCheckoutId?: string;
+    /** Optional event bindings: when the provider event names them they must match the stored payment. */
+    expectedAccountId?: string;
+    expectedAmountMinorUnits?: number;
+    expectedCurrency?: string;
   }
 ) {
   return prisma.$transaction(async (tx) => {
@@ -130,7 +134,19 @@ export async function confirmSubscriptionPayment(
 
     const payment = await tx.subscriptionPayment.findUnique({ where: { id: paymentId } });
     if (!payment) throw new Error("Subscription payment not found.");
-    if (payment.status === "paid") return payment;
+    // Bind the event to this payment: account, amount and currency must agree when supplied.
+    if ((details?.expectedAccountId !== undefined && details.expectedAccountId !== payment.accountId) ||
+        (details?.expectedAmountMinorUnits !== undefined && details.expectedAmountMinorUnits !== payment.amountMinorUnits) ||
+        (details?.expectedCurrency !== undefined && details.expectedCurrency !== payment.currency)) {
+      throw new Error("Subscription event does not match the payment.");
+    }
+    if (payment.status === "paid") {
+      // Idempotent only for the same provider event; a different provider reference is a conflict.
+      if (payment.providerPaymentId && details?.providerPaymentId !== payment.providerPaymentId) {
+        throw new Error("Subscription payment is not payable.");
+      }
+      return payment;
+    }
     if (payment.status !== "pending") throw new Error("Subscription payment is not payable.");
 
     // Serialize different pending payments for one account as well. Otherwise

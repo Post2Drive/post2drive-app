@@ -35,22 +35,22 @@ export type JobValidationResult =
 
 function optionalText(value: unknown, fieldName: string, maxLength: number): string | null {
   if (value === undefined || value === null || value === "") return null;
-  if (typeof value !== "string") throw new Error(`${fieldName} must be text.`);
+  if (typeof value !== "string") throw new JobInputError(`${fieldName} must be text.`);
   const text = value.trim();
   if (!text) return null;
-  if (text.length > maxLength) throw new Error(`${fieldName} exceeds ${maxLength} characters.`);
+  if (text.length > maxLength) throw new JobInputError(`${fieldName} exceeds ${maxLength} characters.`);
   return text;
 }
 
 function optionalNumber(value: unknown, fieldName: string, minimum: number, maximum?: number): number | null {
   if (value === undefined || value === null || value === "") return null;
   if (!(typeof value === "number" || (typeof value === "string" && value.trim() !== ""))) {
-    throw new Error(`${fieldName} must be a valid number.`);
+    throw new JobInputError(`${fieldName} must be a valid number.`);
   }
   const number = Number(value);
-  if (!Number.isFinite(number)) throw new Error(`${fieldName} must be a valid number.`);
-  if (number < minimum) throw new Error(`${fieldName} must be at least ${minimum}.`);
-  if (maximum !== undefined && number > maximum) throw new Error(`${fieldName} must not exceed ${maximum}.`);
+  if (!Number.isFinite(number)) throw new JobInputError(`${fieldName} must be a valid number.`);
+  if (number < minimum) throw new JobInputError(`${fieldName} must be at least ${minimum}.`);
+  if (maximum !== undefined && number > maximum) throw new JobInputError(`${fieldName} must not exceed ${maximum}.`);
   return number;
 }
 
@@ -67,14 +67,17 @@ function parseDate(value: unknown): Date | null {
 
 function optionalTime(value: unknown, fieldName: string, required = false): string | null {
   if (value === undefined || value === null || value === "") {
-    if (required) throw new Error(`${fieldName} is required.`);
+    if (required) throw new JobInputError(`${fieldName} is required.`);
     return null;
   }
   if (typeof value !== "string" || !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value)) {
-    throw new Error(`${fieldName} must use 24-hour HH:MM format.`);
+    throw new JobInputError(`${fieldName} must use 24-hour HH:MM format.`);
   }
   return value;
 }
+
+/** Only these errors carry client-safe messages; anything else becomes a generic response. */
+class JobInputError extends Error {}
 
 export function validateJobInput(body: unknown, expectedMarket?: MarketIdentity): JobValidationResult {
   try {
@@ -149,6 +152,6 @@ export function validateJobInput(body: unknown, expectedMarket?: MarketIdentity)
       pickupContactName, pickupContactPhone, dropoffContactName, dropoffContactPhone,
     }};
   } catch (error) {
-    return { ok: false, error: error instanceof Error ? error.message : "Invalid job data." };
+    return { ok: false, error: error instanceof JobInputError ? error.message : "Invalid job data." };
   }
 }

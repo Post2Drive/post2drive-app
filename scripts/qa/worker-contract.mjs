@@ -60,3 +60,19 @@ assert.match(route, /new Set\(\["completed", "failed", "aborted"\]\)/,"cleanup m
 assert.match(route, /if \(!run\.finished_at \|\| run\.duration_ms === null\)/,"cleanup must reject interrupted legacy rows without finish metadata");
 assert.match(route, /finished_at IS NOT NULL AND duration_ms IS NOT NULL/,"cleanup update must recheck completion metadata in SQL");
 console.log("QA durable-worker contract checks passed (static source checks; database concurrency still requires integration testing).");
+
+// Issue #38: the worker must prove its DATABASE_URL is the isolated QA database (fail closed).
+{
+  const guard = await import("../../lib/qaDatabaseGuard.ts");
+  const ok = { DATABASE_URL: "postgresql://u:p@h:5432/post2drive_qa?schema=public", POST2DRIVE_QA_DATABASE_NAME: "post2drive_qa" };
+  assert.equal(guard.qaDatabaseConfigError(ok), null);
+  assert.ok(guard.qaDatabaseConfigError({ DATABASE_URL: ok.DATABASE_URL }), "missing marker must fail");
+  assert.ok(guard.qaDatabaseConfigError({ ...ok, POST2DRIVE_QA_DATABASE_NAME: "post2drive" }), "mismatched database must fail");
+  assert.ok(guard.qaDatabaseConfigError({ DATABASE_URL: "postgresql://u:p@h/railway", POST2DRIVE_QA_DATABASE_NAME: "railway" }), "default shared database must fail");
+  assert.ok(guard.qaDatabaseConfigError({ DATABASE_URL: "not a url", POST2DRIVE_QA_DATABASE_NAME: "x" }), "bad URL must fail");
+  assert.equal(guard.qaLiveDatabaseMatches("post2drive_qa", ok), true);
+  assert.equal(guard.qaLiveDatabaseMatches("other", ok), false);
+  assert.match(worker, /qaDatabaseConfigError\(\)/, "worker must run the static database proof");
+  assert.match(worker, /qaLiveDatabaseMatches\(/, "worker must run the live current_database() proof before claiming runs");
+}
+console.log("QA worker database-target proof contract passed.");

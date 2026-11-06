@@ -44,7 +44,7 @@ assert.match(currencySource, /\.filter\(/,
   "lib/currency.ts must filter markets before exposing them in COUNTRIES");
 
 // 5. Default (production) set is exactly GB and IN.
-if (!process.env.LAUNCH_COUNTRIES && !process.env.NEXT_PUBLIC_LAUNCH_COUNTRIES) {
+{
   assert.equal(LAUNCH_COUNTRIES.size, 2,
     "Default launch set must contain exactly 2 countries (GB, IN)");
   assert.ok(LAUNCH_COUNTRIES.has("GB"), "Default launch set must include GB");
@@ -55,6 +55,15 @@ if (!process.env.LAUNCH_COUNTRIES && !process.env.NEXT_PUBLIC_LAUNCH_COUNTRIES) 
       `${code} must not be in the default launch set`);
   }
 }
+
+// 6. Owner decision 2026-11-06: one constant, not env-driven; signup enforces it server-side.
+const marketSource = readFileSync("lib/market.ts", "utf8");
+assert.match(marketSource, /LAUNCH_COUNTRY_CODES = \["GB", "IN"\] as const/, "launch gate must be a single GB/IN constant");
+assert.ok(!/process\.env/.test(marketSource), "lib/market.ts must not read env to widen the launch set");
+const signupSource = readFileSync("app/api/signup/route.ts", "utf8");
+assert.match(signupSource, /isLaunchMarket\(country\)/, "signup route must reject non-launch markets server-side");
+assert.deepEqual(MARKET_LIST_CHECK(), ["GB", "IN"], "selectable market list must be exactly GB and IN");
+function MARKET_LIST_CHECK() { return [...LAUNCH_COUNTRIES].sort(); }
 
 console.log(
   `launch-market-gate contract passed — ${LAUNCH_COUNTRIES.size} launch market(s): ${[...LAUNCH_COUNTRIES].join(", ")}`

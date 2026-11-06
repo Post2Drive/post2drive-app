@@ -350,7 +350,7 @@ async function runQA(countryOverride: string, runId: string, workerId: string, t
       try {
         const login = await client.login(); status = login.status; ok = login.ok;
         if (!ok) error = "Session did not resolve to this synthetic account.";
-      } catch (e) { error = e instanceof Error ? e.message : String(e); }
+      } catch (e) { error = e instanceof Error ? e.name : "UnknownError"; }
       await record({ index: account.index, accountId: account.accountId, cohort: account.cohort, scenario: "authentication", action: "login-and-session-isolation", method: "POST", path: "/api/auth/callback/credentials", expected: [200], actual: ok ? 200 : status, duration: Date.now() - t, details: { error } });
       if (ok) account.client = client;
     });
