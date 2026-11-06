@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import {
   createVerificationAttempt,
 } from "@/lib/verification";
+import { ORDER_BLOCK_MESSAGES } from "@/lib/verificationProcess";
 
 async function POSTHandler() {
   const session = await getServerSession(authOptions);
@@ -19,7 +20,8 @@ async function POSTHandler() {
   }
 
   try {
-    const result = await createVerificationAttempt(accountId);
+    const userId = (session.user as any)?.id as string | undefined;
+    const result = await createVerificationAttempt(accountId, userId);
     return NextResponse.json({
       success: true,
       ...result,
@@ -33,6 +35,9 @@ async function POSTHandler() {
         status: 403,
         error: "Person verification is only available to GB + GBP accounts.",
       }],
+      // Order is enforced server-side: email, then phone OTP, then person ID.
+      [ORDER_BLOCK_MESSAGES.email_unverified, { status: 409, error: ORDER_BLOCK_MESSAGES.email_unverified }],
+      [ORDER_BLOCK_MESSAGES.phone_unverified, { status: 409, error: ORDER_BLOCK_MESSAGES.phone_unverified }],
       ["The maximum automated verification attempts have been reached. The account requires final review.", {
         status: 409,
         error: "The maximum automated verification attempts have been reached. The account requires final review.",
