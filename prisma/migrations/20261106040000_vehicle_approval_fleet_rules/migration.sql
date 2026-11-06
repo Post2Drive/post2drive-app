@@ -14,10 +14,7 @@ ALTER TABLE "Vehicle"
   ADD COLUMN "reviewedAt" TIMESTAMP(3),
   ADD COLUMN "rejectionReason" TEXT,
   ADD COLUMN "rejectionCount" INTEGER NOT NULL DEFAULT 0,
-  ADD COLUMN "correctionDeadline" TIMESTAMP(3),
-  ADD COLUMN "additionalVehicleFeeMinorUnits" INTEGER,
-  ADD COLUMN "additionalVehicleFeeCurrency" TEXT,
-  ADD COLUMN "additionalVehicleFeeStatus" "VerificationFeeStatus";
+  ADD COLUMN "correctionDeadline" TIMESTAMP(3);
 
 CREATE INDEX "Vehicle_verificationStatus_createdAt_idx" ON "Vehicle"("verificationStatus", "createdAt");
 

@@ -303,9 +303,8 @@ export function posterChargeableFrom(config: LaunchConfig | null, firstJobPosted
 }
 
 /*
- * HOOK (verification fees, PR #176): a poster upgrading to driver pays the 3.50 driver/first-vehicle
- * verification fee (lib/verificationFees.ts recordDriverUpgradeFee). Fees are not implemented here;
- * wire that call where the first vehicle is submitted for review once #176 lands.
+ * Verification fees for a poster upgrading to driver (3.50) are recorded when the vehicle is
+ * added (lib/verification.ts recordVehicleAddedFees) or on verification success; not here.
  */
 /** When billing switches to (or starts on) the 7-day plan. */
 export function driverSwitchAt(facts: Pick<EntitlementFacts, "firstJobPostedAt" | "firstVehicleApprovedAt">): Date | null {

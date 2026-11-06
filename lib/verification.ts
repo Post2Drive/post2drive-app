@@ -10,7 +10,7 @@ import {
   verificationFeeTotalMinorUnits,
   verificationOrderBlock,
   verificationPathFeeLines,
-  verificationPathForAccountType,
+  verificationPathForAccount,
 } from "@/lib/verificationProcess";
 import { isFeeFreeMarket, recordVerificationFee, uncoveredVehicleIds } from "@/lib/verificationFees";
 import { markReferralVerified } from "@/lib/referrals";
@@ -18,7 +18,7 @@ import { markReferralVerified } from "@/lib/referrals";
 /**
  * Fee for starting a verification on this account's path, in currency minor units.
  * Poster path (Step 2: person + company) = VERIFICATION_FEES.personAndCompany.
- * Driver/fleet path (Step 3) = VERIFICATION_FEES.driverAndFirstVehicle plus
+ * Driver/fleet path (Step 3, any vehicle registered) = VERIFICATION_FEES.driverAndFirstVehicle plus
  * VERIFICATION_FEES.additionalVehicle per extra vehicle, all in one record.
  * India is free. Constants live in lib/pricing.ts.
  */
@@ -28,10 +28,11 @@ export function getVerificationFeeMinorUnits(
     currency?: string | null;
     country?: string | null;
   },
-  additionalVehicles = 0,
+  vehicleCount = 0,
 ) {
   if (isFeeFreeMarket(account)) return 0;
-  const lines = verificationPathFeeLines(verificationPathForAccountType(account.type), additionalVehicles);
+  const path = verificationPathForAccount(account.type, vehicleCount);
+  const lines = verificationPathFeeLines(path, path === "driver" ? Math.max(0, vehicleCount - 1) : 0);
   return verificationFeeTotalMinorUnits(lines, account.currency || "GBP");
 }
 
@@ -117,10 +118,10 @@ export async function createVerificationAttempt(accountId: string, userId?: stri
     let feeMinorUnits = 0;
     let feePaymentId: string | null = null;
     if (decision.charged) {
-      const path = verificationPathForAccountType(account.type);
+      const vehicles = await tx.vehicle.findMany({ where: { accountId }, select: { id: true }, orderBy: { createdAt: "asc" } });
+      const path = verificationPathForAccount(account.type, vehicles.length);
       let vehicleIds: string[] = [];
       if (path === "driver") {
-        const vehicles = await tx.vehicle.findMany({ where: { accountId }, select: { id: true }, orderBy: { createdAt: "asc" } });
         vehicleIds = await uncoveredVehicleIds(tx as never, accountId, vehicles.map((vehicle) => vehicle.id));
       }
       const fee = await recordVerificationFee(tx as never, {
@@ -181,20 +182,50 @@ export async function createVerificationAttempt(accountId: string, userId?: stri
 export async function recordDriverUpgradeFee(accountId: string) {
   return prisma.$transaction(async (tx) => {
     await tx.$queryRawUnsafe('SELECT "id" FROM "Account" WHERE "id" = $1 FOR UPDATE', accountId);
-    const account = await tx.account.findUnique({ where: { id: accountId }, select: { id: true, country: true, currency: true } });
-    if (!account || isFeeFreeMarket(account)) return null;
-    const prior = await tx.verificationFeePayment.findFirst({
-      where: { accountId, action: { in: ["driver_verification", "driver_upgrade"] } }, select: { id: true },
-    });
-    if (prior) return null;
-    const vehicles = await tx.vehicle.findMany({ where: { accountId }, select: { id: true }, orderBy: { createdAt: "asc" } });
-    const vehicleIds = await uncoveredVehicleIds(tx as never, accountId, vehicles.map((vehicle) => vehicle.id));
-    return recordVerificationFee(tx as never, {
-      accountId, country: account.country, currency: account.currency, action: "driver_upgrade",
-      lines: verificationPathFeeLines("driver", Math.max(0, vehicleIds.length - 1)),
-      idempotencyKey: `driver-upgrade:${accountId}`,
-      vehicleIds,
-    });
+    return recordDriverUpgradeFeeInTx(tx, accountId);
+  });
+}
+
+/** Same as recordDriverUpgradeFee, for callers already holding the account row lock in a transaction. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function recordDriverUpgradeFeeInTx(tx: any, accountId: string) {
+  const account = await tx.account.findUnique({ where: { id: accountId }, select: { id: true, country: true, currency: true } });
+  if (!account || isFeeFreeMarket(account)) return null;
+  const prior = await tx.verificationFeePayment.findFirst({
+    where: { accountId, action: { in: ["driver_verification", "driver_upgrade"] } }, select: { id: true },
+  });
+  if (prior) return null;
+  const vehicles = await tx.vehicle.findMany({ where: { accountId }, select: { id: true }, orderBy: { createdAt: "asc" } });
+  const vehicleIds = await uncoveredVehicleIds(tx as never, accountId, vehicles.map((vehicle: { id: string }) => vehicle.id));
+  return recordVerificationFee(tx as never, {
+    accountId, country: account.country, currency: account.currency, action: "driver_upgrade",
+    lines: verificationPathFeeLines("driver", Math.max(0, vehicleIds.length - 1)),
+    idempotencyKey: `driver-upgrade:${accountId}`,
+    vehicleIds,
+  });
+}
+
+/**
+ * Fees when a vehicle is added (EXECUTION_PLAN §5), inside the vehicle-create transaction:
+ *  - account not yet person-verified: nothing now; the vehicle is bundled into the
+ *    driver-path verification fee when verification starts (one payment).
+ *  - verified poster, no driver fee yet: the one-off 3.50 driver upgrade (covers this vehicle).
+ *  - driver fee already recorded: 0.50 for this vehicle, idempotent per vehicle.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function recordVehicleAddedFees(tx: any, account: { id: string; country: string; currency: string; verificationStatus: string }, vehicleId: string) {
+  if (isFeeFreeMarket(account) || account.verificationStatus !== "verified") return null;
+  const priorDriverFee = await tx.verificationFeePayment.findFirst({
+    where: { accountId: account.id, action: { in: ["driver_verification", "driver_upgrade"] } }, select: { id: true },
+  });
+  if (!priorDriverFee) return recordDriverUpgradeFeeInTx(tx, account.id);
+  const uncovered = await uncoveredVehicleIds(tx as never, account.id, [vehicleId]);
+  if (uncovered.length === 0) return null;
+  return recordVerificationFee(tx as never, {
+    accountId: account.id, country: account.country, currency: account.currency, action: "vehicle_added",
+    lines: [{ code: "additionalVehicle", quantity: 1 }],
+    idempotencyKey: `vehicle-added:${vehicleId}`,
+    vehicleIds: [vehicleId],
   });
 }
 
@@ -271,6 +302,12 @@ export async function markVerificationSuccessful(attemptId: string, providerRefe
     // Launch windows replace the per-account promotion (EXECUTION_PLAN §4): free access now
     // comes from LaunchConfig dates evaluated in lib/access.ts, so nothing starts here.
     await markReferralVerified(account.id);
+    // Vehicles added while verification was in progress were not charged then; if this
+    // account now has vehicles but no driver-path fee, record the one-off driver upgrade.
+    // Idempotent (no-op when a driver_verification/driver_upgrade fee already exists).
+    if (await prisma.vehicle.count({ where: { accountId: account.id } }) > 0) {
+      await recordDriverUpgradeFee(account.id);
+    }
   }
   return account;
 }

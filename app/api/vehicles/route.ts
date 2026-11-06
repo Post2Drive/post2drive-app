@@ -1,4 +1,5 @@
 import { withApiMetrics } from "@/lib/apiMetrics";
+import { recordVehicleAddedFees } from "@/lib/verification";
 import { NextResponse } from "next/server";
 import { readBoundedJson } from "@/lib/requestBody";
 import { getServerSession } from "next-auth";
@@ -7,24 +8,8 @@ import { prisma } from "@/lib/prisma";
 import { VEHICLE_TYPES } from "@/lib/vehicles";
 import { getLocalisationProfile, getJurisdictionOptions } from "@/lib/localisation";
 import { marketDateKey, parseOptionalDateField } from "@/lib/vehicleDates";
-import { VERIFICATION_FEES } from "@/lib/pricing";
-import { majorUnitsToMinorUnits } from "@/lib/currencyMinorUnits";
-import { chargesAdditionalVehicleFee, isFleetAccount, isInsuranceCoverType, isKeeperType } from "@/lib/vehicleApproval";
+import { isFleetAccount, isInsuranceCoverType, isKeeperType } from "@/lib/vehicleApproval";
 
-/**
- * 0.50 fee for every vehicle beyond the first (EXECUTION_PLAN §5), recorded as
- * pending/unpaid and never marked paid here. Interim storage on the Vehicle row.
- * TODO: switch to recordVerificationFee from lib/verificationFees.ts (#176) after merge
- * (action "vehicle_added", line additionalVehicle x1, idempotencyKey per vehicle).
- */
-function additionalVehicleFeeData(existingVehicleCount: number, account: { country: string; currency: string }) {
-  if (!chargesAdditionalVehicleFee(existingVehicleCount, account)) return {};
-  return {
-    additionalVehicleFeeMinorUnits: majorUnitsToMinorUnits(VERIFICATION_FEES.additionalVehicle, account.currency),
-    additionalVehicleFeeCurrency: account.currency,
-    additionalVehicleFeeStatus: "unpaid" as const,
-  };
-}
 
 function validHttpUrl(value: string) {
   try {
@@ -224,7 +209,7 @@ async function POSTHandler(req: Request) {
         }
       }
 
-      return tx.vehicle.create({
+      const created = await tx.vehicle.create({
         data: {
           accountId: account.id,
           vehicleType,
@@ -240,11 +225,14 @@ async function POSTHandler(req: Request) {
           motValidUntil,
           insuranceValidUntil,
           ...evidence.data,
-          ...additionalVehicleFeeData(existing, account),
           verificationStatus: "pending",
           verifiedAt: null,
         },
       });
+      // Verification fees for this vehicle (EXECUTION_PLAN §5): driver upgrade or 0.50,
+      // recorded as pending in the same transaction, idempotent per account/vehicle.
+      await recordVehicleAddedFees(tx, account, created.id);
+      return created;
     });
     if (!vehicle) {
       return NextResponse.json({ error: "This registration is already on your account." }, { status: 409 });

@@ -16,6 +16,12 @@ register(`data:text/javascript,${encodeURIComponent(`
   }`)}`);
 const proc = await import(new URL("../../lib/verificationProcess.ts", import.meta.url));
 const fees = await import(new URL("../../lib/verificationFees.ts", import.meta.url));
+
+// Integration fix: all signups are type "both", so the charged path follows vehicles.
+assert.equal(proc.verificationPathForAccount("both", 0), "poster", "no vehicle: poster path 2.50");
+assert.equal(proc.verificationPathForAccount("both", 1), "driver", "vehicle registered: driver path 3.50, no 2.50");
+assert.equal(proc.verificationPathForAccount("poster", 3), "poster");
+assert.equal(proc.verificationPathForAccount("driver", 0), "driver");
 const eligibility = { canPostJobs: null, isIndiaPhoneVerifiedAccount: null };
 {
   // lib/eligibility.ts imports prisma; load only its pure exports with stubs.
@@ -167,7 +173,6 @@ function loadVerification(prisma) {
     "@/lib/qaRunnerGuard": { isQaRunnerEnabled: () => qaEnabled },
     "@/lib/verificationProcess": proc,
     "@/lib/verificationFees": fees,
-    "@/lib/promotion": { startPromotionForVerifiedAccount: async () => {} },
     "@/lib/referrals": { markReferralVerified: async () => {} },
   })[name] ?? (() => { throw new Error("unexpected dependency " + name); })() });
   return mod.exports;
@@ -253,7 +258,8 @@ assert.ok(companyRoute.indexOf("isUkAccount(account)") < companyRoute.indexOf("d
 assert.match(verificationSource, /failureOutcome\(attempt\.cyclePosition/);
 assert.doesNotMatch(verificationSource, /addWorkingDays\(now, attempt\.attemptNumber === 1 \? 14 : 7\)/, "old 14/7 windows removed");
 assert.doesNotMatch(verificationSource, /return 200/, "old 2.00 fee removed");
-assert.match(verificationSource, /await startPromotionForVerifiedAccount\(account\.id\);/, "promotion start call left for builder A");
+assert.doesNotMatch(verificationSource, /startPromotionForVerifiedAccount/, "launch windows replaced the per-account promotion (EXECUTION_PLAN §4)");
+assert.match(verificationSource, /recordDriverUpgradeFee\(account\.id\)/, "vehicles added during verification get the driver-path fee on success");
 const schema = read("prisma/schema.prisma");
 assert.match(schema, /model VerificationFeePayment \{/);
 assert.match(schema, /idempotencyKey String\s+@unique/);

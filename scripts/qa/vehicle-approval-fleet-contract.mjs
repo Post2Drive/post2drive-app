@@ -144,11 +144,12 @@ assert.equal(rules.chargesAdditionalVehicleFee(1, { country: "GB", currency: "GB
 assert.equal(rules.chargesAdditionalVehicleFee(9, { country: "IE", currency: "EUR" }), true, "every later vehicle charged");
 assert.equal(rules.chargesAdditionalVehicleFee(3, { country: "IN", currency: "INR" }), false, "India is fee-free");
 const vehiclesRoute = read("app/api/vehicles/route.ts");
-assert.match(vehiclesRoute, /switch to recordVerificationFee from lib\/verificationFees\.ts \(#176\) after merge/,
-  "interim fee storage is isolated and flagged for #176");
-assert.match(vehiclesRoute, /VERIFICATION_FEES\.additionalVehicle/, "fee amount comes from lib/pricing.ts");
-assert.match(vehiclesRoute, /additionalVehicleFeeStatus: "unpaid"/, "fee is recorded pending, never paid");
-assert.doesNotMatch(vehiclesRoute, /additionalVehicleFeeStatus: "paid"/);
+const verificationSource = read("lib/verification.ts");
+assert.match(verificationSource, /export async function recordVehicleAddedFees/, "vehicle fees live in the shared verification fee module");
+assert.match(verificationSource, /code: "additionalVehicle", quantity: 1/, "extra vehicles are charged the additionalVehicle line (amount from lib/pricing.ts)");
+assert.match(verificationSource, /idempotencyKey: `vehicle-added:\$\{vehicleId\}`/, "one fee per vehicle, idempotent");
+assert.match(vehiclesRoute, /recordVehicleAddedFees\(tx, account, created\.id\)/, "vehicle fees go through the shared pending-fee helper in the create transaction");
+assert.doesNotMatch(vehiclesRoute, /status: "paid"/, "the vehicles route never marks a fee paid");
 assert.match(vehiclesRoute, /insuranceCoverType/);
 assert.match(vehiclesRoute, /registeredKeeperType/);
 assert.match(vehiclesRoute, /async function PATCHHandler/);

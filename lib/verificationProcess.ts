@@ -51,6 +51,17 @@ export function verificationPathForAccountType(type: "poster" | "driver" | "both
 }
 
 /**
+ * Path actually charged (EXECUTION_PLAN §1, §5). New signups are all type "both", so the
+ * path follows what the account is doing: no vehicle registered = poster path (2.50);
+ * at least one vehicle = driver/fleet path (3.50, no 2.50). Legacy single-role types keep their path.
+ */
+export function verificationPathForAccount(type: "poster" | "driver" | "both", vehicleCount: number): VerificationPath {
+  if (type === "poster") return "poster";
+  if (type === "driver") return "driver";
+  return vehicleCount > 0 ? "driver" : "poster";
+}
+
+/**
  * Line items for one verification action. Driver-only users never pay the poster
  * 2.50 (their Step 3 includes the person check); a poster upgrading pays the 3.50
  * driver package with the person check reused. Extra vehicles ride in the same record.

@@ -412,9 +412,6 @@ model Vehicle {
 
   // Pending 0.50 fee for a vehicle beyond the first (never marked paid here).
   // Interim storage until the shared verification-fee record from #176 lands.
-  additionalVehicleFeeMinorUnits Int?
-  additionalVehicleFeeCurrency   String?
-  additionalVehicleFeeStatus     VerificationFeeStatus?
 
   jobDriverAssignments JobDriverAssignment[]
 

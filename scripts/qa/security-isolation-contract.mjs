@@ -242,6 +242,7 @@ const routeModule = loadTypeScriptModule("app/api/vehicles/route.ts", {
   "@/lib/pricing": { VERIFICATION_FEES: { additionalVehicle: 0.5 } },
   "@/lib/currencyMinorUnits": { majorUnitsToMinorUnits: (amount) => Math.round(amount * 100) },
   "@/lib/vehicleApproval": { chargesAdditionalVehicleFee: () => false, isFleetAccount: () => false, isInsuranceCoverType: () => true, isKeeperType: () => true },
+  "@/lib/verification": { recordVehicleAddedFees: async () => null },
   "@/lib/requestBody": {
     readBoundedJson: async (request, maxBytes) => {
       const text = await request.text();
