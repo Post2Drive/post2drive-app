@@ -21,9 +21,10 @@ assert.ok(route.includes("pickupContactPhone: canSeePartyContacts ? pickupContac
 assert.ok(route.includes("dropoffContactName: canSeePartyContacts ? dropoffContactName : null"));
 assert.ok(route.includes("dropoffContactPhone: canSeePartyContacts ? dropoffContactPhone : null"));
 assert.ok(!page.includes("previousDriverIds"), "client should not require other drivers' account IDs");
-assert.ok(page.includes("job.currentUserPreviouslyBackedOut"));
+// Fair rating policy (lib/ratingPolicy.ts): backed-out drivers are not rated, so the page no longer
+// needs the caller-relative back-out flags for rating; it must still never use other drivers' IDs.
+assert.ok(!/canRate[\s\S]{0,300}currentUserPreviouslyBackedOut/.test(page), "backed-out drivers must not be offered the rating form");
 assert.ok(page.includes('href={`/profile/${job.poster.displayId}`}'), "profile links must use the public display ID expected by the profile API");
-assert.ok(page.includes("job.hasPreviousDrivers"));
 console.log("Job response data-minimization contract passed.");
 
 const payments = read("../../app/api/payments/route.ts");
