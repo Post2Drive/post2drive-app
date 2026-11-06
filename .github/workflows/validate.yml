@@ -156,6 +156,8 @@ jobs:
         run: npm run build
       - name: Validate lifecycle APIs over authenticated HTTP against isolated CI database
         run: node scripts/qa/lifecycle-api-e2e.mjs
+      - name: Validate cross-account and cross-market data isolation over authenticated HTTP (#122)
+        run: node scripts/qa/isolation-api-e2e.mjs
 
       - name: Install browser-only accessibility test tools
         run: npm install --no-save --package-lock=false --prefer-offline --fetch-retries=3 --fetch-retry-mintimeout=1000 --fetch-retry-maxtimeout=10000 tsx playwright @axe-core/playwright
