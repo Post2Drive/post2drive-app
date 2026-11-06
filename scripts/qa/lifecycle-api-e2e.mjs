@@ -203,20 +203,20 @@ const denyStatuses = new Set([400, 401, 403, 404, 409, 422]);
 try {
   poster = await prisma.account.create({ data: {
     type: "poster", companyName: "CI lifecycle poster", displayId: "CIP-" + suffix,
-    country: "GB", currency: "GBP", verificationStatus: "verified",
+    country: "GB", currency: "GBP", phoneVerifiedAt: new Date(), verificationStatus: "verified",
     companyVerificationStatus: "verified", companyVerifiedAt: new Date(),
     subscriptionStatus: "active", subscriptionPlanKey: "individual",
     subscriptionStartedAt: new Date(), subscriptionEndsAt: new Date("2035-12-31T00:00:00.000Z"),
   }});
   driver = await prisma.account.create({ data: {
     type: "driver", companyName: "CI lifecycle driver", displayId: "CID-" + suffix,
-    country: "GB", currency: "GBP", verificationStatus: "verified",
+    country: "GB", currency: "GBP", phoneVerifiedAt: new Date(), verificationStatus: "verified",
     subscriptionStatus: "active", subscriptionPlanKey: "individual",
     subscriptionStartedAt: new Date(), subscriptionEndsAt: new Date("2035-12-31T00:00:00.000Z"),
   }});
   outsider = await prisma.account.create({ data: {
     type: "both", companyName: "CI unrelated account", displayId: "CIO-" + suffix,
-    country: "GB", currency: "GBP", verificationStatus: "verified",
+    country: "GB", currency: "GBP", phoneVerifiedAt: new Date(), verificationStatus: "verified",
     subscriptionStatus: "active", subscriptionPlanKey: "individual",
     subscriptionStartedAt: new Date(), subscriptionEndsAt: new Date("2035-12-31T00:00:00.000Z"),
   }});
@@ -228,14 +228,14 @@ try {
   }});
   suspendedGbPoster = await prisma.account.create({ data: {
     type: "poster", companyName: "CI suspended GB poster", displayId: "CIS-" + suffix,
-    country: "GB", currency: "GBP", verificationStatus: "suspended",
+    country: "GB", currency: "GBP", phoneVerifiedAt: new Date(), verificationStatus: "suspended",
     isTester: true, testerApprovalStatus: "approved",
     subscriptionStatus: "active", subscriptionPlanKey: "individual",
     subscriptionStartedAt: new Date(), subscriptionEndsAt: new Date("2035-12-31T00:00:00.000Z"),
   } });
   pendingCompanyAccount = await prisma.account.create({ data: {
     type: "poster", companyName: "CI pending company review", displayId: "CIPC-" + suffix,
-    country: "GB", currency: "GBP", verificationStatus: "verified",
+    country: "GB", currency: "GBP", phoneVerifiedAt: new Date(), verificationStatus: "verified",
     companyVerificationStatus: "pending", companyVerificationSubmittedAt: new Date(),
   } });
   accountIds.push(poster.id, driver.id, outsider.id, indiaPoster.id, suspendedGbPoster.id, pendingCompanyAccount.id);
@@ -681,7 +681,7 @@ try {
 
   const verificationAccount = await prisma.account.create({ data: {
     type: "both", companyName: "CI verification webhook", displayId: "CIV-" + suffix,
-    country: "GB", currency: "GBP", verificationStatus: "pending",
+    country: "GB", currency: "GBP", phoneVerifiedAt: new Date(), verificationStatus: "pending",
   } });
   accountIds.push(verificationAccount.id);
   const verificationAttempt = await prisma.verificationAttempt.create({ data: {
