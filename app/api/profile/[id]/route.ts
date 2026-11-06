@@ -45,7 +45,8 @@ async function GETHandler(
       return NextResponse.json({ error: "Profile not found in your marketplace." }, { status: 404 });
     }
 
-    const [profile, ratingAggregate, jobsPosted, jobsCompleted] = await Promise.all([
+    const now = new Date();
+    const [profile, ratingAggregate, otherOutcomes, jobsPosted, jobsCompleted] = await Promise.all([
       prisma.account.findUnique({
         where: { id: target.id },
         select: {
@@ -59,16 +60,25 @@ async function GETHandler(
             take: 20,
             select: { vehicleType: true },
           },
+          // Blind ratings: only show ratings whose visibility time has passed.
           ratingsReceived: {
-            orderBy: { createdAt: "desc" },
+            where: { visibleAfter: { lte: now } },
+            orderBy: [{ createdAt: "desc" }, { id: "desc" }],
             take: 5,
-            select: { id: true, stars: true, comment: true, createdAt: true },
+            select: { id: true, stars: true, comment: true, createdAt: true, outcome: true, reasonCode: true },
           },
         },
       }),
+      // The star average counts only normally completed jobs; jobs that did not
+      // complete or were disputed are reported separately (fair rating policy §11).
       prisma.rating.aggregate({
-        where: { rateeId: target.id },
+        where: { rateeId: target.id, visibleAfter: { lte: now }, outcome: "completed" },
         _avg: { stars: true },
+        _count: { _all: true },
+      }),
+      prisma.rating.groupBy({
+        by: ["outcome"],
+        where: { rateeId: target.id, visibleAfter: { lte: now }, outcome: { in: ["not_completed", "disputed"] } },
         _count: { _all: true },
       }),
       prisma.job.count({ where: { posterId: target.id } }),
@@ -83,6 +93,8 @@ async function GETHandler(
       account: profile,
       avgRating: ratingAggregate._avg.stars,
       ratingCount: ratingAggregate._count._all,
+      notCompletedRatingCount: otherOutcomes.find((row: { outcome: string; _count: { _all: number } }) => row.outcome === "not_completed")?._count._all ?? 0,
+      disputedRatingCount: otherOutcomes.find((row: { outcome: string; _count: { _all: number } }) => row.outcome === "disputed")?._count._all ?? 0,
       recentRatings: profile.ratingsReceived,
       jobsPosted,
       jobsCompleted,

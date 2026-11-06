@@ -142,3 +142,26 @@ Avoid a single account-level verified boolean as the sole authority for every ac
 ## 10. Decision and status discipline
 
 This document captures the target policy and owner decisions. Before claiming it is live, link the implementation PR, migrations, automated tests, exact CI status, staging behaviour and release evidence. Any unresolved pricing interpretation or market-specific rule must be flagged for owner decision rather than invented.
+
+## 11. Fair rating policy (owner decision 2026-11-06)
+
+Implemented in `lib/ratingPolicy.ts` (rules), `app/api/ratings/route.ts` (enforcement), `app/api/profile/[id]/route.ts` (display). Tested by `npm run qa:fair-ratings`.
+
+**Lifecycle (unchanged):** either side can confirm pickup; delivery is marked by one side and must be confirmed by the other. A job that cannot continue is ended through the incident process (`incidents/terminate`, or an admin `terminate_with_incident` resolution), which cancels it. Nothing changes a job's status automatically.
+
+**Who:** only the poster and the assigned driver of a job rate each other. Drivers who backed out before pickup are not rated; cancellations are handled by the cancellation limits (`lib/cancellationLimits.ts`).
+
+| What happened | Rating opens | Label |
+| --- | --- | --- |
+| Delivery confirmed by both | At confirmation | Completed |
+| Picked up, then ended through the incident process | When the job was ended | Not completed |
+| Marked delivered by one side, never confirmed by the other | 14 days after delivery was marked | Disputed |
+| Never picked up (including cancelled or ended before pickup) | Never | — |
+| Still in progress | Never while live | — |
+
+- **Window:** a rating can be given for 14 days after it opens.
+- **Blind ratings:** a rating stays hidden until the other side also rates, or the window closes.
+- **Reasons:** required for 1–2 stars and for every Not completed / Disputed rating, from a fixed list; "Other" requires a comment.
+- **Average:** the public star average counts Completed ratings only. Not completed and Disputed ratings are shown separately with their label and reason.
+
+**Not yet built (follow-up):** showing cancellation history on profiles (the cancellation limit currently keeps only the latest canceller per job), hiding ratings while an incident is under admin review, and one public reply per rating. If both parties submit at the same instant, both ratings stay hidden until the window closes (no data loss).
