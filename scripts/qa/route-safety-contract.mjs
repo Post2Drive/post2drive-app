@@ -22,7 +22,7 @@ import assert from "node:assert/strict";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
-// ── helpers ───────────────────────────────────────────────────────────────
+// ── helpers ─────────────────────────────────────────────────────────────────
 
 function readRoute(path) {
   try {
@@ -172,16 +172,41 @@ for (const routePath of routePaths) {
 
 // A few routes intentionally bypass withApiMetrics because they are internal
 // or already use a custom metrics scheme (the NextAuth handler, the QA run
-// handler which is complex and handles its own errors, CSP report which is a
-// simple append-only route). The retired admin/performance tombstone is also
+// handler which is complex and handles its own errors). The health readiness
+// probe stays unwrapped because wrapping would write an ApiRequestMetric row on
+// every Railway probe. The retired admin/performance tombstone is also
 // intentionally database-free: it returns a 410 without touching the app DB or
 // the ApiRequestMetric table, so it must not be instrumented.
 const EXEMPT_FROM_METRICS = new Set([
   "app/api/auth/[...nextauth]/route.ts",
-  "app/api/security/csp-report/route.ts",
   "app/api/health/route.ts",
   "app/api/admin/performance/route.ts",
 ]);
+
+// Routes wrapped by PR #151 must stay wrapped: each listed handler must be
+// exported via withApiMetrics with its exact route label.
+const REQUIRED_METRICS_WRAPPED = {
+  "app/api/security/csp-report/route.ts": { route: "/api/security/csp-report", methods: ["POST"] },
+  "app/api/admin/qa-campaigns/route.ts": { route: "/api/admin/qa-campaigns", methods: ["GET", "POST"] },
+  "app/api/admin/qa-campaigns/access/route.ts": { route: "/api/admin/qa-campaigns/access", methods: ["POST", "DELETE"] },
+  "app/api/admin/qa-campaigns/[id]/route.ts": { route: "/api/admin/qa-campaigns/[id]", methods: ["DELETE"] },
+  "app/api/admin/qa-campaigns/[id]/start/route.ts": { route: "/api/admin/qa-campaigns/[id]/start", methods: ["POST"] },
+  "app/api/qa/run/route.ts": { route: "/api/qa/run", methods: ["GET", "POST"] },
+};
+
+for (const [path, { route, methods }] of Object.entries(REQUIRED_METRICS_WRAPPED)) {
+  assert.ok(!EXEMPT_FROM_METRICS.has(path), `${path}: must not be exempt from withApiMetrics`);
+  const src = readRoute(path);
+  assert.ok(src, `${path}: route file is missing`);
+  for (const method of methods) {
+    assert.ok(
+      src.includes(`export const ${method} = withApiMetrics("${route}", ${method}Handler);`),
+      `${path}: ${method} must be exported via withApiMetrics("${route}", ${method}Handler)`,
+    );
+    assert.doesNotMatch(src, new RegExp(`export\\s+async\\s+function\\s+${method}\\b`),
+      `${path}: ${method} must not be exported as an unwrapped function`);
+  }
+}
 
 const EXPORT_HANDLER = /^export\s+const\s+(?:GET|POST|PATCH|DELETE|PUT)\s*=/m;
 const USES_WITH_METRICS = /withApiMetrics\s*\(/;
@@ -197,7 +222,7 @@ for (const routePath of routePaths) {
     `${rel}: all routes with exported handlers must use withApiMetrics for consistent server-side logging`);
 }
 
-// ── Result ────────────────────────────────────────────────────────────────
+// ── Result ───────────────────────────────────────────────────────────────────
 
 console.log(JSON.stringify({
   status: "passed",
