@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { withApiMetrics } from "@/lib/apiMetrics";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -10,7 +9,7 @@ export const runtime = "nodejs";
  * Returns healthy only when the app can reach PostgreSQL; never returns secrets
  * or raw database errors.
  */
-async function GETHandler() {
+export async function GET() {
   try {
     await prisma.$queryRaw`SELECT 1`;
     return NextResponse.json(
@@ -24,5 +23,3 @@ async function GETHandler() {
     );
   }
 }
-
-export const GET = withApiMetrics("/api/health", GETHandler);
