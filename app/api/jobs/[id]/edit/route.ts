@@ -1,4 +1,5 @@
 import { withApiMetrics } from "@/lib/apiMetrics";
+import { enforceRateLimit } from "@/lib/rateLimit";
 import { requireJobMarketAccess } from "@/lib/jobMarket";
 import { getJobPickupAtForAccount, pickupAccessError } from "@/lib/jobAccess";
 import { isSupportedMarket } from "@/lib/market";
@@ -44,6 +45,8 @@ async function PATCHHandler(
   }
   const marketAccessError = await requireJobMarketAccess(accountId, routeParams.id);
   if (marketAccessError) return marketAccessError;
+  const writeLimit = await enforceRateLimit(req, { scope: "job-edit", identity: accountId, limit: 30, windowMs: 60 * 60 * 1000 });
+  if (writeLimit) return writeLimit;
 
   const parsedBody = await readBoundedJson(req, 32 * 1024);
   if (!parsedBody.ok) {

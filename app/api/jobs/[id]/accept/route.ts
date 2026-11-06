@@ -1,4 +1,5 @@
 import { withApiMetrics } from "@/lib/apiMetrics";
+import { enforceRateLimit } from "@/lib/rateLimit";
 import { requireJobMarketAccess } from "@/lib/jobMarket";
 import { getJobPickupAtForAccount, pickupAccessError } from "@/lib/jobAccess";
 import { getDriveAccess } from "@/lib/access";
@@ -50,6 +51,8 @@ async function POSTHandler(
   }
   const marketAccessError = await requireJobMarketAccess(accountId, id);
   if (marketAccessError) return marketAccessError;
+  const writeLimit = await enforceRateLimit(req, { scope: "job-accept", identity: accountId, limit: 60, windowMs: 60 * 60 * 1000 });
+  if (writeLimit) return writeLimit;
 
   const marketplaceAccessCheck = await getDriveAccess(accountId);
 

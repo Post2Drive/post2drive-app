@@ -1,4 +1,5 @@
 import { withApiMetrics } from "@/lib/apiMetrics";
+import { enforceRateLimit } from "@/lib/rateLimit";
 import { requireJobMarketAccess } from "@/lib/jobMarket";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
@@ -27,6 +28,8 @@ async function POSTHandler(
   }
   const marketAccessError = await requireJobMarketAccess(accountId, routeParams.id);
   if (marketAccessError) return marketAccessError;
+  const writeLimit = await enforceRateLimit(req, { scope: "job-unassign", identity: accountId, limit: 60, windowMs: 60 * 60 * 1000 });
+  if (writeLimit) return writeLimit;
 
   const job = await prisma.job.findUnique({
     where: { id: routeParams.id },
