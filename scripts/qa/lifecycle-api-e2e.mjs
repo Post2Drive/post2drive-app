@@ -216,7 +216,9 @@ try {
   }});
   outsider = await prisma.account.create({ data: {
     type: "both", companyName: "CI unrelated account", displayId: "CIO-" + suffix,
-    country: "GB", currency: "GBP", phoneVerifiedAt: new Date(), verificationStatus: "verified",
+    // No verified phone: this account never posts, and the phone-verification probe below
+    // must exercise an unverified number (a verified one returns 200 "already verified").
+    country: "GB", currency: "GBP", verificationStatus: "verified",
     subscriptionStatus: "active", subscriptionPlanKey: "individual",
     subscriptionStartedAt: new Date(), subscriptionEndsAt: new Date("2035-12-31T00:00:00.000Z"),
   }});
