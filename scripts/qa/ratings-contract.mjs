@@ -21,11 +21,9 @@ assert.match(src, /rating-submit/, "Rate limit scope must be 'rating-submit'");
 assert.match(src, /limit: 20/, "Rate limit must be capped at 20 per window");
 assert.match(src, /60 \* 60 \* 1000/, "Rate limit window must be 1 hour");
 
-// Job completion gate
-assert.match(src, /rateableStatuses/, "Must define rateable statuses");
-assert.match(src, /"completed"/, "Must include 'completed' as a rateable status");
-assert.match(src, /"delivered"/, "Must include 'delivered' as a rateable status");
-assert.match(src, /status: 409/, "Must return 409 for non-rateable job status");
+// Job eligibility gate (fair rating policy, lib/ratingPolicy.ts)
+assert.match(src, /ratingEligibility\(/, "Must decide eligibility with the shared rating policy");
+assert.match(src, /status: 409/, "Must return 409 when the job is not rateable yet or the window closed");
 
 // Stars validation (1–5 integer)
 assert.match(src, /Number\.isInteger\(numericStars\)/, "Stars must be validated as integer");

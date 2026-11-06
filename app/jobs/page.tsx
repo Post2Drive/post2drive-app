@@ -2,6 +2,7 @@
 "use client";
 
 import ActivityHistory from "./activity-history";
+import { RATING_REASONS } from "@/lib/ratingPolicy";
 
 import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
@@ -251,6 +252,7 @@ export default function JobsPage() {
       {
         stars: string;
         comment: string;
+        reasonCode?: string;
       }
     >
   >({});
@@ -641,6 +643,8 @@ export default function JobsPage() {
                   input.stars,
                 comment:
                   input.comment,
+                reasonCode:
+                  input.reasonCode || undefined,
               }),
           }
         );
@@ -854,9 +858,10 @@ export default function JobsPage() {
             const isAcceptedDriver = job.isCurrentUserAcceptedDriver;
             const involved = isOwner || isAcceptedDriver;
             const canRate =
-              (isOwner && (job.hasAcceptedDriver || Boolean(job.hasPreviousDrivers))) ||
-              isAcceptedDriver ||
-              Boolean(job.currentUserPreviouslyBackedOut);
+              // Fair rating policy: only the poster and the assigned driver rate each other;
+              // drivers who backed out before pickup are not rated (lib/ratingPolicy.ts).
+              (isOwner && job.hasAcceptedDriver) ||
+              isAcceptedDriver;
             const iMarkedDelivered = job.currentUserMarkedDelivery;
 
             const matched =
@@ -1553,6 +1558,25 @@ export default function JobsPage() {
                                 </option>
                               )
                             )}
+                          </select>
+
+                          <select
+                            aria-label="Reason (required for 1–2 stars or if the job did not complete)"
+                            value={ratingInputs[job.id]?.reasonCode || ""}
+                            onChange={(e) =>
+                              setRatingInputs({
+                                ...ratingInputs,
+                                [job.id]: {
+                                  ...(ratingInputs[job.id] || { stars: "5", comment: "" }),
+                                  reasonCode: e.target.value,
+                                },
+                              })
+                            }
+                          >
+                            <option value="">Reason (if needed)</option>
+                            {Object.entries(RATING_REASONS).map(([code, label]) => (
+                              <option key={code} value={code}>{label}</option>
+                            ))}
                           </select>
 
                           <input
