@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { VEHICLE_TYPES, vehicleTypeLabel } from "@/lib/vehicles";
+import { minorUnitsToMajorUnits } from "@/lib/currencyMinorUnits";
 import { getLocalisationProfile, formatMarketDate, getJurisdictionOptions, getJurisdictionAuthority } from "@/lib/localisation";
 
 type Vehicle = {
@@ -26,6 +27,7 @@ type Vehicle = {
   insuranceCoverType: string | null;
   rejectionReason: string | null;
   correctionDeadline: string | null;
+  additionalVehicleFeeMinorUnits: number | null;
 };
 
 const COVER_LABELS: Record<string, string> = {
@@ -315,6 +317,7 @@ export default function VehiclesPage() {
               <p role="note">Not approved: {vehicle.rejectionReason}{vehicle.correctionDeadline ? ` Correct it free of charge by ${formatMarketDate(vehicle.correctionDeadline, market)}.` : " A new check is needed."}</p>
             )}
             <p>Cover: {vehicle.insuranceCoverType ? COVER_LABELS[vehicle.insuranceCoverType] ?? vehicle.insuranceCoverType : "Not recorded"} · Keeper: {vehicle.registeredKeeperName || "Not recorded"}</p>
+            {vehicle.additionalVehicleFeeMinorUnits ? <p>Additional vehicle check fee: {minorUnitsToMajorUnits(vehicle.additionalVehicleFeeMinorUnits, market.currency)} {market.currency} (payable; checkout not yet connected).</p> : null}
             <p>{[vehicle.make, vehicle.model, vehicle.mamKg ? `${marketProfile?.weightUnit === "lb" ? Math.round(vehicle.mamKg / 0.45359237).toLocaleString("en-US") + " lb GVWR" : vehicle.mamKg + " kg"}` : null].filter(Boolean).join(" · ") || "No additional vehicle details"}</p>
             <p>{marketProfile?.inspectionLabel ?? "Inspection expiry"}: {vehicle.motValidUntil ? formatMarketDate(vehicle.motValidUntil, market) : "Not recorded"}</p>
             <p>Insurance expiry: {vehicle.insuranceValidUntil ? formatMarketDate(vehicle.insuranceValidUntil, market) : "Not recorded"}</p>

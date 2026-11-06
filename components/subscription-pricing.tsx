@@ -61,19 +61,18 @@ export default function SubscriptionPricing({ country = "GB" }: { country?: stri
         <ul style={list}>
           <li><strong>Posters:</strong> free for 12 months from the launch start date to the launch end date. Posters who register before launch are told the start date in advance. After the launch window, new posters get their first month free.</li>
           <li><strong>Drivers and fleets:</strong> free for the first 3 months of the launch window. Places are released by area so there is enough work for every driver; if your area is full you join a waiting list. After that window there is no free period for new drivers.</li>
-          <li><strong>Before launch:</strong> you can register and complete your checks; jobs open on the launch start date.</li>
           <li>Exact dates are published here before launch. Verification fees still apply during launch offers.</li>
         </ul>
       </section>
 
       <section aria-labelledby="pricing-verification" style={sectionStyle}>
         <h2 id="pricing-verification" style={h2}>One-off verification fees</h2>
-        <p style={muted}>Separate from your plan. Recorded when you start verification, or when you add a vehicle later.</p>
+        <p style={muted}>Separate from your plan. Paid once per check, in a single payment.</p>
         <dl style={{ margin: 0 }}>
           {[
             ["Posters: person and company (or sole trader)", VERIFICATION_FEES.personAndCompany],
             ["Drivers and fleets: person, driving licence and first vehicle (registration, MOT, insurance). Driver-only accounts do not pay the poster fee.", VERIFICATION_FEES.driverAndFirstVehicle],
-            ["Each additional vehicle, at verification or added later", VERIFICATION_FEES.additionalVehicle],
+            ["Each additional vehicle, including vehicles added later", VERIFICATION_FEES.additionalVehicle],
           ].map(([label, fee]) => (
             <div key={String(label)} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 16, padding: "10px 0", borderBottom: "1px solid var(--color-border)" }}>
               <dt style={{ margin: 0, lineHeight: 1.5 }}>{label}</dt>
@@ -86,9 +85,9 @@ export default function SubscriptionPricing({ country = "GB" }: { country?: stri
       <section aria-labelledby="pricing-needs" style={sectionStyle}>
         <h2 id="pricing-needs" style={h2}>What you will need</h2>
         <ul style={list}>
-          <li><strong>Everyone, in this order:</strong> a verified email address, a mobile number verified by text message, then an identity check and company or sole trader details. A company names one responsible person, who must pass the identity check.</li>
-          <li><strong>Drivers:</strong> everything above, plus your driving licence number (we keep only a protected reference and the last 4 characters) and, for each vehicle, its registration, registered keeper, MOT and an insurance certificate with hire-and-reward or fleet cover. Each vehicle is approved by our team before it can take jobs.</li>
-          <li><strong>Fleets:</strong> every fleet vehicle must be owned or leased by the company and insured on the company&apos;s commercial policy. Each job records which driver and vehicle carried it. Owner-drivers with their own vans join as individual drivers.</li>
+          <li><strong>Everyone:</strong> email address, mobile number, photo ID and a selfie, and company details or sole trader details. A company names one responsible person, who must pass the identity check.</li>
+          <li><strong>Drivers:</strong> everything above, plus a valid driving licence and, for each vehicle, its registration, MOT and insurance certificate.</li>
+          <li><strong>Fleets:</strong> every fleet vehicle must be owned or leased by the company and insured on the company&apos;s commercial policy. Each job records which driver and vehicle carried it. Owner-drivers with their own vans join as individual drivers and can receive work from fleets through private job invites.</li>
           <li>One verified person can be a driver on only one account.</li>
         </ul>
       </section>
@@ -101,7 +100,6 @@ export default function SubscriptionPricing({ country = "GB" }: { country?: stri
           <li>Rechecks are free within 90 days of passing, and always free while you are on a paid plan.</li>
           <li>Moving from poster to driver: you can take jobs as soon as your vehicle passes. Seven days later your billing switches from monthly to every 7 days, and unused days of your monthly payment are credited.</li>
           <li>Moving from driver back to poster: switch at the end of your current 7-day period.</li>
-          <li>If none of your vehicles stays eligible (for example, expired insurance) for 14 days, your plan returns to poster.</li>
           <li>We keep verification records to run the marketplace safely and meet legal duties. We never sell your data.</li>
         </ul>
       </section>
