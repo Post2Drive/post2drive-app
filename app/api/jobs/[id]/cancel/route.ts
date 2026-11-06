@@ -1,3 +1,4 @@
+import { notify } from "@/lib/notify";
 import { withApiMetrics } from "@/lib/apiMetrics";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { requireJobMarketAccess } from "@/lib/jobMarket";
@@ -128,16 +129,14 @@ async function POSTHandler(
     });
 
     if (job.acceptedById && job.acceptedById !== accountId) {
-      await tx.notification.create({
-        data: {
-          accountId: job.acceptedById,
-          type: "job_cancelled",
-          title: "An accepted job was cancelled",
-          body: `The poster cancelled job ${routeParams.id} before pickup.`,
-          jobId: routeParams.id,
-          eventKey: `job-cancelled:${routeParams.id}:${job.cancelledAt?.toISOString() || "pre-pickup"}`,
-          metadata: { cancelledByAccountId: accountId, previousStatus },
-        },
+      await notify(tx, {
+        accountId: job.acceptedById,
+        type: "job_cancelled",
+        title: "Job cancelled by the poster",
+        body: `The poster cancelled job ${routeParams.id} before pickup.`,
+        jobId: routeParams.id,
+        eventKey: `job-cancelled:${routeParams.id}:${job.cancelledAt?.toISOString() || "pre-pickup"}`,
+        metadata: { cancelledByAccountId: accountId, previousStatus, actorRole: "poster" },
       });
     }
 

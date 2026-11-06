@@ -1,3 +1,4 @@
+import { notify } from "@/lib/notify";
 import { withApiMetrics } from "@/lib/apiMetrics";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { requireJobMarketAccess } from "@/lib/jobMarket";
@@ -87,15 +88,15 @@ async function POSTHandler(
 
     const recipientId = job.posterId === accountId ? job.acceptedById : job.posterId;
     if (recipientId && recipientId !== accountId) {
-      await tx.notification.create({
-        data: {
-          accountId: recipientId,
-          type: "pickup_confirmed",
-          title: "Pickup confirmed",
-          body: `Pickup was confirmed for job ${routeParams.id}; the job is now in transit.`,
-          jobId: routeParams.id,
-          eventKey: `pickup-confirmed:${routeParams.id}:${accountId}`,
-        },
+      const actorRole = job.posterId === accountId ? "poster" : "driver";
+      await notify(tx, {
+        accountId: recipientId,
+        type: "pickup_confirmed",
+        title: `Pickup confirmed by the ${actorRole}`,
+        body: `The ${actorRole} confirmed pickup for job ${routeParams.id}; the job is now in transit.`,
+        jobId: routeParams.id,
+        eventKey: `pickup-confirmed:${routeParams.id}:${accountId}`,
+        metadata: { actorRole },
       });
     }
 

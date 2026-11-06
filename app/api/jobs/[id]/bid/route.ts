@@ -1,3 +1,4 @@
+import { notify } from "@/lib/notify";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { withApiMetrics } from "@/lib/apiMetrics";
 import { requireJobMarketAccess } from "@/lib/jobMarket";
@@ -287,16 +288,14 @@ async function POSTHandler(
         },
       });
 
-      await tx.notification.create({
-        data: {
-          accountId: currentJob.posterId,
-          type: "new_bid",
-          title: "A driver placed a bid",
-          body: `A driver submitted a bid for job ${routeParams.id}. Review bids from the jobs page.`,
-          jobId: routeParams.id,
-          eventKey: `bid-placed:${createdBid.id}`,
-          metadata: { bidId: createdBid.id, amount },
-        },
+      await notify(tx, {
+        accountId: currentJob.posterId,
+        type: "new_bid",
+        title: "New bid from a driver",
+        body: `A driver placed a bid on job ${routeParams.id}. Review bids from the jobs page.`,
+        jobId: routeParams.id,
+        eventKey: `bid-placed:${createdBid.id}`,
+        metadata: { bidId: createdBid.id, amount, actorRole: "driver" },
       });
 
       return createdBid;

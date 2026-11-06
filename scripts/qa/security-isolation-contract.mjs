@@ -343,6 +343,7 @@ const cancellationTx = {
   notification: { create: async () => ({}) },
 };
 const cancelRoute = loadTypeScriptModule("app/api/jobs/[id]/cancel/route.ts", {
+  "@/lib/notify": { notify: async (db, input) => db.notification.create({ data: input }) },
   "@/lib/rateLimit": { enforceRateLimit: async () => null },
   "@/lib/apiMetrics": { withApiMetrics: (_name, handler) => handler },
   "@/lib/jobMarket": { requireJobMarketAccess: async () => null },
@@ -398,6 +399,7 @@ const deliveryTx = {
   notification: { create: async () => ({}) },
 };
 const deliveryRoute = loadTypeScriptModule("app/api/jobs/[id]/confirm-delivered/route.ts", {
+  "@/lib/notify": { notify: async (db, input) => db.notification.create({ data: input }) },
   "@/lib/rateLimit": { enforceRateLimit: async () => null },
   "@/lib/apiMetrics": { withApiMetrics: (_name, handler) => handler },
   "@/lib/jobMarket": { requireJobMarketAccess: async () => null },

@@ -6,6 +6,7 @@ import { readBoundedJson } from "@/lib/requestBody";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { notifyMatchingDrivers } from "@/lib/jobMatchNotifications";
 import { recordDriverOpportunity } from "@/lib/opportunities";
 import { validateJobInput } from "@/lib/jobValidation";
 import { buildJobFilters } from "@/lib/jobSearch";
@@ -472,6 +473,13 @@ try {
 
       return createdJob;
     });
+
+    // Matching-driver alerts are secondary to the committed job: never fail the post.
+    try {
+      await notifyMatchingDrivers(prisma, job, account);
+    } catch (error) {
+      console.error("Job match notifications failed.", { errorName: error instanceof Error ? error.name : "UnknownError" });
+    }
 
     return NextResponse.json(
       {

@@ -1,3 +1,4 @@
+import { notify } from "@/lib/notify";
 import { withApiMetrics } from "@/lib/apiMetrics";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { requireJobMarketAccess } from "@/lib/jobMarket";
@@ -308,16 +309,14 @@ async function POSTHandler(
             },
           });
 
-          await tx.notification.create({
-            data: {
-              accountId: job.posterId,
-              type: "job_accepted",
-              title: "Your job was accepted",
-              body: `A driver accepted job ${id}. Open the job list to review the assignment.`,
-              jobId: id,
-              eventKey: `job-accepted:${id}:${accountId}`,
-              metadata: { driverAccountId: accountId },
-            },
+          await notify(tx, {
+            accountId: job.posterId,
+            type: "job_accepted",
+            title: "Job accepted by the driver",
+            body: `A driver accepted job ${id}. Open the job list to review the assignment.`,
+            jobId: id,
+            eventKey: `job-accepted:${id}:${accountId}`,
+            metadata: { driverAccountId: accountId, actorRole: "driver" },
           });
 
           return tx.job.findUnique({

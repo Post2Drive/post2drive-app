@@ -18,7 +18,7 @@ contains("app/api/jobs/[id]/cancel/route.ts", [
   'code: "INCIDENT_REQUIRED"',
   'action: "JOB_CANCELLED"',
   'tx.bid.updateMany',
-  "tx.notification.create",
+  "await notify(tx",
 ]);
 
 contains("lib/cancellationLimits.ts", [
@@ -37,14 +37,14 @@ contains("app/api/jobs/[id]/incidents/route.ts", [
   "getInvolvedJob",
   "MAX_DESCRIPTION_LENGTH",
   "MAX_EVIDENCE_ITEMS",
-  "tx.notification.create",
+  "await notify(tx",
   "lifecycleStatusAtReport",
 ]);
 
 contains("app/api/jobs/[id]/incidents/updates/route.ts", [
   'action: "INCIDENT_UPDATE_ADDED"',
   "parentIncidentId",
-  "tx.notification.create",
+  "await notify(tx",
 ]);
 
 contains("app/api/jobs/[id]/incidents/terminate/route.ts", [
@@ -54,7 +54,7 @@ contains("app/api/jobs/[id]/incidents/terminate/route.ts", [
   "pickupHistoryPreserved",
   "deliveryHistoryPreserved",
   "reportedReason !== reason",
-  "tx.notification.create",
+  "await notify(tx",
 ]);
 
 contains("app/api/jobs/[id]/incidents/[incidentId]/evidence/route.ts", [
@@ -98,49 +98,49 @@ contains("app/api/notifications/[id]/read/route.ts", [
 contains("app/api/jobs/[id]/accept/route.ts", [
   'priceMode: "fixed"',
   'action: "JOB_ACCEPTED"',
-  "tx.notification.create",
+  "await notify(tx",
 ]);
 contains("app/api/jobs/[id]/bid/route.ts", [
   "FOR UPDATE",
   'action: "BID_PLACED"',
-  "tx.notification.create",
+  "await notify(tx",
 ]);
 contains("app/api/jobs/[id]/bids/[bidId]/accept/route.ts", [
   'action: "BID_ACCEPTED"',
-  "tx.notification.create",
+  "await notify(tx",
   "tx.bid.updateMany",
 ]);
 contains("app/api/jobs/[id]/driver-cancel/route.ts", [
   'status: "accepted"',
   'action: "DRIVER_BACKED_OUT"',
-  "tx.notification.create",
+  "await notify(tx",
 ]);
 contains("app/api/jobs/[id]/unassign/route.ts", [
   'status: "accepted"',
   'action: "DRIVER_UNASSIGNED"',
-  "tx.notification.create",
+  "await notify(tx",
 ]);
 contains("app/api/jobs/[id]/confirm-pickup/route.ts", [
   'status: "accepted"',
   'toStatus: "in_transit"',
-  "tx.notification.create",
+  "await notify(tx",
 ]);
 contains("app/api/jobs/[id]/mark-delivered/route.ts", [
   'job.status !== "in_transit"',
   'toStatus: "delivered"',
-  "tx.notification.upsert",
+  "await notify(tx",
   "delivery-marked:",
 ]);
 contains("app/api/jobs/[id]/confirm-delivered/route.ts", [
   'status: "delivered"',
   'toStatus: "completed"',
-  "tx.notification.create",
+  "await notify(tx",
 ]);
 contains("app/api/jobs/[id]/reject-delivered/route.ts", [
   'status: "delivered"',
   'status: "in_transit"',
   'action: "DELIVERY_REJECTED"',
-  "tx.notification.create",
+  "await notify(tx",
 ]);
 
 

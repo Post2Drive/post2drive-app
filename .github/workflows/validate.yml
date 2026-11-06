@@ -100,6 +100,8 @@ jobs:
         run: npm run qa:india-email-optional-contract
       - name: Validate UK student pilot cohort safety contract
         run: npm run qa:uk-student-pilot-contract
+      - name: Validate notifications, reminders and scheduler contract
+        run: npm run qa:notifications-contract
       - name: Validate durable QA queue and worker lifecycle
         run: npm run qa:worker-contract
       - name: Validate all-market time zones, overseas destinations and DST edges

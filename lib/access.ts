@@ -316,3 +316,20 @@ export async function getAccountAccess(accountId: string) {
   const drive = (await driveFrom(ctx)).result;
   return drive.allowed ? drive : post;
 }
+
+/**
+ * Side-effect-free entitlement + billing snapshot for scheduled reminders. Unlike
+ * getDriveAccess it never joins or advances the driver waitlist. Null for missing or deleted accounts.
+ */
+export async function getReminderSnapshot(accountId: string, now: Date) {
+  const account = await loadAccount(accountId);
+  if (!account || account.deletionRequestedAt || getSuspendedAccountAccess(account)) return null;
+  const ctx = await loadContext(account);
+  const config = ctx.config;
+  return {
+    account,
+    post: computePostEntitlement(ctx.facts, config, now),
+    drive: computeDriveEntitlement(ctx.facts, config, now),
+    billing: marketOf(account) === "weekly" ? computeBilling(ctx.facts, config, now) : null,
+  };
+}

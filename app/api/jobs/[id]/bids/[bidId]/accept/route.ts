@@ -1,3 +1,4 @@
+import { notify } from "@/lib/notify";
 import { withApiMetrics } from "@/lib/apiMetrics";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { requireJobMarketAccess } from "@/lib/jobMarket";
@@ -295,16 +296,14 @@ async function POSTHandler(
       },
     });
 
-    await tx.notification.create({
-      data: {
-        accountId: currentBid.bidderId,
-        type: "bid_accepted",
-        title: "Your bid was accepted",
-        body: `Your bid was accepted for job ${routeParams.id}. Review the job details and coordinate pickup.`,
-        jobId: routeParams.id,
-        eventKey: `bid-accepted:${routeParams.id}:${currentBid.id}`,
-        metadata: { bidId: currentBid.id, amount: currentBid.amount },
-      },
+    await notify(tx, {
+      accountId: currentBid.bidderId,
+      type: "bid_accepted",
+      title: "Your bid was accepted by the poster",
+      body: `The poster accepted your bid for job ${routeParams.id}. Review the job details and coordinate pickup.`,
+      jobId: routeParams.id,
+      eventKey: `bid-accepted:${routeParams.id}:${currentBid.id}`,
+      metadata: { bidId: currentBid.id, amount: currentBid.amount, actorRole: "poster" },
     });
 
     if (otherBids.length > 0) {
