@@ -3,6 +3,7 @@ import { enforceRateLimit } from "@/lib/rateLimit";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { NO_PROVIDER_NOTICE, PAYMENT_PROVIDER_CONNECTED } from "@/lib/paymentProvider";
 import { createPendingSubscriptionPayment } from "@/lib/subscription";
 
 const SAFE_CLIENT_ERRORS = new Set([
@@ -38,7 +39,10 @@ async function POSTHandler(req: Request) {
       amountMinorUnits: payment.amountMinorUnits,
       currency: payment.currency,
       status: payment.status,
-    });
+      providerConnected: PAYMENT_PROVIDER_CONNECTED,
+      charged: false,
+      notice: NO_PROVIDER_NOTICE,
+    }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     // Only known business-rule errors are safe to show to the caller.
     // Database/ORM failures must not leak schema, query, or infrastructure details.

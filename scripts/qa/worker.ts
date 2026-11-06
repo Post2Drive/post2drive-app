@@ -9,6 +9,7 @@ import { randomUUID } from "node:crypto";
 import { setTimeout as sleep } from "node:timers/promises";
 import { prisma } from "../../lib/prisma.ts";
 import { isQaRunnerEnabled } from "../../lib/qaRunnerGuard.ts";
+import { qaDatabaseConfigError, qaLiveDatabaseMatches } from "../../lib/qaDatabaseGuard.ts";
 import { runQaWorker } from "../../lib/qaRunner.ts";
 
 const POLL_MS = Number(process.env.QA_WORKER_POLL_MS || 5000);
@@ -41,6 +42,8 @@ function validateWorkerConfig() {
   if (!process.env.QA_DATABASE_URL || process.env.QA_DATABASE_URL !== process.env.DATABASE_URL) {
     throw new Error("QA_DATABASE_URL must be set and must equal DATABASE_URL to confirm the worker targets the isolated QA database.");
   }
+  const databaseError = qaDatabaseConfigError();
+  if (databaseError) throw new Error("QA worker database proof failed: " + databaseError);
   if (!Number.isSafeInteger(HEARTBEAT_MS) || HEARTBEAT_MS < 250 ||
       !Number.isSafeInteger(STALE_AFTER_MS) || STALE_AFTER_MS < HEARTBEAT_MS * 2) {
     throw new Error("QA worker heartbeat/stale timeout configuration is invalid.");
@@ -288,6 +291,10 @@ async function executeRun(job: { id: string; summary: unknown; target_url: strin
 
 async function main() {
   validateWorkerConfig();
+  const live = await prisma.$queryRaw<{ current_database: string }[]>`SELECT current_database() AS current_database`;
+  if (!qaLiveDatabaseMatches(live[0]?.current_database)) {
+    throw new Error("QA worker database proof failed: the connected database is not the declared isolated QA database.");
+  }
   console.log("Post2Drive staging QA worker started", JSON.stringify({ workerId, pollMs: POLL_MS, heartbeatMs: HEARTBEAT_MS }));
   while (!stopping) {
     try {
