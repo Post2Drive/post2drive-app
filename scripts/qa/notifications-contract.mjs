@@ -94,8 +94,15 @@ assert.match(posted, /notifyMatchingDrivers\(prisma, job, account\)/);
 assert.match(posted, /catch \(error\) \{\s*console\.error\("Job match notifications failed\./, "match failure must not fail job creation");
 assert.ok(posted.indexOf("notifyMatchingDrivers(") > posted.indexOf("return createdJob;"), "alerts run after the job transaction");
 const match = source("lib/jobMatchNotifications.ts");
-for (const needle of ["id: { not: job.posterId }", "verificationStatus: \"verified\"", "deletionRequestedAt: null", "country: poster.country", "isJobSuitableForDriver", "getDriveAccess", "job-match:${job.id}:${candidate.id}", "JOB_MATCH_NOTIFICATION_CAP = 200"]) {
+for (const needle of ["id: { not: job.posterId }", "verificationStatus: \"verified\"", "deletionRequestedAt: null", "country: poster.country", "isJobSuitableForDriver", "job-match:${job.id}:${candidate.id}", "JOB_MATCH_NOTIFICATION_CAP = 200"]) {
   assert.ok(match.includes(needle), `job match must include ${needle}`);
 }
 
 console.log("Notifications contract passed.");
+
+// Match alerts must use the side-effect-free snapshot, never getDriveAccess (which can join/admit the waitlist).
+{
+  const matchSource = (await import("node:fs")).readFileSync(new URL("../../lib/jobMatchNotifications.ts", import.meta.url), "utf8");
+  assert.doesNotMatch(matchSource, /getDriveAccess/, "job match alerts must not call getDriveAccess");
+  assert.match(matchSource, /getReminderSnapshot\(candidate\.id/, "job match alerts must use the read-only snapshot");
+}

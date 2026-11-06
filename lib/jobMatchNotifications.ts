@@ -1,4 +1,4 @@
-import { getDriveAccess } from "@/lib/access";
+import { getReminderSnapshot } from "@/lib/access";
 import { notify } from "@/lib/notify";
 import { isJobSuitableForDriver } from "@/lib/opportunities";
 
@@ -43,8 +43,9 @@ export async function notifyMatchingDrivers(
     if (sent >= cap) break;
     try {
       if (!(await isJobSuitableForDriver(job.id, candidate.id))) continue;
-      const access = await getDriveAccess(candidate.id);
-      if (!access.allowed) continue;
+      // Read-only check: posting a job must never join, reorder or admit anyone on the driver waitlist.
+      const snapshot = await getReminderSnapshot(candidate.id, new Date());
+      if (!snapshot?.drive.allowed) continue;
       const created = await notify(db, {
         accountId: candidate.id,
         type: "job_match",
