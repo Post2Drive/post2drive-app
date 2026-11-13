@@ -39,6 +39,8 @@ export function getServiceLinks(
     { href: "/notifications", label: "Notifications", hint: "Updates on your jobs", icon: "notifications" },
     { href: "/settings", label: "Account", hint: "Profile and settings", icon: "account" },
     ...(showQaCampaigns ? [{ href: "/admin", label: "Admin", hint: "Operations tools", icon: "admin" as const }] : []),
+    ...(showQaCampaigns ? [{ href: "/admin/vehicles", label: "Vehicle approvals", hint: "Review submitted vehicles", icon: "vehicles" as const }] : []),
+    ...(showQaCampaigns ? [{ href: "/admin/company-verification", label: "Company checks", hint: "Review company submissions", icon: "admin" as const }] : []),
     ...(showQaCampaigns ? [{ href: "/admin/qa-campaigns", label: "QA Campaigns", hint: "Tester campaigns", icon: "qa" as const }] : []),
     ...(showStudentPilot ? [{ href: "/admin/pilot", label: "UK Market QA", hint: "Student pilot", icon: "qa" as const }] : []),
     ...(showSmsOutbox ? [{ href: "/admin/sms-outbox", label: "SMS test outbox", hint: "Codes in staging test mode", icon: "phone" as const }] : []),
