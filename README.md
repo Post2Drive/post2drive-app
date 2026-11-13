@@ -1,53 +1,12 @@
 # Post2Drive — Courier, Delivery & Freight Marketplace
 
-Post2Drive is a two-sided marketplace for customers/businesses posting delivery jobs and drivers, couriers and fleet/transport operators discovering, bidding on and fulfilling jobs. It is designed for the UK, India and supported European markets with server-enforced market and currency isolation.
+Post2Drive is a two-sided marketplace for customers/businesses posting delivery jobs and drivers, couriers and fleet/transport operators discovering, bidding on and fulfilling jobs. Launch markets are the UK and India only (one constant, `LAUNCH_COUNTRY_CODES` in `lib/market.ts`; other catalogue markets are switched off and signup rejects them on the server). Market and currency isolation is enforced server-side.
 
-> **Status (26 October 2026):** Active development/staging. Not approved for unrestricted public launch. A past successful build or staging deployment does not prove the latest commit is deployed or launch-ready. See [Launch Readiness](docs/LAUNCH_READINESS.md).
+> **Status (6 November 2026):** Active development/staging. Staging (Railway) deploys automatically from `main`. Not approved for unrestricted public launch. A past successful build or staging deployment does not prove the latest commit is deployed or launch-ready. See [Launch Readiness](docs/LAUNCH_READINESS.md).
 
 ## Repository branches
 
-The 35 retained work branches below remain in this repository. They are intentionally listed here so they are discoverable when opening the repository README; the list links directly to each branch. See the [full GitHub branches page](https://github.com/Post2Drive/post2drive-app/branches) for all branches, including those aligned with `main`.
-
-<details>
-<summary><strong>Show all 35 retained branches</strong></summary>
-
-- [audit/follow-up-hardening-2026-10-22](https://github.com/Post2Drive/post2drive-app/tree/audit%2Ffollow-up-hardening-2026-10-22)
-- [audit/security-ux-hardening-2026-10](https://github.com/Post2Drive/post2drive-app/tree/audit%2Fsecurity-ux-hardening-2026-10)
-- [chore/karpathy-workflow-adaptations](https://github.com/Post2Drive/post2drive-app/tree/chore%2Fkarpathy-workflow-adaptations)
-- [feat/add-mainstream-markets](https://github.com/Post2Drive/post2drive-app/tree/feat%2Fadd-mainstream-markets)
-- [feat/euro-market-pricing](https://github.com/Post2Drive/post2drive-app/tree/feat%2Feuro-market-pricing)
-- [feat/euro-weekly-market-model](https://github.com/Post2Drive/post2drive-app/tree/feat%2Feuro-weekly-market-model)
-- [feat/poster-monthly-driver-weekly-billing-policy](https://github.com/Post2Drive/post2drive-app/tree/feat%2Fposter-monthly-driver-weekly-billing-policy)
-- [feature/country-localisation-audit](https://github.com/Post2Drive/post2drive-app/tree/feature%2Fcountry-localisation-audit)
-- [feature/cx-hx-verification-gates](https://github.com/Post2Drive/post2drive-app/tree/feature%2Fcx-hx-verification-gates)
-- [fix/admin-dashboard-readonly-boundary](https://github.com/Post2Drive/post2drive-app/tree/fix%2Fadmin-dashboard-readonly-boundary)
-- [fix/all-market-feature-parity](https://github.com/Post2Drive/post2drive-app/tree/fix%2Fall-market-feature-parity)
-- [fix/android-post2drive-launcher-icon](https://github.com/Post2Drive/post2drive-app/tree/fix%2Fandroid-post2drive-launcher-icon)
-- [fix/atomic-display-id-retry](https://github.com/Post2Drive/post2drive-app/tree/fix%2Fatomic-display-id-retry)
-- [fix/functional-workflow-audit](https://github.com/Post2Drive/post2drive-app/tree/fix%2Ffunctional-workflow-audit)
-- [fix/india-fixed-quote-market](https://github.com/Post2Drive/post2drive-app/tree/fix%2Findia-fixed-quote-market)
-- [fix/localisation-core-2026-10](https://github.com/Post2Drive/post2drive-app/tree/fix%2Flocalisation-core-2026-10)
-- [fix/nextjs-15.5.28-security](https://github.com/Post2Drive/post2drive-app/tree/fix%2Fnextjs-15.5.28-security)
-- [fix/ops-dashboard-evidence-integrity](https://github.com/Post2Drive/post2drive-app/tree/fix%2Fops-dashboard-evidence-integrity)
-- [fix/qa-admin-origin-behind-proxy](https://github.com/Post2Drive/post2drive-app/tree/fix%2Fqa-admin-origin-behind-proxy)
-- [fix/qa-runner-market-narrowing](https://github.com/Post2Drive/post2drive-app/tree/fix%2Fqa-runner-market-narrowing)
-- [fix/unified-verification-vehicle-eligibility](https://github.com/Post2Drive/post2drive-app/tree/fix%2Funified-verification-vehicle-eligibility)
-- [fix/user-side-market-workflows-audit](https://github.com/Post2Drive/post2drive-app/tree/fix%2Fuser-side-market-workflows-audit)
-- [integration/pr12-pr41-resolved](https://github.com/Post2Drive/post2drive-app/tree/integration%2Fpr12-pr41-resolved)
-- [integration/security-eligibility-subscription-20261026](https://github.com/Post2Drive/post2drive-app/tree/integration%2Fsecurity-eligibility-subscription-20261026)
-- [integration/security-privacy-bundle-20261026](https://github.com/Post2Drive/post2drive-app/tree/integration%2Fsecurity-privacy-bundle-20261026)
-- [qa/durable-worker-lifecycle](https://github.com/Post2Drive/post2drive-app/tree/qa%2Fdurable-worker-lifecycle)
-- [qa/durable-worker-mainline](https://github.com/Post2Drive/post2drive-app/tree/qa%2Fdurable-worker-mainline)
-- [qa/live-runner-20261016](https://github.com/Post2Drive/post2drive-app/tree/qa%2Flive-runner-20261016)
-- [qa/multi-country-runner](https://github.com/Post2Drive/post2drive-app/tree/qa%2Fmulti-country-runner)
-- [security/job-response-data-minimization](https://github.com/Post2Drive/post2drive-app/tree/security%2Fjob-response-data-minimization)
-- [security/job-response-data-minimization-clean](https://github.com/Post2Drive/post2drive-app/tree/security%2Fjob-response-data-minimization-clean)
-- [security/main-hardening-20261028](https://github.com/Post2Drive/post2drive-app/tree/security%2Fmain-hardening-20261028)
-- [security/minimize-public-profile-vehicle-data](https://github.com/Post2Drive/post2drive-app/tree/security%2Fminimize-public-profile-vehicle-data)
-- [security/password-reset-token-url-hygiene](https://github.com/Post2Drive/post2drive-app/tree/security%2Fpassword-reset-token-url-hygiene)
-- [ui/spring-motion-overscroll-2026-10-25](https://github.com/Post2Drive/post2drive-app/tree/ui%2Fspring-motion-overscroll-2026-10-25)
-
-</details>
+`main` is the source branch. Older work branches and `recovery/` tags are retained but not maintained; see the [branches page](https://github.com/Post2Drive/post2drive-app/branches). Branch and tag clean-up is an owner task (a verified backup bundle of all 133 refs was made on 2026-11-06).
 
 ## Essential project documents
 
@@ -63,25 +22,27 @@ These files travel with a clone, source ZIP, fork or ownership transfer. They pr
 
 ## Product model
 
-A single account may post jobs, carry jobs, or do both. Role choice guides onboarding but should not permanently lock a user into one role. Verification, subscription entitlements and role selection are separate.
+One unified account path (owner decision 2026-11-06). Verification, subscription entitlements and role are separate.
 
-1. **Step 1 — free registration:** choose post jobs, carry jobs, or both. Registration alone does not grant restricted access.
-2. **Step 2 — person and applicable company verification:** required identity/business checks remain mandatory. Driver-only users may skip the Step 2 posting fee and poster subscription, not required checks.
-3. **Step 3 — driver and vehicle verification:** verify each vehicle and required MOT/inspection, insurance and other documents. Eligibility is per vehicle.
+1. **Email, then phone OTP** (UK accounts need a verified phone to post or award bids; India is free after phone OTP).
+2. **Person identity and company**, with a named responsible person. An account that stops here is a **poster** (post only).
+3. **Vehicles and documents**, approved by the admin team (`/admin/vehicles`): 1 vehicle = **driver**, 2–55 = **fleet**. Drivers and fleets can also post. Driver-only users skip only the poster subscription, never a verification step.
 
-### Intended GBP verification policy
+Fleet rules: vehicles company-owned or leased and insured on a company commercial policy (hire-and-reward or fleet cover); one verified person drives on one account (licence uniqueness via keyed hash); the driver and vehicle are recorded per job.
 
-| Package | Intended fee |
+### GBP verification fees (implemented; recorded as pending until a payment provider is connected)
+
+| Package | Fee |
 | --- | ---: |
 | Step 2: person, with applicable company verification | £2.50 |
 | Step 3: person/driver plus first vehicle, including required MOT/insurance checks | £3.50 |
 | Each additional vehicle, including vehicles added later | £0.50 |
 
-No refunds. First failure: 10 working days to submit corrections. Next failure: final 3 working days. Another failure generally requires a new verification fee, subject to the active-paid-plan maintenance exemption. The free inactive-return window is **90 calendar days from successful verification**; checks are free inside it even if documents expired, but the findings still govern eligibility. Active paid users pay no fee for routine rechecks or adding vehicles. Changing the responsible person within the same company is free; a new company relationship incurs the applicable fee. See the complete policy document for edge cases and required tests.
+No refunds. Correction deadlines count working days (weekends excluded; UK bank holidays not yet included). First failure: 10 working days to submit corrections. Next failure: final 3 working days. Another failure generally requires a new verification fee, subject to the active-paid-plan maintenance exemption. The free inactive-return window is **90 calendar days from successful verification**; checks are free inside it even if documents expired, but the findings still govern eligibility. Active paid users pay no fee for routine rechecks or adding vehicles. Changing the responsible person within the same company is free; a new company relationship incurs the applicable fee. See the complete policy document for edge cases and required tests.
 
 ## Commercial rules
 
-**Approved pricing (owner decision 2026-11-06):** poster £12.99/month (post only); individual driver £14.99 per 7 days (1 person, 1 vehicle, posting included); fleets £24.99 (2–5 vehicles), £39.99 (6–15), £59.99 (16–30), £79.99 (31–55) per 7 days; custom for 56+. One subscription per account; the driver/fleet plan replaces the poster plan. No per-job fees or commission. Same numbers in each non-India market's currency; India free after phone OTP. Source of truth: `lib/pricing.ts`. Full rules, launch windows, fleet integrity rules and what is not yet enforced: [Product and verification policy §6](docs/PRODUCT_AND_VERIFICATION_POLICY.md). Payment checkout is not connected; no live settlement.
+**Approved pricing (owner decision 2026-11-06):** poster £12.99/month (post only); individual driver £14.99 per 7 days (1 person, 1 vehicle, posting included); fleets £24.99 (2–5 vehicles), £39.99 (6–15), £59.99 (16–30), £79.99 (31–55) per 7 days; custom for 56+. One subscription per account; the driver/fleet plan replaces the poster plan. No per-job fees or commission. Same numbers in each non-India market's currency; India free after phone OTP. Source of truth: `lib/pricing.ts`. Launch windows (from the `LaunchConfig` row, UTC dates): Month 0 register and verify only; posters free for 12 months, then a 1-month trial for new posters; drivers free for the first 3 months with a per-postcode-area waitlist, then no trial. Billing moves from monthly to weekly 7 days after the first vehicle approval, with unused monthly days credited; drivers can switch back to poster at the end of the current 7-day period. Full rules: [Product and verification policy §6](docs/PRODUCT_AND_VERIFICATION_POLICY.md). Payment checkout is not connected; no live settlement, and the app says so.
 
 ## Technology and capabilities
 
@@ -89,7 +50,12 @@ No refunds. First failure: 10 working days to submit corrections. Next failure: 
 - PostgreSQL and Prisma
 - NextAuth credentials/JWT sessions; bcryptjs
 - Optional Resend email; Capacitor Android tooling
-- Application areas include accounts, market-aware onboarding, job posting/search/edit/cancellation, bidding/acceptance, delivery lifecycle, vehicles/documents, ratings, notifications, incident/evidence flows and guarded QA/admin tools.
+- Application areas include accounts, market-aware onboarding, job posting/search/edit/cancellation, bidding/acceptance, delivery lifecycle, vehicles/documents and admin vehicle approval, ratings, notifications, incident/evidence flows and guarded QA/admin tools.
+- **Ratings:** open only on completed jobs, jobs ended via incident after pickup ("not completed"), or deliveries unconfirmed for 14 days ("disputed"); 14-day blind window, reasons required. Nothing changes job status automatically: pickup is confirmed by either side, delivery by both.
+- **Cancellations:** limited to 5 per week and 15 per month per account.
+- **Notifications:** every two-party job step tells the other side who acted (e.g. "Pickup confirmed by the driver"); matching jobs alert eligible drivers; reminders 7 days / 1 day / on the day for insurance and MOT expiry, the day before correction deadlines, plan renewal and the end of a free window. Reminders run when a daily scheduler calls `POST /api/internal/notifications/run` (not yet scheduled on Railway).
+- **Providers (structure ready, not connected by owner decision):** email, SMS OTP, payments and push notifications plug in through `lib/providerContracts.ts`; see [Provider integration](docs/PROVIDER_INTEGRATION.md).
+- **Security:** per-account rate limits on mutating routes; an HTTP isolation matrix in CI (`qa:isolation-api-e2e`) proves accounts and markets cannot read or change each other's data.
 
 These areas do not imply every integration or end-to-end workflow is production-verified.
 
@@ -115,7 +81,7 @@ Open `http://localhost:3000`. Check `package.json` for current QA script names b
 
 ## Environment and security
 
-Start with `.env.example` and verify names against current source. Environment settings may include `DATABASE_URL`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`, `EMAIL_VERIFICATION_ENABLED`, `RESEND_API_KEY`, `EMAIL_FROM`, `SUBSCRIPTION_WEBHOOK_SECRET`, `POST2DRIVE_ADMIN_EMAILS`, `POST2DRIVE_TESTER_CODE`, `OPS_DASHBOARD_DATABASE_URL` and build-time `CAPACITOR_SERVER_URL`. These are names only, not secret values or a guarantee of live configuration.
+Start with `.env.example` and verify names against current source. Environment settings may include `DATABASE_URL`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`, `EMAIL_VERIFICATION_ENABLED`, `RESEND_API_KEY`, `EMAIL_FROM`, `SUBSCRIPTION_WEBHOOK_SECRET`, `POST2DRIVE_ADMIN_EMAILS`, `POST2DRIVE_TESTER_CODE`, `OPS_DASHBOARD_DATABASE_URL`, `POST2DRIVE_LICENCE_HASH_SECRET` (32+ characters, required in production for driver licences), `POST2DRIVE_SCHEDULER_SECRET` (daily reminders trigger), `POST2DRIVE_QA_DATABASE_NAME` (QA worker stays idle unless it names an isolated QA database) and build-time `CAPACITOR_SERVER_URL`. These are names only, not secret values or a guarantee of live configuration.
 
 Never commit environment files, tokens, API keys, signing keys, database credentials or production data. Recreate secrets manually after an ownership transfer. Keep email and live payments disabled until providers and end-to-end tests are verified. Separate staging and production databases and credentials.
 
@@ -131,7 +97,7 @@ Use the [portability and deployment runbook](docs/REPOSITORY_PORTABILITY_AND_DEP
 
 ## QA and launch gates
 
-Use synthetic data in isolated non-production environments. Keep destructive cleanup disabled by default. Historical staging load-test figures are not production reliability guarantees or proof of real email/payment functionality.
+`npm run qa:all` runs the contract suite; CI additionally runs the database-backed lifecycle and isolation end-to-end tests. Use synthetic data in isolated non-production environments. Keep destructive cleanup disabled by default. Historical staging load-test figures are not production reliability guarantees or proof of real email/payment functionality.
 
 Before public launch, require evidence for latest-commit CI/security/build checks, auth and email delivery, payment settlement/refund/reconciliation, market isolation and verification enforcement, browser/mobile E2E, database ownership, backup/restore, monitoring, rollback, legal policies and domain/HTTPS. See [Launch Readiness](docs/LAUNCH_READINESS.md) for dated evidence and blockers.
 
