@@ -128,7 +128,6 @@ export default function SignupPage() {
 
   return <main className="auth-page"><section className="signup-shell">
     <div className="signup-heading">
-      <p className="signup-eyebrow">POST2DRIVE · EARLY ACCESS</p>
       <h1>Create your account</h1>
       <p>One account to post delivery jobs, find opportunities, bid and manage work. Choose your market first; each market stays separate.</p>
     </div>
