@@ -13,7 +13,8 @@ const phone = readFileSync("lib/phoneVerification.ts", "utf8");
 
 assert.match(schema, /email\s+String\?\s+@unique/, "user email must be nullable and retain uniqueness for supplied email addresses");
 assert.match(migration, /ALTER TABLE "User" ALTER COLUMN "email" DROP NOT NULL/, "migration must allow email-less India accounts");
-assert.match(signup, /country !== "IN" && !String\(email \|\| ""\)\.trim\(\)/, "all non-India markets must require an email");
+assert.match(signup, /rulesForCountry\(country\)\.emailRequired && !String\(email \|\| ""\)\.trim\(\)/, "all non-India markets must require an email (via market rules)");
+assert.match(readFileSync("lib/marketRules.ts", "utf8"), /IN: \{[\s\S]*?emailRequired: false/, "India market rules must make email optional");
 assert.match(signup, /email: normalizedEmail \|\| null/, "signup must persist omitted India email as null");
 assert.match(signupUi, /required=\{!isIndia\}/, "signup UI must make email optional only for India");
 assert.match(emailPolicy, /country !== "IN" && emailVerificationEnabled\(\)/, "email verification policy must preserve the India exception");
