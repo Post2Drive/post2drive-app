@@ -474,3 +474,17 @@ button[aria-pressed="true"] *,
   background-color: #E8EBF0 !important;
   border-color: #9299A5 !important;
 }
+
+
+/*
+ * On-screen keyboard (components/interaction-guards.tsx sets these).
+ * --keyboard-inset is the part of the page the keyboard covers on browsers
+ * that do not resize for it; the padding gives the last fields room to scroll
+ * into view. Fixed bottom bars are hidden while typing so they never sit on
+ * top of the field being filled in.
+ */
+body { padding-bottom: var(--keyboard-inset, 0px); }
+html { scroll-padding-top: 72px; scroll-padding-bottom: 32px; }
+html[data-keyboard-open] .mobile-bottom-nav,
+html[data-keyboard-open] .pilot-feedback-launcher,
+html[data-keyboard-open] .consent-banner { display: none !important; }

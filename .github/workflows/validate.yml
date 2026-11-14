@@ -98,6 +98,8 @@ jobs:
         run: npm run qa:phone-verification-contract
       - name: Validate India email-optional signup and phone login policy
         run: npm run qa:india-email-optional-contract
+      - name: Double-activation and on-screen keyboard contract
+        run: npm run qa:interaction-guards
       - name: Validate UK student pilot cohort safety contract
         run: npm run qa:uk-student-pilot-contract
       - name: Validate notifications, reminders and scheduler contract

@@ -8,11 +8,14 @@ import { isTesterAdmin } from "@/lib/testerAdmin";
 import { isQaRunnerEnabled } from "@/lib/qaRunnerGuard";
 import PilotFeedbackLauncher from "@/app/components/pilot-feedback-launcher";
 import ConsentBanner from "@/components/consent-banner";
+import InteractionGuards from "@/components/interaction-guards";
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  // Android Chrome/WebView: shrink the page for the on-screen keyboard instead of covering fields.
+  interactiveWidget: "resizes-content",
 };
 
 export const metadata = {
@@ -32,6 +35,7 @@ export default async function RootLayout({
     <html lang="en">
       <body>
         <Providers>
+          <InteractionGuards />
           <a className="skip-link" href="#main-content">Skip to main content</a>
           <MainNav showQaCampaigns={showQaCampaigns} showStudentPilot={showStudentPilot} />
           <div id="main-content" tabIndex={-1}>
