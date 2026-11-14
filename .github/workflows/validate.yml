@@ -100,6 +100,8 @@ jobs:
         run: npm run qa:store-readiness
       - name: Attack-class hardening contract (one-time codes, look-alike identities, parsers, randomness)
         run: npm run qa:attack-class-hardening
+      - name: Job status transition contract
+        run: npm run qa:job-transitions
       - name: Provider adapters contract (email, SMS, payments)
         run: npm run qa:provider-adapters
       - name: Cross-site write guard and security headers contract
