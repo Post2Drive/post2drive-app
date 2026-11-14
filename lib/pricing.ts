@@ -1,3 +1,4 @@
+import { rulesForAccount, rulesForCountry } from "./marketRules.ts";
 import { isUkAccount } from "@/lib/uk";
 import { isWeeklyPricingMarket, marketForAccount, MARKETS } from "@/lib/market";
 
@@ -116,7 +117,7 @@ export function isWeeklyPricingEligible(account: PricingAccount) {
 function pricesFor(account?: PricingAccount) {
   if (account && !isWeeklyPricingEligible(account)) return null;
   const market = account ? marketForAccount(account) : MARKETS.GB;
-  if (!market || market.country === "IN") return null;
+  if (!market || !rulesForCountry(market.country).subscriptionPricing) return null;
   return {
     currency: market.currency,
     symbol: market.symbol,
@@ -159,7 +160,7 @@ export function getPlanDisplay(
   planKey: PricingPlan | "poster" | null,
   account?: PricingAccount,
 ) {
-  if (account?.country === "IN" && account?.currency === "INR") {
+  if (account && !rulesForAccount(account).subscriptionPricing) {
     return {
       key: planKey,
       name: "India Free",

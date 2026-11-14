@@ -1,3 +1,4 @@
+import { rulesForAccount } from "./marketRules.ts";
 /*
  * Generic verification fee recording (EXECUTION_PLAN §5). One VerificationFeePayment
  * row per fee-bearing action, always "pending": no checkout/provider is connected,
@@ -31,7 +32,7 @@ export type VerificationFeeDb = {
 };
 
 export function isFeeFreeMarket(account: { country?: string | null; currency?: string | null }) {
-  return account.country === "IN" && account.currency === "INR";
+  return rulesForAccount(account).feeFree;
 }
 
 /**

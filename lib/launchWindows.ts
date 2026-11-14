@@ -1,3 +1,4 @@
+import { rulesForCountry } from "./marketRules.ts";
 /*
  * Launch windows, entitlements and billing rules (EXECUTION_PLAN §3–§4, owner decisions 2026-11-06).
  *
@@ -109,8 +110,9 @@ export function normalizeOperatingRegion(country: string, value: unknown): strin
   if (typeof value !== "string") return "invalid";
   const trimmed = value.trim().toUpperCase();
   if (!trimmed) return null;
-  if (country === "IN") return "invalid";
-  if (country === "GB") return /^[A-Z]{1,2}$/.test(trimmed) ? trimmed : "invalid";
+  const rules = rulesForCountry(country);
+  if (rules.regionFormat === "none") return "invalid";
+  if (rules.regionFormat === "uk-postcode-area") return /^[A-Z]{1,2}$/.test(trimmed) ? trimmed : "invalid";
   return /^[A-Z0-9]{1,10}$/.test(trimmed) ? trimmed : "invalid";
 }
 
