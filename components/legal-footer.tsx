@@ -9,6 +9,7 @@ export default function LegalFooter() {
         <Link href="/terms">Terms</Link>
         <Link href="/privacy">Privacy</Link>
         <Link href="/cookies">Cookies</Link>
+        <Link href="/account-deletion">Delete account</Link>
         <CookieSettingsButton className="legal-footer-button" />
       </nav>
       <p>© {new Date().getFullYear()} Post2Drive</p>

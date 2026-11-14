@@ -1,5 +1,18 @@
 apply plugin: 'com.android.application'
 
+// Release signing and store version come from the environment (CI secrets) or an
+// untracked android/keystore.properties. Nothing secret is ever committed. Without
+// them, release builds are unsigned and debug builds work as before.
+def keystoreProps = new Properties()
+def keystorePropsFile = rootProject.file('keystore.properties')
+if (keystorePropsFile.exists()) {
+    keystorePropsFile.withInputStream { keystoreProps.load(it) }
+}
+def signingValue = { String envName, String propName -> System.getenv(envName) ?: keystoreProps.getProperty(propName) }
+def releaseStoreFile = signingValue('P2D_RELEASE_STORE_FILE', 'storeFile')
+def releaseVersionCode = (System.getenv('P2D_VERSION_CODE') ?: '1') as Integer
+def releaseVersionName = System.getenv('P2D_VERSION_NAME') ?: '1.0'
+
 android {
     namespace = "com.post2drive.app"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -7,8 +20,8 @@ android {
         applicationId "com.post2drive.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode releaseVersionCode
+        versionName releaseVersionName
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,8 +29,22 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (releaseStoreFile) {
+                storeFile file(releaseStoreFile)
+                storePassword signingValue('P2D_RELEASE_STORE_PASSWORD', 'storePassword')
+                keyAlias signingValue('P2D_RELEASE_KEY_ALIAS', 'keyAlias')
+                keyPassword signingValue('P2D_RELEASE_KEY_PASSWORD', 'keyPassword')
+            }
+        }
+    }
     buildTypes {
         release {
+            if (releaseStoreFile) {
+                signingConfig signingConfigs.release
+            }
+            debuggable false
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
