@@ -13,7 +13,10 @@ import { buildJobFilters } from "@/lib/jobSearch";
 import { isQaAccount } from "@/lib/qaIsolation";
 import { isSupportedMarket, marketForAccount } from "@/lib/market";
 import { getTimeZoneOptions } from "@/lib/localisation";
-import { enforceRateLimit } from "@/lib/rateLimit";
+import { checkRateLimit, enforceRateLimit } from "@/lib/rateLimit";
+import { createHash } from "node:crypto";
+
+const DUPLICATE_JOB_WINDOW_MS = 10_000;
 import { canPostJobs } from "@/lib/eligibility";
 import { driverRecordView } from "@/lib/vehicleApproval";
 
@@ -445,6 +448,25 @@ async function POSTHandler(req: Request) {
   const pickupError = pickupAccessError(marketplaceAccessCheck, pickupAt);
   if (pickupError) {
     return NextResponse.json(pickupError, { status: pickupError.status });
+  }
+
+  // Double submit (double tap, retry on a slow connection): the same account sending the
+  // same job again within a few seconds gets the job it already posted, not a second one.
+  // The counter insert is atomic, so two requests arriving together cannot both pass.
+  try {
+    const fingerprint = createHash("sha256").update(JSON.stringify(validation.data)).digest("hex");
+    const first = await checkRateLimit({ scope: "job-create-duplicate", identity: `${accountId}:${fingerprint}`, limit: 1, windowMs: DUPLICATE_JOB_WINDOW_MS });
+    if (!first.allowed) {
+      const existing = await prisma.job.findFirst({
+        where: { posterId: accountId, createdAt: { gt: new Date(Date.now() - 2 * DUPLICATE_JOB_WINDOW_MS) } },
+        orderBy: { createdAt: "desc" },
+      });
+      if (existing) return NextResponse.json({ success: true, job: existing, duplicate: true }, { status: 200 });
+      return NextResponse.json({ error: "This job is already being posted. Please wait a moment.", code: "DUPLICATE_SUBMISSION" }, { status: 409 });
+    }
+  } catch {
+    // The duplicate check is a convenience; if it is unavailable the post still goes ahead.
+    console.error("Duplicate-submission check unavailable for job create.");
   }
 
 try {

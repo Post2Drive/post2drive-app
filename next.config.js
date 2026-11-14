@@ -13,9 +13,10 @@ const contentSecurityPolicy = [
   "base-uri 'self'",
   "object-src 'none'",
   "frame-ancestors 'none'",
-  "form-action 'self' https:",
-  "script-src 'self' 'unsafe-inline' https:",
-  "style-src 'self' 'unsafe-inline' https:",
+  "form-action 'self'",
+  // No third-party script or stylesheet host is used, so none is allowed.
+  "script-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data: https:",
   "connect-src 'self' https: wss:",
@@ -31,6 +32,8 @@ const securityHeaders = [
   { key: "X-DNS-Prefetch-Control", value: "off" },
   { key: "X-Permitted-Cross-Domain-Policies", value: "none" },
   { key: "Origin-Agent-Cluster", value: "?1" },
+  // Other sites cannot keep a script handle on our windows.
+  { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
   // Enforced CSP (promoted from report-only).
   { key: "Content-Security-Policy", value: contentSecurityPolicy },
   ...(isProduction

@@ -10,7 +10,7 @@ assert.equal(process.env.CI, "true", "Rendered browser QA must run only in CI.")
 const databaseUrl = new URL(process.env.DATABASE_URL || "");
 assert.ok(["localhost", "127.0.0.1"].includes(databaseUrl.hostname), "E2E fixture must use local CI PostgreSQL");
 const baseURL = process.env.POST2DRIVE_BASE_URL || "http://localhost:3000";
-const publicRoutes = ["/", "/login", "/signup", "/pricing", "/privacy", "/terms", "/verify-email"];
+const publicRoutes = ["/", "/login", "/signup", "/pricing", "/privacy", "/terms", "/account-deletion", "/verify-email"];
 const authenticatedRoutes = ["/", "/dashboard", "/jobs", "/jobs/new", "/vehicles", "/payments", "/settings", "/requirements", "/admin/research"];
 const retiredAdminRoutes = ["/admin", "/admin/performance", "/admin/testers", "/admin/incidents"];
 const viewports = [
