@@ -69,7 +69,7 @@
     "qa:provider-adapters": "node --experimental-strip-types scripts/qa/provider-adapters-contract.mjs",
     "qa:origin-guard": "node --experimental-strip-types scripts/qa/origin-guard-contract.mjs",
     "qa:interaction-guards": "node --experimental-strip-types scripts/qa/interaction-guards-contract.mjs",
-    "qa:store-readiness": "node scripts/qa/store-readiness-contract.mjs",
+    "qa:store-readiness": "node --experimental-strip-types scripts/qa/store-readiness-contract.mjs",
     "qa:entitlements": "node --experimental-strip-types scripts/qa/entitlements-contract.mjs"
   },
   "dependencies": {
