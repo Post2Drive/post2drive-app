@@ -14,6 +14,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  themeColor: "#102A43",
   // Android Chrome/WebView: shrink the page for the on-screen keyboard instead of covering fields.
   interactiveWidget: "resizes-content",
 };
@@ -21,6 +22,8 @@ export const viewport: Viewport = {
 export const metadata = {
   title: "Post2Drive",
   description: "Freight and courier marketplace for businesses, fleets and independent drivers",
+  // iPhone "Add to Home Screen": opens full-screen with the app name.
+  appleWebApp: { capable: true, title: "Post2Drive", statusBarStyle: "default" as const },
 };
 
 export default async function RootLayout({

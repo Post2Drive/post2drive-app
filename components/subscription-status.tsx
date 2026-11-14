@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { isStoreApp } from "@/lib/nativeApp";
 import Link from "next/link";
 
 type AccessData = {
@@ -50,10 +51,13 @@ function formatDate(value: string | null, locale = "en", timeZone = "UTC") {
 export default function SubscriptionStatus() {
   const [data, setData] = useState<AccessData | null>(null);
   const [paying, setPaying] = useState(false);
+  // Inside the store app nothing is sold and nothing links to a checkout; plans are bought on the website.
+  const [inStoreApp, setInStoreApp] = useState(false);
+  useEffect(() => { setInStoreApp(isStoreApp(window)); }, []);
   const [payError, setPayError] = useState<string | null>(null);
 
   async function startCheckout() {
-    if (paying) return;
+    if (paying || inStoreApp) return;
     setPaying(true);
     setPayError(null);
     try {
@@ -122,7 +126,7 @@ export default function SubscriptionStatus() {
   const showPlanPrice = formattedPrice !== null &&
     (trialActive || (!data.allowed && data.reason === "access_expired"));
 
-  const canPay = Boolean(data.checkoutConnected) && Boolean(data.paymentDue) && formattedPrice !== null;
+  const canPay = !inStoreApp && Boolean(data.checkoutConnected) && Boolean(data.paymentDue) && formattedPrice !== null;
 
   const planName =
     data.planType === "fleet"
@@ -246,7 +250,9 @@ export default function SubscriptionStatus() {
               Unlimited legitimate marketplace activity · No per-job charges
             </div>
             <p style={{ margin: "8px 0 0", color: "var(--color-muted)", fontSize: 12, lineHeight: 1.5 }}>
-              {data.checkoutConnected
+              {inStoreApp
+                ? "Plans cannot be bought or renewed in this app. Your plan status is shown here."
+                : data.checkoutConnected
                 ? "You pay on a secure checkout page. Nothing is taken automatically, and access starts once the payment is confirmed."
                 : "Planning price only: payment checkout is not connected yet, so you cannot buy or renew access in the app."}
             </p>
@@ -314,7 +320,9 @@ export default function SubscriptionStatus() {
           }}
         >
           A subscription payment is currently marked <strong>pending</strong>.{" "}
-          {data.checkoutConnected
+          {inStoreApp
+            ? "Access updates here as soon as a payment is confirmed. Nothing is charged in this app."
+            : data.checkoutConnected
             ? "If you have just paid, access updates here as soon as the payment is confirmed. If you did not finish, nothing was charged."
             : "No payment provider is connected yet, so no automatic charge or payment confirmation will occur."}
         </div>

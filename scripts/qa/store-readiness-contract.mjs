@@ -79,4 +79,19 @@ ok(/href="\/account-deletion"/.test(read("components/legal-footer.tsx")), "the d
 ok(/\/account-deletion/.test(read("app/sitemap.ts")), "the deletion page is in the sitemap");
 ok(/method: "DELETE"/.test(read("app/settings/page.tsx")), "deletion can be completed inside the app");
 
+// 5. Website-only payments: nothing is sold, and nothing links to a checkout, inside the store app.
+const { isStoreApp } = await import("../../lib/nativeApp.ts");
+ok(isStoreApp({ Capacitor: { isNativePlatform: () => true } }) === true, "the Capacitor wrapper is recognised as the store app");
+ok(isStoreApp({ Capacitor: { getPlatform: () => "android" } }) === true && isStoreApp({ Capacitor: { getPlatform: () => "ios" } }) === true, "Android and iOS shells are recognised");
+ok(isStoreApp({}) === false && isStoreApp(null) === false && isStoreApp({ Capacitor: { isNativePlatform: () => false } }) === false && isStoreApp({ Capacitor: { getPlatform: () => "web" } }) === false, "an ordinary browser is not the store app");
+ok(isStoreApp({ Capacitor: { isNativePlatform: () => { throw new Error("x"); } } }) === true, "an unreadable bridge hides Pay (safe side)");
+const status = read("components/subscription-status.tsx");
+ok(/const canPay = !inStoreApp &&/.test(status), "the Pay button is never rendered inside the store app");
+ok(/if \(paying \|\| inStoreApp\) return;/.test(status), "checkout cannot be started inside the store app even if called directly");
+const storeCopy = [...status.matchAll(/inStoreApp\s*\?\s*"([^"]+)"/g)].map((m) => m[1]);
+ok(storeCopy.length >= 2, "the store app has its own plan wording");
+for (const text of storeCopy) {
+  ok(!/https?:|website|browser|post2drive\.com|checkout page|pay (at|on|online)|visit|go to/i.test(text), `store-app wording must not point to a place to pay: "${text}"`);
+}
+
 console.log(`Store readiness contract passed: ${n} checks.`);
