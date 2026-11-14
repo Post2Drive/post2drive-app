@@ -6,6 +6,7 @@ import { normalizeOperatingRegion } from "@/lib/launchWindows";
 import { hashPilotAccessCode, isPilotTesterCode, PILOT_ACCESS_CODE_TTL_MS } from "@/lib/pilotAccess";
 import { isQaRunnerEnabled } from "@/lib/qaRunnerGuard";
 import bcrypt from "bcryptjs";
+import { normalizeDisplayText, normalizeEmail } from "@/lib/identityText";
 import { prisma } from "@/lib/prisma";
 import { generateDisplayId } from "@/lib/displayId";
 import { isUkAccount } from "@/lib/uk";
@@ -144,6 +145,14 @@ async function POSTHandler(
       return NextResponse.json({ error: "Check your name, email, phone number and password. Passwords must be 8–72 UTF-8 bytes (and no more than 128 characters)." }, { status: 400 });
     }
 
+    // Names keep every script but may not hide invisible or direction-changing
+    // characters used to imitate another member (see lib/identityText.ts).
+    const cleanName = normalizeDisplayText(name);
+    const cleanCompanyName = typeof companyName === "string" ? normalizeDisplayText(companyName) : "";
+    if (cleanName === null || cleanName.length < 2 || cleanCompanyName === null) {
+      return NextResponse.json({ error: "Names cannot contain hidden or control characters. Retype the name and try again." }, { status: 400 });
+    }
+
     const verificationRequired = emailVerificationRequiredForCountry(country);
     const suppliedTesterCode = typeof testerCode === "string" ? testerCode.trim().toUpperCase() : "";
     let testerCodeHash: string | null = null;
@@ -196,10 +205,13 @@ async function POSTHandler(
 
     // Derive plan server-side from vehicle count — ignore client-supplied planType entirely.
     const selectedPlan = parsedFleetVehicleCount === 1 ? "individual" : "fleet";
-    const normalizedCompanyName = (typeof companyName === "string" ? companyName.trim() : "") || (country === "IN" || isSoleTrader ? name.trim() : "");
+    const normalizedCompanyName = cleanCompanyName || (country === "IN" || isSoleTrader ? cleanName : "");
 
-    const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
-    if (normalizedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+    // Canonical ASCII form only, so a look-alike Unicode address cannot
+    // register beside an existing account.
+    const suppliedEmail = typeof email === "string" ? email.trim() : "";
+    const normalizedEmail = suppliedEmail ? normalizeEmail(suppliedEmail) ?? "" : "";
+    if (suppliedEmail && !normalizedEmail) {
       return NextResponse.json({ error: "Enter a valid email address." }, { status: 400 });
     }
     if (normalizedEmail) {
@@ -364,7 +376,7 @@ async function POSTHandler(
                 users: {
                   create: {
                     name:
-                      name.trim(),
+                      cleanName,
 
                     email: normalizedEmail || null,
 

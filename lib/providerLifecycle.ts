@@ -20,6 +20,12 @@ export type OtpIssueResult =
 export interface OtpChallengeStore {
   get(phoneHash: string): Promise<OtpChallenge | null>;
   put(challenge: OtpChallenge): Promise<void>;
+  /**
+   * Count one wrong guess. Must be a single atomic increment that touches
+   * nothing else, so parallel guesses each count and a late wrong guess can
+   * never write an already-used code back to unused.
+   */
+  recordFailure(phoneHash: string, expectedCodeHash: string): Promise<void>;
   consume(phoneHash: string, expectedCodeHash: string, now: number): Promise<boolean>;
 }
 
@@ -81,7 +87,7 @@ export async function verifyOtp(
   const b = Buffer.from(suppliedHash, "hex");
   const match = a.length === b.length && timingSafeEqual(a, b);
   if (!match) {
-    await store.put({ ...challenge, attempts: challenge.attempts + 1 });
+    await store.recordFailure(phoneHash, challenge.codeHash);
     return false;
   }
   return store.consume(phoneHash, challenge.codeHash, now);
@@ -96,6 +102,11 @@ export class InMemoryOtpStore implements OtpChallengeStore {
   }
   async put(challenge: OtpChallenge) {
     this.records.set(challenge.phoneHash, { ...challenge });
+  }
+  async recordFailure(phoneHash: string, expectedCodeHash: string) {
+    const current = this.records.get(phoneHash);
+    if (!current || current.codeHash !== expectedCodeHash) return;
+    this.records.set(phoneHash, { ...current, attempts: current.attempts + 1 });
   }
   async consume(phoneHash: string, expectedCodeHash: string, now: number) {
     const current = this.records.get(phoneHash);

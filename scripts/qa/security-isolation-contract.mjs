@@ -53,7 +53,7 @@ assert.match(accountRoute, /async function DELETEHandler[\s\S]*?const parsedBody
   "account DELETE must reject null, arrays, and primitive JSON bodies with a controlled 400 response");
 assert.match(source("app/api/account/route.ts"), /boundedString\(name, 120\)[\s\S]*?marketingConsent !== undefined && typeof marketingConsent !== "boolean"/,
   "account PATCH must validate field types and bounds before persistence");
-assert.match(source("app/api/account/route.ts"), /if \(name !== undefined \|\| phone !== undefined\)[\s\S]*?name: name\.trim\(\)/,
+assert.match(source("app/api/account/route.ts"), /if \(name !== undefined \|\| phone !== undefined\)[\s\S]*?name: cleanName \}/,
   "account PATCH must support intentionally clearing profile names");
 assert.doesNotMatch(accountGet, /include: \{/,
   "account details API must not return the full Account model by default");
@@ -132,6 +132,7 @@ const malformedDeleteModule = loadTypeScriptModule("app/api/account/route.ts", {
   "bcryptjs": { compare: async () => true, hash: async () => "fixture-hash" },
   "crypto": { randomBytes: () => ({ toString: () => "fixture" }) },
   "@/lib/market": { isSupportedMarket: () => true },
+  "@/lib/identityText": { normalizeDisplayText: (value) => (typeof value === "string" ? value.trim() : null) },
   "@/lib/auth": { authOptions: {} },
   "@/lib/rateLimit": { enforceRateLimit: async () => null },
   "@prisma/client": { Prisma: { DbNull: null } },
