@@ -2,6 +2,7 @@ import { withApiMetrics } from "@/lib/apiMetrics";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import bcrypt from "bcryptjs";
+import { normalizeDisplayText } from "@/lib/identityText";
 import { randomBytes } from "crypto";
 import { isSupportedMarket } from "@/lib/market";
 import { authOptions } from "@/lib/auth";
@@ -124,6 +125,14 @@ async function PATCHHandler(req: Request) {
     return NextResponse.json({ error: "One or more settings fields are invalid." }, { status: 400 });
   }
 
+  // Names keep every script but may not hide invisible or direction-changing
+  // characters used to imitate another member (see lib/identityText.ts).
+  const cleanName = typeof name === "string" ? normalizeDisplayText(name) : undefined;
+  const cleanCompanyName = typeof companyName === "string" ? normalizeDisplayText(companyName) : undefined;
+  if (cleanName === null || cleanCompanyName === null) {
+    return NextResponse.json({ error: "Names cannot contain hidden or control characters. Retype the name and try again." }, { status: 400 });
+  }
+
   if (newPassword) {
     const passwordLimit = await enforceRateLimit(req, {
       scope: "account-password-change",
@@ -200,7 +209,7 @@ async function PATCHHandler(req: Request) {
       await tx.user.update({
         where: { id: userId },
         data: {
-          ...(typeof name === "string" && { name: name.trim() }),
+          ...(typeof cleanName === "string" && { name: cleanName }),
           ...(typeof phone === "string" && { phone: phone.trim(), phoneE164: toE164ForMarket(phone, account.country) }),
         },
       });
@@ -211,7 +220,7 @@ async function PATCHHandler(req: Request) {
       accountData.phoneVerifiedAt = null;
     }
     if (typeof companyName === "string") {
-      accountData.companyName = companyName.trim();
+      accountData.companyName = cleanCompanyName;
     }
     if (typeof marketingConsent === "boolean") {
       accountData.marketingConsent = marketingConsent;

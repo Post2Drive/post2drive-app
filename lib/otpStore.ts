@@ -39,6 +39,15 @@ export class PrismaOtpStore implements OtpChallengeStore {
     });
   }
 
+  async recordFailure(phoneHash: string, expectedCodeHash: string): Promise<void> {
+    // One conditional UPDATE: concurrent wrong guesses all count, and the
+    // row's other columns (including consumedAt) are never rewritten.
+    await prisma.phoneOtpChallenge.updateMany({
+      where: { phoneHash, accountId: this.accountId, codeHash: expectedCodeHash },
+      data: { attempts: { increment: 1 } },
+    });
+  }
+
   async consume(phoneHash: string, expectedCodeHash: string, now: number): Promise<boolean> {
     const result = await prisma.phoneOtpChallenge.updateMany({
       where: {

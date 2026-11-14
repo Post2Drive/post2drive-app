@@ -48,6 +48,11 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials, req) {
         if (!credentials?.email || !credentials?.password) return null;
 
+        // Bound the inputs before any hashing or database work. Stored
+        // passwords are at most 72 bytes; the wider cap only stops oversized
+        // bodies being fed to bcrypt.
+        if (credentials.email.length > 254 || credentials.password.length > 1024) return null;
+
         const identifier = credentials.email.trim();
         const normalizedEmail = identifier.toLowerCase();
         const rawQaRunId = req.headers?.["x-post2drive-qa-run-id"];
