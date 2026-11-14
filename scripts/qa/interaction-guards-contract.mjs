@@ -23,7 +23,9 @@ ok(/addEventListener\("click", onClick, true\)/.test(guard) && /addEventListener
 ok(/stopImmediatePropagation\(\)/.test(guard) && /preventDefault\(\)/.test(guard), "a repeat is fully stopped: no handler, no navigation, no submit");
 ok(/button, a\[href\], \[role="button"\]/.test(guard), "buttons and links are both covered");
 ok(/data-allow-rapid/.test(guard), "controls meant for quick repeated presses can opt out");
-ok(/new WeakMap/.test(guard), "tracking is per control, so pressing a different button is never blocked");
+ok(/target === lastTarget && isRepeatActivation\(lastAt, now\)/.test(guard), "only an immediate repeat on the same control is dropped; a different button is never blocked");
+ok(/addEventListener\("input", forget, true\)/.test(guard) && /addEventListener\("change", forget, true\)/.test(guard), "typing or changing a field in between makes the next press deliberate (multi-step forms reuse one Continue button)");
+ok(/if \(target !== lastTarget\) forget\(\);/.test(guard), "pressing any other control in between also clears the repeat window");
 ok(/visualViewport/.test(guard) && /scrollIntoView\(/.test(guard) && /focusin/.test(guard), "the focused field is brought above the keyboard");
 ok(/prefers-reduced-motion/.test(guard), "the reveal scroll respects reduced motion");
 ok(/removeEventListener\("click", onClick, true\)/.test(guard), "listeners are removed on unmount");

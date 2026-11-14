@@ -20,19 +20,31 @@ const EDITABLE = 'input:not([type="checkbox"]):not([type="radio"]):not([type="bu
  */
 export default function InteractionGuards() {
   useEffect(() => {
-    const lastActivation = new WeakMap<Element, number>();
+    // Only the most recent activation is remembered, and anything the user does in
+    // between (typing, changing a field, pressing a different control) clears it. So a
+    // true double click or double tap is dropped, while pressing the same "Continue"
+    // button again after filling in the next step always works.
+    let lastTarget: Element | null = null;
+    let lastAt = 0;
     const lastSubmit = new WeakMap<Element, number>();
+
+    const forget = () => { lastTarget = null; };
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target instanceof Element ? event.target.closest(ACTIVATABLE) : null;
+      if (target !== lastTarget) forget();
+    };
 
     const onClick = (event: MouseEvent) => {
       const target = event.target instanceof Element ? event.target.closest(ACTIVATABLE) : null;
       if (!target || target.closest("[data-allow-rapid]")) return;
       const now = performance.now();
-      if (isRepeatActivation(lastActivation.get(target), now)) {
+      if (target === lastTarget && isRepeatActivation(lastAt, now)) {
         event.preventDefault();
         event.stopImmediatePropagation();
         return;
       }
-      lastActivation.set(target, now);
+      lastTarget = target;
+      lastAt = now;
     };
 
     const onSubmit = (event: SubmitEvent) => {
@@ -49,6 +61,9 @@ export default function InteractionGuards() {
 
     document.addEventListener("click", onClick, true);
     document.addEventListener("submit", onSubmit, true);
+    document.addEventListener("pointerdown", onPointerDown, true);
+    document.addEventListener("input", forget, true);
+    document.addEventListener("change", forget, true);
 
     // ── On-screen keyboard ──
     const root = document.documentElement;
@@ -111,6 +126,9 @@ export default function InteractionGuards() {
     return () => {
       document.removeEventListener("click", onClick, true);
       document.removeEventListener("submit", onSubmit, true);
+      document.removeEventListener("pointerdown", onPointerDown, true);
+      document.removeEventListener("input", forget, true);
+      document.removeEventListener("change", forget, true);
       viewport?.removeEventListener("resize", update);
       viewport?.removeEventListener("scroll", update);
       window.removeEventListener("resize", update);
