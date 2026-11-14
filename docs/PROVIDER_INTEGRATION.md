@@ -1,7 +1,39 @@
-# Provider-independent integration plan
+# Provider integration
 
-**Status:** email sends now route through a configurable provider adapter; OTP lifecycle and payment-event integrity primitives plus contract tests are added. Persistent OTP storage, route integration, durable webhook deduplication, and provider-backed checkout/webhook integration remain pending.
-**Rule:** no credentials, provider selection, deployment, or production configuration is required to complete this phase.
+**Status (14 Nov 2026):** adapters for email (Resend), SMS (Twilio, MSG91) and subscription checkout (Stripe) are implemented and contract-tested (`npm run qa:provider-adapters`). None is switched on: each activates only when its credentials are set, and fails closed without them. **No live message or payment has been sent yet**; a controlled live test per provider is still required before launch.
+
+## Switching a provider on (owner steps)
+
+| Service | Set these variables | Then |
+|---|---|---|
+| Email (Resend) | `RESEND_API_KEY`, `EMAIL_FROM` (verified sending domain), `EMAIL_VERIFICATION_ENABLED=true` | Sign up with a new address; confirm the verification and password-reset emails arrive. |
+| SMS, UK numbers | `POST2DRIVE_SMS_UK_PROVIDER=twilio`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and `TWILIO_MESSAGING_SERVICE_SID` or `TWILIO_FROM` | Verify a UK mobile from Account settings. |
+| SMS, India numbers | `POST2DRIVE_SMS_INDIA_PROVIDER=msg91`, `MSG91_AUTH_KEY`, `MSG91_OTP_TEMPLATE_ID` (DLT-approved OTP template) | Sign in by phone code with an Indian number. |
+| Subscription checkout (Stripe) | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | In Stripe add the webhook endpoint `https://<site>/api/subscription/webhook/stripe` with events `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `checkout.session.expired`, `charge.refunded`. Pay once in test mode and confirm access starts. |
+
+On staging the SMS test outbox takes priority while `POST2DRIVE_STAGING_TEST_PHONE_VERIFICATION=true`; turn it off to test a real carrier. The server logs a one-line "Provider readiness" report at start-up (states only, never values). With `DEPLOYMENT_ENVIRONMENT=production` the server refuses to start if a required setting is missing, a test switch is on, or Stripe test keys are used (`lib/providerReadiness.ts`).
+
+## How payments are kept safe
+
+- Plan, amount and currency are calculated on the server; nothing about the price comes from the browser.
+- One access period = one pending payment = one Stripe Checkout session (idempotency key `p2d-checkout-<paymentId>`).
+- A payment becomes **paid only from a signature-verified webhook** (HMAC over the raw body, 5-minute replay window). Returning from the checkout page changes nothing.
+- Every verified event is written to `PaymentProviderEvent` with a unique `(provider, eventId)`, so redelivery is a no-op.
+- The paid amount, currency and account must match the stored payment, or the event is recorded as rejected and logged for manual review.
+- Full refund: the payment is marked refunded and only the access that payment added is removed. Partial refund: recorded, access unchanged.
+- No automatic renewals: the user pays each period. Job money between poster and driver is never processed by Post2Drive.
+- The older shared-secret hook (`/api/subscription/webhook`) is a staging test aid and returns 404 in production.
+
+## Still open
+
+- Live test-mode run for each provider on staging (needs the owner's provider accounts).
+- Identity/company verification provider: the webhook still uses a shared header secret; replace with the chosen provider's signature scheme.
+- Stripe account country/entity, tax (VAT) settings and receipts are owner decisions.
+- India charges nothing today; a Razorpay adapter is only needed if that changes.
+
+---
+
+## Background: original design rules
 
 ## Boundaries
 
@@ -14,7 +46,7 @@
 - A production adapter is unavailable until it is implemented, registered, configured with secrets in the deployment secret store, and tested.
 - Test fakes must be injected by tests; never activate fake success using a production environment variable or silently fall back to a fake provider.
 
-## Implementation status and remaining integration work
+## Earlier implementation notes (superseded by the status above where they differ)
 
 - Existing email verification and password reset functions now call the provider-independent email delivery interface. Their token creation, SHA-256/HMAC hashing, 24-hour/1-hour expiry, and token-use database guards were preserved. Existing cooldown/invalidation logic was not redesigned.
 - OTP currently has a store interface and an explicitly test-only in-memory implementation. It is **not production-ready** until a Prisma-backed store, atomic consume/update, delivery adapter call, API endpoints, and account `phoneVerifiedAt` transition are wired and tested. No test code or OTP is exposed to production users.
@@ -53,6 +85,3 @@
 - Payment amount/currency tampering, duplicate and forged webhooks, idempotency, refunds, and delayed/out-of-order events.
 - All checks must pass on the exact candidate commit. Live provider tests are separate release evidence.
 
-## Release status
-
-This document and the type contracts are preparatory architecture only. They do not implement provider adapters, configure credentials, prove email/SMS delivery, authorize real payments, or clear a release gate. Keep provider configuration and live transaction tests as explicit follow-up work after providers are selected.

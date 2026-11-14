@@ -17,7 +17,7 @@ const list = { margin: 0, paddingLeft: 20, lineHeight: 1.7 } as const;
  * Public, pre-signup cost and requirements disclosure. Every price comes from
  * lib/pricing.ts so this page can never drift from what the app charges.
  */
-export default function SubscriptionPricing({ country = "GB" }: { country?: string }) {
+export default function SubscriptionPricing({ country = "GB", checkoutConnected = false }: { country?: string; checkoutConnected?: boolean }) {
   const selectedMarket = COUNTRIES.find((market) => market.code === country.trim().toUpperCase()) ?? COUNTRIES[0];
   const isIndia = selectedMarket.code === "IN";
   const money = new Intl.NumberFormat(selectedMarket.locale, { style: "currency", currency: selectedMarket.currency });
@@ -107,7 +107,7 @@ export default function SubscriptionPricing({ country = "GB" }: { country?: stri
       </section>
 
       <p style={{ ...muted, fontSize: 13, marginTop: 24, marginBottom: 0 }}>
-        The same numbers apply in each supported non-India market, in that market&apos;s currency. Payment checkout is not connected yet: no payment is taken today.
+        The same numbers apply in each supported non-India market, in that market&apos;s currency. {checkoutConnected ? "Nothing is taken automatically: you pay each period yourself." : "Payment checkout is not connected yet: no payment is taken today."}
       </p>
     </div>
   );

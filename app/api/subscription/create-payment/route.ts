@@ -3,8 +3,26 @@ import { enforceRateLimit } from "@/lib/rateLimit";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { NO_PROVIDER_NOTICE, PAYMENT_PROVIDER_CONNECTED } from "@/lib/paymentProvider";
-import { createPendingSubscriptionPayment } from "@/lib/subscription";
+import { CHECKOUT_NOTICE, NO_PROVIDER_NOTICE } from "@/lib/paymentProvider";
+import { attachCheckoutToPayment, createPendingSubscriptionPayment } from "@/lib/subscription";
+import { createStripeCheckout, getStripeConfig, STRIPE_PROVIDER_ID } from "@/lib/stripeProvider";
+
+const PLAN_NAMES: Record<string, string> = {
+  poster: "Post2Drive poster plan (1 month)",
+  individual: "Post2Drive driver plan (7 days)",
+  fleet: "Post2Drive fleet plan (7 days)",
+};
+
+function appBaseUrl(): string | null {
+  const raw = (process.env.POST2DRIVE_APP_URL || process.env.NEXTAUTH_URL || "").trim();
+  try {
+    const url = new URL(raw);
+    const local = url.hostname === "localhost" || url.hostname === "127.0.0.1";
+    return url.protocol === "https:" || local ? url.origin : null;
+  } catch {
+    return null;
+  }
+}
 
 const SAFE_CLIENT_ERRORS = new Set([
   "Paid weekly access is available to supported non-India markets.",
@@ -33,16 +51,45 @@ async function POSTHandler(req: Request) {
       session.user.accountId
     );
 
-    return NextResponse.json({
+    const base = {
       paymentId: payment.id,
       planKey: payment.planKey,
       amountMinorUnits: payment.amountMinorUnits,
       currency: payment.currency,
       status: payment.status,
-      providerConnected: PAYMENT_PROVIDER_CONNECTED,
+      // Creating a payment record or a checkout never charges anyone.
       charged: false,
-      notice: NO_PROVIDER_NOTICE,
-    }, { headers: { "Cache-Control": "no-store" } });
+    };
+    const stripe = getStripeConfig();
+    const baseUrl = appBaseUrl();
+    if (!stripe || !baseUrl) {
+      return NextResponse.json({ ...base, providerConnected: false, checkoutUrl: null, notice: NO_PROVIDER_NOTICE },
+        { headers: { "Cache-Control": "no-store" } });
+    }
+    if (payment.amountMinorUnits <= 0) {
+      return NextResponse.json({ error: "Nothing is payable for this period." }, { status: 409, headers: { "Cache-Control": "no-store" } });
+    }
+
+    const checkout = await createStripeCheckout(stripe, {
+      paymentId: payment.id,
+      accountId,
+      planKey: payment.planKey,
+      productName: PLAN_NAMES[payment.planKey] ?? "Post2Drive plan",
+      amountMinorUnits: payment.amountMinorUnits,
+      currency: payment.currency,
+      idempotencyKey: `p2d-checkout-${payment.id}`,
+      successUrl: `${baseUrl}/settings?payment=processing`,
+      cancelUrl: `${baseUrl}/settings?payment=cancelled`,
+      customerEmail: session.user.email ?? null,
+    });
+    if (!checkout.ok || !(await attachCheckoutToPayment(payment.id, STRIPE_PROVIDER_ID, checkout.providerCheckoutId))) {
+      return NextResponse.json(
+        { error: "Checkout could not be started. Nothing has been charged. Please try again shortly." },
+        { status: 502, headers: { "Cache-Control": "no-store" } },
+      );
+    }
+    return NextResponse.json({ ...base, providerConnected: true, checkoutUrl: checkout.redirectUrl, notice: CHECKOUT_NOTICE },
+      { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     // Only known business-rule errors are safe to show to the caller.
     // Database/ORM failures must not leak schema, query, or infrastructure details.

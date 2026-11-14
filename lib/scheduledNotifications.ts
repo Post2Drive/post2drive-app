@@ -1,8 +1,8 @@
 import { getReminderSnapshot } from "@/lib/access";
 import { marketTimeZone } from "@/lib/market";
-import { daysUntilExpiryDate, daysUntilInstant, documentReminderOffset, expiryWording, planRenewalBody } from "@/lib/reminderDates";
+import { daysUntilExpiryDate, daysUntilInstant, documentReminderOffset, expiryWording, freePeriodEndingBody, planRenewalBody } from "@/lib/reminderDates";
 import { notify } from "@/lib/notify";
-import { PAYMENT_PROVIDER_CONNECTED } from "@/lib/paymentProvider";
+import { subscriptionCheckoutConnected } from "@/lib/paymentProvider";
 import { getPaidPriceMinorUnits } from "@/lib/subscription";
 import { symbolFor } from "@/lib/currency";
 import { minorUnitsToMajorUnits } from "@/lib/currencyMinorUnits";
@@ -121,9 +121,9 @@ async function runPlanBilling(db: SchedDb, now: Date): Promise<number> {
             accountId: account.id,
             type: "plan_renewal",
             title: "Your plan renews tomorrow",
-            body: planRenewalBody(price, PAYMENT_PROVIDER_CONNECTED),
+            body: planRenewalBody(price, subscriptionCheckoutConnected()),
             eventKey: `plan-renewal:${account.id}:${billing.currentPeriod.end.toISOString()}`,
-            metadata: { plan: billing.plan, periodEnd: billing.currentPeriod.end.toISOString(), providerConnected: PAYMENT_PROVIDER_CONNECTED },
+            metadata: { plan: billing.plan, periodEnd: billing.currentPeriod.end.toISOString(), providerConnected: subscriptionCheckoutConnected() },
           });
           if (created) count += 1;
         }
@@ -134,7 +134,7 @@ async function runPlanBilling(db: SchedDb, now: Date): Promise<number> {
             accountId: account.id,
             type: "free_period_ending",
             title: "Your free period ends tomorrow",
-            body: "Your free access ends tomorrow. After that your plan will be due. No payment provider is connected yet, so nothing is charged automatically.",
+            body: freePeriodEndingBody(subscriptionCheckoutConnected()),
             eventKey: `free-ending:${account.id}:${scope}:${entitlement.endsAt.toISOString()}`,
             metadata: { scope, reason: entitlement.reason, endsAt: entitlement.endsAt.toISOString() },
           });

@@ -1,6 +1,7 @@
 import type { DeliveryResult, SmsOtpMessage, SmsOtpProvider } from "@/lib/providerContracts";
 import { isStagingTestPhoneVerificationEnabled, maskPhone, type PhoneRouteResult } from "@/lib/phoneVerification";
 import { prisma } from "@/lib/prisma";
+import { createSmsAdapter } from "@/lib/smsAdapters";
 
 /**
  * Staging-only adapter. It sends nothing: the code is written to a test
@@ -25,13 +26,15 @@ export function isSmsSandboxEnabled(env: Record<string, string | undefined> = pr
 }
 
 /**
- * Pick the adapter for a phone route. Real carriers (for example MSG91 for
- * India, Twilio for the UK) are added here as they are integrated; until
- * then only the guarded sandbox can deliver, and every other case returns
+ * Pick the adapter for a phone route. The guarded staging sandbox wins where
+ * it is enabled (never in production). Otherwise the route's slot variable
+ * (POST2DRIVE_SMS_UK_PROVIDER / _INDIA_PROVIDER / _GLOBAL_PROVIDER) names a
+ * real carrier in lib/smsAdapters.ts ("twilio" or "msg91"); that adapter is
+ * returned only when its credentials are present. Every other case returns
  * null so callers fail closed with "not available yet".
  */
 export function getSmsOtpProvider(route: PhoneRouteResult): SmsOtpProvider | null {
   if (!route.supported) return null;
   if (isSmsSandboxEnabled()) return sandboxSmsProvider;
-  return null;
+  return createSmsAdapter(route.providerName);
 }

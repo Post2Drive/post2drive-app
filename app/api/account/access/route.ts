@@ -7,6 +7,7 @@ import { getEntitlementStatus } from "@/lib/access";
 import { getPaidPriceMinorUnits } from "@/lib/subscription";
 import { marketForAccount } from "@/lib/market";
 import { minorUnitsToMajorUnits } from "@/lib/currencyMinorUnits";
+import { subscriptionCheckoutConnected } from "@/lib/paymentProvider";
 
 export const dynamic = "force-dynamic";
 
@@ -80,6 +81,9 @@ async function GETHandler() {
     timeZone: market?.timeZone ?? "UTC",
     priceGbp: access.account.currency === "GBP" ? price : null,
     pendingPayment,
+    // True only when subscription checkout is configured; the UI offers "Pay" on this alone.
+    checkoutConnected: subscriptionCheckoutConnected(),
+    paymentDue: Boolean(status.billing?.paymentDue),
   });
 }
 

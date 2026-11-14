@@ -62,6 +62,7 @@
 | P0 | `app/api/signup/route.ts` | Account creation/rate limits | Not yet fully verified |
 | P1 | `app/api/subscription/create-payment/route.ts` | Payment provider boundary | Not yet fully verified |
 | P0 | `app/api/subscription/webhook/route.ts` | Webhook signature/replay/idempotency | Not yet fully verified |
+| P0 | `app/api/subscription/webhook/stripe/route.ts` | Stripe signature over raw body, replay window, event ledger, amount/currency binding | Contract-tested (`qa:provider-adapters`); live Stripe test-mode run still required |
 | P0 | `app/api/vehicles/route.ts` | Vehicle ownership/deletion guard | Not yet fully verified |
 | P1 | `app/api/verification/start/route.ts` | Verification flow/payment claims | Not yet fully verified |
 | P0 | `app/api/verification/start/webhook/route.ts` | Webhook authentication/idempotency | Not yet fully verified |

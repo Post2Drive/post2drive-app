@@ -28,6 +28,8 @@ type AccessData = {
     currency: string;
     status: string;
   } | null;
+  checkoutConnected?: boolean;
+  paymentDue?: boolean;
 };
 
 function formatDate(value: string | null, locale = "en", timeZone = "UTC") {
@@ -47,6 +49,27 @@ function formatDate(value: string | null, locale = "en", timeZone = "UTC") {
 
 export default function SubscriptionStatus() {
   const [data, setData] = useState<AccessData | null>(null);
+  const [paying, setPaying] = useState(false);
+  const [payError, setPayError] = useState<string | null>(null);
+
+  async function startCheckout() {
+    if (paying) return;
+    setPaying(true);
+    setPayError(null);
+    try {
+      const response = await fetch("/api/subscription/create-payment", { method: "POST" });
+      const body = await response.json().catch(() => ({}));
+      if (response.ok && typeof body.checkoutUrl === "string" && body.checkoutUrl.startsWith("https://")) {
+        // Leaves the app for the provider's hosted payment page.
+        window.location.assign(body.checkoutUrl);
+        return;
+      }
+      setPayError(typeof body.error === "string" ? body.error : "Checkout could not be started. Nothing has been charged.");
+    } catch {
+      setPayError("Checkout could not be started. Check your connection and try again. Nothing has been charged.");
+    }
+    setPaying(false);
+  }
 
   useEffect(() => {
     fetch("/api/account/access")
@@ -98,6 +121,8 @@ export default function SubscriptionStatus() {
   const formattedPrice = data.price === null || !data.currency ? null : new Intl.NumberFormat(data.locale || "en", { style: "currency", currency: data.currency }).format(data.price);
   const showPlanPrice = formattedPrice !== null &&
     (trialActive || (!data.allowed && data.reason === "access_expired"));
+
+  const canPay = Boolean(data.checkoutConnected) && Boolean(data.paymentDue) && formattedPrice !== null;
 
   const planName =
     data.planType === "fleet"
@@ -221,7 +246,9 @@ export default function SubscriptionStatus() {
               Unlimited legitimate marketplace activity · No per-job charges
             </div>
             <p style={{ margin: "8px 0 0", color: "var(--color-muted)", fontSize: 12, lineHeight: 1.5 }}>
-              Planning price only: payment checkout is not connected yet, so you cannot buy or renew access in the app.
+              {data.checkoutConnected
+                ? "You pay on a secure checkout page. Nothing is taken automatically, and access starts once the payment is confirmed."
+                : "Planning price only: payment checkout is not connected yet, so you cannot buy or renew access in the app."}
             </p>
           </div>
 
@@ -243,6 +270,36 @@ export default function SubscriptionStatus() {
         </div>
       )}
 
+      {canPay && (
+        <div style={{ marginTop: 15, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+          <button
+            type="button"
+            onClick={startCheckout}
+            disabled={paying}
+            aria-busy={paying}
+            className="button-link"
+            style={{
+              background: "var(--color-primary-action)",
+              color: "var(--color-surface)",
+              border: 0,
+              padding: "11px 16px",
+              minHeight: 44,
+              borderRadius: 8,
+              fontWeight: 700,
+              fontSize: 14,
+              cursor: paying ? "progress" : "pointer",
+              opacity: paying ? 0.7 : 1,
+            }}
+          >
+            {paying ? "Opening checkout…" : `Pay ${formattedPrice}`}
+          </button>
+          <span style={{ color: "var(--color-muted)", fontSize: 13 }}>Secure checkout. No automatic renewals.</span>
+        </div>
+      )}
+      {payError && (
+        <p role="alert" style={{ margin: "10px 0 0", color: "var(--color-danger)", fontSize: 13 }}>{payError}</p>
+      )}
+
       {data.pendingPayment && (
         <div
           style={{
@@ -256,9 +313,10 @@ export default function SubscriptionStatus() {
             fontSize: 13,
           }}
         >
-          A subscription payment is currently marked <strong>pending</strong>.
-          No payment provider is connected yet, so no automatic charge or
-          payment confirmation will occur.
+          A subscription payment is currently marked <strong>pending</strong>.{" "}
+          {data.checkoutConnected
+            ? "If you have just paid, access updates here as soon as the payment is confirmed. If you did not finish, nothing was charged."
+            : "No payment provider is connected yet, so no automatic charge or payment confirmation will occur."}
         </div>
       )}
 

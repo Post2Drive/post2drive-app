@@ -5,6 +5,8 @@ import { getEntitlementStatus } from "@/lib/access";
 import { addMonths, creditMinorUnits } from "@/lib/launchWindows";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+// Shorter than a provider checkout session's 24-hour life, so a reused payment's checkout is still open.
+export const PENDING_PAYMENT_REUSE_MS = 23 * 60 * 60 * 1000;
 
 /**
  * One subscription per account (EXECUTION_PLAN §2–§3): "poster" (monthly) until a vehicle is
@@ -100,6 +102,21 @@ export async function createPendingSubscriptionPayment(accountId: string) {
       }
     }
 
+    // Repeat requests for the same plan and amount reuse the open pending payment, so
+    // one access period maps to one provider checkout (see PENDING_PAYMENT_REUSE_MS).
+    const reusable = await tx.subscriptionPayment.findFirst({
+      where: {
+        accountId,
+        planKey,
+        amountMinorUnits,
+        currency: account.currency,
+        status: "pending",
+        createdAt: { gt: new Date(Date.now() - PENDING_PAYMENT_REUSE_MS) },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    if (reusable) return reusable;
+
     return tx.subscriptionPayment.create({
       data: {
         accountId,
@@ -110,6 +127,15 @@ export async function createPendingSubscriptionPayment(accountId: string) {
       },
     });
   });
+}
+
+/** Record which provider checkout belongs to a pending payment. Never marks anything paid. */
+export async function attachCheckoutToPayment(paymentId: string, provider: string, providerCheckoutId: string) {
+  const result = await prisma.subscriptionPayment.updateMany({
+    where: { id: paymentId, status: "pending", OR: [{ providerCheckoutId: null }, { providerCheckoutId }] },
+    data: { provider, providerCheckoutId },
+  });
+  return result.count === 1;
 }
 
 export async function confirmSubscriptionPayment(
@@ -200,4 +226,119 @@ export async function confirmSubscriptionPayment(
       },
     });
   });
+}
+
+export type ProviderEventOutcome =
+  | "applied" | "duplicate" | "ignored" | "unknown_payment" | "rejected_mismatch" | "not_payable" | "recorded";
+
+export type VerifiedProviderEvent =
+  | { kind: "paid"; eventId: string; paymentId: string; accountId: string | null; amountMinorUnits: number; currency: string; providerPaymentId: string; providerCheckoutId: string }
+  | { kind: "expired" | "failed"; eventId: string; paymentId: string; providerCheckoutId: string | null }
+  | { kind: "refunded"; eventId: string; providerPaymentId: string; amountRefundedMinorUnits: number; fullyRefunded: boolean; currency: string }
+  | { kind: "ignored"; eventId: string; type: string };
+
+const NON_RETRYABLE_CONFIRM_ERRORS: Record<string, ProviderEventOutcome> = {
+  "Subscription payment not found.": "unknown_payment",
+  "Subscription event does not match the payment.": "rejected_mismatch",
+  "Subscription payment is not payable.": "not_payable",
+  "Account is pending deletion.": "not_payable",
+  "Account is suspended.": "not_payable",
+  "Payment currency does not match the account market.": "rejected_mismatch",
+  "This account is not eligible for paid weekly access.": "not_payable",
+};
+
+/**
+ * Apply one SIGNATURE-VERIFIED provider event exactly once.
+ *
+ * Callers must have authenticated the event (lib/stripeProvider.parseStripeWebhook).
+ * The (provider, eventId) ledger row makes redelivery a no-op. Each transition is
+ * also idempotent by itself, so a crash between the transition and the ledger write
+ * is repaired by the provider's retry. Unexpected database errors are thrown so the
+ * provider retries; business outcomes are returned and acknowledged.
+ */
+export async function applyVerifiedProviderEvent(provider: string, event: VerifiedProviderEvent): Promise<ProviderEventOutcome> {
+  const seen = await prisma.paymentProviderEvent.findUnique({
+    where: { provider_eventId: { provider, eventId: event.eventId } },
+    select: { id: true },
+  });
+  if (seen) return "duplicate";
+
+  let outcome: ProviderEventOutcome = "ignored";
+  let paymentId: string | null = null;
+  const type = event.kind === "ignored" ? event.type : event.kind;
+
+  if (event.kind === "paid") {
+    paymentId = event.paymentId;
+    try {
+      await confirmSubscriptionPayment(event.paymentId, {
+        provider,
+        providerPaymentId: event.providerPaymentId,
+        providerCheckoutId: event.providerCheckoutId,
+        expectedAccountId: event.accountId ?? undefined,
+        expectedAmountMinorUnits: event.amountMinorUnits,
+        expectedCurrency: event.currency,
+      });
+      outcome = "applied";
+    } catch (error) {
+      const known = error instanceof Error ? NON_RETRYABLE_CONFIRM_ERRORS[error.message] : undefined;
+      const duplicateReference = (error as { code?: string } | null)?.code === "P2002";
+      if (!known && !duplicateReference) throw error;
+      outcome = known ?? "not_payable";
+      // Money may have been taken without access being granted: this needs a person to look.
+      console.error("Verified provider payment could not be applied; manual review needed.", { provider, outcome });
+    }
+  } else if (event.kind === "expired" || event.kind === "failed") {
+    paymentId = event.paymentId;
+    const updated = await prisma.subscriptionPayment.updateMany({
+      where: {
+        id: event.paymentId,
+        status: "pending",
+        ...(event.providerCheckoutId ? { OR: [{ providerCheckoutId: null }, { providerCheckoutId: event.providerCheckoutId }] } : {}),
+      },
+      data: { status: event.kind },
+    });
+    outcome = updated.count === 1 ? "applied" : "not_payable";
+  } else if (event.kind === "refunded") {
+    outcome = await prisma.$transaction(async (tx) => {
+      const payment = await tx.subscriptionPayment.findUnique({ where: { providerPaymentId: event.providerPaymentId } });
+      if (!payment || payment.provider !== provider) return "unknown_payment" as const;
+      paymentId = payment.id;
+      // A partial refund is recorded in the ledger only; access is unchanged.
+      if (!event.fullyRefunded || event.amountRefundedMinorUnits < payment.amountMinorUnits) return "recorded" as const;
+      if (payment.status === "refunded") return "duplicate" as const;
+      if (payment.status !== "paid") return "not_payable" as const;
+
+      const locked = await tx.$queryRawUnsafe<Array<{ id: string }>>(
+        'SELECT "id" FROM "Account" WHERE "id" = $1 FOR UPDATE', payment.accountId,
+      );
+      if (locked.length !== 1) return "unknown_payment" as const;
+      const account = await tx.account.findUnique({ where: { id: payment.accountId } });
+      const now = new Date();
+      await tx.subscriptionPayment.update({ where: { id: payment.id }, data: { status: "refunded", refundedAt: now } });
+      // Take back only the access this payment added, and only while it is still the
+      // payment that set the current end date (a later payment keeps its own period).
+      if (account && payment.accessEndsAt && account.subscriptionEndsAt &&
+          account.subscriptionEndsAt.getTime() === payment.accessEndsAt.getTime()) {
+        const restoredEnd = payment.accessStartedAt && payment.accessStartedAt > now ? payment.accessStartedAt : now;
+        await tx.account.update({
+          where: { id: account.id },
+          data: restoredEnd > now
+            ? { subscriptionEndsAt: restoredEnd }
+            : { subscriptionEndsAt: restoredEnd, subscriptionStatus: "inactive" },
+        });
+      }
+      return "applied" as const;
+    });
+  }
+
+  try {
+    await prisma.paymentProviderEvent.create({
+      data: { provider, eventId: event.eventId, type: type.slice(0, 100), outcome, paymentId },
+    });
+  } catch (error) {
+    // A concurrent delivery of the same event recorded it first.
+    if ((error as { code?: string } | null)?.code === "P2002") return "duplicate";
+    throw error;
+  }
+  return outcome;
 }
