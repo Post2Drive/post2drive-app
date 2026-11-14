@@ -31,7 +31,8 @@ assert.match(expiryWording("MOT", "AB12 CDE", 0).title, /today/);
 // Billing wording never claims a charge while no provider is connected.
 assert.match(planRenewalBody("£5.00", false), /will be due/);
 assert.doesNotMatch(planRenewalBody("£5.00", false), /will be charged/);
-assert.match(planRenewalBody("£5.00", true), /will be charged/);
+assert.doesNotMatch(planRenewalBody("£5.00", true), /will be charged/, "nothing is ever charged automatically");
+assert.match(planRenewalBody("£5.00", true), /Pay in Account settings/);
 assert.match(planRenewalBody(null, false), /^Your plan renews tomorrow:/);
 
 // ---- Helper, provider and scheduler structure ----
@@ -43,7 +44,7 @@ assert.doesNotMatch(source("lib/pushProvider.ts"), /from "(firebase|web-push|apn
 assert.match(source("lib/providerContracts.ts"), /interface PushNotificationProvider/);
 const scheduled = source("lib/scheduledNotifications.ts");
 assert.match(scheduled, /export async function runScheduledNotifications/);
-assert.match(scheduled, /PAYMENT_PROVIDER_CONNECTED/, "billing wording must depend on the payment-provider flag");
+assert.match(scheduled, /subscriptionCheckoutConnected\(\)/, "billing wording must depend on whether subscription checkout is connected");
 assert.match(scheduled, /marketTimeZone/, "reminders must use the account market timezone");
 for (const key of ["vehicle-${kind}-expiry:", "correction-deadline:", "plan-renewal:", "free-ending:"]) {
   assert.ok(scheduled.includes(key), `scheduled eventKey ${key}`);

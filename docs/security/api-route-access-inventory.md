@@ -71,10 +71,11 @@
 | 62 | `/api/security/csp-report` | POST | Public browser-report endpoint; rate-limited and handles reports as untrusted input. |
 | 63 | `/api/signup` | POST | Public entry point; network rate limit, bounded/typed fields, supported market/currency validation and country-specific verification policy. |
 | 64 | `/api/subscription/create-payment` | POST | NextAuth session; account access, suspension and market/plan eligibility checks before creating a pending provider-payment record. |
-| 65 | `/api/subscription/webhook` | POST | Shared secret in request header with constant-time comparison; validates payment ID/body before applying an idempotent subscription transition. |
-| 66 | `/api/vehicles` | GET, PATCH, POST | NextAuth session and account-scoped lookup; POST checks account type, suspension, market-specific registration/insurance inputs and bounded data; PATCH updates only the caller's own vehicle and returns it to admin review. |
-| 67 | `/api/verification/start` | POST | NextAuth session; person-verification initiation is restricted to GB/GBP; India remains phone-only. |
-| 68 | `/api/verification/start/webhook` | POST | Shared verification secret with constant-time comparison; validates attempt/status/provider reference and delegates to guarded lifecycle transition logic. |
+| 65 | `/api/subscription/webhook` | POST | Provider-neutral test hook, disabled (404) when DEPLOYMENT_ENVIRONMENT is production. Shared secret in request header with constant-time comparison; validates payment ID/body before applying an idempotent subscription transition. |
+| 66 | `/api/subscription/webhook/stripe` | POST | Stripe-Signature HMAC over the raw body with a 5-minute tolerance (no session, no shared header secret); body size cap; live/test mode must match; applied once through the PaymentProviderEvent ledger with amount/currency/account binding. |
+| 67 | `/api/vehicles` | GET, PATCH, POST | NextAuth session and account-scoped lookup; POST checks account type, suspension, market-specific registration/insurance inputs and bounded data; PATCH updates only the caller's own vehicle and returns it to admin review. |
+| 68 | `/api/verification/start` | POST | NextAuth session; person-verification initiation is restricted to GB/GBP; India remains phone-only. |
+| 69 | `/api/verification/start/webhook` | POST | Shared verification secret with constant-time comparison; validates attempt/status/provider reference and delegates to guarded lifecycle transition logic. |
 
 ## Test evidence map
 

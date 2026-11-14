@@ -36,8 +36,15 @@ export function expiryWording(label: string, regPlate: string, daysLeft: 7 | 1 |
 
 export function planRenewalBody(price: string | null, providerConnected: boolean) {
   const amount = price ? `${price} ` : "";
+  // Nothing is ever taken automatically: with checkout connected the user pays in the app.
   return providerConnected
-    ? `Your plan renews tomorrow: ${amount}will be charged.`
+    ? `Your plan renews tomorrow: ${amount}will be due. Pay in Account settings to keep your access.`
     : `Your plan renews tomorrow: ${amount}will be due. No payment provider is connected yet, so nothing is charged automatically.`;
+}
+
+export function freePeriodEndingBody(providerConnected: boolean) {
+  return providerConnected
+    ? "Your free access ends tomorrow. After that your plan will be due. Nothing is charged automatically: you pay in Account settings."
+    : "Your free access ends tomorrow. After that your plan will be due. No payment provider is connected yet, so nothing is charged automatically.";
 }
 

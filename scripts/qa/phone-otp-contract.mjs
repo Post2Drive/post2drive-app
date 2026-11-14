@@ -74,7 +74,7 @@ assert.match(request, /provider\.sendOtp\(\{ toE164: context\.phone, code: issue
 const sms = read("lib/smsProvider.ts");
 assert.match(sms, /DEPLOYMENT_ENVIRONMENT\?\.trim\(\)\.toLowerCase\(\) === "production"\) return false/, "sandbox can never run in production");
 assert.match(sms, /return isStagingTestPhoneVerificationEnabled\(\);/, "sandbox also needs the staging QA guard");
-assert.match(sms, /if \(isSmsSandboxEnabled\(\)\) return sandboxSmsProvider;\s*return null;/, "no implicit fallback provider");
+assert.match(sms, /if \(isSmsSandboxEnabled\(\)\) return sandboxSmsProvider;\s*return createSmsAdapter\(route\.providerName\);/, "no implicit fallback: only the carrier named for the route, and only with its credentials (qa:provider-adapters proves it returns null otherwise)");
 
 const account = read("app/api/account/route.ts");
 assert.match(account, /if \(phoneChanged && account\.phoneVerifiedAt\) \{\s*accountData\.phoneVerifiedAt = null;/, "changing the number clears verification");

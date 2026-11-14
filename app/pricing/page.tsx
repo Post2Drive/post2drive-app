@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
 import SubscriptionPricing from "@/components/subscription-pricing";
+import { subscriptionCheckoutConnected } from "@/lib/paymentProvider";
+
+// Reads provider configuration at request time, not at build time.
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Pricing – Post2Drive",
@@ -32,11 +36,14 @@ export default function PricingPage() {
             color: "var(--color-muted)",
           }}
         >
-          Everything you could pay and everything you will need, shown before you create an account. No per-job fees, no commission, no hidden charges. Checkout is not connected yet, so nothing is charged today.
+          Everything you could pay and everything you will need, shown before you create an account. No per-job fees, no commission, no hidden charges.{" "}
+          {subscriptionCheckoutConnected()
+            ? "Nothing is taken automatically: you pay each period yourself on a secure checkout page."
+            : "Checkout is not connected yet, so nothing is charged today."}
         </p>
       </div>
 
-      <SubscriptionPricing />
+      <SubscriptionPricing checkoutConnected={subscriptionCheckoutConnected()} />
     </main>
   );
 }

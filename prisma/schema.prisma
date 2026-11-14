@@ -246,9 +246,28 @@ model SubscriptionPayment {
 
   createdAt DateTime  @default(now())
   paidAt    DateTime?
+  // Set when the provider reports the whole payment refunded.
+  refundedAt DateTime?
 
   @@index([accountId, createdAt])
   @@index([accountId, status])
+}
+
+/// Ledger of signature-verified payment-provider webhook events. The unique
+/// (provider, eventId) pair makes redelivered events a no-op. Holds no card
+/// data and no personal data: only ids, the event type and the outcome.
+model PaymentProviderEvent {
+  id         String   @id @default(cuid())
+  provider   String
+  eventId    String
+  type       String
+  outcome    String
+  paymentId  String?
+  receivedAt DateTime @default(now())
+
+  @@unique([provider, eventId])
+  @@index([paymentId])
+  @@index([receivedAt])
 }
 
 // Launch windows (EXECUTION_PLAN §4). Single row id "global", set by an operator.

@@ -14,6 +14,7 @@ import {
   isUkAccount,
 } from "@/lib/uk";
 import { isWeeklyPricingEligible } from "@/lib/pricing";
+import { subscriptionCheckoutConnected } from "@/lib/paymentProvider";
 
 
 
@@ -64,6 +65,7 @@ function StatCard({
 }
 
 export default async function DashboardOverviewPage() {
+  const checkoutConnected = subscriptionCheckoutConnected();
   const session =
     await getServerSession(
       authOptions
@@ -600,7 +602,7 @@ export default async function DashboardOverviewPage() {
           {entitlementStatus?.billing?.nextBillingAt && (
             <p>
               Next billing date: <strong>{formatMarketDate(entitlementStatus.billing.nextBillingAt, { country: account.country, currency: account.currency })}</strong>
-              {entitlementStatus.billing.period ? ` (${entitlementStatus.billing.plan === "poster" ? "monthly" : "every 7 days"})` : ""}. Checkout is not connected yet, so nothing is charged in the app.
+              {entitlementStatus.billing.period ? ` (${entitlementStatus.billing.plan === "poster" ? "monthly" : "every 7 days"})` : ""}. {checkoutConnected ? "Nothing is taken automatically: you pay each period yourself." : "Checkout is not connected yet, so nothing is charged in the app."}
             </p>
           )}
 
@@ -652,7 +654,9 @@ export default async function DashboardOverviewPage() {
               </p>
             )}
             <p role="note" style={{ color: "var(--color-muted)", fontSize: 13 }}>
-              This is a planning price only. Payment checkout is not connected yet, so paid access cannot currently be purchased or renewed in the app.
+              {checkoutConnected
+                ? "You pay each period yourself on a secure checkout page. Nothing is taken automatically."
+                : "This is a planning price only. Payment checkout is not connected yet, so paid access cannot currently be purchased or renewed in the app."}
             </p>
           </>
         ) : (

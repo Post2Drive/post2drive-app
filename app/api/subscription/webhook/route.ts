@@ -13,6 +13,11 @@ function constantTimeSecretEqual(expected: string, supplied: string) {
 }
 
 async function POSTHandler(request: Request) {
+  // Provider-neutral test hook only. Production confirms payments solely through
+  // the signature-verified provider webhook (/api/subscription/webhook/stripe).
+  if (process.env.DEPLOYMENT_ENVIRONMENT?.trim().toLowerCase() === "production") {
+    return NextResponse.json({ error: "Not found." }, { status: 404 });
+  }
   const expectedSecret = process.env.SUBSCRIPTION_WEBHOOK_SECRET;
   const providedSecret = request.headers.get("x-post2drive-webhook-secret");
 

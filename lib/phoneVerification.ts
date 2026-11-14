@@ -1,5 +1,6 @@
 import { isQaRunnerEnabled } from "@/lib/qaRunnerGuard";
 import { MARKETS } from "@/lib/market";
+import { createSmsAdapter } from "@/lib/smsAdapters";
 
 /**
  * Provider-independent phone/SMS routing.
@@ -21,7 +22,7 @@ export type PhoneRouteResult =
       providerSlot: SmsProviderSlot;
       providerName: string | null;
       ready: boolean;
-      reason: "provider-selection-required" | "provider-adapter-not-integrated";
+      reason: "provider-selection-required" | "provider-adapter-not-integrated" | "provider-ready";
     }
   | {
       supported: false;
@@ -68,11 +69,12 @@ export function resolvePhoneRoute(value: unknown): PhoneRouteResult {
     return { supported: false, country: null, providerSlot: null, providerName: null, ready: false, reason: "unsupported-country" };
   }
 
-  // Provider selection alone is insufficient: an adapter must also be coded,
-  // registered, and tested. No SMS adapter is integrated in this module.
+  // Provider selection alone is insufficient: the named adapter must exist in
+  // lib/smsAdapters.ts and have its credentials set. This module sends nothing.
+  const ready = createSmsAdapter(providerName) !== null;
   return {
-    supported: true, country, providerSlot, providerName, ready: false,
-    reason: providerName ? "provider-adapter-not-integrated" : "provider-selection-required",
+    supported: true, country, providerSlot, providerName, ready,
+    reason: ready ? "provider-ready" : providerName ? "provider-adapter-not-integrated" : "provider-selection-required",
   };
 }
 
