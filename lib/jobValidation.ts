@@ -1,3 +1,4 @@
+import { rulesForCountry } from "./marketRules.ts";
 import { VEHICLE_TYPES } from "@/lib/vehicles";
 import { marketForAccount, type MarketIdentity } from "@/lib/market";
 import { getTimeZoneOptions } from "@/lib/localisation";
@@ -98,7 +99,7 @@ export function validateJobInput(body: unknown, expectedMarket?: MarketIdentity)
 
     const country = expectedMarket?.country ?? "GB";
     const price = optionalNumber(input.price, "Price", 0.01, 100000000);
-    if (price === null && country !== "IN") return { ok: false, error: "Price must be greater than zero." };
+    if (price === null && !rulesForCountry(country).priceOptional) return { ok: false, error: "Price must be greater than zero." };
     const weightKg = optionalNumber(input.weightKg, "Weight", 0, 1000000);
     const pricePerMile = optionalNumber(input.pricePerMile, "Price per mile", 0.01, 100000);
     const pickupLat = optionalNumber(input.pickupLat, "Pickup latitude", -90, 90);
@@ -122,7 +123,7 @@ export function validateJobInput(body: unknown, expectedMarket?: MarketIdentity)
     if (input.crossBorder === true) return { ok: false, error: "Cross-border matching is not currently available. Jobs are limited to your selected market." };
 
     const currency = typeof input.currency === "string" ? input.currency.trim().toUpperCase() : "";
-    if (country === "IN" && priceMode === "bid") {
+    if (priceMode === "bid" && !rulesForCountry(country).biddingAllowed) {
       return { ok: false, error: "Bidding is not available in India. Use fixed quote pricing." };
     }
     const defaultTimeZone = marketForAccount(expectedMarket ?? { country: "GB", currency: "GBP" })?.timeZone ?? "Europe/London";

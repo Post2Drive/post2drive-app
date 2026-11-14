@@ -36,4 +36,22 @@ for (const [file, pattern] of [
   eq(pattern.test(readFileSync(file, "utf8")), false, `${file} no longer hard-codes a market`);
 }
 
+// Batch 2: signup and job pricing rules.
+eq(rulesForCountry("IN").emailRequired, false, "India signup does not require email");
+eq(rulesForCountry("GB").emailRequired, true, "UK signup requires email");
+eq(rulesForCountry("IN").companyRequired, false, "India signup does not require a company name");
+eq(rulesForCountry("US").companyRequired, true, "other markets require a company name");
+eq(rulesForCountry("IN").collectsMarketResearch, true, "India collects market research");
+eq(rulesForCountry("GB").collectsMarketResearch, false, "UK does not collect market research");
+eq(rulesForCountry("IN").priceOptional, true, "India jobs may omit a fixed price");
+eq(rulesForCountry("GB").priceOptional, false, "UK jobs need a price");
+eq(rulesForCountry("IN").biddingAllowed, false, "India has no bidding");
+eq(rulesForCountry("GB").biddingAllowed, true, "UK allows bidding");
+for (const [file, pattern] of [
+  ["app/api/signup/route.ts", /country (===|!==) "(IN|GB)"/],
+  ["lib/jobValidation.ts", /country (===|!==) "IN"/],
+]) {
+  eq(pattern.test(readFileSync(file, "utf8")), false, `${file} no longer hard-codes a market`);
+}
+
 console.log(`market rules contract passed (${checks} checks)`);

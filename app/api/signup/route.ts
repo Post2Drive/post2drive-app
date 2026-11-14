@@ -1,3 +1,4 @@
+import { rulesForCountry } from "@/lib/marketRules";
 import { withApiMetrics } from "@/lib/apiMetrics";
 import { NextResponse } from "next/server";
 import { createHash } from "crypto";
@@ -95,10 +96,10 @@ async function POSTHandler(
 
     if (
       !name ||
-      (country !== "IN" && !String(email || "").trim()) ||
+      (rulesForCountry(country).emailRequired && !String(email || "").trim()) ||
       !phone ||
       !password ||
-      (!isSoleTrader && country !== "IN" && !String(companyName || "").trim()) ||
+      (!isSoleTrader && rulesForCountry(country).companyRequired && !String(companyName || "").trim()) ||
       !country ||
       !currency ||
       termsAccepted !== true ||
@@ -200,12 +201,12 @@ async function POSTHandler(
     // Optional at signup for posters; required before a driver/fleet can drive during the driver window.
     const normalizedRegion = normalizeOperatingRegion(country, operatingRegion);
     if (normalizedRegion === "invalid") {
-      return NextResponse.json({ error: country === "GB" ? "Enter your operating area as a UK postcode area: 1 or 2 letters, for example LS, M or SW." : "Enter a valid operating region code." }, { status: 400 });
+      return NextResponse.json({ error: rulesForCountry(country).regionFormat === "uk-postcode-area" ? "Enter your operating area as a UK postcode area: 1 or 2 letters, for example LS, M or SW." : "Enter a valid operating region code." }, { status: 400 });
     }
 
     // Derive plan server-side from vehicle count — ignore client-supplied planType entirely.
     const selectedPlan = parsedFleetVehicleCount === 1 ? "individual" : "fleet";
-    const normalizedCompanyName = cleanCompanyName || (country === "IN" || isSoleTrader ? cleanName : "");
+    const normalizedCompanyName = cleanCompanyName || (!rulesForCountry(country).companyRequired || isSoleTrader ? cleanName : "");
 
     // Canonical ASCII form only, so a look-alike Unicode address cannot
     // register beside an existing account.
@@ -348,7 +349,7 @@ async function POSTHandler(
                 companyNumber: typeof companyNumber === "string" && companyNumber.trim() ? companyNumber.trim() : null,
                 termsAcceptedAt: new Date(),
                 termsVersion: "2026-10-16",
-                marketResearch: country === "IN" ? normalizeMarketResearch(marketResearch) : undefined,
+                marketResearch: rulesForCountry(country).collectsMarketResearch ? normalizeMarketResearch(marketResearch) : undefined,
 
                 isSoleTrader:
                   Boolean(
@@ -387,7 +388,7 @@ async function POSTHandler(
 
                     passwordHash,
 
-                    emailVerifiedAt: isPilotAccess || verificationRequired ? null : (country !== "IN" && normalizedEmail ? new Date() : null),
+                    emailVerifiedAt: isPilotAccess || verificationRequired ? null : (rulesForCountry(country).emailRequired && normalizedEmail ? new Date() : null),
 
                     role:
                       "owner",
