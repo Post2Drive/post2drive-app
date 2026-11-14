@@ -1,3 +1,4 @@
+import { rulesForAccount } from "./marketRules.ts";
 /*
  * Vehicle approval, fleet ownership/insurance rules, driver licence identity and
  * per-job driver records (EXECUTION_PLAN §6). Pure functions only,
@@ -225,6 +226,6 @@ export function driverRecordView(
 
 /** The 0.50 fee applies to every vehicle beyond the first (§5); India is fee-free. */
 export function chargesAdditionalVehicleFee(existingVehicleCount: number, market: { country: string; currency: string }) {
-  if (market.country === "IN" && market.currency === "INR") return false;
+  if (rulesForAccount(market).feeFree) return false;
   return existingVehicleCount >= 1;
 }

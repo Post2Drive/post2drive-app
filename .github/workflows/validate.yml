@@ -102,6 +102,8 @@ jobs:
         run: npm run qa:attack-class-hardening
       - name: Job status transition contract
         run: npm run qa:job-transitions
+      - name: Market rules contract
+        run: npm run qa:market-rules
       - name: Provider adapters contract (email, SMS, payments)
         run: npm run qa:provider-adapters
       - name: Cross-site write guard and security headers contract

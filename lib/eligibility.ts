@@ -1,3 +1,4 @@
+import { rulesForAccount, rulesForCountry } from "./marketRules.ts";
 import { prisma } from "@/lib/prisma";
 import { getLocalisationProfile } from "@/lib/localisation";
 import { marketDateKey } from "@/lib/vehicleDates";
@@ -51,7 +52,7 @@ export function isIndiaPhoneVerifiedAccount(account: {
   currency?: string | null;
   phoneVerifiedAt?: Date | string | null;
 }) {
-  return account.country === "IN" && account.currency === "INR" && Boolean(account.phoneVerifiedAt);
+  return rulesForAccount(account).phoneFirst && Boolean(account.phoneVerifiedAt);
 }
 
 /**
@@ -63,6 +64,6 @@ export function isIndiaPhoneVerifiedAccount(account: {
  */
 export function canPostJobs(account: { verificationStatus: string; companyVerificationStatus: string; country?: string | null; currency?: string | null; phoneVerifiedAt?: Date | string | null }) {
   if (isIndiaPhoneVerifiedAccount(account)) return true;
-  if (account.country === "IN") return false;
+  if (rulesForCountry(account.country).phoneFirst) return false;
   return Boolean(account.phoneVerifiedAt) && account.verificationStatus === "verified" && account.companyVerificationStatus === "verified";
 }

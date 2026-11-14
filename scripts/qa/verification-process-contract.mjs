@@ -22,6 +22,16 @@ assert.equal(proc.verificationPathForAccount("both", 0), "poster", "no vehicle: 
 assert.equal(proc.verificationPathForAccount("both", 1), "driver", "vehicle registered: driver path 3.50, no 2.50");
 assert.equal(proc.verificationPathForAccount("poster", 3), "poster");
 assert.equal(proc.verificationPathForAccount("driver", 0), "driver");
+// lib/marketRules.ts is pure: load it for real with a stub for its market table.
+const marketRulesModule = (() => {
+  const out = ts.transpileModule(read("lib/marketRules.ts"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
+  const mod = { exports: {} };
+  vm.runInNewContext(out, { module: mod, exports: mod.exports, require: (name) => {
+    if (name === "./market.ts") return { MARKETS: { GB: { currency: "GBP" }, IN: { currency: "INR" } } };
+    throw new Error("unexpected " + name);
+  } });
+  return mod.exports;
+})();
 const eligibility = { canPostJobs: null, isIndiaPhoneVerifiedAccount: null };
 {
   // lib/eligibility.ts imports prisma; load only its pure exports with stubs.
@@ -31,6 +41,7 @@ const eligibility = { canPostJobs: null, isIndiaPhoneVerifiedAccount: null };
     if (name === "@/lib/prisma") return { prisma: {} };
     if (name === "@/lib/localisation") return { getLocalisationProfile: () => null };
     if (name === "@/lib/vehicleDates") return { marketDateKey: () => "2026-01-01" };
+    if (name === "./marketRules.ts") return marketRulesModule;
     throw new Error("unexpected " + name);
   } });
   Object.assign(eligibility, mod.exports);
@@ -227,6 +238,7 @@ function loadVerification(prisma) {
     "@/lib/verificationProcess": proc,
     "@/lib/verificationFees": fees,
     "@/lib/referrals": { markReferralVerified: async () => {} },
+    "./marketRules.ts": marketRulesModule,
   })[name] ?? (() => { throw new Error("unexpected dependency " + name); })() });
   return mod.exports;
 }
