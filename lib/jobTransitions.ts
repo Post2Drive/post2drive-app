@@ -2,14 +2,19 @@ import type { JobStatus } from "@/lib/jobState";
 
 /**
  * The only legal job status moves. Every route that writes `Job.status` must
- * use one of these edges; scripts/qa/job-transitions-contract.mjs checks that
- * each write site's declared from-state is listed here.
+ * use one of these edges. scripts/qa/job-transitions-contract.mjs reads each
+ * write site's guard and target and checks them against this table; routes
+ * whose guard comes from an earlier read also call `canTransition` before the
+ * update.
  */
 export const JOB_TRANSITIONS: Readonly<Record<JobStatus, readonly JobStatus[]>> = {
   open: ["accepted", "cancelled"],
   accepted: ["in_transit", "open", "cancelled"],
   in_transit: ["delivered", "cancelled"],
-  delivered: ["completed", "in_transit", "cancelled"],
+  // Delivery history is never erased: a delivered job is confirmed, or returned to
+  // in_transit when the poster rejects delivery. Problems after delivery go through
+  // the dispute and incident workflow, not cancellation.
+  delivered: ["completed", "in_transit"],
   completed: [],
   cancelled: [],
 };

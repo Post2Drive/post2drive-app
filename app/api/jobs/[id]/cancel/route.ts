@@ -1,3 +1,4 @@
+import { canTransition } from "@/lib/jobTransitions";
 import { notify } from "@/lib/notify";
 import { withApiMetrics } from "@/lib/apiMetrics";
 import { enforceRateLimit } from "@/lib/rateLimit";
@@ -94,6 +95,11 @@ async function POSTHandler(
       },
       { status: 429 }
     );
+  }
+
+  // The table is the authority; the check above only gives a friendlier message.
+  if (!canTransition(job.status, "cancelled")) {
+    return NextResponse.json({ error: "This job can no longer be cancelled." }, { status: 409 });
   }
 
   const previousStatus = job.status;
