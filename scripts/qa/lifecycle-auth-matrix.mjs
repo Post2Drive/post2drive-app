@@ -91,6 +91,16 @@ const genericModule = new Proxy({}, {
   },
 });
 const requireExternal = createRequire(import.meta.url);
+// lib/marketRules.ts is pure: load the real module so market behaviour is not faked.
+const marketRulesModule = (() => {
+  const out = ts.transpileModule(readFileSync("lib/marketRules.ts", "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
+  const mod = { exports: {} };
+  vm.runInNewContext(out, { module: mod, exports: mod.exports, require: (name) => {
+    if (name === "./market.ts") return { MARKETS: { GB: { currency: "GBP" }, IN: { currency: "INR" } } };
+    throw new Error("unexpected " + name);
+  } });
+  return mod.exports;
+})();
 function loadRoute(path) {
   const source = readFileSync(path, "utf8");
   const compiled = ts.transpileModule(source, {
@@ -120,6 +130,7 @@ function loadRoute(path) {
         return { ok: true, bytes, byteLength: bytes.byteLength };
       },
     };
+    if (name === "@/lib/marketRules") return marketRulesModule;
     if (name.startsWith("@/lib/")) return genericModule;
     try { return requireExternal(name); } catch { return genericModule; }
   };
