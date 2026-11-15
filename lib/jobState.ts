@@ -4,7 +4,8 @@ export type JobStatus =
   | "in_transit"
   | "delivered"
   | "completed"
-  | "cancelled";
+  | "cancelled"
+  | "disputed";
 
 export const JOB_STATUS_LABELS: Record<
   JobStatus,
@@ -16,6 +17,7 @@ export const JOB_STATUS_LABELS: Record<
   delivered: "Delivery awaiting confirmation",
   completed: "Completed",
   cancelled: "Cancelled",
+  disputed: "Under review",
 };
 
 export function canConfirmPickup(
@@ -70,6 +72,7 @@ export function isInvolvedStatus(
     status === "accepted" ||
     status === "in_transit" ||
     status === "delivered" ||
-    status === "completed"
+    status === "completed" ||
+    status === "disputed"
   );
 }

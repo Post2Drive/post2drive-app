@@ -64,6 +64,7 @@ enum JobStatus {
   delivered
   completed
   cancelled
+  disputed
 }
 
 enum PriceMode {

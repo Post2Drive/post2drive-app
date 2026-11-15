@@ -98,6 +98,7 @@ const TABS = [
       "accepted",
       "in_transit",
       "delivered",
+      "disputed",
     ],
   },
   {

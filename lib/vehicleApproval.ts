@@ -207,7 +207,7 @@ export function parseFleetDriverInput(body: unknown): { ok: true; value: FleetDr
   return { ok: true, value: { driverName, licence, vehicleId } };
 }
 
-const DRIVER_RECORD_VISIBLE_STATUSES = ["accepted", "in_transit", "delivered", "completed"];
+const DRIVER_RECORD_VISIBLE_STATUSES = ["accepted", "in_transit", "delivered", "completed", "disputed"];
 
 /**
  * What a job party sees about the assigned driver: name, licence last 4 and the

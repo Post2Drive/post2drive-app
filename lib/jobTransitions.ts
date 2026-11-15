@@ -10,11 +10,13 @@ import type { JobStatus } from "@/lib/jobState";
 export const JOB_TRANSITIONS: Readonly<Record<JobStatus, readonly JobStatus[]>> = {
   open: ["accepted", "cancelled"],
   accepted: ["in_transit", "open", "cancelled"],
-  in_transit: ["delivered", "cancelled"],
+  in_transit: ["delivered", "cancelled", "disputed"],
   // Delivery history is never erased: a delivered job is confirmed, or returned to
   // in_transit when the poster rejects delivery. Problems after delivery go through
   // the dispute and incident workflow, not cancellation.
-  delivered: ["completed", "in_transit"],
+  delivered: ["completed", "in_transit", "disputed"],
+  // Under review by an administrator. Only an admin resolution leaves this state.
+  disputed: ["completed", "cancelled", "in_transit"],
   completed: [],
   cancelled: [],
 };
