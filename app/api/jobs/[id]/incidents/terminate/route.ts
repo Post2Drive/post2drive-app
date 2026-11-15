@@ -1,3 +1,4 @@
+import { canTransition } from "@/lib/jobTransitions";
 import { notify } from "@/lib/notify";
 import { withApiMetrics } from "@/lib/apiMetrics";
 import { enforceRateLimit } from "@/lib/rateLimit";
@@ -80,6 +81,10 @@ async function POSTHandler(req: Request, { params }: RouteContext) {
   const reportedReason = (incident.metadata as any)?.reason;
   if (reportedReason !== reason) {
     return NextResponse.json({ error: "The termination reason must match the original incident report. Submit a separate incident if a different issue has arisen." }, { status: 400 });
+  }
+
+  if (!canTransition(job.status, "cancelled")) {
+    return NextResponse.json({ error: "This job is not in a state that can be terminated through an incident." }, { status: 409 });
   }
 
   const cancelledAt = new Date();

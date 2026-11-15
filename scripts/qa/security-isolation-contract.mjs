@@ -344,6 +344,7 @@ const cancellationTx = {
   notification: { create: async () => ({}) },
 };
 const cancelRoute = loadTypeScriptModule("app/api/jobs/[id]/cancel/route.ts", {
+  "@/lib/jobTransitions": { canTransition: (from, to) => to === "cancelled" && (from === "open" || from === "accepted" || from === "in_transit") },
   "@/lib/notify": { notify: async (db, input) => db.notification.create({ data: input }) },
   "@/lib/rateLimit": { enforceRateLimit: async () => null },
   "@/lib/apiMetrics": { withApiMetrics: (_name, handler) => handler },

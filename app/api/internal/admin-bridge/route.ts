@@ -1,3 +1,4 @@
+import { canTransition } from "@/lib/jobTransitions";
 import { createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from "crypto";
 import { NextResponse } from "next/server";
 import { withApiMetrics } from "@/lib/apiMetrics";
@@ -159,6 +160,7 @@ async function handler(req: Request) {
       if (typeof reason !== "string" || !ALLOWED_TERMINATION_REASONS.has(reason)) return NextResponse.json({ error: "This incident type is not eligible for termination; preserve the job history and use the dispute workflow." }, { status: 409 });
       if (job.status !== "accepted" && job.status !== "in_transit") return NextResponse.json({ error: "Only an accepted or in-transit job can be terminated through an incident resolution." }, { status: 409 });
     }
+    if (outcome === "terminate_with_incident" && !canTransition(job.status, "cancelled")) return NextResponse.json({ error: "This job is not in a state that can be terminated through an incident resolution." }, { status: 409 });
     const resolvedAt = new Date();
     const result = await prisma.$transaction(async tx => {
       let finalStatus = job.status;

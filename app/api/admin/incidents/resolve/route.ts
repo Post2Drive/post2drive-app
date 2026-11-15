@@ -1,3 +1,4 @@
+import { canTransition } from "@/lib/jobTransitions";
 import { withApiMetrics } from "@/lib/apiMetrics";
 import { NextResponse } from "next/server";
 import { readBoundedJson } from "@/lib/requestBody";
@@ -135,6 +136,10 @@ async function POSTHandler(req: Request) {
         ? "Delivery has already been marked. Preserve that history and record a delivery/damage/payment dispute instead."
         : "Only an accepted or in-transit job can be terminated through an incident resolution.",
     }, { status: 409 });
+  }
+
+  if (outcome === "terminate_with_incident" && !canTransition(job.status, "cancelled")) {
+    return NextResponse.json({ error: "This job is not in a state that can be terminated through an incident resolution." }, { status: 409 });
   }
 
   const resolvedAt = new Date();
