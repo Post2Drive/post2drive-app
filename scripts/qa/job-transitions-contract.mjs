@@ -73,6 +73,14 @@ for (const file of ["app/api/jobs/[id]/incidents/terminate/route.ts", "app/api/a
 
 ok(/job\.status !== "in_transit" && job\.status !== "delivered"/.test(read("app/api/jobs/[id]/dispute/route.ts")), "dispute refuses anything but in_transit or delivered");
 
+// A second rejected delivery goes to review instead of back to transit.
+const rejectSrc = read("app/api/jobs/[id]/reject-delivered/route.ts");
+ok(canTransition("delivered", "disputed"), "reject-delivered: delivered -> disputed is in the table");
+ok(rejectSrc.includes('canTransition("delivered", "disputed")'), "reject-delivered checks the table before escalating");
+ok(/where:\s*\{\s*id: job\.id,\s*status: "delivered",\s*deliveryMarkedById: job\.deliveryMarkedById\s*\},\s*data:\s*\{\s*status: "disputed"\s*\}/.test(rejectSrc), "escalation only acts on a delivered job and keeps the delivery mark");
+ok(/toStatus:\s*"disputed"/.test(rejectSrc) && /action:\s*"DISPUTE_OPENED"/.test(rejectSrc), "escalation logs a dispute");
+ok(rejectSrc.indexOf('status: "in_transit"') < rejectSrc.indexOf('status: "disputed"'), "the plain rejection stays the first write in the route");
+
 // Dispute resolution: every outcome must be a legal move out of `disputed`, the
 // route must only act on disputed jobs, and nothing may leave a frozen job another way.
 import { DISPUTE_OUTCOMES, DISPUTE_REASONS } from "../../lib/disputes.ts";

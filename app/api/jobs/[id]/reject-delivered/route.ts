@@ -2,6 +2,7 @@ import { notify } from "@/lib/notify";
 import { withApiMetrics } from "@/lib/apiMetrics";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { requireJobMarketAccess } from "@/lib/jobMarket";
+import { canTransition } from "@/lib/jobTransitions";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -109,6 +110,19 @@ async function POSTHandler(
     );
   }
 
+  // A second rejection means the two sides cannot settle it between themselves:
+  // the job goes to an administrator instead of bouncing back to in transit.
+  const priorRejections = await prisma.jobActivity.count({
+    where: { jobId: routeParams.id, action: "DELIVERY_REJECTED" },
+  });
+  if (priorRejections >= 1 && canTransition("delivered", "disputed")) {
+    const escalated = await escalateToDispute(job, accountId, priorRejections + 1);
+    if (!escalated) {
+      return NextResponse.json({ error: "This delivery state has already changed. Refresh and try again." }, { status: 409 });
+    }
+    return NextResponse.json({ success: true, disputed: true, job: escalated });
+  }
+
   const updated = await prisma.$transaction(async (tx) => {
     const transition = await tx.job.updateMany({
       where: {
@@ -160,4 +174,53 @@ async function POSTHandler(
     job: updated,
   });
 }
+
+type RejectedJob = { id: string; posterId: string; acceptedById: string | null; deliveryMarkedById: string | null };
+
+async function escalateToDispute(job: RejectedJob, rejecterId: string, rejectionCount: number) {
+  const rejecterRole = job.posterId === rejecterId ? "poster" : "driver";
+  return prisma.$transaction(async (tx) => {
+    const transition = await tx.job.updateMany({
+      where: { id: job.id, status: "delivered", deliveryMarkedById: job.deliveryMarkedById },
+      data: { status: "disputed" },
+    });
+    if (transition.count !== 1) return null;
+
+    const changedJob = await tx.job.findUniqueOrThrow({ where: { id: job.id } });
+    const activity = await tx.jobActivity.create({
+      data: {
+        jobId: job.id,
+        actorId: rejecterId,
+        action: "DISPUTE_OPENED",
+        fromStatus: "delivered",
+        toStatus: "disputed",
+        description: `The ${rejecterRole} rejected the delivery a second time, so the job is under review.`,
+        metadata: {
+          schemaVersion: 1,
+          reason: "delivery_confirmation",
+          notes: "Delivery was rejected twice, so this was sent for review automatically.",
+          openedByRole: rejecterRole,
+          previousStatus: "delivered",
+          automatic: true,
+          rejectionCount,
+        },
+      },
+    });
+
+    const recipientId = job.deliveryMarkedById;
+    if (recipientId && recipientId !== rejecterId) {
+      await notify(tx, {
+        accountId: recipientId,
+        type: "dispute_opened",
+        title: `Delivery rejected again - now under review`,
+        body: `The ${rejecterRole} rejected delivery for job ${job.id} a second time. The job is under review and cannot change until an administrator decides. You can see the details in the job history.`,
+        jobId: job.id,
+        eventKey: `dispute-opened:${activity.id}:${recipientId}`,
+        metadata: { openedByRole: rejecterRole, reason: "delivery_confirmation", automatic: true },
+      });
+    }
+    return changedJob;
+  });
+}
+
 export const POST = withApiMetrics("/api/jobs/[id]/reject-delivered", POSTHandler);
