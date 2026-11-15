@@ -84,24 +84,6 @@ const primaryButtonStyle: React.CSSProperties = {
   fontWeight: 700,
 };
 
-const secondaryButtonStyle: React.CSSProperties = {
-  background: "var(--color-surface)",
-  color: "var(--color-text)",
-  border: "1px solid var(--color-border)",
-  borderRadius: 8,
-  padding: "9px 14px",
-  fontWeight: 600,
-};
-
-const dangerButtonStyle: React.CSSProperties = {
-  background: "var(--color-surface)",
-  color: "var(--color-danger)",
-  border: "1px solid var(--color-border)",
-  borderRadius: 8,
-  padding: "9px 14px",
-  fontWeight: 600,
-};
-
 // User-facing categories mapped from the underlying job statuses.
 const TABS = [
   {
@@ -273,10 +255,6 @@ export default function JobsPage() {
     Record<string, boolean>
   >({});
 
-  const accountId =
-    (session?.user as any)
-      ?.accountId;
-
 
   const accountCountry =
     (session?.user as any)
@@ -294,7 +272,6 @@ export default function JobsPage() {
 
   // Every verified account can post, bid and fulfil jobs.
   const canAccept = true;
-  const canPost = true;
 
   async function loadJobs() {
     setLoading(true);

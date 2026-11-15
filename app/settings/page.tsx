@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { getLocalisationProfile } from "@/lib/localisation";
 import PhoneVerification from "@/components/phone-verification";
 

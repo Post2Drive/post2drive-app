@@ -54,10 +54,6 @@ const routePaths = findRoutes("app/api");
 const RAW_ERROR_LOG = /console\.(?:error|warn|log)\(\s*[^)]*,\s*error\s*\)/;
 const RAW_MESSAGE_LOG = /console\.(?:error|warn|log)\(\s*[^)]*error\.message\b/;
 
-// Routes that only log a string message with no error argument are fine.
-const ALLOWED_SINGLE_ARG_LOG =
-  /console\.(?:error|warn|log)\(\s*["'`][^"'`]*["'`]\s*\)/;
-
 for (const routePath of routePaths) {
   const src = readRoute(routePath);
   if (!src) continue;
@@ -76,25 +72,6 @@ for (const routePath of routePaths) {
 // Routes that call req.json() or req.text() directly bypass size limits.
 
 const UNBOUNDED_BODY = /\breq\.(?:json|text)\s*\(\s*\)/;
-
-// Routes that are known to read no body (state-transition POSTs that take
-// only path parameters).
-const NO_BODY_ROUTES = new Set([
-  "app/api/jobs/[id]/accept/route.ts",
-  "app/api/jobs/[id]/bids/[bidId]/accept/route.ts",
-  "app/api/jobs/[id]/cancel/route.ts",
-  "app/api/jobs/[id]/confirm-delivered/route.ts",
-  "app/api/jobs/[id]/confirm-pickup/route.ts",
-  "app/api/jobs/[id]/driver-cancel/route.ts",
-  "app/api/jobs/[id]/mark-delivered/route.ts",
-  "app/api/jobs/[id]/payment/confirm-received/route.ts",
-  "app/api/jobs/[id]/payment/mark-paid/route.ts",
-  "app/api/jobs/[id]/reject-delivered/route.ts",
-  "app/api/jobs/[id]/unassign/route.ts",
-  "app/api/notifications/[id]/read/route.ts",
-  "app/api/subscription/create-payment/route.ts",
-  "app/api/verification/start/route.ts",
-]);
 
 for (const routePath of routePaths) {
   const src = readRoute(routePath);
@@ -146,8 +123,6 @@ for (const routePath of routePaths) {
 // The pattern "status: 500" should accompany a string literal error, not
 // an interpolated error.message or a dynamic value.
 
-const RAW_500 = /NextResponse\.json\(\s*\{[^}]*error\s*:\s*error(?:\.message)?\s*[,}]/;
-const SAFE_500_MARKER = /status:\s*500/;
 
 for (const routePath of routePaths) {
   const src = readRoute(routePath);
