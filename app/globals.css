@@ -3271,3 +3271,24 @@ main .dispute-form textarea { display: block; width: 100%; margin-top: 4px; box-
 .dispute-hint { margin: 4px 0 0; font-size: 13px; color: var(--color-muted); }
 main .dispute-resolve { margin-top: 12px; min-height: 44px; padding: 0 16px; background: var(--color-primary-action); color: #fff; border: 0; border-radius: var(--radius-sm); }
 main .dispute-resolve:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Photos and problems (job proof screen). Frequency is low, so no entrance motion. */
+.proof-banner{border:1px solid #E0B24A;background:#FFF8E5;border-radius:12px;padding:16px}
+.proof-stage{border:1px solid var(--color-border);border-radius:12px;padding:16px;background:#FFF}
+.proof-notice{margin:0}
+.proof-notice:not(:empty){margin:0 0 12px;padding:10px 12px;border-left:4px solid #1F7A4D;background:#EAF6EF;color:#14532D;font-weight:600;border-radius:8px}
+.proof-grid{list-style:none;margin:0 0 12px;padding:0;display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(112px,1fr))}
+.proof-thumb{display:block;border:1px solid var(--color-border);border-radius:10px;overflow:hidden;background:#F3F5F9;aspect-ratio:1/1}
+.proof-thumb img{display:block;width:100%;height:100%;object-fit:cover}
+.proof-caption{display:block;margin-top:4px;font-size:13px;color:var(--color-muted)}
+.proof-file{display:block;max-width:100%;min-height:44px;font:inherit}
+.proof-field{display:block;width:100%;max-width:560px;min-height:44px;padding:10px 12px;border:1px solid #8A94A6;border-radius:9px;font:inherit;background:#FFF;box-sizing:border-box}
+/* Secondary buttons also carry .button-link-secondary: a global rule forces white text on every other button. */
+main .proof-button{min-height:44px;padding:10px 16px;border:1px solid #CDD9F0;border-radius:9px;font:inherit;font-weight:600;cursor:pointer;transition:transform 140ms cubic-bezier(.23,1,.32,1),background-color 140ms ease}
+main .proof-button.button-link-secondary:not(:disabled):hover{background:var(--ops-blue-soft);filter:none}
+main .proof-button:not(:disabled):active{transform:scale(.97)}
+main .proof-button:disabled{color:var(--color-muted);background:var(--color-border);border-color:var(--color-border);cursor:not-allowed;transform:none}
+main .proof-button-primary{color:#FFF;background:var(--color-primary-action);border-color:var(--color-primary-action)}
+main .proof-button-primary:not(:disabled):hover{background:var(--color-primary-action);filter:brightness(.94)}
+.proof-error{margin:8px 0 0;padding:8px 12px;border-left:4px solid #B42318;background:#FEF3F2;color:#7A1A12;font-weight:600}
+.load-status-disputed{background:#FFF8E5;color:#7A4B00;border:1px solid #E0B24A}

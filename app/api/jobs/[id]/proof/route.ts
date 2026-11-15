@@ -130,12 +130,18 @@ async function GETHandler(_req: Request, { params }: RouteContext) {
     return NextResponse.json({ error: "You're not involved in this job." }, { status: 403 });
   }
 
-  const photos = await prisma.jobProofPhoto.findMany({
+  const rows = await prisma.jobProofPhoto.findMany({
     where: { jobId, OR: [{ expiresAt: { gt: new Date() } }, { job: { status: "disputed" } }] },
     orderBy: { createdAt: "asc" },
-    select: PHOTO_SELECT,
+    select: { ...PHOTO_SELECT, uploadedById: true },
     take: 20,
   });
+  // Say who added each photo without handing out account ids.
+  const photos = rows.map(({ uploadedById, ...photo }) => ({
+    ...photo,
+    by: uploadedById === job.posterId ? "poster" : "driver",
+    mine: uploadedById === accountId,
+  }));
   return NextResponse.json({ photos }, { headers: { "Cache-Control": "private, no-store" } });
 }
 
