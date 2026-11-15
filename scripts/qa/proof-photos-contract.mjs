@@ -120,7 +120,7 @@ const prisma = {
       const p = photos.find((row) => photoMatches(row, where));
       return p ? { ...p, job: { posterId: job.posterId, acceptedById: job.acceptedById } } : null;
     },
-    deleteMany: async ({ where }) => { const before = photos.length; photos = photos.filter((p) => !where.id.in.includes(p.id)); return { count: before - photos.length }; },
+    deleteMany: async ({ where }) => { const before = photos.length; photos = photos.filter((p) => !(where.id.in ? where.id.in.includes(p.id) : photoMatches(p, where))); return { count: before - photos.length }; },
   },
   $queryRaw: async () => [{ id: job.id }],
   $transaction: async (fn) => fn(prisma),
@@ -270,6 +270,37 @@ job.status = "disputed";
 eq(body.photos.length, 4, "photos on a disputed job stay listed");
 eq((await fetchPhoto("p1")).status, 200, "and stay available");
 
+
+// ── removing your own photo until the step is submitted ────────────────────
+const removeCtx = (photoId) => ({ params: Promise.resolve({ id: "job1", photoId }) });
+const remove = async (photoId) => (await photoRoute.DELETE(new Request(`https://x.test/api/jobs/job1/proof/${photoId}`, { method: "DELETE" }), removeCtx(photoId))).status;
+reset({ status: "accepted" });
+await upload({ stage: "pickup" });
+session = { user: { accountId: "poster" } }; await upload({ stage: "pickup" });
+session = { user: { accountId: "driver" } };
+eq([photos.length, photos[0].uploadedById, photos[1].uploadedById], [2, "driver", "poster"], "setup: one photo each");
+eq([await remove("p1"), photos.map((p) => p.id)], [200, ["p2"]], "the driver can remove their own pickup photo before pickup is confirmed");
+eq([await remove("p2"), photos.length], [403, 1], "a photo added by the other side cannot be removed");
+eq(await remove("nope"), 404, "an unknown photo is not found");
+session = null; eq(await remove("p2"), 401, "removing needs a login");
+session = { user: {} }; eq(await remove("p2"), 401, "removing needs an account");
+session = { user: { accountId: "driver" } };
+marketBlock = new Response("{}", { status: 403 }); eq(await remove("p2"), 403, "the market guard applies to removal");
+marketBlock = null;
+rateLimited = new Response("{}", { status: 429 }); eq(await remove("p2"), 429, "removal is rate limited");
+rateLimited = null;
+reset({ status: "accepted" });
+await upload({ stage: "pickup" });
+job.status = "in_transit";
+eq([await remove("p1"), photos.length], [409, 1], "a pickup photo is kept once pickup is confirmed");
+await upload({ stage: "delivery" });
+eq([await remove("p2"), photos.length], [200, 1], "a delivery photo can be removed while in transit");
+await upload({ stage: "delivery" });
+for (const status of ["delivered", "disputed", "completed", "cancelled"]) {
+  job.status = status;
+  eq([await remove(photos[photos.length - 1].id), photos.length], [409, 2], `photos are kept once the job is ${status}`);
+}
+
 // ── retention purge ────────────────────────────────────────────────────────
 reset({ status: "completed" });
 const old = new Date(Date.now() - 1000), fresh = new Date(Date.now() + 1e9);
@@ -321,9 +352,10 @@ eq((await upload({ stage: "delivery" }))[0], 403, "an uninvolved account still c
 const panelSrc = readFileSync("app/jobs/[id]/proof/proof-panel.tsx", "utf8");
 ok(panelSrc.startsWith('"use client"'), "the proof panel is a client component");
 ok(!/@\/lib\/proofPhotos|@\/lib\/prisma|from "sharp"|node:/.test(panelSrc), "the proof panel imports no server-only code (sharp, prisma)");
-ok((panelSrc.match(/proof-button button-link-secondary/g) || []).length === 2, "secondary buttons use the exempt class (a global rule makes every other button white text)");
+ok((panelSrc.match(/proof-button button-link-secondary/g) || []).length === 3, "secondary buttons use the exempt class (a global rule makes every other button white text)");
 ok(/<label htmlFor=\{inputId\}/.test(panelSrc) && /<label htmlFor="dispute-reason"/.test(panelSrc) && /<label htmlFor="dispute-notes"/.test(panelSrc), "every field has a real label");
 ok(/role="alert"/.test(panelSrc) && /aria-expanded=/.test(panelSrc) && /aria-controls="dispute-form"/.test(panelSrc), "errors are alerts and the disclosure exposes its state");
+ok(/method: "DELETE"/.test(panelSrc) && /PROOF_STAGE_REMOVABLE_STATUSES/.test(panelSrc) && /photo\.mine &&/.test(panelSrc), "the panel offers Remove only on your own photos while the step is open");
 ok(!/transition|keyframes|framer|\.animate\(/i.test(panelSrc), "the panel adds no motion of its own");
 const proofPage = readFileSync("app/jobs/[id]/proof/page.tsx", "utf8");
 ok(/redirect\("\/login"\)/.test(proofPage) && /job\.posterId !== accountId && job\.acceptedById !== accountId/.test(proofPage), "the proof page needs a login and a party to the job");
