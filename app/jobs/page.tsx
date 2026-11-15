@@ -211,6 +211,8 @@ export default function JobsPage() {
 
   // Prevent repeated clicks from dispatching duplicate lifecycle mutations.
   const actionInFlight = useRef(false);
+  const lastPostData = useRef<any>(null);
+  const [proofNeededJob, setProofNeededJob] = useState("");
   const bidInFlight = useRef(false);
   const ratingInFlight = useRef(false);
 
@@ -372,6 +374,8 @@ export default function JobsPage() {
     }
 
     setMessage("");
+    setProofNeededJob("");
+    lastPostData.current = null;
 
     try {
       const res =
@@ -388,10 +392,14 @@ export default function JobsPage() {
           data.error ||
             "Something went wrong."
         );
+        if (data.code === "PROOF_PHOTO_REQUIRED") {
+          setProofNeededJob(path.split("/")[3] ?? "");
+        }
 
         return false;
       }
 
+      lastPostData.current = data;
       return true;
     } catch {
       setMessage(
@@ -517,11 +525,13 @@ export default function JobsPage() {
     if (
       await post(
         `/api/jobs/${jobId}/reject-delivered`,
-        "Say this job was NOT actually delivered? It will return to in-transit so delivery can be attempted again."
+        "Say this job was NOT actually delivered? The first time, it goes back to in transit so delivery can be tried again. If delivery is rejected a second time, the job is sent to our team for review."
       )
     ) {
       setMessage(
-        "Delivery disputed — job is back in transit."
+        lastPostData.current?.disputed
+          ? "Delivery rejected again — the job is now under review by our team."
+          : "Delivery rejected — job is back in transit."
       );
 
       loadJobs();
@@ -927,7 +937,7 @@ export default function JobsPage() {
                   <div className="load-card-route">
                     <div className="load-card-tags">
                       <span className={`load-status load-status-${job.status}`}>
-                        {job.status.replace("_", " ")}
+                        {job.status === "disputed" ? "Under review" : job.status.replace("_", " ")}
                       </span>
                       {job.crossBorder && (
                         <span className="load-tag">Cross-border</span>
@@ -984,8 +994,29 @@ export default function JobsPage() {
                   )}
                 </p>
 
+                {involved && job.status === "disputed" && (
+                  <p style={{ margin: "10px 0 0", fontWeight: 600 }}>
+                    Under review: nothing about this job can change until our team decides.
+                  </p>
+                )}
+
+                {proofNeededJob === job.id && (
+                  <p role="alert" style={{ margin: "10px 0 0", fontWeight: 600 }}>
+                    A photo is needed first.{" "}
+                    <Link href={`/jobs/${job.id}/proof`}>Add photos</Link>
+                  </p>
+                )}
+
                 {involved && (job.status !== "open" || job.hasAcceptedDriver) && (
-                  <div style={{ marginTop: 10 }}>
+                  <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    {["accepted", "in_transit", "delivered", "disputed"].includes(job.status) && (
+                      <Link
+                        href={`/jobs/${job.id}/proof`}
+                        className="button-link button-link-secondary"
+                      >
+                        Photos and problems
+                      </Link>
+                    )}
                     <Link
                       href={`/jobs/${job.id}/incidents`}
                       className="button-link button-link-secondary"

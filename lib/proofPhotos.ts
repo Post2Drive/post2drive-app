@@ -1,34 +1,23 @@
 import { createHash } from "node:crypto";
 import sharp from "sharp";
 
-/** Photos a driver takes at pickup and delivery. */
-export const PROOF_STAGES = ["pickup", "delivery"] as const;
-export type ProofStage = (typeof PROOF_STAGES)[number];
+import {
+  MAX_PROOF_PHOTOS_PER_STAGE,
+  PROOF_RETENTION_DAYS,
+  PROOF_STAGES,
+  PROOF_STAGE_JOB_STATUSES,
+  isProofStage,
+} from "./proofStages.ts";
+export { MAX_PROOF_PHOTOS_PER_STAGE, PROOF_RETENTION_DAYS, PROOF_STAGES, PROOF_STAGE_JOB_STATUSES, isProofStage };
+export type { ProofStage } from "./proofStages.ts";
 
-export const MAX_PROOF_PHOTOS_PER_STAGE = 3; // per person, per stage
 export const MAX_PROOF_UPLOAD_BYTES = 10 * 1024 * 1024;
-/** Photos are kept this long after upload, or until a dispute on the job is resolved. */
-export const PROOF_RETENTION_DAYS = 30;
 
 const MAX_INPUT_PIXELS = 40_000_000;
 const MAX_EDGE_PX = 2048;
 const ACCEPTED_FORMATS = new Set(["jpeg", "png", "webp"]);
 const PURGE_BATCH = 100;
 const PURGE_MIN_INTERVAL_MS = 60 * 60 * 1000;
-
-export function isProofStage(value: unknown): value is ProofStage {
-  return typeof value === "string" && (PROOF_STAGES as readonly string[]).includes(value);
-}
-
-/**
- * The job statuses in which each stage's photos may be added. Pickup photos
- * cover the handover (a short grace after pickup is confirmed); delivery
- * photos cover the drop-off and the moment the poster inspects the goods.
- */
-export const PROOF_STAGE_JOB_STATUSES: Record<ProofStage, readonly string[]> = {
-  pickup: ["accepted", "in_transit"],
-  delivery: ["in_transit", "delivered"],
-};
 
 export function proofExpiry(now: Date = new Date()): Date {
   return new Date(now.getTime() + PROOF_RETENTION_DAYS * 24 * 60 * 60 * 1000);
