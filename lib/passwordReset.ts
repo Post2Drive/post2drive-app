@@ -30,7 +30,7 @@ export function passwordResetDeliveryConfigured() {
   );
 }
 
-export async function createPasswordResetToken(userId: string, accountId: string) {
+export async function createResetLinkToken(userId: string, accountId: string) {
   const cooldownSince = new Date(Date.now() - 60 * 1000);
   const token = randomBytes(32).toString("hex");
   const tokenHash = passwordResetTokenHash(token);
