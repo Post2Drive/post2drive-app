@@ -47,6 +47,9 @@ eq(rulesForCountry("IN").priceOptional, true, "India jobs may omit a fixed price
 eq(rulesForCountry("GB").priceOptional, false, "UK jobs need a price");
 eq(rulesForCountry("IN").biddingAllowed, false, "India has no bidding");
 eq(rulesForCountry("GB").biddingAllowed, true, "UK allows bidding");
+eq(rulesForCountry("GB").proofPhotosRequired, true, "UK requires proof photos");
+eq(rulesForCountry("IN").proofPhotosRequired, false, "India proof photos are optional");
+eq(rulesForCountry("US").proofPhotosRequired, true, "other markets default to requiring proof photos");
 for (const [file, pattern] of [
   ["app/api/signup/route.ts", /country (===|!==) "(IN|GB)"/],
   ["lib/jobValidation.ts", /country (===|!==) "IN"/],
