@@ -75,5 +75,6 @@ const emailSource = readFileSync("lib/emailVerification.ts", "utf8");
 assert.ok(emailSource.includes("TOKEN_LIFETIME_MS = 24 * 60 * 60 * 1000"), "email verification lifetime must remain 24 hours");
 assert.ok(emailSource.includes("hashEmailVerificationToken"), "email token hashes must remain");
 assert.ok(emailSource.includes("usedAt: null"), "email token single-use guard must remain");
-assert.ok(emailSource.includes("country !== \"IN\" && emailVerificationEnabled()"), "India must remain exempt from required email verification");
+assert.ok(emailSource.includes("rulesForCountry(country).emailRequired && emailVerificationEnabled()"), "email verification must follow the market rules");
+assert.match(readFileSync("lib/marketRules.ts", "utf8"), /IN: \{[\s\S]*?emailRequired: false/, "India must remain exempt from required email verification");
 console.log(JSON.stringify({ status: "passed", checks: 18 }, null, 2));

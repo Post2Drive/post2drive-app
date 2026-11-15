@@ -50,6 +50,8 @@ eq(rulesForCountry("GB").biddingAllowed, true, "UK allows bidding");
 for (const [file, pattern] of [
   ["app/api/signup/route.ts", /country (===|!==) "(IN|GB)"/],
   ["lib/jobValidation.ts", /country (===|!==) "IN"/],
+  ["lib/emailVerification.ts", /country (===|!==) "IN"/],
+  ["app/api/jobs/[id]/bid/route.ts", /country === "IN"/],
 ]) {
   eq(pattern.test(readFileSync(file, "utf8")), false, `${file} no longer hard-codes a market`);
 }
