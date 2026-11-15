@@ -104,6 +104,8 @@ jobs:
         run: npm run qa:job-transitions
       - name: Market rules contract
         run: npm run qa:market-rules
+      - name: Dispute routes contract (open, resolve, races)
+        run: npm run qa:dispute-routes
       - name: Provider adapters contract (email, SMS, payments)
         run: npm run qa:provider-adapters
       - name: Cross-site write guard and security headers contract

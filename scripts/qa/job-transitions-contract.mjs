@@ -57,18 +57,39 @@ const variable = [
   ["app/api/jobs/[id]/incidents/terminate/route.ts", ["accepted", "in_transit"], "cancelled"],
   ["app/api/admin/incidents/resolve/route.ts", ["accepted", "in_transit"], "cancelled"],
   ["app/api/internal/admin-bridge/route.ts", ["accepted", "in_transit"], "cancelled"],
+  ["app/api/jobs/[id]/dispute/route.ts", ["in_transit", "delivered"], "disputed"],
 ];
 for (const [file, froms, to] of variable) {
   const src = read(file);
   for (const from of froms) ok(canTransition(from, to), `${file}: ${from} -> ${to} is in the table`);
   ok(src.includes(`canTransition(job.status, "${to}")`), `${file} checks the transition table before updating`);
   ok(src.includes(`@/lib/jobTransitions`), `${file} imports the table`);
-  ok(new RegExp(`status:\\s*"${to}"`).test(src) && /toStatus:\s*"cancelled"/.test(src), `${file} writes and logs ${to}`);
+  ok(new RegExp(`status:\\s*"${to}"`).test(src) && new RegExp(`toStatus:\\s*"${to}"`).test(src), `${file} writes and logs ${to}`);
 }
 ok(/job\.status !== "open" && job\.status !== "accepted"/.test(read("app/api/jobs/[id]/cancel/route.ts")), "cancel refuses anything but open or accepted");
 for (const file of ["app/api/jobs/[id]/incidents/terminate/route.ts", "app/api/admin/incidents/resolve/route.ts", "app/api/internal/admin-bridge/route.ts"]) {
   ok(/job\.status !== "accepted" && job\.status !== "in_transit"/.test(read(file)), `${file} refuses anything but accepted or in_transit`);
 }
+
+ok(/job\.status !== "in_transit" && job\.status !== "delivered"/.test(read("app/api/jobs/[id]/dispute/route.ts")), "dispute refuses anything but in_transit or delivered");
+
+// Dispute resolution: every outcome must be a legal move out of `disputed`, the
+// route must only act on disputed jobs, and nothing may leave a frozen job another way.
+import { DISPUTE_OUTCOMES, DISPUTE_REASONS } from "../../lib/disputes.ts";
+const resolveFile = "app/api/admin/disputes/resolve/route.ts";
+const resolveSrc = read(resolveFile);
+for (const [name, outcome] of Object.entries(DISPUTE_OUTCOMES)) {
+  ok(canTransition("disputed", outcome.to), `dispute outcome ${name} (disputed -> ${outcome.to}) is in the table`);
+}
+eq(Object.keys(DISPUTE_OUTCOMES).sort(), ["cancelled_driver_fault", "cancelled_no_fault", "cancelled_poster_fault", "completed", "return_to_transit"], "the five agreed dispute outcomes");
+ok(new RegExp('where:\\s*\\{\\s*id: jobId,\\s*status: "disputed"').test(resolveSrc), "resolve only updates jobs that are still disputed");
+ok(/fromStatus:\s*"disputed"/.test(resolveSrc), "resolve logs the move out of disputed");
+ok(resolveSrc.includes('canTransition("disputed", target)'), "resolve checks the transition table");
+ok(resolveSrc.includes("isTesterAdmin()"), "resolve requires an administrator");
+ok(/automaticPenalty:\s*false/.test(resolveSrc), "resolve records that no automatic penalty applies");
+ok(resolveSrc.includes("!job.deliveryMarkedById"), "completing needs a delivery mark");
+ok(resolveSrc.includes("$transaction"), "resolve updates inside a transaction");
+ok(DISPUTE_REASONS.length >= 5, "dispute reasons are defined");
 
 // Payment confirmation routes act on completed jobs and must not change status.
 for (const file of ["app/api/jobs/[id]/payment/mark-paid/route.ts", "app/api/jobs/[id]/payment/confirm-received/route.ts"]) {
@@ -83,7 +104,7 @@ ok(/where: \{\s*id: routeParams\.id,\s*posterId: accountId,\s*status: "open",/.t
 // No other route may write Job.status.
 import { readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
-const known = new Set([...literal.map((l) => l[0]), ...variable.map((v) => v[0])]);
+const known = new Set([...literal.map((l) => l[0]), ...variable.map((v) => v[0]), resolveFile]);
 const offenders = [];
 (function walk(dir) {
   for (const name of readdirSync(dir)) {
@@ -91,7 +112,7 @@ const offenders = [];
     if (statSync(path).isDirectory()) { walk(path); continue; }
     if (!/\.(ts|tsx)$/.test(name) || known.has(path)) continue;
     const src = read(path);
-    if (/job\.(update|updateMany)\(\{[\s\S]*?data:\s*\{[^}]*\bstatus:\s*"(open|accepted|in_transit|delivered|completed|cancelled)"/.test(src)) offenders.push(path);
+    if (/job\.(update|updateMany)\(\{[\s\S]*?data:\s*\{[^}]*\bstatus:\s*"(open|accepted|in_transit|delivered|completed|cancelled|disputed)"/.test(src)) offenders.push(path);
   }
 })("app/api");
 eq(offenders, [], "no other API route writes Job.status; add new write sites to this contract");
