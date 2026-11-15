@@ -3,7 +3,7 @@ import { requireJobMarketAccess } from "@/lib/jobMarket";
 import {
   MAX_PROOF_PHOTOS_PER_STAGE,
   MAX_PROOF_UPLOAD_BYTES,
-  PROOF_STAGE_JOB_STATUS,
+  PROOF_STAGE_JOB_STATUSES,
   isProofStage,
   processProofPhoto,
   proofExpiry,
@@ -21,7 +21,7 @@ type RouteContext = { params: Promise<{ id: string }> };
 
 const PHOTO_SELECT = { id: true, stage: true, width: true, height: true, sizeBytes: true, createdAt: true, expiresAt: true } as const;
 
-// The accepted driver adds a photo at pickup (job accepted) or delivery (job in transit).
+// The poster or the accepted driver adds a photo at pickup or delivery, each up to 3 per stage.
 async function POSTHandler(req: Request, { params }: RouteContext) {
   const { id: jobId } = await params;
   const session = await getServerSession(authOptions);
@@ -34,10 +34,10 @@ async function POSTHandler(req: Request, { params }: RouteContext) {
   const writeLimit = await enforceRateLimit(req, { scope: "job-proof-upload", identity: accountId, limit: 30, windowMs: 60 * 60 * 1000 });
   if (writeLimit) return writeLimit;
 
-  const job = await prisma.job.findUnique({ where: { id: jobId }, select: { id: true, status: true, acceptedById: true } });
+  const job = await prisma.job.findUnique({ where: { id: jobId }, select: { id: true, status: true, posterId: true, acceptedById: true } });
   if (!job) return NextResponse.json({ error: "Job not found." }, { status: 404 });
-  if (job.acceptedById !== accountId) {
-    return NextResponse.json({ error: "Only the driver on this job can add proof photos." }, { status: 403 });
+  if (job.posterId !== accountId && job.acceptedById !== accountId) {
+    return NextResponse.json({ error: "Only the poster or the driver on this job can add photos." }, { status: 403 });
   }
 
   const body = await readBoundedBytes(req, MAX_PROOF_UPLOAD_BYTES + 256 * 1024);
@@ -65,10 +65,10 @@ async function POSTHandler(req: Request, { params }: RouteContext) {
   if (file.size <= 0 || file.size > MAX_PROOF_UPLOAD_BYTES) {
     return NextResponse.json({ error: "Photos must be between 1 byte and 10 MB." }, { status: 413 });
   }
-  const requiredStatus = PROOF_STAGE_JOB_STATUS[stage];
-  if (job.status !== requiredStatus) {
+  const allowedStatuses = PROOF_STAGE_JOB_STATUSES[stage];
+  if (!allowedStatuses.includes(job.status)) {
     return NextResponse.json(
-      { error: stage === "pickup" ? "Pickup photos can be added before the job is collected." : "Delivery photos can be added while the job is in transit." },
+      { error: stage === "pickup" ? "Pickup photos can be added once the job is accepted, until it is delivered." : "Delivery photos can be added while the job is in transit or just delivered." },
       { status: 409 },
     );
   }
@@ -80,13 +80,13 @@ async function POSTHandler(req: Request, { params }: RouteContext) {
     // Lock the job so two uploads cannot both pass the per-stage limit and the
     // status cannot move on while the photo is being saved.
     await tx.$queryRaw<Array<{ id: string }>>`SELECT "id" FROM "Job" WHERE "id" = ${jobId} FOR UPDATE`;
-    const current = await tx.job.findUnique({ where: { id: jobId }, select: { status: true, acceptedById: true } });
-    if (!current || current.acceptedById !== accountId || current.status !== requiredStatus) {
+    const current = await tx.job.findUnique({ where: { id: jobId }, select: { status: true, posterId: true, acceptedById: true } });
+    if (!current || (current.posterId !== accountId && current.acceptedById !== accountId) || !allowedStatuses.includes(current.status)) {
       return { error: "This job has moved on, so the photo was not saved.", status: 409 } as const;
     }
-    const existing = await tx.jobProofPhoto.count({ where: { jobId, stage } });
+    const existing = await tx.jobProofPhoto.count({ where: { jobId, stage, uploadedById: accountId } });
     if (existing >= MAX_PROOF_PHOTOS_PER_STAGE) {
-      return { error: `At most ${MAX_PROOF_PHOTOS_PER_STAGE} photos can be added at each stage.`, status: 409 } as const;
+      return { error: `You can add at most ${MAX_PROOF_PHOTOS_PER_STAGE} photos at each stage.`, status: 409 } as const;
     }
     const photo = await tx.jobProofPhoto.create({
       data: {

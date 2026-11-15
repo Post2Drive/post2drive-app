@@ -36,7 +36,7 @@ const rules = load("lib/marketRules.ts", { "./market.ts": { MARKETS: {} } });
 
 // ── library: stages, expiry, rules ─────────────────────────────────────────
 eq([lib.isProofStage("pickup"), lib.isProofStage("delivery"), lib.isProofStage("other"), lib.isProofStage(undefined)], [true, true, false, false], "only pickup and delivery are stages");
-eq([lib.PROOF_STAGE_JOB_STATUS.pickup, lib.PROOF_STAGE_JOB_STATUS.delivery], ["accepted", "in_transit"], "stage to job status");
+eq(JSON.stringify([lib.PROOF_STAGE_JOB_STATUSES.pickup, lib.PROOF_STAGE_JOB_STATUSES.delivery]), JSON.stringify([["accepted", "in_transit"], ["in_transit", "delivered"]]), "stage to job statuses");
 const t0 = new Date("2026-01-01T00:00:00Z");
 eq(lib.proofExpiry(t0).toISOString(), "2026-01-31T00:00:00.000Z", "photos expire after 30 days");
 eq(rules.rulesForCountry("GB").proofPhotosRequired, true, "UK requires photos");
@@ -94,6 +94,7 @@ function photoMatches(p, where) {
   if (where.id && p.id !== where.id) return false;
   if (where.jobId && p.jobId !== where.jobId) return false;
   if (where.stage && p.stage !== where.stage) return false;
+  if (where.uploadedById && p.uploadedById !== where.uploadedById) return false;
   if (where.expiresAt?.gt && !gt(p.expiresAt, where.expiresAt)) return false;
   if (where.expiresAt?.lt && !(p.expiresAt.getTime() < where.expiresAt.lt.getTime())) return false;
   if (where.job?.status?.not !== undefined && inJobStatus(p) === where.job.status.not) return false;
@@ -161,8 +162,6 @@ eq((await upload())[0], 403, "the market guard applies");
 eq(photos.length, 0, "nothing saved when the market guard refuses");
 reset(); rateLimited = new Response(JSON.stringify({ error: "slow" }), { status: 429 });
 eq((await upload())[0], 429, "uploads are rate limited");
-reset(); session = { user: { accountId: "poster" } };
-eq((await upload())[0], 403, "the poster cannot add proof photos");
 reset(); session = { user: { accountId: "stranger" } };
 eq((await upload())[0], 403, "an uninvolved account cannot add proof photos");
 reset({ acceptedById: null });
@@ -185,17 +184,19 @@ eq(photos.length, 0, "refused uploads save nothing");
 // ── upload: stage and status ───────────────────────────────────────────────
 reset({ status: "accepted" });
 eq((await upload({ stage: "delivery" }))[0], 409, "a delivery photo needs the job in transit");
-reset({ status: "in_transit" });
-eq((await upload({ stage: "pickup" }))[0], 409, "a pickup photo is not accepted once the job is in transit");
-for (const status of ["open", "delivered", "disputed", "completed", "cancelled"]) {
+reset({ status: "delivered" });
+eq((await upload({ stage: "pickup" }))[0], 409, "a pickup photo is not accepted once the job is delivered");
+for (const status of ["open", "disputed", "completed", "cancelled"]) {
   reset({ status });
   eq([(await upload({ stage: "pickup" }))[0], (await upload({ stage: "delivery" }))[0], photos.length], [409, 409, 0], `no photos while the job is ${status}`);
 }
+reset({ status: "accepted" });
+eq([(await upload({ stage: "delivery" }))[0], photos.length], [409, 0], "no delivery photos before pickup");
 
 // The status the route read must still hold when the photo is saved.
 reset({ status: "accepted" });
 const realFind = prisma.job.findUnique; let reads = 0;
-prisma.job.findUnique = async (args) => { const row = await realFind(args); if (++reads === 1) job.status = "in_transit"; return row; };
+prisma.job.findUnique = async (args) => { const row = await realFind(args); if (++reads === 1) job.status = "delivered"; return row; };
 let [code, body] = await upload({ stage: "pickup" });
 eq([code, photos.length], [409, 0], "a pickup photo is not saved if the job moved on after the status was read");
 prisma.job.findUnique = realFind;
@@ -292,5 +293,24 @@ lib.resetProofPurgeThrottleForTests();
 lib.purgeProofPhotosSometimes({ jobProofPhoto: { findMany: async () => { throw new Error("db down"); }, deleteMany: async () => ({ count: 0 }) } }, new Date());
 await new Promise((r) => setTimeout(r, 10));
 ok(true, "a failing purge never throws to the caller");
+
+// ── poster uploads ─────────────────────────────────────────────────────────
+reset({ status: "accepted" }); session = { user: { accountId: "poster" } };
+for (let i = 1; i <= 3; i++) eq((await upload({ stage: "pickup" }))[0], 201, `the poster can add pickup photo ${i} of 3`);
+eq([(await upload({ stage: "pickup" }))[0], photos.length], [409, 3], "the poster is limited to 3 photos per stage");
+eq(photos.every((p) => p.uploadedById === "poster"), true, "the poster's photos are recorded against the poster");
+session = { user: { accountId: "driver" } };
+for (let i = 1; i <= 3; i++) eq((await upload({ stage: "pickup" }))[0], 201, `the driver still has their own ${i} of 3`);
+eq(photos.length, 6, "limits are per person");
+job.status = "in_transit";
+session = { user: { accountId: "poster" } };
+eq((await upload({ stage: "delivery" }))[0], 201, "the poster can add a delivery photo while in transit");
+job.status = "delivered";
+eq((await upload({ stage: "delivery" }))[0], 201, "the poster can add a delivery photo once delivered, to show damage");
+eq((await upload({ stage: "pickup" }))[0], 409, "but not a pickup photo");
+session = { user: { accountId: "driver" } };
+eq((await upload({ stage: "delivery" }))[0], 201, "the driver can add a delivery photo once delivered");
+session = { user: { accountId: "stranger" } };
+eq((await upload({ stage: "delivery" }))[0], 403, "an uninvolved account still cannot");
 
 console.log(`Proof photos contract passed (${checks} checks).`);

@@ -5,7 +5,7 @@ import sharp from "sharp";
 export const PROOF_STAGES = ["pickup", "delivery"] as const;
 export type ProofStage = (typeof PROOF_STAGES)[number];
 
-export const MAX_PROOF_PHOTOS_PER_STAGE = 3;
+export const MAX_PROOF_PHOTOS_PER_STAGE = 3; // per person, per stage
 export const MAX_PROOF_UPLOAD_BYTES = 10 * 1024 * 1024;
 /** Photos are kept this long after upload, or until a dispute on the job is resolved. */
 export const PROOF_RETENTION_DAYS = 30;
@@ -20,10 +20,14 @@ export function isProofStage(value: unknown): value is ProofStage {
   return typeof value === "string" && (PROOF_STAGES as readonly string[]).includes(value);
 }
 
-/** The job status in which each stage's photos may be added. */
-export const PROOF_STAGE_JOB_STATUS: Record<ProofStage, "accepted" | "in_transit"> = {
-  pickup: "accepted",
-  delivery: "in_transit",
+/**
+ * The job statuses in which each stage's photos may be added. Pickup photos
+ * cover the handover (a short grace after pickup is confirmed); delivery
+ * photos cover the drop-off and the moment the poster inspects the goods.
+ */
+export const PROOF_STAGE_JOB_STATUSES: Record<ProofStage, readonly string[]> = {
+  pickup: ["accepted", "in_transit"],
+  delivery: ["in_transit", "delivered"],
 };
 
 export function proofExpiry(now: Date = new Date()): Date {
