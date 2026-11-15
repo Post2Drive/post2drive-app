@@ -282,6 +282,7 @@ async function GETHandler(req: Request) {
     "in_transit",
     "delivered",
     "completed",
+    "disputed",
   ];
 
   const filtered = jobs.map((job) => {

@@ -9,15 +9,23 @@ const ok = (c, m) => { assert.ok(c, m); checks++; };
 const eq = (a, e, m) => { assert.deepEqual(a, e, m); checks++; };
 
 // Legal and illegal edges.
-for (const [from, to] of [["open", "accepted"], ["accepted", "in_transit"], ["in_transit", "delivered"], ["delivered", "completed"], ["delivered", "in_transit"], ["accepted", "open"], ["open", "cancelled"], ["accepted", "cancelled"], ["in_transit", "cancelled"]]) {
+for (const [from, to] of [["open", "accepted"], ["accepted", "in_transit"], ["in_transit", "delivered"], ["delivered", "completed"], ["delivered", "in_transit"], ["accepted", "open"], ["open", "cancelled"], ["accepted", "cancelled"], ["in_transit", "cancelled"], ["in_transit", "disputed"], ["delivered", "disputed"], ["disputed", "completed"], ["disputed", "cancelled"], ["disputed", "in_transit"]]) {
   ok(canTransition(from, to), `${from} -> ${to} is legal`);
 }
-for (const [from, to] of [["completed", "open"], ["cancelled", "accepted"], ["open", "completed"], ["in_transit", "accepted"], ["delivered", "cancelled"], ["completed", "cancelled"], ["open", "in_transit"]]) {
+for (const [from, to] of [["completed", "open"], ["cancelled", "accepted"], ["open", "completed"], ["in_transit", "accepted"], ["delivered", "cancelled"], ["completed", "cancelled"], ["open", "in_transit"], ["open", "disputed"], ["accepted", "disputed"], ["completed", "disputed"], ["cancelled", "disputed"], ["disputed", "open"], ["disputed", "accepted"], ["disputed", "delivered"], ["disputed", "disputed"]]) {
   ok(!canTransition(from, to), `${from} -> ${to} is illegal`);
 }
 assert.throws(() => assertTransition("delivered", "cancelled"), /Illegal job transition/);
 checks++;
 for (const s of ["completed", "cancelled"]) eq(JOB_TRANSITIONS[s], [], `${s} is terminal`);
+
+// A disputed job is frozen: no party can cancel, unassign, edit, confirm or reject it.
+import * as jobState from "../../lib/jobState.ts";
+for (const fn of ["canConfirmPickup", "canMarkDelivered", "canConfirmDelivered", "canRejectDelivered", "canPosterCancel", "canUnassign", "canDriverCancel"]) {
+  ok(jobState[fn]("disputed") === false, `${fn} refuses a disputed job`);
+}
+ok(jobState.isInvolvedStatus("disputed") === true, "a disputed job still involves its driver and poster");
+eq(jobState.JOB_STATUS_LABELS.disputed, "Under review", "disputed has a plain label");
 
 const read = (f) => readFileSync(f, "utf8");
 const statusIn = (block) => (block.match(/\bstatus:\s*"(\w+)"/) || [])[1];
