@@ -3242,3 +3242,32 @@ main input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]), main
 .phone-code-flow { display: flex; flex-direction: column; gap: 12px; }
 .phone-code-flow input[autocomplete="one-time-code"] { max-width: 12ch; font-size: 22px; letter-spacing: 0.3em; font-variant-numeric: tabular-nums; }
 .phone-code-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+
+/* Admin dispute queue. Used a few times a day, so no motion. */
+.dispute-page { max-width: 960px; margin: 0 auto; padding: 32px 16px 56px; }
+.dispute-lead { margin: 8px 0 0; color: var(--color-muted); font-size: 14px; }
+.dispute-message { margin: 16px 0; font-size: 14px; }
+.dispute-message-error { color: var(--color-danger); }
+.dispute-list { display: grid; gap: 16px; margin-top: 24px; }
+.dispute-card { border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface); padding: 16px; }
+.dispute-card h2 { margin: 0; font-size: 18px; }
+.dispute-facts { display: grid; gap: 4px 24px; margin: 12px 0 0; font-size: 14px; }
+.dispute-facts div { display: flex; flex-wrap: wrap; gap: 0 6px; }
+.dispute-facts dt { font-weight: 600; }
+.dispute-facts dd { margin: 0; }
+@media (min-width: 640px) { .dispute-facts { grid-template-columns: 1fr 1fr; } }
+.dispute-account { margin: 12px 0 0; font-size: 14px; white-space: pre-wrap; }
+.dispute-photos { display: flex; flex-wrap: wrap; gap: 12px; margin: 12px 0 0; padding: 0; list-style: none; }
+.dispute-photos a { display: block; font-size: 13px; }
+.dispute-photos img { display: block; width: 120px; height: 90px; object-fit: cover; border: 1px solid var(--color-border); border-radius: 6px; margin-bottom: 4px; }
+.dispute-note { margin: 12px 0 0; font-size: 14px; }
+.dispute-form { margin-top: 16px; }
+.dispute-fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+.dispute-fieldset legend { padding: 0; font-size: 14px; font-weight: 600; }
+.dispute-option { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 14px; font-weight: 400; cursor: pointer; }
+main .dispute-option input[type="radio"] { flex: none; width: 20px; height: 20px; min-height: 0; padding: 0; margin: 0; }
+.dispute-form label.dispute-reason-label { display: block; margin-top: 12px; font-size: 14px; }
+main .dispute-form textarea { display: block; width: 100%; margin-top: 4px; box-sizing: border-box; }
+.dispute-hint { margin: 4px 0 0; font-size: 13px; color: var(--color-muted); }
+main .dispute-resolve { margin-top: 12px; min-height: 44px; padding: 0 16px; background: var(--color-primary-action); color: #fff; border: 0; border-radius: var(--radius-sm); }
+main .dispute-resolve:disabled { opacity: 0.5; cursor: not-allowed; }

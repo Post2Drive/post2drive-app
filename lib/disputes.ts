@@ -11,6 +11,16 @@ export const DISPUTE_REASONS = [
 ] as const;
 export type DisputeReason = (typeof DISPUTE_REASONS)[number];
 
+/** Plain wording for each reason, shown to the people involved. */
+export const DISPUTE_REASON_LABELS: Readonly<Record<DisputeReason, string>> = {
+  goods_damaged: "The goods were damaged",
+  not_delivered: "The goods were not delivered",
+  wrong_or_missing_items: "Items are wrong or missing",
+  conduct: "Behaviour or conduct",
+  delivery_confirmation: "We disagree about whether it was delivered",
+  other: "Something else",
+};
+
 export function isDisputeReason(value: unknown): value is DisputeReason {
   return typeof value === "string" && (DISPUTE_REASONS as readonly string[]).includes(value);
 }

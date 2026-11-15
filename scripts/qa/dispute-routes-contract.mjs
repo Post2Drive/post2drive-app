@@ -165,4 +165,17 @@ reset({ status: "disputed" }); admin = true; session = { user: { accountId: "adm
 [code] = await resolve({ jobId: "job1", outcome: "cancelled_no_fault", notes: "ok" });
 eq([code, job.status, activities.length], [409, "in_transit", 0], "resolving cannot overwrite a status that changed after it was read");
 
+// Admin dispute screen: static guards for the things a reviewer can get wrong.
+const page = readFileSync("app/admin/disputes/page.tsx", "utf8");
+ok(page.includes("/api/admin/disputes/resolve"), "admin page uses the resolve route");
+ok(/Object\.keys\(DISPUTE_OUTCOMES\)/.test(page), "admin page offers every outcome from the shared list, none hard-coded");
+ok(/type="radio"/.test(page) && /<fieldset[ >]/.test(page) && /<legend/.test(page), "outcomes are native radios in a labelled fieldset");
+ok(/<label htmlFor=\{notesId\}/.test(page), "written reason has a visible label");
+ok(/role=\{message\.error \? "alert" : "status"\}/.test(page), "status and errors are announced");
+ok(/dispute-option/.test(page) && /\.dispute-option \{[^}]*min-height: 44px/.test(readFileSync("app/globals.css", "utf8")), "radio rows meet the 44px target");
+ok(/!selected \|\| !written/.test(page), "resolve is disabled until an outcome and a written reason exist");
+ok(!/transition|animation|animate/i.test(page), "no motion on a frequently used admin screen");
+ok(!/cdn\.|jsdelivr|unpkg/.test(page), "no third-party scripts");
+ok(readFileSync("lib/serviceLinks.ts", "utf8").includes('"/admin/disputes"'), "disputes are linked from the admin navigation");
+
 console.log(`dispute routes contract passed (${checks} checks)`);
