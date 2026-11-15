@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 import { VEHICLE_TYPES, vehicleTypeLabel } from "@/lib/vehicles";
 import { getLocalisationProfile, formatMarketDate, getJurisdictionOptions, getJurisdictionAuthority } from "@/lib/localisation";
 
