@@ -13,7 +13,6 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
   isUkAccount,
-  isUkPromotionLocked,
 } from "@/lib/uk";
 import { normalizeOperatingRegion } from "@/lib/launchWindows";
 
