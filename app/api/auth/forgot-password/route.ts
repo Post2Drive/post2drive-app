@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import {
-  createPasswordResetToken,
+  createResetLinkToken,
   passwordResetDeliveryConfigured,
   sendPasswordResetEmail,
 } from "@/lib/passwordReset";
@@ -53,9 +53,9 @@ async function POSTHandler(req: Request) {
   });
   if (!user || !user.email || user.account.deletionRequestedAt) return NextResponse.json(genericResponse);
 
-  let reset: Awaited<ReturnType<typeof createPasswordResetToken>> = null;
+  let reset: Awaited<ReturnType<typeof createResetLinkToken>> = null;
   try {
-    reset = await createPasswordResetToken(user.id, user.accountId);
+    reset = await createResetLinkToken(user.id, user.accountId);
     if (!reset) return NextResponse.json(genericResponse);
     await sendPasswordResetEmail(user.email, user.name, reset.token);
   } catch (error) {
