@@ -17,12 +17,6 @@ type AccountFixture = {
 type EventResult = { path: string; duration: number; passed: boolean };
 type QaTestType = "api-load" | "synthetic-accounts" | "workflow-e2e";
 
-let active = false;
-
-function safeJson(value: unknown) {
-  try { return JSON.parse(JSON.stringify(value)); } catch { return {}; }
-}
-
 class ApiClient {
   private cookies = new Map<string, string>();
   private readonly account: AccountFixture;

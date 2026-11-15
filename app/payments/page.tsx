@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { formatMarketDate, formatMarketCurrency } from "@/lib/localisation";
 
 type PaymentJob = {
