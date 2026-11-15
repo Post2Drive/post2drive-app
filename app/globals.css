@@ -3281,6 +3281,7 @@ main .dispute-resolve:disabled { opacity: 0.5; cursor: not-allowed; }
 .proof-thumb{display:block;border:1px solid var(--color-border);border-radius:10px;overflow:hidden;background:#F3F5F9;aspect-ratio:1/1}
 .proof-thumb img{display:block;width:100%;height:100%;object-fit:cover}
 .proof-caption{display:block;margin-top:4px;font-size:13px;color:var(--color-muted)}
+.proof-remove{margin-top:6px;min-height:44px;padding:6px 12px;font-size:14px}
 .proof-file{display:block;max-width:100%;min-height:44px;font:inherit}
 .proof-field{display:block;width:100%;max-width:560px;min-height:44px;padding:10px 12px;border:1px solid #8A94A6;border-radius:9px;font:inherit;background:#FFF;box-sizing:border-box}
 /* Secondary buttons also carry .button-link-secondary: a global rule forces white text on every other button. */

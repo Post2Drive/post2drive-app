@@ -9,6 +9,7 @@ import {
   PROOF_STAGES,
   PROOF_STAGE_JOB_STATUSES,
   PROOF_STAGE_LABELS,
+  PROOF_STAGE_REMOVABLE_STATUSES,
   type ProofStage,
 } from "@/lib/proofStages";
 
@@ -62,6 +63,7 @@ export default function ProofPanel({ jobId, status, role, photosRequired, initia
   const [uploading, setUploading] = useState<ProofStage | null>(null);
   const [photoError, setPhotoError] = useState<{ stage: ProofStage; text: string } | null>(null);
   const [photoNotice, setPhotoNotice] = useState("");
+  const [removing, setRemoving] = useState<string | null>(null);
 
   const [formOpen, setFormOpen] = useState(false);
   const [reason, setReason] = useState<DisputeReason>("goods_damaged");
@@ -103,6 +105,29 @@ export default function ProofPanel({ jobId, status, role, photosRequired, initia
     } finally {
       setUploading(null);
       input.value = "";
+    }
+  }
+
+  async function removePhoto(stage: ProofStage, photoId: string) {
+    setPhotoError(null);
+    setPhotoNotice("");
+    setRemoving(photoId);
+    try {
+      const response = await fetch(`/api/jobs/${jobId}/proof/${photoId}`, { method: "DELETE" });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setPhotoError({ stage, text: data.error || "The photo could not be removed. Try again." });
+        await refreshPhotos();
+        return;
+      }
+      setPhotoNotice(`${PROOF_STAGE_LABELS[stage]} photo removed.`);
+      await refreshPhotos();
+      // The removed photo's button is gone; keep keyboard focus in this stage.
+      requestAnimationFrame(() => document.getElementById(`proof-${stage}`)?.focus());
+    } catch {
+      setPhotoError({ stage, text: "The photo could not be removed. Check your connection and try again." });
+    } finally {
+      setRemoving(null);
     }
   }
 
@@ -167,7 +192,7 @@ export default function ProofPanel({ jobId, status, role, photosRequired, initia
         <h2 id="photos-heading" style={{ fontSize: 22, margin: "0 0 4px" }}>Photos</h2>
         <p style={{ margin: "0 0 16px", color: "var(--color-muted)" }}>
           Photos of the goods protect both sides if something goes wrong. Either of you can add up to {MAX_PROOF_PHOTOS_PER_STAGE} photos at each stage.
-          They are kept for {PROOF_RETENTION_DAYS} days, longer if a dispute is open. Location and camera details are removed from every photo.
+          You can remove a photo you added until you confirm that step; after that it is kept as a record. They are kept for {PROOF_RETENTION_DAYS} days, longer if a dispute is open. Location and camera details are removed from every photo.
         </p>
 
         <div aria-live="polite" aria-atomic="true" className="proof-notice">{photoNotice}</div>
@@ -208,6 +233,14 @@ export default function ProofPanel({ jobId, status, role, photosRequired, initia
                               width={photo.width} height={photo.height} loading="lazy" decoding="async" />
                           </a>
                           <span className="proof-caption">Added by {whoLabel(photo)}</span>
+                          {photo.mine && PROOF_STAGE_REMOVABLE_STATUSES[stage].includes(status) && (
+                            <button type="button" className="proof-button button-link-secondary proof-remove"
+                              disabled={removing !== null || uploading !== null}
+                              aria-label={`Remove ${PROOF_STAGE_LABELS[stage].toLowerCase()} photo ${index + 1}`}
+                              onClick={() => removePhoto(stage, photo.id)}>
+                              {removing === photo.id ? "Removing…" : "Remove"}
+                            </button>
+                          )}
                         </li>
                       );
                     })}

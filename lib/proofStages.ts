@@ -21,6 +21,16 @@ export const PROOF_STAGE_JOB_STATUSES: Record<ProofStage, readonly string[]> = {
   delivery: ["in_transit", "delivered"],
 };
 
+/**
+ * The job statuses in which a person may remove a photo they added. A photo can
+ * be taken back until that step is submitted (pickup confirmed, delivery marked)
+ * so a wrong picture can be fixed; after that it is evidence and stays.
+ */
+export const PROOF_STAGE_REMOVABLE_STATUSES: Record<ProofStage, readonly string[]> = {
+  pickup: ["accepted"],
+  delivery: ["in_transit"],
+};
+
 export const PROOF_STAGE_LABELS: Record<ProofStage, string> = {
   pickup: "At pickup",
   delivery: "At drop-off",
