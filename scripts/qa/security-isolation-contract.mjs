@@ -547,6 +547,7 @@ const pickupTx = {
   notification: { create: async () => ({}) },
 };
 const pickupRoute = loadTypeScriptModule("app/api/jobs/[id]/confirm-pickup/route.ts", {
+  "@/lib/proofRequirement": { checkProofPhotoGate: async () => ({ ok: true }) },
   "@/lib/notify": { notify: async (db, input) => db.notification.create({ data: input }) },
   "@/lib/rateLimit": { enforceRateLimit: async () => null },
   "@/lib/apiMetrics": { withApiMetrics: (_name, handler) => handler },

@@ -108,6 +108,8 @@ jobs:
         run: npm run qa:dispute-routes
       - name: Proof photos contract (processing, upload, access, retention)
         run: npm run qa:proof-photos
+      - name: Proof requirement contract (pickup and delivery photos, second rejection dispute)
+        run: npm run qa:proof-requirement
       - name: Provider adapters contract (email, SMS, payments)
         run: npm run qa:provider-adapters
       - name: Cross-site write guard and security headers contract

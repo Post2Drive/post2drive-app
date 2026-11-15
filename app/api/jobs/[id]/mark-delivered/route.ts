@@ -2,6 +2,7 @@ import { notify } from "@/lib/notify";
 import { withApiMetrics } from "@/lib/apiMetrics";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { requireJobMarketAccess } from "@/lib/jobMarket";
+import { checkProofPhotoGate } from "@/lib/proofRequirement";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -58,6 +59,11 @@ async function POSTHandler(
       { error: "This in-transit job has no assigned driver. Contact support before changing its status." },
       { status: 409 }
     );
+  }
+
+  const proofGate = await checkProofPhotoGate(prisma as any, job, "delivery");
+  if (!proofGate.ok) {
+    return NextResponse.json({ error: proofGate.error, code: proofGate.code }, { status: proofGate.status });
   }
 
   // Commit the state transition and its audit event together so they cannot
