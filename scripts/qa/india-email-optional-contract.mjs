@@ -17,7 +17,7 @@ assert.match(signup, /rulesForCountry\(country\)\.emailRequired && !String\(emai
 assert.match(readFileSync("lib/marketRules.ts", "utf8"), /IN: \{[\s\S]*?emailRequired: false/, "India market rules must make email optional");
 assert.match(signup, /email: normalizedEmail \|\| null/, "signup must persist omitted India email as null");
 assert.match(signupUi, /required=\{!isIndia\}/, "signup UI must make email optional only for India");
-assert.match(emailPolicy, /country !== "IN" && emailVerificationEnabled\(\)/, "email verification policy must preserve the India exception");
+assert.match(emailPolicy, /rulesForCountry\(country\)\.emailRequired && emailVerificationEnabled\(\)/, "email verification policy must preserve the India exception via market rules");
 assert.match(auth, /account: \{ country: "IN" \}/, "phone login lookup must be limited to India accounts");
 assert.match(auth, /phoneMatches\.length === 1/, "phone login must fail closed for ambiguous duplicate phone numbers");
 assert.match(auth, /emailVerificationRequiredForCountry\(user\.account\.country\)/, "login enforcement must use market-aware email policy");

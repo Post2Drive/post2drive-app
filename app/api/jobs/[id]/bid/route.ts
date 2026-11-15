@@ -1,3 +1,4 @@
+import { rulesForAccount } from "@/lib/marketRules";
 import { notify } from "@/lib/notify";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { withApiMetrics } from "@/lib/apiMetrics";
@@ -47,7 +48,7 @@ async function POSTHandler(
     where: { id: accountId },
     select: { type: true, verificationStatus: true, companyVerificationStatus: true, isTester: true, country: true, currency: true, planType: true, fleetVehicleCount: true, qaTestAccounts: { select: { runId: true } } },
   });
-  if (bidderAccount?.country === "IN" && bidderAccount?.currency === "INR") {
+  if (bidderAccount && !rulesForAccount(bidderAccount).biddingAllowed) {
     return NextResponse.json({ error: "Bidding is not available in India. Contact the poster about the fixed quote." }, { status: 403 });
   }
   const isPilotQaAccount = Boolean(

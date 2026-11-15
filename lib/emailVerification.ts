@@ -1,3 +1,4 @@
+import { rulesForCountry } from "@/lib/marketRules";
 import { createHash, randomBytes } from "crypto";
 import { prisma } from "@/lib/prisma";
 
@@ -7,9 +8,9 @@ export function emailVerificationEnabled() {
   return process.env.EMAIL_VERIFICATION_ENABLED?.trim().toLowerCase() === "true";
 }
 
-/** India is the sole market where email is optional and must not gate access. */
+/** Markets where email is optional (India) must not have email gate access. */
 export function emailVerificationRequiredForCountry(country: unknown) {
-  return country !== "IN" && emailVerificationEnabled();
+  return rulesForCountry(country).emailRequired && emailVerificationEnabled();
 }
 
 export function emailDeliveryConfigured() {
