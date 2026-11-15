@@ -31,7 +31,8 @@ function load(path, mocks) {
   return module.exports;
 }
 
-const lib = load("lib/proofPhotos.ts", { "node:crypto": nodeRequire("node:crypto"), sharp });
+const stages = load("lib/proofStages.ts", {});
+const lib = load("lib/proofPhotos.ts", { "node:crypto": nodeRequire("node:crypto"), sharp, "./proofStages.ts": stages });
 const rules = load("lib/marketRules.ts", { "./market.ts": { MARKETS: {} } });
 
 // ── library: stages, expiry, rules ─────────────────────────────────────────
@@ -235,6 +236,9 @@ for (const who of ["poster", "driver"]) {
   [code, body] = await list();
   eq([code, body.photos.length], [200, 4], `${who} sees the photos`);
   ok(body.photos.every((p) => !("content" in p)), "the list carries no image bytes");
+  ok(body.photos.every((p) => !("uploadedById" in p) && !("sha256" in p)), "the list carries no account ids or hashes");
+  ok(body.photos.every((p) => p.by === "poster" || p.by === "driver"), "each photo says whether the poster or driver added it");
+  eq(body.photos.filter((p) => p.mine).every((p) => p.by === who), true, `photos marked mine were added by ${who}`);
   const response = await fetchPhoto("p1");
   eq(response.status, 200, `${who} can fetch a photo`);
   eq([response.headers.get("content-type"), response.headers.get("cache-control"), response.headers.get("x-content-type-options")], ["image/jpeg", "private, no-store", "nosniff"], "private cache headers and nosniff");
@@ -312,5 +316,21 @@ session = { user: { accountId: "driver" } };
 eq((await upload({ stage: "delivery" }))[0], 201, "the driver can add a delivery photo once delivered");
 session = { user: { accountId: "stranger" } };
 eq((await upload({ stage: "delivery" }))[0], 403, "an uninvolved account still cannot");
+
+// ── screens: guards that a browser check found or that keep server code out of the client ──
+const panelSrc = readFileSync("app/jobs/[id]/proof/proof-panel.tsx", "utf8");
+ok(panelSrc.startsWith('"use client"'), "the proof panel is a client component");
+ok(!/@\/lib\/proofPhotos|@\/lib\/prisma|from "sharp"|node:/.test(panelSrc), "the proof panel imports no server-only code (sharp, prisma)");
+ok((panelSrc.match(/proof-button button-link-secondary/g) || []).length === 2, "secondary buttons use the exempt class (a global rule makes every other button white text)");
+ok(/<label htmlFor=\{inputId\}/.test(panelSrc) && /<label htmlFor="dispute-reason"/.test(panelSrc) && /<label htmlFor="dispute-notes"/.test(panelSrc), "every field has a real label");
+ok(/role="alert"/.test(panelSrc) && /aria-expanded=/.test(panelSrc) && /aria-controls="dispute-form"/.test(panelSrc), "errors are alerts and the disclosure exposes its state");
+ok(!/transition|keyframes|framer|\.animate\(/i.test(panelSrc), "the panel adds no motion of its own");
+const proofPage = readFileSync("app/jobs/[id]/proof/page.tsx", "utf8");
+ok(/redirect\("\/login"\)/.test(proofPage) && /job\.posterId !== accountId && job\.acceptedById !== accountId/.test(proofPage), "the proof page needs a login and a party to the job");
+ok(!/content:\s*true/.test(proofPage), "the proof page never selects image bytes");
+const jobsPage = readFileSync("app/jobs/page.tsx", "utf8");
+ok(jobsPage.includes("/jobs/${job.id}/proof"), "job cards link to the photos and problems screen");
+ok(jobsPage.includes('data.code === "PROOF_PHOTO_REQUIRED"'), "a blocked pickup or delivery sends the user to add photos");
+ok(/disputed" \? "Under review"/.test(jobsPage), "a disputed job is labelled Under review");
 
 console.log(`Proof photos contract passed (${checks} checks).`);
