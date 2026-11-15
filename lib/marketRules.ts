@@ -23,6 +23,8 @@ export type MarketRules = {
   priceOptional: boolean;
   /** Jobs may be priced by open bidding. */
   biddingAllowed: boolean;
+  /** The driver must add photos at pickup and delivery. */
+  proofPhotosRequired: boolean;
   /** How an operating region is written. "none" means regions are not used. */
   regionFormat: "none" | "uk-postcode-area" | "short-code";
 };
@@ -36,6 +38,7 @@ const DEFAULT_RULES: MarketRules = {
   collectsMarketResearch: false,
   priceOptional: false,
   biddingAllowed: true,
+  proofPhotosRequired: true,
   regionFormat: "short-code",
 };
 
@@ -50,6 +53,7 @@ const MARKET_RULES: Partial<Record<string, MarketRules>> = {
     collectsMarketResearch: true,
     priceOptional: true,
     biddingAllowed: false,
+    proofPhotosRequired: false,
     regionFormat: "none",
   },
 };

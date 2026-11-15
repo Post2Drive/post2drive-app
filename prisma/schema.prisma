@@ -214,6 +214,7 @@ model Account {
   subscriptionPayments SubscriptionPayment[]
   notifications        Notification[]
   uploadedIncidentEvidence IncidentEvidence[]
+  uploadedProofPhotos      JobProofPhoto[]
 
   blocksCreated AccountBlock[] @relation("AccountBlocksCreated")
   blocksReceived AccountBlock[] @relation("AccountBlocksReceived")
@@ -632,6 +633,7 @@ model Job {
   createdAt  DateTime      @default(now())
   activities JobActivity[]
   incidentEvidence IncidentEvidence[]
+  proofPhotos JobProofPhoto[]
   moderationReports ModerationReport[]
 
   @@index([status])
@@ -925,6 +927,32 @@ model Notification {
 
   @@index([accountId, readAt, createdAt])
   @@index([jobId, createdAt])
+}
+
+/// Driver photos taken at pickup and delivery. Always re-encoded JPEG with
+/// metadata removed. Kept for 30 days, or until a dispute on the job is resolved.
+model JobProofPhoto {
+  id String @id @default(cuid())
+
+  job   Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  jobId String
+
+  uploadedBy   Account @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
+  uploadedById String
+
+  stage     String // "pickup" | "delivery"
+  mimeType  String
+  sizeBytes Int
+  width     Int
+  height    Int
+  sha256    String
+  content   Bytes
+
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([jobId, stage, createdAt])
+  @@index([expiresAt])
 }
 
 model IncidentEvidence {

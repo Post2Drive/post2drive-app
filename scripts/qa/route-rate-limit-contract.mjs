@@ -15,6 +15,7 @@ const routes = [
   ["app/api/jobs/[id]/incidents/terminate/route.ts", "job-incident-terminate"],
   ["app/api/jobs/[id]/incidents/updates/route.ts", "job-incident-update"],
   ["app/api/jobs/[id]/mark-delivered/route.ts", "job-mark-delivered"],
+  ["app/api/jobs/[id]/proof/route.ts", "job-proof-upload"],
   ["app/api/jobs/[id]/reject-delivered/route.ts", "job-reject-delivered"],
   ["app/api/jobs/[id]/unassign/route.ts", "job-unassign"],
 ];
