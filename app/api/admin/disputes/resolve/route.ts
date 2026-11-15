@@ -16,7 +16,7 @@ async function GETHandler() {
 
   const jobs = await prisma.job.findMany({
     where: { status: "disputed" },
-    orderBy: { updatedAt: "asc" },
+    orderBy: { createdAt: "asc" },
     take: 100,
     select: {
       id: true,
@@ -25,7 +25,7 @@ async function GETHandler() {
       posterId: true,
       acceptedById: true,
       deliveryMarkedById: true,
-      updatedAt: true,
+      createdAt: true,
       activities: {
         where: { action: "DISPUTE_OPENED" },
         orderBy: { createdAt: "desc" },
