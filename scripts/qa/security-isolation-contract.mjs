@@ -120,6 +120,7 @@ const authModule = loadTypeScriptModule("lib/auth.ts", {
   "@/lib/phoneLogin": { findIndiaUserByPhone: async () => ({ e164: null, user: null }) },
   "@/lib/providerLifecycle": { verifyOtp: async () => false },
   "@/lib/otpStore": { PrismaOtpStore: class {}, otpPepper: () => null },
+  "@/lib/emailCodeLogin": { emailCodeKey: (email) => `email-code:${email}`, findUserByLoginEmail: async () => null, normalizeLoginEmail: () => null },
 });
 const callbacks = authModule.authOptions.callbacks;
 

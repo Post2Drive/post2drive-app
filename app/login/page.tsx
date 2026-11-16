@@ -14,7 +14,12 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
   const [resendMessage, setResendMessage] = useState("");
-  const [method, setMethod] = useState<"password" | "phone-code">("password");
+  const [method, setMethod] = useState<"password" | "phone-code" | "email-code">("password");
+  const [codeEmail, setCodeEmail] = useState("");
+  const [emailCode, setEmailCode] = useState("");
+  const [codeSent, setCodeSent] = useState(false);
+  const [codeBusy, setCodeBusy] = useState(false);
+  const [codeMessage, setCodeMessage] = useState("");
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get("passwordChanged") === "1") {
@@ -44,6 +49,42 @@ export default function LoginPage() {
     router.push("/dashboard");
   }
 
+  async function sendEmailCode() {
+    setCodeBusy(true);
+    setCodeMessage("");
+    try {
+      const response = await fetch("/api/email-code/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: codeEmail }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (response.ok) {
+        setCodeSent(true);
+        setCodeMessage("If that email is registered, a six-digit code is on its way. It expires in 5 minutes.");
+      } else {
+        setCodeMessage(typeof data.error === "string" ? data.error : "Could not send a code. Please try again.");
+      }
+    } catch {
+      setCodeMessage("Could not send a code. Please try again.");
+    } finally {
+      setCodeBusy(false);
+    }
+  }
+
+  async function confirmEmailCode(e: React.FormEvent) {
+    e.preventDefault();
+    setCodeBusy(true);
+    setCodeMessage("");
+    const res = await signIn("email-code", { email: codeEmail, code: emailCode, redirect: false });
+    setCodeBusy(false);
+    if (res?.error) {
+      setCodeMessage("That code is wrong or has expired. Check it, or send a new one.");
+      return;
+    }
+    router.push("/dashboard");
+  }
+
   async function resendVerification() {
     setResending(true);
     setResendMessage("");
@@ -68,7 +109,26 @@ export default function LoginPage() {
       <h1>Log in</h1>
       <p>Sign in to post transport jobs, find delivery work and manage your activity in your selected market.</p>
       {notice && <p role="status" aria-live="polite">{notice}</p>}
-      {method === "phone-code" ? (
+      {method === "email-code" ? (
+        <>
+          <form onSubmit={codeSent ? confirmEmailCode : (e) => { e.preventDefault(); void sendEmailCode(); }} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <label>
+              Email
+              <input type="email" autoComplete="email" required maxLength={254} value={codeEmail} onChange={(e) => setCodeEmail(e.target.value)} disabled={codeSent} />
+            </label>
+            {codeSent && <label>
+              Six-digit code
+              <input inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} required value={emailCode} onChange={(e) => setEmailCode(e.target.value.replace(/\D/g, ""))} />
+            </label>}
+            {codeMessage && <p role="status" aria-live="polite">{codeMessage}</p>}
+            <button className="auth-submit-button" type="submit" disabled={codeBusy}>
+              {codeBusy ? "Please wait…" : codeSent ? "Log in" : "Email me a code"}
+            </button>
+            {codeSent && <button type="button" className="button-link-secondary" disabled={codeBusy} onClick={() => void sendEmailCode()}>Send a new code</button>}
+          </form>
+          <p style={{ marginTop: 18 }}><button type="button" className="button-link-secondary" onClick={() => setMethod("password")}>Use email or phone and password</button></p>
+        </>
+      ) : method === "phone-code" ? (
         <>
           <PhoneCodeFlow
             mode="login"
@@ -110,7 +170,8 @@ export default function LoginPage() {
           {loading ? "Logging in..." : "Log in"}
         </button>
       </form>
-      <p style={{ marginTop: 18 }}><button type="button" className="button-link-secondary" onClick={() => setMethod("phone-code")}>India: use a text code instead of a password</button></p>
+      <p style={{ marginTop: 18 }}><button type="button" className="button-link-secondary" onClick={() => setMethod("email-code")}>Email me a sign-in code instead of using a password</button></p>
+      <p style={{ marginTop: 8 }}><button type="button" className="button-link-secondary" onClick={() => setMethod("phone-code")}>India: use a text code instead of a password</button></p>
       </>
       )}
       <p style={{ marginTop: 18 }}><a href="/forgot-password">Forgot password?</a> · <a href="/signup">Create an account</a></p>
