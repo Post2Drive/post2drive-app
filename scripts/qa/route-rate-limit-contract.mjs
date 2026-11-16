@@ -18,6 +18,9 @@ const routes = [
   ["app/api/jobs/[id]/proof/route.ts", "job-proof-upload"],
   ["app/api/jobs/[id]/reject-delivered/route.ts", "job-reject-delivered"],
   ["app/api/jobs/[id]/unassign/route.ts", "job-unassign"],
+  ["app/api/jobs/[id]/payment/mark-paid/route.ts", "job-payment-mark-paid"],
+  ["app/api/jobs/[id]/payment/confirm-received/route.ts", "job-payment-confirm-received"],
+  ["app/api/notifications/[id]/read/route.ts", "notification-read"],
 ];
 
 const failures = [];

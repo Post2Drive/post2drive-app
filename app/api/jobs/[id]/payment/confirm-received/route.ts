@@ -4,11 +4,12 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { enforceRateLimit } from "@/lib/rateLimit";
 
 // POST /api/jobs/[id]/payment/confirm-received — driver confirms received payment.
 // This is a declaration only; the platform does not verify bank transactions.
 async function POSTHandler(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const routeParams = await params;
@@ -20,6 +21,8 @@ async function POSTHandler(
 
   const marketAccessError = await requireJobMarketAccess(accountId, routeParams.id);
   if (marketAccessError) return marketAccessError;
+  const writeLimit = await enforceRateLimit(req, { scope: "job-payment-confirm-received", identity: accountId, limit: 60, windowMs: 60 * 60 * 1000 });
+  if (writeLimit) return writeLimit;
 
   const job = await prisma.job.findUnique({ where: { id: routeParams.id } });
   if (!job) return NextResponse.json({ error: "Job not found." }, { status: 404 });
