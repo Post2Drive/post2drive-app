@@ -15,7 +15,6 @@ check("signup: email via rules", signup.includes("rules.emailRequired"));
 check("signup: research via rules", signup.includes("rules.collectsMarketResearch"));
 check("signup: pricing via rules", signup.includes("rules.subscriptionPricing"));
 check("signup: region via rules", signup.includes("rules.regionFormat"));
-check("signup: no isIndia in logic", !/isIndia\s*(&&|\?\s*form|\?\s*undefined)|!isIndia/.test(signup.replace(/<[^>]*>/g, "")) || true);
 check("jobs/new: price optional via rules", jobNew.includes("rules.priceOptional"));
 check("jobs/new: bidding via rules", jobNew.includes("rules.biddingAllowed"));
 check("settings: no country IN/GB checks", !/country\s*[!=]==\s*"(IN|GB)"/.test(settings.replace(/account\.country === "IN" \? "Access/, "")));
