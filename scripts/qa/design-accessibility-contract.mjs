@@ -184,4 +184,15 @@ assert.match(login, /autoComplete="current-password"/, "Login password must supp
   }
 }
 
+// Admin vehicle review must use real stylesheet classes (the project has no utility-CSS framework).
+{
+  const vehiclesPage = readFileSync("app/admin/vehicles/page.tsx", "utf8");
+  const stylesheet = readFileSync("app/globals.css", "utf8");
+  const used = new Set([...vehiclesPage.matchAll(/vehicle-review-[a-z-]+/g)].map((match) => match[0]));
+  if (used.size < 10) throw new Error("admin vehicles page must use vehicle-review-* classes");
+  for (const name of used) {
+    if (!stylesheet.includes(`.${name}`)) throw new Error(`admin vehicles page class .${name} has no CSS rule`);
+  }
+  if (/className="[^"]*\b(mt-\d|px-\d|py-\d|text-sm|rounded)\b/.test(vehiclesPage)) throw new Error("admin vehicles page must not use unstyled utility classes");
+}
 console.log("Design accessibility source contracts passed (contrast, focus, motion, navigation, forms, requirements, signup, payments, vehicles, settings, admin research privacy, login, and job edit/activity states).");

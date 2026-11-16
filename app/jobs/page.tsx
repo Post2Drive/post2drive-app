@@ -50,6 +50,7 @@ type Job = {
   isCurrentUserPoster: boolean;
   isCurrentUserAcceptedDriver: boolean;
   hasAcceptedDriver: boolean;
+  ratingOpen?: boolean;
   currentUserMarkedDelivery: boolean;
   currentUserConfirmedPickup: boolean;
   hasPreviousDrivers?: boolean;
@@ -1604,6 +1605,7 @@ export default function JobsPage() {
                     )}
 
                     {involved &&
+                      job.ratingOpen &&
                       !ratedJobs[
                         job.id
                       ] && (

@@ -77,4 +77,10 @@ const jobsPage = read("app/jobs/page.tsx");
 assert.match(jobsPage, /RATING_REASONS/, "rating form must offer reasons");
 assert.doesNotMatch(jobsPage, /currentUserPreviouslyBackedOut\);/, "backed-out drivers must not see the rating form");
 
+// The jobs list must say whether rating is open (same rule as the ratings API) and the form must obey it.
+const jobsRoute = read("app/api/jobs/route.ts");
+assert.match(jobsRoute, /ratingEligibility\(/, "jobs list must compute rating eligibility server-side");
+assert.match(jobsRoute, /ratingOpen: rating\?\.allowed === true/, "jobs list must expose ratingOpen");
+for (const action of ["PICKUP_CONFIRMED", "DELIVERY_MARKED", "DELIVERY_CONFIRMED"]) assert.match(jobsRoute, new RegExp(action), `jobs list must read ${action}`);
+assert.match(jobsPage, /involved &&\s+job\.ratingOpen &&\s+!ratedJobs/, "rating form must only show when the server says rating is open");
 console.log("Fair ratings contract passed: eligibility windows, outcomes, reasons, blind visibility and wiring.");
