@@ -42,7 +42,7 @@ const COVER_LABELS: Record<string, string> = { hire_and_reward: "Hire and reward
 const day = (value: string | null) => (value ? value.slice(0, 10) : "Not recorded");
 
 function DocumentLink({ label, href }: { label: string; href: string | null }) {
-  if (!href) return <li>{label}: <strong>missing</strong></li>;
+  if (!href) return <li>{label}: <strong className="vehicle-review-missing">missing</strong></li>;
   return <li><a href={href} target="_blank" rel="noopener noreferrer">{label} (opens in a new tab)</a></li>;
 }
 
@@ -94,69 +94,69 @@ export default function VehicleReviewAdminPage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-5xl px-4 py-10">
-      <h1 className="text-2xl font-semibold">Vehicle review</h1>
-      <p className="mt-2 text-sm" style={{ color: "var(--color-muted)" }}>
+    <main className="vehicle-review-page">
+      <h1>Vehicle review</h1>
+      <p className="vehicle-review-lead">
         Open each document and check it against the details below before approving. Approval needs commercial cover; fleet
         vehicles also need the company as keeper (or a lease in its name) and as insurance policyholder.
       </p>
       {message.text ? (
-        <p role={message.error ? "alert" : "status"} className="my-4 text-sm" style={message.error ? { color: "var(--color-danger)" } : undefined}>
+        <p role={message.error ? "alert" : "status"} className={message.error ? "vehicle-review-message vehicle-review-message-error" : "vehicle-review-message"}>
           {message.text}
         </p>
       ) : null}
-      <div className="mt-6 space-y-4">
+      <div className="vehicle-review-list">
         {vehicles.map((vehicle) => {
           const fleet = vehicle.account.planType === "fleet" || (vehicle.account.fleetVehicleCount ?? 0) >= 2 || vehicle.account.vehicleCount >= 2;
           const reasonId = `reason-${vehicle.id}`;
           const problemsId = `problems-${vehicle.id}`;
           return (
-            <section key={vehicle.id} aria-labelledby={`vehicle-${vehicle.id}`} className="rounded border p-4" style={{ borderColor: "var(--color-border)", background: "var(--color-surface)" }}>
-              <h2 id={`vehicle-${vehicle.id}`} className="font-semibold">
+            <section key={vehicle.id} aria-labelledby={`vehicle-${vehicle.id}`} className="vehicle-review-card">
+              <h2 id={`vehicle-${vehicle.id}`}>
                 {vehicle.regPlate} · {vehicleTypeLabel(vehicle.vehicleType, vehicle.account.country)}{vehicle.make || vehicle.model ? ` · ${[vehicle.make, vehicle.model].filter(Boolean).join(" ")}` : ""}
               </h2>
-              <p className="mt-1 text-sm">
+              <p className="vehicle-review-account">
                 {vehicle.account.companyName} ({vehicle.account.displayId}) · {fleet ? "Fleet" : "Individual driver"} · {vehicle.account.vehicleCount} vehicle{vehicle.account.vehicleCount === 1 ? "" : "s"} · {vehicle.account.country}/{vehicle.account.currency}
               </p>
-              <dl className="mt-3 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
-                <div><dt className="inline font-medium">Keeper: </dt><dd className="inline">{vehicle.registeredKeeperName || "Not recorded"} ({vehicle.registeredKeeperType || "type not given"})</dd></div>
-                <div><dt className="inline font-medium">Policyholder: </dt><dd className="inline">{vehicle.insurancePolicyholderName || "Not recorded"}</dd></div>
-                <div><dt className="inline font-medium">Cover: </dt><dd className="inline">{vehicle.insuranceCoverType ? COVER_LABELS[vehicle.insuranceCoverType] ?? vehicle.insuranceCoverType : "Not recorded"}</dd></div>
-                <div><dt className="inline font-medium">Policy number: </dt><dd className="inline">{vehicle.insurancePolicyNumber || "Not recorded"}{vehicle.insurancePolicyReviewedAt ? ` (policy already reviewed ${day(vehicle.insurancePolicyReviewedAt)})` : ""}</dd></div>
-                <div><dt className="inline font-medium">Insurance expiry: </dt><dd className="inline">{day(vehicle.insuranceValidUntil)}</dd></div>
-                <div><dt className="inline font-medium">MOT / inspection expiry: </dt><dd className="inline">{day(vehicle.motValidUntil)}</dd></div>
-                <div><dt className="inline font-medium">Driver licence: </dt><dd className="inline">{fleet ? "Declared per job by the fleet" : vehicle.account.driverLicenceLast4 ? `ending ${vehicle.account.driverLicenceLast4}` : "Not recorded"}</dd></div>
-                <div><dt className="inline font-medium">Previous rejections: </dt><dd className="inline">{vehicle.rejectionCount}</dd></div>
+              <dl className="vehicle-review-facts">
+                <div><dt>Keeper: </dt><dd>{vehicle.registeredKeeperName || "Not recorded"} ({vehicle.registeredKeeperType || "type not given"})</dd></div>
+                <div><dt>Policyholder: </dt><dd>{vehicle.insurancePolicyholderName || "Not recorded"}</dd></div>
+                <div><dt>Cover: </dt><dd>{vehicle.insuranceCoverType ? COVER_LABELS[vehicle.insuranceCoverType] ?? vehicle.insuranceCoverType : "Not recorded"}</dd></div>
+                <div><dt>Policy number: </dt><dd>{vehicle.insurancePolicyNumber || "Not recorded"}{vehicle.insurancePolicyReviewedAt ? ` (policy already reviewed ${day(vehicle.insurancePolicyReviewedAt)})` : ""}</dd></div>
+                <div><dt>Insurance expiry: </dt><dd>{day(vehicle.insuranceValidUntil)}</dd></div>
+                <div><dt>MOT / inspection expiry: </dt><dd>{day(vehicle.motValidUntil)}</dd></div>
+                <div><dt>Driver licence: </dt><dd>{fleet ? "Declared per job by the fleet" : vehicle.account.driverLicenceLast4 ? `ending ${vehicle.account.driverLicenceLast4}` : "Not recorded"}</dd></div>
+                <div><dt>Previous rejections: </dt><dd>{vehicle.rejectionCount}</dd></div>
               </dl>
-              <ul className="mt-3 list-disc pl-5 text-sm">
+              <ul className="vehicle-review-docs">
                 <DocumentLink label="Registration document" href={vehicle.v5cDocumentUrl} />
                 <DocumentLink label="Insurance document" href={vehicle.insuranceDocumentUrl} />
                 {vehicle.leaseAgreementUrl ? <DocumentLink label="Lease / hire agreement" href={vehicle.leaseAgreementUrl} /> : null}
               </ul>
               {vehicle.approvalProblems.length > 0 ? (
-                <div id={problemsId} className="mt-3 rounded p-3 text-sm" style={{ background: "var(--color-warning-soft)", color: "var(--color-text)" }}>
-                  <p className="font-medium">Cannot be approved yet:</p>
-                  <ul className="list-disc pl-5">{vehicle.approvalProblems.map((problem) => <li key={problem}>{problem}</li>)}</ul>
+                <div id={problemsId} className="vehicle-review-problems">
+                  <p>Cannot be approved yet:</p>
+                  <ul>{vehicle.approvalProblems.map((problem) => <li key={problem}>{problem}</li>)}</ul>
                 </div>
               ) : null}
-              <label htmlFor={reasonId} className="mt-3 block text-sm">Rejection reason (sent to the account)</label>
+              <label htmlFor={reasonId} className="vehicle-review-label">Rejection reason (sent to the account)</label>
               <textarea id={reasonId} maxLength={1000} rows={2} value={reasons[vehicle.id] || ""}
                 onChange={(event) => setReasons((current) => ({ ...current, [vehicle.id]: event.target.value }))}
-                className="mt-1 w-full rounded border px-3 py-2" style={{ borderColor: "var(--color-border)" }} />
-              <div className="mt-3 flex flex-wrap gap-2">
+                className="vehicle-review-reason" />
+              <div className="vehicle-review-actions">
                 <button type="button" disabled={Boolean(busyId) || vehicle.approvalProblems.length > 0}
                   onClick={() => void review(vehicle, "approve")}
-                  className="rounded px-3 py-2 text-sm disabled:opacity-50" style={{ minHeight: 44, background: "var(--color-primary-action)", color: "#fff" }}>
+                  className="vehicle-review-approve">
                   Approve
                 </button>
                 <button type="button" disabled={Boolean(busyId) || (reasons[vehicle.id] || "").trim().length < 5}
                   onClick={() => void review(vehicle, "reject")}
-                  className="rounded border px-3 py-2 text-sm disabled:opacity-50" style={{ minHeight: 44, borderColor: "var(--color-border)" }}>
+                  className="vehicle-review-reject">
                   Reject with reason
                 </button>
               </div>
               {/* Visible helper text instead of aria-describedby on a disabled (unfocusable) button. */}
-              <p className="mt-2 text-sm" style={{ color: "var(--color-muted)" }}>
+              <p className="vehicle-review-hint">
                 {vehicle.approvalProblems.length > 0
                   ? "Approve is unavailable until the problems listed above are fixed."
                   : "Approve checks every rule again on the server."}
