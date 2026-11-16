@@ -18,6 +18,7 @@ import { createHash } from "node:crypto";
 
 const DUPLICATE_JOB_WINDOW_MS = 10_000;
 import { canPostJobs } from "@/lib/eligibility";
+import { ratingEligibility } from "@/lib/ratingPolicy";
 import { driverRecordView } from "@/lib/vehicleApproval";
 
 function hasFuturePickup(
@@ -231,8 +232,10 @@ async function GETHandler(req: Request) {
       },
       driverAssignment: { select: { driverName: true, licenceLast4: true, vehicleRegPlate: true } },
       activities: {
-        where: { action: "DRIVER_BACKED_OUT" },
-        select: { actorId: true, createdAt: true },
+        where: {
+          action: { in: ["DRIVER_BACKED_OUT", "PICKUP_CONFIRMED", "DELIVERY_MARKED", "DELIVERY_CONFIRMED"] },
+        },
+        select: { action: true, actorId: true, createdAt: true },
         orderBy: { createdAt: "desc" },
       },
     },
@@ -277,6 +280,11 @@ async function GETHandler(req: Request) {
     }
   }
 
+  const isJobPartyForRating = (
+    job: { posterId: string; acceptedById: string | null },
+    accountId: string
+  ) => job.posterId === accountId || job.acceptedById === accountId;
+
   const contactVisibleStatuses = [
     "accepted",
     "in_transit",
@@ -293,8 +301,21 @@ async function GETHandler(req: Request) {
       dropoffContactName,
       dropoffContactPhone,
     } = job;
+    const latestAt = (action: string) =>
+      activities.find((activity) => activity.action === action)?.createdAt ?? null;
+    // Same rule the ratings API enforces, so the screen only offers a rating the server will accept.
+    const rating = isJobPartyForRating(job, accountId)
+      ? ratingEligibility({
+          status: job.status,
+          cancelledAt: job.cancelledAt,
+          pickupConfirmedAt: latestAt("PICKUP_CONFIRMED"),
+          deliveryMarkedAt: latestAt("DELIVERY_MARKED"),
+          deliveryConfirmedAt: latestAt("DELIVERY_CONFIRMED"),
+        })
+      : null;
     const previousDriverIds = [...new Set(
       activities
+        .filter((activity) => activity.action === "DRIVER_BACKED_OUT")
         .map((activity) => activity.actorId)
         .filter((id): id is string => Boolean(id))
     )];
@@ -329,6 +350,7 @@ async function GETHandler(req: Request) {
       isCurrentUserPoster: job.posterId === accountId,
       isCurrentUserAcceptedDriver: job.acceptedById === accountId,
       hasAcceptedDriver: Boolean(job.acceptedById),
+      ratingOpen: rating?.allowed === true,
       currentUserMarkedDelivery: job.deliveryMarkedById === accountId,
       currentUserConfirmedPickup: job.pickupConfirmedById === accountId,
       crossBorder: job.crossBorder,

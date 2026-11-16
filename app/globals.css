@@ -3301,3 +3301,34 @@ main .proof-button-primary:not(:disabled):hover{background:var(--color-primary-a
 .confirm-dialog-message{margin:0 0 16px;font-size:17px;line-height:1.45}
 .confirm-dialog-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
 .confirm-dialog-button{min-height:44px;padding:8px 16px}
+
+/* Admin vehicle review. Frequent-use queue: no motion. 44px targets, visible focus via global :focus-visible. */
+.vehicle-review-page { max-width: 960px; margin: 0 auto; padding: 32px 16px 56px; }
+.vehicle-review-page h1 { margin: 0; font-size: 28px; color: var(--color-primary); }
+.vehicle-review-lead { margin: 8px 0 0; color: var(--color-muted); font-size: 14px; line-height: 1.5; }
+.vehicle-review-message { margin: 16px 0; font-size: 14px; }
+.vehicle-review-message-error { color: var(--color-danger); }
+.vehicle-review-list { display: grid; gap: 16px; margin-top: 24px; }
+.vehicle-review-card { border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface); padding: 16px; }
+.vehicle-review-card h2 { margin: 0; font-size: 18px; overflow-wrap: anywhere; }
+.vehicle-review-account { margin: 4px 0 0; font-size: 14px; }
+.vehicle-review-facts { display: grid; gap: 4px 24px; margin: 12px 0 0; font-size: 14px; }
+@media (min-width: 640px) { .vehicle-review-facts { grid-template-columns: 1fr 1fr; } }
+.vehicle-review-facts div { display: flex; flex-wrap: wrap; gap: 0 6px; }
+.vehicle-review-facts dt { font-weight: 600; }
+.vehicle-review-facts dd { margin: 0; overflow-wrap: anywhere; }
+.vehicle-review-docs { margin: 12px 0 0; padding-left: 20px; font-size: 14px; }
+.vehicle-review-docs li { min-height: 24px; padding: 2px 0; }
+.vehicle-review-missing { color: var(--color-danger); }
+.vehicle-review-problems { margin-top: 12px; border-radius: 6px; padding: 12px; background: var(--color-warning-soft); color: var(--color-text); font-size: 14px; }
+.vehicle-review-problems p { margin: 0; font-weight: 600; }
+.vehicle-review-problems ul { margin: 4px 0 0; padding-left: 20px; }
+.vehicle-review-label { display: block; margin-top: 12px; font-size: 14px; font-weight: 600; }
+.vehicle-review-reason { display: block; width: 100%; margin-top: 4px; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: 6px; background: var(--color-surface); color: var(--color-text); font: inherit; font-size: 16px; resize: vertical; }
+.vehicle-review-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.vehicle-review-approve, .vehicle-review-reject { min-height: 44px; padding: 0 16px; border-radius: 6px; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
+.vehicle-review-approve { border: 1px solid var(--color-primary-action); background: var(--color-primary-action); color: #fff; }
+.vehicle-review-approve:hover:not(:disabled) { background: var(--color-primary-action-hover); }
+.vehicle-review-reject { border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text); }
+.vehicle-review-approve:disabled, .vehicle-review-reject:disabled { opacity: 0.5; cursor: not-allowed; }
+.vehicle-review-hint { margin: 8px 0 0; font-size: 13px; color: var(--color-muted); }
