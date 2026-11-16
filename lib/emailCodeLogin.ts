@@ -7,15 +7,6 @@ import { deliverTransactionalEmail } from "@/lib/emailProvider";
  * the same one used for text codes in lib/providerLifecycle.ts; the challenge
  * is keyed by a namespaced email so it can never collide with a phone number.
  */
-const MAX_EMAIL_LENGTH = 254;
-
-export function normalizeLoginEmail(input: unknown): string | null {
-  if (typeof input !== "string") return null;
-  const email = input.trim().toLowerCase();
-  if (!email || email.length > MAX_EMAIL_LENGTH || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return null;
-  return email;
-}
-
 /** Identifier stored (hashed) for the challenge. The prefix keeps it apart from phone challenges. */
 export function emailCodeKey(email: string): string {
   return `email-code:${email}`;

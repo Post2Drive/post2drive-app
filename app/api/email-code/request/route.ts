@@ -5,7 +5,8 @@ import { readBoundedJson } from "@/lib/requestBody";
 import { issueOtp, OTP_TTL_MS } from "@/lib/providerLifecycle";
 import { PrismaOtpStore, otpPepper } from "@/lib/otpStore";
 import { getTransactionalEmailProvider } from "@/lib/emailProvider";
-import { emailCodeKey, findUserByLoginEmail, normalizeLoginEmail, sendSignInCodeEmail } from "@/lib/emailCodeLogin";
+import { emailCodeKey, findUserByLoginEmail, sendSignInCodeEmail } from "@/lib/emailCodeLogin";
+import { normalizeEmail } from "@/lib/identityText";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +18,7 @@ export const dynamic = "force-dynamic";
  */
 async function POSTHandler(request: Request) {
   const body = await readBoundedJson(request, 1024);
-  const email = body.ok ? normalizeLoginEmail((body.value as { email?: unknown })?.email) : null;
+  const email = body.ok ? normalizeEmail((body.value as { email?: unknown })?.email) : null;
   if (!email) {
     return NextResponse.json({ error: "Enter a valid email address.", code: "EMAIL_INVALID" }, { status: 400 });
   }

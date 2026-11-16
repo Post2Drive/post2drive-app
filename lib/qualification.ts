@@ -1,3 +1,6 @@
+// NOT WIRED YET: nothing calls this module. It is groundwork for the deferred
+// trial/referral qualification feature (QualificationSnapshot table). Keep it,
+// but do not assume its rules are live.
 import { prisma } from "@/lib/prisma";
 import {
   evaluateDriverFairness,
