@@ -13,7 +13,9 @@ const auth = read("lib/auth.ts");
 const login = read("app/login/page.tsx");
 
 // Email normalisation (re-implemented from the same rule; the source is checked for it below).
-ok(/toLowerCase\(\)/.test(lib) && /MAX_EMAIL_LENGTH = 254/.test(lib), "emails are lower-cased and length-bounded");
+ok(!/toLowerCase|MAX_EMAIL_LENGTH/.test(lib), "email normalising lives only in lib/identityText.ts");
+const { normalizeEmail } = await import("../../lib/identityText.ts");
+ok(normalizeEmail("  A@B.CO ") === "a@b.co" && normalizeEmail("a@b") === null && normalizeEmail("a".repeat(250) + "@b.co") === null, "shared normaliser lower-cases and bounds emails");
 ok(/`email-code:\$\{email\}`/.test(lib), "challenge key is namespaced so it can't collide with a phone number");
 ok(createHash("sha256").update("email-code:a@b.co").digest("hex") !== createHash("sha256").update("+447700900000").digest("hex"), "namespaced keys hash differently");
 ok(/deletionRequestedAt: null/.test(lib), "accounts pending deletion can't receive codes");

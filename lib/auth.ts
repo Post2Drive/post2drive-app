@@ -9,7 +9,8 @@ import { isQaRunnerEnabled } from "@/lib/qaRunnerGuard";
 import { findIndiaUserByPhone } from "@/lib/phoneLogin";
 import { verifyOtp } from "@/lib/providerLifecycle";
 import { PrismaOtpStore, otpPepper } from "@/lib/otpStore";
-import { emailCodeKey, findUserByLoginEmail, normalizeLoginEmail } from "@/lib/emailCodeLogin";
+import { emailCodeKey, findUserByLoginEmail } from "@/lib/emailCodeLogin";
+import { normalizeEmail } from "@/lib/identityText";
 
 type SessionSource = {
   id: string;
@@ -186,7 +187,7 @@ export const authOptions: NextAuthOptions = {
         code: { label: "Six-digit code", type: "text" },
       },
       async authorize(credentials, req) {
-        const email = normalizeLoginEmail(credentials?.email);
+        const email = normalizeEmail(credentials?.email);
         const code = (credentials?.code ?? "").replace(/\s/g, "");
         if (!email || !/^\d{6}$/.test(code)) return null;
 

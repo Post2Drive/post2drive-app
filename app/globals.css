@@ -98,6 +98,7 @@ a {
 /* Authentication screens */
 .auth-page {
   min-height: calc(100vh - 64px);
+  min-height: calc(100dvh - 64px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3044,7 +3045,7 @@ main.service-home {
 .service-home-welcome { margin-bottom: 20px; }
 .service-home-welcome h1 { margin: 0 0 4px; font-size: 26px; line-height: 1.2; overflow-wrap: anywhere; }
 .service-home-welcome p { margin: 0; color: var(--color-muted); font-size: 15px; overflow-wrap: anywhere; }
-.service-entry { min-height: calc(100vh - 40px); display: flex; flex-direction: column; justify-content: center; }
+.service-entry { min-height: calc(100vh - 40px); min-height: calc(100dvh - 40px); display: flex; flex-direction: column; justify-content: center; }
 .service-entry .home-utility { display: flex; gap: 8px; justify-content: center; margin-top: 24px; }
 button.service-tile.service-tile-button {
   width: 100%;
