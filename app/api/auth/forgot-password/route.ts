@@ -8,6 +8,7 @@ import {
   sendPasswordResetEmail,
 } from "@/lib/passwordReset";
 import { readBoundedJson } from "@/lib/requestBody";
+import { normalizeEmail } from "@/lib/identityText";
 
 const genericResponse = {
   success: true,
@@ -32,8 +33,8 @@ async function POSTHandler(req: Request) {
   const body = parsedBody.value && typeof parsedBody.value === "object" && !Array.isArray(parsedBody.value)
     ? parsedBody.value as Record<string, unknown>
     : {};
-  const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
-  if (!email || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+  const email = normalizeEmail(body.email);
+  if (!email) {
     return NextResponse.json(genericResponse);
   }
 
