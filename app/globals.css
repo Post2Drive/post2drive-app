@@ -3358,3 +3358,6 @@ main .proof-button-primary:not(:disabled):hover{background:var(--color-primary-a
 .support-facts dd { margin: 0; }
 .support-plain { margin: 0; padding-left: 20px; font-size: 14px; overflow-wrap: anywhere; }
 .support-plain li { padding: 2px 0; }
+/* New-job form: stack label text above its field. Checkbox rows keep their own inline flex layout. */
+.job-create-form label { display: grid; gap: 6px; }
+.job-create-form input:not([type="checkbox"]):not([type="radio"]), .job-create-form select, .job-create-form textarea { width: 100%; box-sizing: border-box; min-width: 0; }
