@@ -97,11 +97,11 @@ contains("components/subscription-status.tsx", "const showPlanPrice = formattedP
 contains("components/subscription-status.tsx", "{showPlanPrice && (", "pricing visibility must not be limited to the UK trial");
 
 // User-facing job form must not offer an India workflow that server validation rejects.
-contains("app/jobs/new/page.tsx", 'country !== "IN" && <option value="bid">', "India job creation must hide open bidding");
-contains("app/jobs/new/page.tsx", 'country === "IN" && form.priceMode !== "fixed"', "India job creation must guard against bid mode");
+contains("app/jobs/new/page.tsx", 'rules.biddingAllowed && <option value="bid">', "markets without bidding must hide open bidding");
+contains("app/jobs/new/page.tsx", '!rules.biddingAllowed && form.priceMode !== "fixed"', "markets without bidding must guard against bid mode");
 contains("app/jobs/new/page.tsx", 'country === "IN" ? "Fixed quote" : "Fixed price"', "India review summary must describe fixed-quote pricing accurately");
 contains("app/jobs/new/page.tsx", "currencyMinorUnitScale(currency)", "job price input must use the selected currency precision");
-contains("app/jobs/page.tsx", 'accountCountry !== "IN" &&', "India marketplace must not expose bid actions");
+contains("app/jobs/page.tsx", 'marketRules.biddingAllowed && job.priceMode === "bid"', "markets without bidding must not expose bid actions");
 contains("app/jobs/page.tsx", "currencyMinorUnitScale(job.currency)", "bid input must respect the job currency precision");
 contains("app/vehicles/page.tsx", "required={Boolean(marketProfile?.jurisdictionSelectionRequired)}", "required vehicle jurisdictions must be enforced in the user-facing form");
 contains("app/vehicles/page.tsx", "getJurisdictionOptions(market.country)", "vehicle onboarding must use market-specific jurisdiction choices");
