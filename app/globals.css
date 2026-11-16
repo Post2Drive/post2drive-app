@@ -3293,3 +3293,10 @@ main .proof-button-primary{color:#FFF;background:var(--color-primary-action);bor
 main .proof-button-primary:not(:disabled):hover{background:var(--color-primary-action);filter:brightness(.94)}
 .proof-error{margin:8px 0 0;padding:8px 12px;border-left:4px solid #B42318;background:#FEF3F2;color:#7A1A12;font-weight:600}
 .load-status-disputed{background:#FFF8E5;color:#7A4B00;border:1px solid #E0B24A}
+
+/* In-page confirmation (components/confirm-dialog.tsx). No motion on purpose. */
+.confirm-dialog{max-width:min(440px,calc(100vw - 32px));width:100%;padding:20px;border:1px solid var(--color-border);border-radius:12px;background:#FFF;color:var(--color-text,#14213D);box-shadow:0 12px 32px rgba(20,33,61,.18)}
+.confirm-dialog::backdrop{background:rgba(20,33,61,.45)}
+.confirm-dialog-message{margin:0 0 16px;font-size:17px;line-height:1.45}
+.confirm-dialog-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.confirm-dialog-button{min-height:44px;padding:8px 16px}
