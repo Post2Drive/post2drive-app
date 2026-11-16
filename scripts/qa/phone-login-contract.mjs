@@ -21,7 +21,7 @@ const provider = auth.slice(auth.indexOf('id: "phone-otp"'));
 assert.ok(provider.indexOf('scope: "login-otp-network"') < provider.indexOf("verifyOtp("), "rate limits run before the code check");
 assert.match(provider, /new PrismaOtpStore\(user\.accountId\)/, "codes are scoped to the account that owns the number");
 assert.match(provider, /return toSessionUser\(user\);/);
-assert.equal((auth.match(/return toSessionUser\(user\);/g) || []).length, 2, "password and code logins build identical sessions");
+assert.equal((auth.match(/return toSessionUser\(user\);/g) || []).length, 3, "password, emailed-code and text-code logins build identical sessions");
 
 // Public request: no account enumeration, codes only to registered numbers.
 const genericAt = request.indexOf("const generic = ");

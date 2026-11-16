@@ -9,6 +9,7 @@ import { isQaRunnerEnabled } from "@/lib/qaRunnerGuard";
 import { findIndiaUserByPhone } from "@/lib/phoneLogin";
 import { verifyOtp } from "@/lib/providerLifecycle";
 import { PrismaOtpStore, otpPepper } from "@/lib/otpStore";
+import { emailCodeKey, findUserByLoginEmail, normalizeLoginEmail } from "@/lib/emailCodeLogin";
 
 type SessionSource = {
   id: string;
@@ -171,6 +172,45 @@ export const authOptions: NextAuthOptions = {
         // Receiving the code proves possession of the number.
         if (!user.account.phoneVerifiedAt) {
           await prisma.account.update({ where: { id: user.accountId }, data: { phoneVerifiedAt: new Date() } });
+        }
+        return toSessionUser(user);
+      },
+    }),
+    CredentialsProvider({
+      // Any market: sign in with an email address and a six-digit code sent
+      // to it, no password needed. The code was requested via /api/email-code/request.
+      id: "email-code",
+      name: "Email and emailed code",
+      credentials: {
+        email: { label: "Email", type: "email" },
+        code: { label: "Six-digit code", type: "text" },
+      },
+      async authorize(credentials, req) {
+        const email = normalizeLoginEmail(credentials?.email);
+        const code = (credentials?.code ?? "").replace(/\s/g, "");
+        if (!email || !/^\d{6}$/.test(code)) return null;
+
+        const headers = new Headers((req.headers ?? {}) as unknown as HeadersInit);
+        const networkIdentity = clientNetworkIdentity(new Request("https://post2drive.invalid/", { headers }));
+        try {
+          const [networkLimit, emailLimit] = await Promise.all([
+            checkRateLimit({ scope: "login-email-code-network", identity: networkIdentity, limit: 20, windowMs: 15 * 60 * 1000 }),
+            checkRateLimit({ scope: "login-email-code-address", identity: email, limit: 10, windowMs: 15 * 60 * 1000 }),
+          ]);
+          if (!networkLimit.allowed || !emailLimit.allowed) return null;
+        } catch {
+          console.error("Login rate-limit control unavailable.");
+          return null;
+        }
+        const pepper = otpPepper();
+        const user = await findUserByLoginEmail(email);
+        if (!user || !pepper) return null;
+
+        const ok = await verifyOtp(emailCodeKey(email), code, new PrismaOtpStore(user.accountId), { pepper });
+        if (!ok) return null;
+        // Receiving the code proves control of the address.
+        if (!user.emailVerifiedAt) {
+          await prisma.user.update({ where: { id: user.id }, data: { emailVerifiedAt: new Date() } });
         }
         return toSessionUser(user);
       },
