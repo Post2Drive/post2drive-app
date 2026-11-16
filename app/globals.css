@@ -1569,6 +1569,9 @@ textarea {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: 12px 10px !important;
   }
+  nav[aria-label="Job posting progress"][data-steps="3"] {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
   .job-create-form > div:last-child {
     flex-wrap: wrap;
     align-items: stretch !important;

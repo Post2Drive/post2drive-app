@@ -370,7 +370,7 @@ export default function NewJobPage() {
         </p>
       </header>
 
-      <nav aria-label="Job posting progress" style={{ display: "grid", gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))`, gap: 8, marginBottom: 22 }}>
+      <nav aria-label="Job posting progress" data-steps={steps.length} style={{ display: "grid", gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))`, gap: 8, marginBottom: 22 }}>
         {steps.map((label, index) => (
           <div key={label} aria-current={index === step ? "step" : undefined} style={{ minWidth: 0 }}>
             <div className={index < step ? "job-step-complete" : index === step ? "job-step-active" : "job-step-upcoming"} style={{ height: 5, borderRadius: 999, background: index < step ? "var(--ops-teal)" : index === step ? "var(--ops-blue)" : "var(--color-border)", marginBottom: 7 }} />
