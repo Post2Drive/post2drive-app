@@ -5,6 +5,7 @@ import { signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { getLocalisationProfile } from "@/lib/localisation";
 import PhoneVerification from "@/components/phone-verification";
+import { rulesForCountry } from "@/lib/marketRules";
 
 
 export default function SettingsPage() {
@@ -73,7 +74,7 @@ export default function SettingsPage() {
       const response = await fetch("/api/account", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: form.name, phone: form.phone, companyName: form.companyName, marketingConsent: form.marketingConsent, ...(account.country !== "IN" ? { operatingRegion: form.operatingRegion.trim() || null } : {}) }),
+        body: JSON.stringify({ name: form.name, phone: form.phone, companyName: form.companyName, marketingConsent: form.marketingConsent, ...(rulesForCountry(account.country).regionFormat !== "none" ? { operatingRegion: form.operatingRegion.trim() || null } : {}) }),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
@@ -156,18 +157,18 @@ export default function SettingsPage() {
           <p style={{ margin: "6px 0 0" }}>{marketProfile ? `${marketProfile.marketplaceLabel} · ${marketProfile.currency} · ${marketProfile.timeZone}` : "Market configuration unavailable"}</p>
           <small>Country and currency are fixed at signup so your public job marketplace remains separate from the other market.</small>
         </div>
-        {account.country !== "IN" && (
+        {rulesForCountry(account.country).regionFormat !== "none" && (
           <label>
-            {account.country === "GB" ? "Operating area (postcode area)" : "Operating region"}
+            {rulesForCountry(account.country).regionFormat === "uk-postcode-area" ? "Operating area (postcode area)" : "Operating region"}
             <input
               type="text"
               value={form.operatingRegion}
               onChange={(e) => setForm({ ...form, operatingRegion: e.target.value.toUpperCase() })}
-              maxLength={account.country === "GB" ? 2 : 10}
+              maxLength={rulesForCountry(account.country).regionFormat === "uk-postcode-area" ? 2 : 10}
               autoCapitalize="characters"
               autoComplete="off"
               spellCheck={false}
-              placeholder={account.country === "GB" ? "e.g. LS, M or SW" : ""}
+              placeholder={rulesForCountry(account.country).regionFormat === "uk-postcode-area" ? "e.g. LS, M or SW" : ""}
               aria-describedby="settings-region-help"
             />
             <small id="settings-region-help">Required before you can take jobs as a driver or fleet. During the launch driver window, free driving places are limited per area; changing your area puts you at the back of that area&apos;s waitlist.</small>

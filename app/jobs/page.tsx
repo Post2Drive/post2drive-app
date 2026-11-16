@@ -12,6 +12,7 @@ import { formatMarketDate, formatMarketCurrency, getLocalisationProfile, getTime
 import { vehicleTypeLabel } from "@/lib/vehicles";
 import { currencyMinorUnitScale } from "@/lib/currencyMinorUnits";
 import ConfirmDialog from "@/components/confirm-dialog";
+import { rulesForCountry } from "@/lib/marketRules";
 
 type Contact = {
   companyName: string;
@@ -281,6 +282,7 @@ export default function JobsPage() {
     (session?.user as any)
       ?.country;
 
+  const marketRules = rulesForCountry(accountCountry);
   const marketProfile = getLocalisationProfile({ country: accountCountry || "GB", currency: (session?.user as any)?.currency || "GBP" });
 
   const countryName =
@@ -967,17 +969,17 @@ export default function JobsPage() {
 
                   <div className="load-card-price">
                     <strong>
-                      {accountCountry === "IN" && job.price <= 0 ? "Negotiable" : formatMarketCurrency(job.price, { country: accountCountry || "GB", currency: job.currency })}
+                      {marketRules.priceOptional && job.price <= 0 ? "Negotiable" : formatMarketCurrency(job.price, { country: accountCountry || "GB", currency: job.currency })}
                     </strong>
                     {job.pricePerMile && (
                       <small>
                         {formatMarketCurrency(marketProfile?.distanceUnit === "km" ? job.pricePerMile * 0.621371 : job.pricePerMile, { country: accountCountry || "GB", currency: job.currency })}/{marketProfile?.distanceUnit ?? "mile"}
                       </small>
                     )}
-                    {accountCountry !== "IN" && job.priceMode === "bid" && (
+                    {marketRules.biddingAllowed && job.priceMode === "bid" && (
                       <small>Guide price · open to bids</small>
                     )}
-                    {accountCountry === "IN" && job.price <= 0 && (
+                    {marketRules.priceOptional && job.price <= 0 && (
                       <small>Contact poster</small>
                     )}
                   </div>
@@ -1129,7 +1131,7 @@ export default function JobsPage() {
                   !isOwner &&
                   job.status ===
                     "open" &&
-                  accountCountry !== "IN" &&
+                  marketRules.biddingAllowed &&
                   job.priceMode ===
                     "bid" && (
                     <div>
@@ -1250,7 +1252,7 @@ export default function JobsPage() {
                   )}
 
                 {isOwner &&
-                  accountCountry !== "IN" &&
+                  marketRules.biddingAllowed &&
                   job.priceMode ===
                     "bid" &&
                   job.status ===
