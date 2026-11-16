@@ -11,6 +11,7 @@ import { symbolFor, COUNTRIES } from "@/lib/currency";
 import { formatMarketDate, formatMarketCurrency, getLocalisationProfile, getTimeZoneOptions } from "@/lib/localisation";
 import { vehicleTypeLabel } from "@/lib/vehicles";
 import { currencyMinorUnitScale } from "@/lib/currencyMinorUnits";
+import ConfirmDialog from "@/components/confirm-dialog";
 
 type Contact = {
   companyName: string;
@@ -211,6 +212,23 @@ export default function JobsPage() {
 
   // Prevent repeated clicks from dispatching duplicate lifecycle mutations.
   const actionInFlight = useRef(false);
+  // The question being asked in the in-page confirmation, and how to answer it.
+  const [confirmMessage, setConfirmMessage] = useState<string | null>(null);
+  const confirmResolver = useRef<((confirmed: boolean) => void) | null>(null);
+
+  function askConfirm(message: string): Promise<boolean> {
+    return new Promise((resolve) => {
+      confirmResolver.current = resolve;
+      setConfirmMessage(message);
+    });
+  }
+
+  function answerConfirm(confirmed: boolean) {
+    const resolve = confirmResolver.current;
+    confirmResolver.current = null;
+    setConfirmMessage(null);
+    resolve?.(confirmed);
+  }
   const lastPostData = useRef<any>(null);
   const [proofNeededJob, setProofNeededJob] = useState("");
   const bidInFlight = useRef(false);
@@ -365,9 +383,7 @@ export default function JobsPage() {
 
     if (
       confirmMsg &&
-      !window.confirm(
-        confirmMsg
-      )
+      !(await askConfirm(confirmMsg))
     ) {
       actionInFlight.current = false;
       return false;
@@ -763,6 +779,7 @@ export default function JobsPage() {
         minWidth: 0,
       }}
     >
+      <ConfirmDialog message={confirmMessage} onAnswer={answerConfirm} />
       <h1 style={{ margin: "0 0 12px", minWidth: 0, overflowWrap: "anywhere" }}>{countryName} delivery marketplace</h1>
 
       <div
