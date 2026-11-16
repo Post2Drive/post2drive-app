@@ -3,9 +3,10 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { enforceRateLimit } from "@/lib/rateLimit";
 
 async function POSTHandler(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
@@ -13,6 +14,8 @@ async function POSTHandler(
   if (!session) return NextResponse.json({ error: "Not logged in." }, { status: 401 });
   const accountId = (session.user as any)?.accountId;
   if (!accountId) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+  const writeLimit = await enforceRateLimit(req, { scope: "notification-read", identity: accountId, limit: 600, windowMs: 60 * 60 * 1000 });
+  if (writeLimit) return writeLimit;
 
   const result = await prisma.notification.updateMany({
     where: { id, accountId, readAt: null },
