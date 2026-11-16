@@ -195,4 +195,10 @@ assert.match(login, /autoComplete="current-password"/, "Login password must supp
   }
   if (/className="[^"]*\b(mt-\d|px-\d|py-\d|text-sm|rounded)\b/.test(vehiclesPage)) throw new Error("admin vehicles page must not use unstyled utility classes");
 }
+// New-job form fields must stack under their labels (labels sat beside narrow inputs before).
+{
+  const stylesheet = readFileSync("app/globals.css", "utf8");
+  if (!/\.job-create-form label \{ display: grid;/.test(stylesheet)) throw new Error("job-create-form labels must stack their fields");
+  if (!/\.job-create-form input:not\(\[type="checkbox"\]\)[^{]*\{ width: 100%;/.test(stylesheet)) throw new Error("job-create-form fields must be full width");
+}
 console.log("Design accessibility source contracts passed (contrast, focus, motion, navigation, forms, requirements, signup, payments, vehicles, settings, admin research privacy, login, and job edit/activity states).");
