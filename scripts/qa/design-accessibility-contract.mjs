@@ -201,4 +201,11 @@ assert.match(login, /autoComplete="current-password"/, "Login password must supp
   if (!/\.job-create-form label \{ display: grid;/.test(stylesheet)) throw new Error("job-create-form labels must stack their fields");
   if (!/\.job-create-form input:not\(\[type="checkbox"\]\)[^{]*\{ width: 100%;/.test(stylesheet)) throw new Error("job-create-form fields must be full width");
 }
+// A 3-step job flow (India) must stay on one row on narrow screens instead of wrapping 2 + 1.
+{
+  const stylesheet = readFileSync("app/globals.css", "utf8");
+  const page = readFileSync("app/jobs/new/page.tsx", "utf8");
+  if (!page.includes("data-steps={steps.length}")) throw new Error("job steps nav must expose its step count");
+  if (!/\[data-steps="3"\]\s*\{\s*grid-template-columns: repeat\(3/.test(stylesheet)) throw new Error("3-step job flow must keep three columns on narrow screens");
+}
 console.log("Design accessibility source contracts passed (contrast, focus, motion, navigation, forms, requirements, signup, payments, vehicles, settings, admin research privacy, login, and job edit/activity states).");
