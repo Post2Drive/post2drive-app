@@ -17,7 +17,7 @@ Do not describe Post2Drive as a general simulation platform. Do not claim featur
 - Default branch: `main`.
 - Latest main commit visible during this audit: `bf175a825a7aa10212a9efdb42a1a26dc5cfa154` (16 November 2026; rate-limits payment-declaration and notification-read routes).
 - Combined status for that commit exposed one successful context: **Post2Drive - web**. This is not evidence that every required CI workflow, browser test, Android check or staging release gate passed.
-- The open pull-request search returned dependency update PR #220 (Next.js 16.4.3 → 16.4.6). No open feature/documentation PR was returned in that search.
+- The pre-audit open pull-request search returned dependency update PR #220 (Next.js 16.4.3 → 16.4.6); it remains open. This documentation audit is now proposed in draft PR [#221](https://github.com/Post2Drive/post2drive-app/pull/221).
 - The README, launch-readiness record, analytics specification, provider guide and operations-dashboard guide were reviewed for product framing, status claims and stale operational references.
 
 ### Project/profile repository — `Post2Drive/Post2Drive`
