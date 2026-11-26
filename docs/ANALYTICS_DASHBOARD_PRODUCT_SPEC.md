@@ -4,7 +4,7 @@ Status: product specification for the separate internal analytics service. This 
 
 ## Product intent
 
-Create a separate Railway service named **Post2Drive Analytics & Logistics Intelligence**. It is an internal operations and decision-support dashboard, not the customer-facing `/dashboard` page. The service should be independently visible as a service box beside the web app, PostgreSQL and Redis in the **staging** project first. Keep PR #12 draft; do not merge or deploy production as part of this work.
+Create a separate Railway service named **Post2Drive Analytics & Logistics Intelligence**. It is an internal operations and decision-support dashboard, not the customer-facing `/dashboard` page. The service should be independently visible as a service box beside the web app, PostgreSQL and Redis in the **staging** project first. Keep the analytics service separate from the customer-facing app; do not deploy to production without separate owner approval.
 
 ## Country selector and comparison
 
@@ -41,7 +41,7 @@ KPI cards:
 9. **Commercial:** subscription funnel and status, plan mix, recorded payment outcomes, conversion and renewal/expiry patterns. Distinguish recorded data from provider-confirmed settlement.
 10. **Operational exceptions:** failed lifecycle transitions, duplicate/idempotency conflicts, stuck jobs, incident reports, notification delivery failures, missing or stale data.
 11. **Country comparison:** indexed growth and conversion, activity per active account, supply/demand imbalance, completion and cancellation rates, and API reliability side-by-side.
-12. **Market intelligence:** country-specific logistics industry size/growth, freight and parcel volumes, e-commerce demand, road/transport infrastructure, fuel and labour cost indicators, regulatory changes, cross-border trade, seasonal peaks, and competitor/platform signals where credible sources publish them.
+12. **Market intelligence:** country-specific logistics industry size/growth, freight and parcel volumes, e-commerce demand, road/transport infrastructure, fuel and labour cost indicators, regulatory changes, cross-border trade, seasonal peaks, and other publicly reported sector indicators where credible sources publish them.
 13. **Trends and patterns:** seasonality, weekday/hour peaks, month-over-month changes, route/region concentration, demand/supply gaps, anomalous changes and emerging patterns. Only show forecasts when enough historical data exists; display confidence/limitations.
 14. **Data sources and freshness:** every external indicator must show source, publication/observation date, retrieval date, geography, units, definition and link. Show "unavailable" rather than fabricate missing data.
 
