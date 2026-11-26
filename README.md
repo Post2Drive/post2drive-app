@@ -2,13 +2,15 @@
 
 Post2Drive is a two-sided marketplace for customers/businesses posting delivery jobs and drivers, couriers and fleet/transport operators discovering, bidding on and fulfilling jobs. Launch markets are the UK and India only (one constant, `LAUNCH_COUNTRY_CODES` in `lib/market.ts`; other catalogue markets are switched off and signup rejects them on the server). Market and currency isolation is enforced server-side.
 
-> **Status (6 November 2026):** Active development/staging. Staging (Railway) deploys automatically from `main`. Not approved for unrestricted public launch. A past successful build or staging deployment does not prove the latest commit is deployed or launch-ready. See [Launch Readiness](docs/LAUNCH_READINESS.md).
+> **Status (26 November 2026):** Active development. `main` is the canonical source branch; the latest main commit visible in this audit is `bf175a825a7aa10212a9efdb42a1a26dc5cfa154` (16 November). GitHub returned one successful status context (`Post2Drive - web`) for that commit; this is not a complete CI, staging or launch verification. Railway was not inspected live in this documentation pass. Post2Drive is not approved for unrestricted public launch. See [Launch Readiness](docs/LAUNCH_READINESS.md) and the [documentation index](docs/README.md).
 
 ## Repository branches
 
 `main` is the source branch. Older work branches and `recovery/` tags are retained but not maintained; see the [branches page](https://github.com/Post2Drive/post2drive-app/branches). Branch and tag clean-up is an owner task (a verified backup bundle of all 133 refs was made on 2026-11-06).
 
 ## Essential project documents
+
+- [Documentation index](docs/README.md) — navigation, authority rules and current audit.
 
 These files travel with a clone, source ZIP, fork or ownership transfer. They preserve product intent and recovery steps outside chat history.
 
