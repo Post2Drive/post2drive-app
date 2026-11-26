@@ -7,7 +7,7 @@ This is a separate internal reporting service. It is not the customer-facing app
 Create a separate service named **Post2Drive Analytics Dashboard** in the existing **Post2Drive Staging** project, scoped only to the staging environment.
 
 - Repository: `Post2Drive/post2drive-app`
-- Branch: `feature/country-localisation-audit`
+- Source branch: `main` is the canonical application branch. Verify the actual Railway service source before making any configuration change; this document does not establish the live branch binding.
 - Root directory: repository root
 - Build command: `npm ci && npx prisma generate --schema=prisma/schema.prisma`
 - Start command: `npm run ops:dashboard`
@@ -50,7 +50,7 @@ The dashboard is organized into Command Centre, Marketplace, Trust & Operations,
 
 The country selector filters first-party data by the poster/account country; it does not mutate account country or currency. Job metrics are attributed to the posting account's country. This is a product analytics convention, not a representation of national freight-market size.
 
-The industry section currently provides official source links and platform-derived directional signals. It does **not** yet ingest external national freight volumes, industry revenue, fuel-price time series, regulatory feeds or competitor datasets. Those indicators must not be displayed as live numerical values until a documented source integration, refresh cadence, licensing review and data-quality check are implemented.
+The industry section currently provides official source links and platform-derived directional signals. It does **not** yet ingest external national freight volumes, industry revenue, fuel-price time series, regulatory feeds or additional third-party market datasets. Those indicators must not be displayed as live numerical values until a documented source integration, refresh cadence, licensing review and data-quality check are implemented.
 
 ## QA and release gates
 
@@ -68,4 +68,4 @@ Before allowing operators to rely on the dashboard:
 10. Validate API latency/error aggregations and label missing instrumentation as a coverage gap.
 11. Confirm source links and freshness metadata; do not represent source-directory links as imported data.
 12. Run `npm run qa:ops-dashboard`, `node --check ops-dashboard/server.mjs`, all existing QA contracts, bridge authentication/replay tests, and the staging deployment smoke test.
-13. Keep PR #12 draft and do not deploy production until separately approved.
+13. Do not deploy production until separately approved.
