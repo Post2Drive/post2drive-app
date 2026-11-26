@@ -12,7 +12,6 @@ This index is the entry point for product, engineering, operations and release d
 - [Provider integration](PROVIDER_INTEGRATION.md): email, SMS and payment adapters, activation conditions and controlled live-test requirements.
 - [Railway staging setup](RAILWAY_STAGING_SETUP.md): staging configuration and operational cautions; verify live Railway state before acting.
 - [Repository portability and deployment](REPOSITORY_PORTABILITY_AND_DEPLOYMENT.md): ownership continuity, backup, recovery, rollback and deployment procedures.
-- [Production backup and recovery](PRODUCTION_BACKUP_AND_RECOVERY.md): planned recovery controls and evidence requirements.
 - [Vibrant design system](VIBRANT_DESIGN_SYSTEM.md): UI tokens and component conventions.
 
 ## Authority and evidence rules
